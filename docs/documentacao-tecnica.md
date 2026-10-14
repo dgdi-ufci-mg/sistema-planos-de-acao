@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** protótipo em uso, publicado como artefato no Claude
-**Última atualização deste documento:** 14/10/2026 (versão 23 da página)
+**Última atualização deste documento:** 14/10/2026 (versão 24 da página)
 
 ---
 
@@ -367,6 +367,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 21 | Campos Etapa, Ação (descrição) e Rótulo no cadastro e na tabela de ações; importação reconhece Etapa, Rótulo, Descrição, PRE e Principais responsáveis; exportação com etapa e rótulo; glossário com Rótulo e Etapa |
 | 22 | Suporte ao Firebase (Firestore + login por e-mail e senha), `config.js`, `firestore.rules`; cópia de segurança e restauração de todos os dados; licença GPL v3 |
 | 23 | Restauração da cópia de segurança disponível também na tela inicial de banco vazio (função `restoreBlock`) |
+| 24 | Sistema publicado no GitHub Pages com Firebase; dados migrados do artefato do Claude por cópia e restauração (14/10/2026) |
 
 ### Notas de implementação recentes
 

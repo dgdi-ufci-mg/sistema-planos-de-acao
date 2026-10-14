@@ -16,11 +16,13 @@ Todos os termos aparecem em linguagem simples, com o nome técnico ao lado para 
 
 ## Situação atual
 
-**Protótipo.** O sistema está pronto para usar o Firebase como banco de dados, mas a conexão depende da configuração descrita abaixo. Enquanto o arquivo `config.js` estiver vazio, o sistema abre em **modo local**: calcula tudo, porém **não salva** os dados.
+**Em uso, em fase de testes.** O sistema está online, conectado ao Firebase da DGDI. Qualquer pessoa consulta; só usuários cadastrados editam.
+
+Em cópias locais com o `config.js` vazio, o sistema abre em **modo local**: calcula tudo, porém **não salva** os dados.
 
 ## Como ver o sistema
 
-- **Online:** depois que o GitHub Pages for ativado, o endereço será `https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/`.
+- **Online:** https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/
 - **No seu computador:** baixe o arquivo `index.html` e abra no navegador.
 
 Para testar com dados, use o botão **Ver um plano de exemplo**.
