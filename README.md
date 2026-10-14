@@ -16,9 +16,7 @@ Todos os termos aparecem em linguagem simples, com o nome técnico ao lado para 
 
 ## Situação atual
 
-**Protótipo.** O arquivo `index.html` funciona sozinho em qualquer navegador, mas, fora do ambiente onde foi criado, abre em **modo local**: calcula tudo, porém **não salva** os dados.
-
-O próximo passo é ligar o sistema a um banco de dados (Firebase) para que os planos fiquem salvos e sejam compartilhados entre os usuários. Veja a seção "Pendências" da documentação técnica.
+**Protótipo.** O sistema está pronto para usar o Firebase como banco de dados, mas a conexão depende da configuração descrita abaixo. Enquanto o arquivo `config.js` estiver vazio, o sistema abre em **modo local**: calcula tudo, porém **não salva** os dados.
 
 ## Como ver o sistema
 
@@ -27,11 +25,33 @@ O próximo passo é ligar o sistema a um banco de dados (Firebase) para que os p
 
 Para testar com dados, use o botão **Ver um plano de exemplo**.
 
+## Instalação com banco de dados (Firebase)
+
+Para que os planos fiquem salvos e sejam compartilhados, o sistema usa o **Firebase**, do Google (plano gratuito, sem pausa por inatividade). Consulta aberta a todos; edição só para usuários cadastrados.
+
+Passo a passo para o administrador:
+
+1. **Criar o projeto.** Em https://console.firebase.google.com, entre com uma conta Google (de preferência institucional) e clique em **Criar projeto**. O Google Analytics pode ser desativado.
+2. **Criar o banco de dados.** Menu **Firestore Database** → **Criar banco de dados** → modo **produção** → local **southamerica-east1 (São Paulo)**.
+3. **Publicar as regras de acesso.** Em **Firestore Database → Regras**, apague o conteúdo, cole o arquivo [`firestore.rules`](firestore.rules) deste repositório e clique em **Publicar**.
+4. **Ativar o login.** Menu **Authentication** → **Vamos começar** → **E-mail/senha** → ativar → salvar.
+5. **Impedir cadastros por conta própria.** Em **Authentication → Configurações → Ações do usuário**, desmarque **Ativar criação (inscrição)**. Assim, só o administrador cria usuários.
+6. **Cadastrar os usuários que podem editar.** Em **Authentication → Usuários → Adicionar usuário**, informe e-mail e uma senha provisória. Cada pessoa pode trocá-la depois pelo link "Esqueci a senha".
+7. **Autorizar o endereço do site.** Em **Authentication → Configurações → Domínios autorizados**, adicione `dgdi-ufci-mg.github.io`.
+8. **Registrar o app Web e copiar a configuração.** Em **Configurações do projeto** (engrenagem) → **Geral** → **Seus apps** → ícone **</>** → dê um nome e registre. Copie o bloco `firebaseConfig` e cole no arquivo [`config.js`](config.js), no lugar de `null`.
+
+Depois disso, o site passa a abrir já conectado: qualquer pessoa consulta, e quem tem usuário toca em **Entrar** para editar.
+
+**Levar dados de uma instalação para outra:** na aba **Importar e exportar**, use **Copiar todos os dados** na origem e **Restaurar a partir de uma cópia** no destino.
+
 ## Estrutura do repositório
 
 | Caminho | Conteúdo |
 |---|---|
 | `index.html` | O sistema inteiro: HTML, CSS e JavaScript num único arquivo |
+| `config.js` | Configuração do Firebase (vazia = modo local) |
+| `firestore.rules` | Regras de acesso ao banco de dados |
+| `LICENSE` | Licença GPL v3 |
 | `docs/documentacao-tecnica.md` | Arquitetura, fórmulas, modelo de dados, decisões e histórico de versões |
 | `docs/manual-do-usuario.md` | Manual em linguagem simples (em revisão, ver abaixo) |
 | `CONTRIBUTING.md` | Como colaborar |
@@ -47,3 +67,7 @@ Resumo:
 1. Para relatar um problema ou sugerir uma melhoria, abra uma **Issue**.
 2. Para propor uma mudança no código ou na documentação, envie um **pull request**.
 3. Toda mudança relevante deve vir acompanhada da atualização da documentação técnica.
+
+## Licença
+
+Distribuído sob a [GNU General Public License v3.0](LICENSE). Quem modificar e redistribuir o sistema deve manter o código aberto sob a mesma licença.

@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** protótipo em uso, publicado como artefato no Claude
-**Última atualização deste documento:** 14/10/2026 (versão 21 da página)
+**Última atualização deste documento:** 14/10/2026 (versão 22 da página)
 
 ---
 
@@ -42,6 +42,8 @@ Gestores e equipes sem formação em gerenciamento de projetos. A ferramenta pre
 | Compartilhado | Visitante autenticado no Claude | Lê e grava na base; mudanças aparecem para todos |
 | Só consulta | Autenticado sem permissão de edição | Lê a base; campos ficam desabilitados |
 | Local | Visitante sem login, ou fora do Claude | Calcula normalmente, mas nada é salvo; cada pessoa vê só o que digitou |
+| Firebase · consulta | Fora do Claude, com `config.js` preenchido, sem login | Lê o Firestore; botão **Entrar** no topo; campos de edição bloqueados |
+| Firebase · edição | Fora do Claude, com login por e-mail e senha | Lê e grava no Firestore em tempo real; botão **Sair** no topo |
 
 ### 2.3 Limitação conhecida
 
@@ -53,10 +55,20 @@ Toda leitura e gravação passa pelo objeto `Store`, com duas implementações: 
 
 As gravações em um mesmo documento são serializadas (fila por caminho). Erros de permissão colocam a página em modo só consulta, e falhas transitórias são repetidas uma vez.
 
+**Escolha do banco na inicialização (`boot`):** (1) se a página roda no Claude e a capacidade `db` responde, usa a base do artefato; (2) senão, se `window.FIREBASE_CONFIG` (arquivo `config.js`) tiver `projectId`, carrega o Firebase e usa o Firestore; (3) senão, modo local.
+
+**Firebase:** SDK *compat* 10.14.1, carregado sob demanda de cdn.jsdelivr.net (`firebase-app`, `firebase-auth` e `firebase-firestore`). O objeto `firebase.firestore()` tem a mesma interface usada pelo `Store` (`collection().onSnapshot`, `doc().set/update/delete`, `collection().doc().id`), então o `Store` funciona sem alteração. Mesmos caminhos de dados: `projects/{id}`, `projects/{id}/tasks/{código}`, `people/{id}`.
+- **Autenticação:** e-mail e senha (Firebase Authentication), persistência local no navegador, recuperação de senha por e-mail. Mensagens de erro traduzidas.
+- **Permissões:** `firestore.rules` libera leitura a todos e gravação só a usuários autenticados. O cadastro por conta própria deve ser desativado no Console, para que só o administrador crie usuários.
+- **Erro `permission-denied`:** a página pede para entrar ou avisa que o usuário não tem permissão.
+- **Teste:** o fluxo (consulta sem login, erro de senha, login, gravação, saída) foi validado com um Firebase simulado em navegador automatizado.
+
+**Cópia de segurança (aba Importar e exportar):** "Copiar todos os dados" gera um JSON `{sistema, versao, geradoEm, projects, tasks:{plano:{ação}}, people}` com todos os planos, ações e responsáveis. "Restaurar a partir de uma cópia" grava esses documentos (substitui os de mesmo identificador, mantém os demais), com confirmação. Serve também para migrar os dados do Claude para o Firebase.
+
 ### 2.5 Repositório e colaboração
 
 - **Código-fonte:** https://github.com/dgdi-ufci-mg/sistema-planos-de-acao (organização "DGDI | UFCI-MG", repositório público).
-- **Estrutura:** `index.html` (o sistema), `docs/` (documentação técnica e manual), `README.md` e `CONTRIBUTING.md` (guia de colaboração).
+- **Estrutura:** `index.html` (o sistema), `config.js` (configuração do Firebase), `firestore.rules` (regras de acesso), `docs/` (documentação técnica e manual), `README.md` e `CONTRIBUTING.md` (guia de colaboração), `LICENSE` (GPL v3).
 - **Fluxo:** sugestões e problemas por Issues; mudanças por pull request, com revisão antes de entrar na `main`. Toda mudança relevante atualiza esta documentação e o histórico de versões.
 - **Publicação:** GitHub Pages a partir da `main` (endereço previsto: `https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/`). Fora do Claude, o sistema roda em modo local até a migração do `Store` para o Firebase.
 - **Cópias:** esta documentação também fica nos documentos do projeto no Claude; a versão do repositório é a de referência a partir de 14/10/2026.
@@ -311,13 +323,16 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | Nome provisório "Sistema de Gerenciamento de Planos de Ação" | Definido pelo demandante; alternativas como "Baliza" ficaram registradas |
 | Supabase descartado | O plano gratuito pausa projetos após 7 dias de pouca atividade |
 | Manual ilustrado congelado até a estabilização do sistema | Evitar retrabalho: as telas mudam a cada melhoria. A documentação técnica segue sendo atualizada a cada mudança |
-| Firebase como próximo backend; servidor institucional como meta | Não pausa por inatividade e tem login próprio; o servidor da UFCI-MG é a solução mais sólida para uso oficial |
+| Firebase como backend fora do Claude; servidor institucional como meta | Não pausa por inatividade e tem login próprio; o servidor da UFCI-MG é a solução mais sólida para uso oficial |
+| Repositório na organização GitHub "DGDI \| UFCI-MG" (`dgdi-ufci-mg`) | Colaboração sem depender do Claude; não depende de conta pessoal; independe do espaço institucional da universidade |
+| Licença GPL v3 | Escolha do demandante: quem modificar e redistribuir deve manter o código aberto |
+| Consulta aberta, edição só com usuário criado pelo administrador | Transparência dos planos sem abrir mão do controle sobre alterações |
 
 ---
 
 ## 9. Pendências e próximos passos
 
-1. **Hospedagem fora do Claude**, para acesso sem conta do Claude: migrar o `Store` para o Firebase, com consulta aberta e edição por usuários cadastrados com e-mail e senha.
+1. **Hospedagem fora do Claude:** código pronto (versão 22). Falta o administrador criar o projeto no Firebase (passo a passo no README), preencher `config.js` e migrar os dados com a cópia de segurança.
 2. **Etapas:** o campo já existe no cadastro e na tabela de ações. Falta uma visão para renomear uma etapa em todas as ações de uma vez e definir a ordem das etapas.
 3. Avaliar baixar o diagrama como imagem (exige a capacidade `downloads`).
 4. Registrar o andamento real da PI² (% concluído das ações atrasadas e em andamento) e definir a data de status.
@@ -350,6 +365,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 19 | Diagrama: roteamento por canais (portas distribuídas, trilhos exclusivos, alargamento de corredores, cantos arredondados) |
 | 20 | Diagrama: setas longas pelas vagas do dagre ou por traçado alternativo com menos cruzamentos; ordem de trilhos e de portas otimizada |
 | 21 | Campos Etapa, Ação (descrição) e Rótulo no cadastro e na tabela de ações; importação reconhece Etapa, Rótulo, Descrição, PRE e Principais responsáveis; exportação com etapa e rótulo; glossário com Rótulo e Etapa |
+| 22 | Suporte ao Firebase (Firestore + login por e-mail e senha), `config.js`, `firestore.rules`; cópia de segurança e restauração de todos os dados; licença GPL v3 |
 
 ### Notas de implementação recentes
 

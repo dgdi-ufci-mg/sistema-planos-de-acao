@@ -36,7 +36,7 @@ Abra uma **Issue** (aba "Issues" → "New issue") e descreva:
 
 ## Testar localmente
 
-Abra o `index.html` no navegador. Fora do ambiente de produção, o sistema funciona em modo local e não salva dados; use o botão **Ver um plano de exemplo** para testar.
+Abra o `index.html` no navegador. Com o `config.js` vazio, o sistema funciona em modo local e não salva dados; use o botão **Ver um plano de exemplo** para testar. **Não altere o `config.js` do repositório para apontar para outro banco**: para testar com o seu próprio Firebase, use uma cópia local.
 
 ## Dúvidas
 

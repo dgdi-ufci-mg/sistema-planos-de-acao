@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="config.js"></script>
 </head>
 <body>
 <title>Sistema de Gerenciamento de Planos de Ação</title>
@@ -448,10 +449,11 @@ const Store={
 };
 function dbErr(e){if(e&&e.code==="revoked"){S.mode="revoked";renderTop();toast("O acesso a esta página mudou. Recarregue para continuar.")}else toast("Não foi possível acompanhar as atualizações. Recarregue a página.")}
 async function W(fn){
-  if(!S.canWrite){toast("Você pode consultar este plano, mas não editar. Peça acesso de Colaborador a quem compartilhou.");return false}
+  if(!S.canWrite){toast(S.mode==="firebase"?"Entre com seu e-mail e senha (botão Entrar) para editar.":"Você pode consultar este plano, mas não editar. Peça acesso de Colaborador a quem compartilhou.");return false}
   try{await fn();return true}catch(e){
     const c=e&&e.code;
-    if(c==="invalid_argument"&&S.db){S.canWrite=false;renderAll();toast("Sua permissão é somente de leitura. Peça acesso de Colaborador a quem compartilhou.")}
+    if(c==="permission-denied"){toast(S.fbUser?"Seu usuário não tem permissão para gravar. Procure o administrador do sistema.":"Entre com seu e-mail e senha para editar.")}
+    else if(c==="invalid_argument"&&S.db){S.canWrite=false;renderAll();toast("Sua permissão é somente de leitura. Peça acesso de Colaborador a quem compartilhou.")}
     else if(c==="quota_exceeded")toast("O espaço de armazenamento acabou. Exclua planos antigos para liberar espaço.");
     else if(c==="unavailable"){await new Promise(r=>setTimeout(r,600+Math.random()*600));try{await fn();return true}catch(e2){toast("Falha temporária ao salvar. Tente de novo.")}}
     else toast("Não foi possível salvar: "+((e&&e.message)||"erro desconhecido"));
@@ -459,6 +461,49 @@ async function W(fn){
 }
 let toastT;function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,4200)}
 
+
+/* ---------- Firebase (hospedagem fora do Claude) ---------- */
+const FB_VER="10.14.1";
+function loadScript(src){return new Promise((ok,err)=>{const el=document.createElement("script");el.src=src;el.onload=ok;el.onerror=()=>err(new Error("Falha ao carregar "+src));document.head.appendChild(el)})}
+async function loadFirebase(){
+  const base=`https://cdn.jsdelivr.net/npm/firebase@${FB_VER}/`;
+  await loadScript(base+"firebase-app-compat.js");
+  await Promise.all([loadScript(base+"firebase-auth-compat.js"),loadScript(base+"firebase-firestore-compat.js")]);
+  const app=firebase.initializeApp(window.FIREBASE_CONFIG);
+  const db=firebase.firestore(app),auth=firebase.auth(app);
+  try{await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL)}catch(e){}
+  S.fb={app,db,auth};S.fbUser=auth.currentUser;
+}
+function loginPanel(){
+  return`<section class="panel" id="loginBox" style="max-width:420px">
+    <h2>Entrar para editar</h2>
+    <p class="note">Qualquer pessoa pode consultar os planos. Para criar ou alterar, entre com o e-mail e a senha cadastrados pelo administrador do sistema.</p>
+    <form id="loginForm" class="row" style="flex-direction:column;align-items:stretch" autocomplete="on">
+      <label class="f">E-mail<input type="text" id="lgEmail" inputmode="email" autocomplete="username"></label>
+      <label class="f">Senha<input type="password" id="lgPass" autocomplete="current-password"></label>
+      <div class="row"><button class="btn primary" type="submit">Entrar</button><button class="btn" type="button" data-act="forgot">Esqueci a senha</button><div class="spacer"></div><button class="btn" type="button" data-act="loginClose">Cancelar</button></div>
+      <p class="note" id="lgMsg" role="status"></p>
+    </form></section>`}
+const FB_ERR={"auth/invalid-credential":"E-mail ou senha incorretos.","auth/wrong-password":"E-mail ou senha incorretos.","auth/user-not-found":"E-mail ou senha incorretos.","auth/invalid-email":"O e-mail informado não é válido.","auth/too-many-requests":"Muitas tentativas. Aguarde alguns minutos e tente de novo.","auth/network-request-failed":"Sem conexão com a internet.","auth/user-disabled":"Este usuário foi desativado. Procure o administrador."};
+async function doLogin(){const m=$("#lgMsg"),em=$("#lgEmail").value.trim(),pw=$("#lgPass").value;if(!em||!pw){m.textContent="Informe e-mail e senha.";return}
+  m.textContent="Entrando…";try{await S.fb.auth.signInWithEmailAndPassword(em,pw);S.showLogin=false;renderAll();toast("Você entrou como "+em+".")}catch(e){m.textContent=FB_ERR[e.code]||("Não foi possível entrar: "+(e.message||e.code))}}
+async function doForgot(){const m=$("#lgMsg"),em=$("#lgEmail").value.trim();if(!em){m.textContent="Digite seu e-mail acima e toque de novo em “Esqueci a senha”.";return}
+  try{await S.fb.auth.sendPasswordResetEmail(em);m.textContent="Se o e-mail estiver cadastrado, você receberá um link para criar nova senha."}catch(e){m.textContent=FB_ERR[e.code]||("Não foi possível enviar: "+(e.message||e.code))}}
+
+/* ---------- Cópia de segurança (exportar e restaurar todos os dados) ---------- */
+async function collectAll(){
+  if(!S.db){const out={projects:{},tasks:{},people:{}};Local.projects.forEach((d,id)=>out.projects[id]=d);Local.tasks.forEach((m,pid)=>{out.tasks[pid]={};m.forEach((d,id)=>out.tasks[pid][id]=d)});Local.people.forEach((d,id)=>out.people[id]=d);return out}
+  const out={projects:{},tasks:{},people:{}};
+  const ps=await S.db.collection("projects").get();
+  for(const d of ps.docs){out.projects[d.id]=d.data();out.tasks[d.id]={};const ts=await S.db.collection(`projects/${d.id}/tasks`).get();ts.docs.forEach(t=>out.tasks[d.id][t.id]=t.data())}
+  const pp=await S.db.collection("people").get();pp.docs.forEach(d=>out.people[d.id]=d.data());
+  return out}
+const clean=o=>JSON.parse(JSON.stringify(o));
+async function restoreAll(data){let n=0;
+  for(const id in data.people||{}){if(await W(()=>Store.setPerson(id,clean(data.people[id]))))n++}
+  for(const pid in data.projects||{}){if(await W(()=>Store.setProject(pid,clean(data.projects[pid]))))n++;
+    for(const tid in (data.tasks||{})[pid]||{}){if(await W(()=>Store.setTask(pid,tid,clean(data.tasks[pid][tid]))))n++}}
+  return n}
 /* ---------- ciclo de dados ---------- */
 function selectProject(pid){
   if(S.unsubT){S.unsubT();S.unsubT=null}
@@ -496,6 +541,7 @@ function modePill(){
   if(S.mode==="loading")return`<span class="pill">carregando…</span>`;
   if(S.mode==="local")return`<span class="pill warn" title="Entre com sua conta para ver os planos salvos e editar">sem login · nada é salvo</span>`;
   if(S.mode==="revoked")return`<span class="pill crit">acesso alterado</span>`;
+  if(S.mode==="firebase")return S.fbUser?`<span class="pill ok" title="${esc(S.fbUser.email||"")}">salvando automaticamente</span>`:`<span class="pill warn">só consulta · entre para editar</span>`;
   return S.canWrite?`<span class="pill ok">salvando automaticamente</span>`:`<span class="pill warn">só consulta</span>`;
 }
 function renderTop(){
@@ -504,10 +550,12 @@ function renderTop(){
   pb.innerHTML=`${S.projects.length?`<select id="projSel" aria-label="Plano">${opts}</select>`:""}
     ${S.proj?`<button class="btn" data-act="settings" aria-expanded="${S.settingsOpen}">Configurar</button>`:""}
     <button class="btn" data-act="newproj"${S.canWrite?"":" disabled"}>Novo plano</button>
+    ${S.mode==="firebase"?(S.fbUser?`<button class="btn" data-act="logout" title="${esc(S.fbUser.email||"")}">Sair</button>`:`<button class="btn primary" data-act="login">Entrar</button>`):""}
     <a class="btn" href="https://claude.ai/artifact/Xz8YAqi7HBqCrpVvKmaRSC" target="_blank" rel="noopener" style="text-decoration:none;color:var(--ink)">Ajuda</a>${modePill()}`;
 }
 function renderMain(){
   const m=$("#main");
+  if(S.showLogin&&S.fb){if(!$("#loginBox")){m.innerHTML=loginPanel();const i=$("#lgEmail");if(i)i.focus()}return}
   if(S.mode==="loading"){m.innerHTML=`<div class="panel"><p class="muted">Carregando planos…</p></div>`;return}
   if(!S.projects.length){m.innerHTML=emptyState();return}
   if(!S.proj){m.innerHTML="";return}
@@ -1099,6 +1147,14 @@ function viewImport(){
       <p class="note">Copia o fluxograma das ações em linguagem Mermaid, com as ações sem folga destacadas. Cole em mermaid.live para ver o desenho.</p>
       <div class="row"><button class="btn" data-act="copyMermaid">Copiar fluxograma</button></div>
       <textarea id="exportOut" rows="6" readonly hidden aria-label="Texto exportado"></textarea>
+      <span class="eyebrow" style="margin-top:8px">Cópia de segurança</span>
+      <p class="note">Copia todos os planos, ações e responsáveis do sistema num único texto (formato JSON). Guarde-o num arquivo para ter uma cópia de segurança ou para levar os dados a outra instalação do sistema.</p>
+      <div class="row"><button class="btn" data-act="backupCopy">Copiar todos os dados</button></div>
+      <details${S.restoreOpen?" open":""} id="restoreBox"><summary>Restaurar a partir de uma cópia</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        <p class="note">Cole o texto de uma cópia de segurança. Planos, ações e responsáveis com o mesmo identificador são substituídos; os demais são mantidos.</p>
+        <textarea id="restoreText" rows="5"${S.canWrite?"":" disabled"}></textarea>
+        <div class="row">${S.confirm==="restore"?`<button class="btn danger" data-act="restoreDo">Sim, restaurar e substituir</button><button class="btn" data-act="cancel">Cancelar</button>`:`<button class="btn" data-act="restoreAsk"${S.canWrite?"":" disabled"}>Restaurar</button>`}</div></div></details>
     </div></div><div style="margin-top:16px">${prev}</div>`;
 }
 function exportTSV(){const r=S.res;if(!r||!r.det)return"";const mc=S.mc;
@@ -1194,6 +1250,13 @@ document.addEventListener("click",async e=>{
   else if(a==="example")newProject(true);
   else if(a==="askDel"){S.confirm="del:"+b.dataset.id;renderMain()}
   else if(a==="dzoom"){const z=+b.dataset.z,svgEl=$("#diag svg");if(z===0){dZoom=null}else{dZoom=Math.min(2,Math.max(.3,(dZoom||1)*(z>0?1.25:0.8)))}drawDiagram()}
+  else if(a==="login"){S.showLogin=true;renderMain()}
+  else if(a==="loginClose"){S.showLogin=false;renderAll()}
+  else if(a==="forgot")doForgot();
+  else if(a==="logout"){try{await S.fb.auth.signOut();toast("Você saiu. Os planos continuam visíveis para consulta.")}catch(e){}}
+  else if(a==="backupCopy"){try{const d=await collectAll();const n=Object.keys(d.projects).length;await copyText(JSON.stringify({sistema:"planos-de-acao",versao:1,geradoEm:new Date().toISOString(),...d}));toast(`Cópia de ${n} plano(s) copiada. Cole num arquivo de texto e guarde.`)}catch(e){toast("Não foi possível gerar a cópia: "+(e.message||e))}}
+  else if(a==="restoreAsk"){const t=$("#restoreText").value;try{const d=JSON.parse(t);if(!d.projects)throw 0;S.restoreData=d;S.restoreOpen=true;S.confirm="restore";renderMain();const ta=$("#restoreText");if(ta)ta.value=t}catch(e){toast("O texto colado não é uma cópia de segurança válida.")}}
+  else if(a==="restoreDo"){S.confirm=null;const d=S.restoreData;S.restoreData=null;const n=await restoreAll(d);S.restoreOpen=false;renderAll();toast(`${n} registros restaurados.`)}
   else if(a==="bulkPreview"){const txt=$("#bulkText").value;S.pimp=parsePeople(txt);renderMain();const ta=$("#bulkText");if(ta)ta.value=txt}
   else if(a==="bulkClear"){S.pimp=null;renderMain()}
   else if(a==="bulkSave")bulkSave();
@@ -1215,6 +1278,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("input",e=>{const t=e.target;if(t.id==="newName"||t.id==="newCode"||t.id==="newDesc"){const h=$("#codeHint");if(!h)return;const c=$("#newCode").value.trim(),n=$("#newName").value.trim()||$("#newDesc").value.trim();
   h.textContent=!c&&n?`Se deixar em branco: ${genCode(n,takenCodes())}`:(c&&S.tasks.some(x=>x.id.toUpperCase()===c.toUpperCase())?"Este código já está em uso":"")}});
 document.addEventListener("submit",async e=>{if(e.target.id==="addForm"){e.preventDefault();addTask()}
+  else if(e.target.id==="loginForm"){e.preventDefault();doLogin()}
   else if(e.target.id==="personForm"){e.preventDefault();const n=$("#newPName").value,sg=$("#newPSigla").value,u=$("#newPUnit").value;
     if(S.people.some(x=>normKey(x.name)===normKey(n))){toast(`“${n.trim()}” já está na lista.`);return}
     if(await createPerson(n,sg,u)){["newPName","newPSigla","newPUnit"].forEach(i=>$("#"+i).value="");$("#newPName").focus();toast("Responsável adicionado.")}}});
@@ -1237,7 +1301,10 @@ async function boot(){
   renderTop();renderMain();
   let db=null,user=null;
   try{if(window.claude&&window.claude.use){[db,user]=await Promise.all([window.claude.use("db"),window.claude.use("user")])}}catch(e){}
-  S.db=db;S.user=user;S.mode=db?"shared":"local";
+  if(!db&&window.FIREBASE_CONFIG&&window.FIREBASE_CONFIG.projectId){
+    try{await loadFirebase();db=S.fb.db}catch(e){console.error(e);toast("Não foi possível conectar ao banco de dados. O sistema abriu sem salvar.")}}
+  S.db=db;S.user=user;S.mode=S.fb&&db?"firebase":db?"shared":"local";
+  if(S.mode==="firebase"){S.canWrite=!!S.fb.auth.currentUser;S.fb.auth.onAuthStateChanged(u=>{S.fbUser=u;S.canWrite=!!u;renderAll()})}
   if(user&&user.can){try{const c=await user.can("data.write");if(c===false)S.canWrite=false}catch(e){}}
   Store.listenProjects(onProjects);
   Store.listenPeople(ps=>{S.peopleLoaded=true;S.people=ps.sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt-BR"));renderAll()});
