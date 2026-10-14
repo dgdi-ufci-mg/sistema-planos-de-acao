@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** protótipo em uso, publicado como artefato no Claude
-**Última atualização deste documento:** 14/10/2026 (versão 22 da página)
+**Última atualização deste documento:** 14/10/2026 (versão 23 da página)
 
 ---
 
@@ -63,7 +63,7 @@ As gravações em um mesmo documento são serializadas (fila por caminho). Erros
 - **Erro `permission-denied`:** a página pede para entrar ou avisa que o usuário não tem permissão.
 - **Teste:** o fluxo (consulta sem login, erro de senha, login, gravação, saída) foi validado com um Firebase simulado em navegador automatizado.
 
-**Cópia de segurança (aba Importar e exportar):** "Copiar todos os dados" gera um JSON `{sistema, versao, geradoEm, projects, tasks:{plano:{ação}}, people}` com todos os planos, ações e responsáveis. "Restaurar a partir de uma cópia" grava esses documentos (substitui os de mesmo identificador, mantém os demais), com confirmação. Serve também para migrar os dados do Claude para o Firebase.
+**Cópia de segurança (aba Importar e exportar):** "Copiar todos os dados" gera um JSON `{sistema, versao, geradoEm, projects, tasks:{plano:{ação}}, people}` com todos os planos, ações e responsáveis. "Restaurar a partir de uma cópia" grava esses documentos (substitui os de mesmo identificador, mantém os demais), com confirmação. Serve também para migrar os dados do Claude para o Firebase. A restauração aparece também na tela inicial de um banco vazio ("Nenhum plano ainda"), para permitir a migração sem criar um plano antes; só funciona após o login.
 
 ### 2.5 Repositório e colaboração
 
@@ -366,6 +366,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 20 | Diagrama: setas longas pelas vagas do dagre ou por traçado alternativo com menos cruzamentos; ordem de trilhos e de portas otimizada |
 | 21 | Campos Etapa, Ação (descrição) e Rótulo no cadastro e na tabela de ações; importação reconhece Etapa, Rótulo, Descrição, PRE e Principais responsáveis; exportação com etapa e rótulo; glossário com Rótulo e Etapa |
 | 22 | Suporte ao Firebase (Firestore + login por e-mail e senha), `config.js`, `firestore.rules`; cópia de segurança e restauração de todos os dados; licença GPL v3 |
+| 23 | Restauração da cópia de segurança disponível também na tela inicial de banco vazio (função `restoreBlock`) |
 
 ### Notas de implementação recentes
 

@@ -570,6 +570,12 @@ function renderMain(){
   v.innerHTML=({cronograma:viewGantt,diagrama:viewDiagram,tarefas:viewTasks,risco:viewRisk,acomp:viewTrack,importar:viewImport,pessoas:viewPeople,termos:viewTerms}[S.tab]||viewGantt)();
   if(S.tab==="diagrama")drawDiagram();
 }
+function restoreBlock(){return`<details${S.restoreOpen?" open":""} id="restoreBox"><summary>Restaurar a partir de uma cópia</summary>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+        <p class="note">Cole o texto de uma cópia de segurança. Planos, ações e responsáveis com o mesmo identificador são substituídos; os demais são mantidos.</p>
+        <textarea id="restoreText" rows="5"${S.canWrite?"":" disabled"}></textarea>
+        <div class="row">${S.confirm==="restore"?`<button class="btn danger" data-act="restoreDo">Sim, restaurar e substituir</button><button class="btn" data-act="cancel">Cancelar</button>`:`<button class="btn" data-act="restoreAsk"${S.canWrite?"":" disabled"}>Restaurar</button>`}</div>
+        ${S.canWrite?"":`<p class="note">Para restaurar, entre com seu e-mail e senha.</p>`}</div></details>`}
 function emptyState(){
   return`<section class="panel empty">
     <span class="eyebrow">Nenhum plano ainda</span>
@@ -577,7 +583,8 @@ function emptyState(){
     <p class="note">Para cada ação, você informa quanto tempo ela deve levar e de quais outras ações ela depende. O sistema calcula as datas, mostra quais ações não podem atrasar sem atrasar o plano inteiro, estima a chance de cumprir o prazo e, depois, acompanha o andamento.</p>
     <div class="row"><button class="btn primary" data-act="newproj"${S.canWrite?"":" disabled"}>Criar plano</button>
     <button class="btn" data-act="example"${S.canWrite?"":" disabled"}>Ver um plano de exemplo</button></div>
-    <p class="note">Já tem as ações numa planilha? Crie o plano e use a aba <b>Importar e exportar</b>. Dúvidas sobre algum termo? Veja a aba <b>Entenda os termos</b>.</p></section>`;
+    <p class="note">Já tem as ações numa planilha? Crie o plano e use a aba <b>Importar e exportar</b>. Dúvidas sobre algum termo? Veja a aba <b>Entenda os termos</b>.</p>
+    <div data-live>${restoreBlock()}</div></section>`;
 }
 function renderKPIs(){
   const k=$("#kpis");if(!k)return;const r=S.res,P=S.proj;
@@ -1150,11 +1157,7 @@ function viewImport(){
       <span class="eyebrow" style="margin-top:8px">Cópia de segurança</span>
       <p class="note">Copia todos os planos, ações e responsáveis do sistema num único texto (formato JSON). Guarde-o num arquivo para ter uma cópia de segurança ou para levar os dados a outra instalação do sistema.</p>
       <div class="row"><button class="btn" data-act="backupCopy">Copiar todos os dados</button></div>
-      <details${S.restoreOpen?" open":""} id="restoreBox"><summary>Restaurar a partir de uma cópia</summary>
-        <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
-        <p class="note">Cole o texto de uma cópia de segurança. Planos, ações e responsáveis com o mesmo identificador são substituídos; os demais são mantidos.</p>
-        <textarea id="restoreText" rows="5"${S.canWrite?"":" disabled"}></textarea>
-        <div class="row">${S.confirm==="restore"?`<button class="btn danger" data-act="restoreDo">Sim, restaurar e substituir</button><button class="btn" data-act="cancel">Cancelar</button>`:`<button class="btn" data-act="restoreAsk"${S.canWrite?"":" disabled"}>Restaurar</button>`}</div></div></details>
+      ${restoreBlock()}
     </div></div><div style="margin-top:16px">${prev}</div>`;
 }
 function exportTSV(){const r=S.res;if(!r||!r.det)return"";const mc=S.mc;
