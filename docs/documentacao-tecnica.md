@@ -31,7 +31,7 @@ Gestores e equipes sem formação em gerenciamento de projetos. A ferramenta pre
 ### 2.1 Componentes
 
 - **Página única (HTML, CSS e JavaScript).** Dependências externas: fontes do Google Fonts (Barlow Semi Condensed, Source Sans 3 e IBM Plex Mono) e a biblioteca de leiaute de grafos **dagre 0.8.5** (cdn.jsdelivr.net), usada só para calcular as posições do diagrama de rede.
-- **Hospedagem:** artefato publicado no Claude (claude.ai).
+- **Hospedagem:** artefato publicado no Claude (claude.ai) e, a partir de 14/10/2026, repositório no GitHub (ver 2.5).
 - **Persistência:** banco de documentos do próprio artefato (capacidade `db`), compartilhado entre os visitantes autenticados e atualizado em tempo real.
 - **Identificação de permissões:** capacidade `user`, usada para saber se o visitante pode editar.
 
@@ -52,6 +52,14 @@ Visitantes **sem conta do Claude** não acessam a base, mesmo com o link públic
 Toda leitura e gravação passa pelo objeto `Store`, com duas implementações: base compartilhada (`db`) e memória local. Isso isola a troca futura de backend, como Firebase ou servidor institucional: basta reimplementar o `Store`.
 
 As gravações em um mesmo documento são serializadas (fila por caminho). Erros de permissão colocam a página em modo só consulta, e falhas transitórias são repetidas uma vez.
+
+### 2.5 Repositório e colaboração
+
+- **Código-fonte:** https://github.com/dgdi-ufci-mg/sistema-planos-de-acao (organização "DGDI | UFCI-MG", repositório público).
+- **Estrutura:** `index.html` (o sistema), `docs/` (documentação técnica e manual), `README.md` e `CONTRIBUTING.md` (guia de colaboração).
+- **Fluxo:** sugestões e problemas por Issues; mudanças por pull request, com revisão antes de entrar na `main`. Toda mudança relevante atualiza esta documentação e o histórico de versões.
+- **Publicação:** GitHub Pages a partir da `main` (endereço previsto: `https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/`). Fora do Claude, o sistema roda em modo local até a migração do `Store` para o Firebase.
+- **Cópias:** esta documentação também fica nos documentos do projeto no Claude; a versão do repositório é a de referência a partir de 14/10/2026.
 
 ---
 
