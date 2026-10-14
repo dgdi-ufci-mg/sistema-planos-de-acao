@@ -5,7 +5,14 @@
 // Esses dados podem ficar públicos: o que protege as informações são as regras do arquivo firestore.rules.
 //
 // Enquanto FIREBASE_CONFIG for null, o sistema abre em modo local e não salva nada.
-window.FIREBASE_CONFIG = null;
+window.FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCBCX_Jqz69ID0hdzfDmSCUWUCRg6DCWNA",
+  authDomain: "sistema-planos-de-acao.firebaseapp.com",
+  projectId: "sistema-planos-de-acao",
+  storageBucket: "sistema-planos-de-acao.firebasestorage.app",
+  messagingSenderId: "767459525801",
+  appId: "1:767459525801:web:f1ba6293211d59138715b8"
+};
 /*
 Exemplo (substitua pelos valores do seu projeto):
 window.FIREBASE_CONFIG = {
