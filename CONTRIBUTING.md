@@ -31,7 +31,7 @@ Abra uma **Issue** (aba "Issues" → "New issue") e descreva:
 - **Rigor nos cálculos.** Mudanças nas fórmulas precisam citar a referência e ser validadas com um plano real ou de exemplo.
 - **Um único arquivo.** O sistema fica em `index.html`, sem etapa de compilação. Bibliotecas externas só pela CDN e com versão fixa.
 - **Celular.** Toda tela precisa funcionar em largura de celular (cerca de 400 px).
-- **Temas claro e escuro.** Cores sempre pelas variáveis CSS definidas no início do arquivo, que seguem a paleta do Relatório de Gestão.
+- **Temas claro e escuro.** Cores sempre pelas variáveis CSS definidas no início do arquivo, derivadas das cores do logotipo (`logo.png`).
 - **Dados pela camada `Store`.** Toda leitura e gravação passa pelo objeto `Store`. Não acesse o banco de dados diretamente de outras partes do código.
 
 ## Testar localmente

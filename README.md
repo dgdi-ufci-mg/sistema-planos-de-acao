@@ -1,3 +1,5 @@
+<img src="logo.png" width="72" alt="Logotipo: rosa dos ventos">
+
 # Sistema de Gerenciamento de Planos de Ação
 
 **Diretoria de Governança e Desenvolvimento Institucional (DGDI) · Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)**
@@ -51,6 +53,7 @@ Depois disso, o site passa a abrir já conectado: qualquer pessoa consulta, e qu
 | Caminho | Conteúdo |
 |---|---|
 | `index.html` | O sistema inteiro: HTML, CSS e JavaScript num único arquivo |
+| `logo.png` | Logotipo (rosa dos ventos), também usado como ícone da aba do navegador |
 | `config.js` | Configuração do Firebase (vazia = modo local) |
 | `firestore.rules` | Regras de acesso ao banco de dados |
 | `LICENSE` | Licença GPL v3 |

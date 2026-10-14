@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** protótipo em uso, publicado como artefato no Claude
-**Última atualização deste documento:** 14/10/2026 (versão 24 da página)
+**Última atualização deste documento:** 14/10/2026 (versão 24.1 da página)
 
 ---
 
@@ -22,7 +22,7 @@ Gestores e equipes sem formação em gerenciamento de projetos. A ferramenta pre
 - **Rigor metodológico.** Os cálculos seguem o estado da arte em gestão de cronogramas sob incerteza: simulação de Monte Carlo, índices de sensibilidade e Earned Schedule.
 - **Reprodutibilidade.** A simulação usa uma semente fixa, então o mesmo plano gera sempre o mesmo resultado.
 - **Interoperabilidade.** Os dados entram e saem pelo Google Planilhas (TSV) e por fluxogramas Mermaid.
-- **Identidade visual.** As cores seguem a paleta do Relatório de Gestão.
+- **Identidade visual.** Logotipo em rosa dos ventos (`logo.png`). As cores derivam dele: verde-azulado #00796B (destaque), vermelho #E3262D (sem folga), dourado #F2B04A (quase sem folga), laranja #F47216 (faixa do topo e histograma), sobre fundos neutros quentes.
 
 ---
 
@@ -368,6 +368,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 22 | Suporte ao Firebase (Firestore + login por e-mail e senha), `config.js`, `firestore.rules`; cópia de segurança e restauração de todos os dados; licença GPL v3 |
 | 23 | Restauração da cópia de segurança disponível também na tela inicial de banco vazio (função `restoreBlock`) |
 | 24 | Sistema publicado no GitHub Pages com Firebase; dados migrados do artefato do Claude por cópia e restauração (14/10/2026) |
+| 24.1 | Novo logotipo (rosa dos ventos, `logo.png`, embutido no cabeçalho e usado como ícone da aba); paleta refeita a partir do logotipo: verde-azulado (destaque e ações com folga), vermelho (sem folga), dourado (quase sem folga), laranja (faixa e histograma); fundos neutros quentes; tema escuro equivalente; cores das etapas no diagrama e do Mermaid atualizadas |
 
 ### Notas de implementação recentes
 
