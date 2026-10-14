@@ -1,0 +1,359 @@
+# Sistema de Gerenciamento de Planos de Ação — Documentação técnica
+
+**Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
+**Situação:** protótipo em uso, publicado como artefato no Claude
+**Última atualização deste documento:** 14/10/2026 (versão 21 da página)
+
+---
+
+## 1. Visão geral
+
+### 1.1 Objetivo
+
+Ferramenta online para planejar e acompanhar planos de ação institucionais. Ela calcula datas, identifica as ações que não podem atrasar, estima a chance de cumprir o prazo e mede o andamento em relação ao plano original.
+
+### 1.2 Público
+
+Gestores e equipes sem formação em gerenciamento de projetos. A ferramenta precisa ser compreensível para leigos sem perder o rigor técnico.
+
+### 1.3 Princípios de projeto
+
+- **Linguagem simples.** A interface usa palavras do dia a dia. Quando existe um conceito técnico equivalente, ele aparece em itálico, em letra menor, como "Termo técnico: …". A aba "Entenda os termos" reúne o glossário.
+- **Rigor metodológico.** Os cálculos seguem o estado da arte em gestão de cronogramas sob incerteza: simulação de Monte Carlo, índices de sensibilidade e Earned Schedule.
+- **Reprodutibilidade.** A simulação usa uma semente fixa, então o mesmo plano gera sempre o mesmo resultado.
+- **Interoperabilidade.** Os dados entram e saem pelo Google Planilhas (TSV) e por fluxogramas Mermaid.
+- **Identidade visual.** As cores seguem a paleta do Relatório de Gestão.
+
+---
+
+## 2. Arquitetura
+
+### 2.1 Componentes
+
+- **Página única (HTML, CSS e JavaScript).** Dependências externas: fontes do Google Fonts (Barlow Semi Condensed, Source Sans 3 e IBM Plex Mono) e a biblioteca de leiaute de grafos **dagre 0.8.5** (cdn.jsdelivr.net), usada só para calcular as posições do diagrama de rede.
+- **Hospedagem:** artefato publicado no Claude (claude.ai).
+- **Persistência:** banco de documentos do próprio artefato (capacidade `db`), compartilhado entre os visitantes autenticados e atualizado em tempo real.
+- **Identificação de permissões:** capacidade `user`, usada para saber se o visitante pode editar.
+
+### 2.2 Modos de operação
+
+| Modo | Quando ocorre | Comportamento |
+|---|---|---|
+| Compartilhado | Visitante autenticado no Claude | Lê e grava na base; mudanças aparecem para todos |
+| Só consulta | Autenticado sem permissão de edição | Lê a base; campos ficam desabilitados |
+| Local | Visitante sem login, ou fora do Claude | Calcula normalmente, mas nada é salvo; cada pessoa vê só o que digitou |
+
+### 2.3 Limitação conhecida
+
+Visitantes **sem conta do Claude** não acessam a base, mesmo com o link público, e veem a página vazia. A solução definitiva é hospedar o sistema fora do Claude (ver seção 9).
+
+### 2.4 Camada de armazenamento
+
+Toda leitura e gravação passa pelo objeto `Store`, com duas implementações: base compartilhada (`db`) e memória local. Isso isola a troca futura de backend, como Firebase ou servidor institucional: basta reimplementar o `Store`.
+
+As gravações em um mesmo documento são serializadas (fila por caminho). Erros de permissão colocam a página em modo só consulta, e falhas transitórias são repetidas uma vez.
+
+---
+
+## 3. Funcionalidades por aba
+
+| Aba | Conteúdo |
+|---|---|
+| Indicadores (topo) | Conclusão prevista, data segura (P80), chance de cumprir o prazo, ritmo em relação ao plano |
+| Cronograma | Gantt em dias úteis, setas de dependência, plano original, linhas de atualização, prazo e data segura |
+| Diagrama | Diagrama de rede (PERT/CPM): caixas por ação, cores por folga, setas críticas em vermelho, blocos por etapa, siglas dos responsáveis, zoom |
+| Ações | Cadastro e edição de ações: código (opcional), etapa (com sugestões das já usadas), ação (descrição completa), rótulo (nome curto), "Depende de" e "Responsáveis" com busca, prazos e andamento |
+| Previsões | Histograma e curva acumulada da simulação; comparação PERT × Monte Carlo; ranking por prioridade de atenção (SSI) |
+| Andamento | Plano original (linha de base), data de status, curva S, valor agregado e desvio por ação |
+| Importar e exportar | Entrada por planilha (TSV/CSV) ou Mermaid; saída para planilha e Mermaid |
+| Responsáveis | Lista global de pessoas (nome, sigla, setor), com cadastro individual e em lote |
+| Entenda os termos | Glossário com equivalência entre termos simples e técnicos |
+| Ajuda (botão no topo) | Abre o manual ilustrado (artefato separado, sem base de dados) |
+| Configurar | Nome do plano, início, prazo final, data de status, distribuição, número de simulações, semente e feriados |
+
+---
+
+## 4. Metodologia de cálculo
+
+### 4.1 Calendário
+
+- A unidade de tempo é o **dia útil**. Sábados, domingos e as datas cadastradas como feriado ou sem expediente são excluídos.
+- O dia 0 é o primeiro dia útil a partir da data de início do plano.
+- Uma ação com início `ES` e fim `EF` ocupa os dias úteis `ES … EF−1`. A data de término exibida é o dia útil `ceil(EF) − 1`.
+- A data de status `S` corresponde ao número de dias úteis decorridos até essa data, inclusive.
+
+### 4.2 Estimativas de duração
+
+Cada ação tem três estimativas: otimista (O), mais provável (M) e pessimista (P). Regras de saneamento:
+
+- Só M preenchido → O = P = M.
+- M ausente → média de O e P, ou o valor que existir.
+- Sem nenhuma estimativa → duração 0, com aviso na tela.
+- Se O > M, O passa a valer M. Se P < M, P passa a valer M.
+
+**Duração esperada (PERT):** `te = (O + 4M + P) / 6`
+**Desvio-padrão (PERT):** `σ = (P − O) / 6`
+
+### 4.3 Rede e caminho crítico (CPM)
+
+- As dependências são do tipo término → início, sem defasagem.
+- A ordenação topológica usa o algoritmo de Kahn. Ciclos são detectados e bloqueiam o cálculo, com mensagem ao usuário. Predecessores inexistentes são ignorados, com aviso.
+- **Passagem de ida:** `ES = máx(EF das predecessoras)`; `EF = ES + duração`.
+- **Passagem de volta:** `LF = mín(LS das sucessoras)`, ou o término do plano; `LS = LF − duração`.
+- **Folga total:** `LS − ES`. A ação é crítica se a folga for menor que 10⁻⁶ e ela não estiver concluída.
+
+### 4.4 Execução (com data de status)
+
+Quando há data de status `S > 0`, cada ação recebe um estado:
+
+| Estado | Critério | Regra de agendamento |
+|---|---|---|
+| Concluída | % = 100, ou término real ≤ S | ES = início real, se houver; EF = término real, ou mín(ES + duração, S) |
+| Em andamento | % > 0, ou início real antes de S | ES = início real, ou mín(ES, S); EF = máx(S, ES) + duração × (1 − %) |
+| Não iniciada | demais | ES = máx(ES calculado, S) |
+
+Sem data de status, o cronograma é puramente planejado. Ainda assim, ações com 100% são exibidas como concluídas no Gantt.
+
+### 4.5 Probabilidade pelo PERT clássico
+
+- Escolhe-se um caminho crítico: a partir da ação crítica que termina no fim do plano, segue-se para trás pelas predecessoras críticas cujo `EF = ES` da sucessora. Nos empates, prevalece a de maior σ.
+- `σ_caminho = √(Σ σᵢ²)`. Em ações em andamento, σᵢ é multiplicado por (1 − %); ações concluídas não entram.
+- `P(T ≤ prazo) = Φ((prazo − T_CPM) / σ_caminho)`, com Φ a distribuição normal padrão.
+
+Esse método ignora caminhos paralelos quase críticos e tende a ser otimista (viés de convergência). Por isso é exibido apenas como comparação.
+
+### 4.6 Simulação de Monte Carlo
+
+- **Gerador:** mulberry32, com semente configurável (padrão 20261014).
+- **Número de iterações:** de 200 a 20.000 (padrão 3.000).
+- **Distribuições:**
+  - **Triangular** (padrão, "mais cautelosa"), por transformação inversa.
+  - **Beta-PERT** ("mais otimista"), com α = 1 + 4(M − O)/(P − O) e β = 1 + 4(P − M)/(P − O), amostrada pela razão de duas gamas (método de Marsaglia–Tsang).
+- Em cada iteração, sorteia-se a duração de cada ação e roda-se o agendamento completo da seção 4.3, respeitando a execução da seção 4.4.
+- **Saídas:**
+  - P10, P50, P80 e P95 da data de término; média e desvio-padrão.
+  - Probabilidade de cumprir o prazo: fração de iterações com término ≤ prazo.
+  - **Índice de criticidade (CI)**: fração de iterações em que a ação ficou com folga zero.
+  - **Crucialidade (CRI)**: correlação de Pearson entre a duração da ação e a duração do plano.
+  - **Índice de sensibilidade do cronograma (SSI)**: `SSI = (σᵢ / σ_plano) × CI`, com σᵢ e σ_plano medidos nas próprias simulações.
+- Ações concluídas não recebem índices.
+- A tabela "Onde vale mais a pena agir" é ordenada pelo SSI. A literatura indica que a criticidade, sozinha, é o guia mais fraco para orientar ações gerenciais.
+
+### 4.7 Valor agregado e Earned Schedule
+
+- **Peso de cada ação (v):** o custo previsto, se o plano tiver custos; caso contrário, a duração esperada `te` (trabalho em dias).
+- **Linha de base:** grava ES, EF e v de cada ação, além do término previsto (`fin`) e do tipo de peso.
+- **BAC** = Σ v.
+- **PV(t)** = Σ v × fração linear planejada até t: `clamp((t − ES_b) / (EF_b − ES_b), 0, 1)`.
+- **EV** = Σ v × % concluído. **AC** = Σ custo real.
+- **SPI** = EV / PV. **CPI** = EV / AC. **EAC** = BAC / CPI.
+- **Earned Schedule (ES):** o instante t em que PV(t) = EV, encontrado por bisseção.
+- **SPI(t)** = ES / AT, com AT = dias úteis até a data de status.
+- **Término projetado (IEAC(t))** = término da linha de base / SPI(t).
+- O destaque da interface é o SPI(t), porque o SPI tradicional converge para 1 no fim do plano mesmo com atraso.
+
+### 4.8 Geração automática do código da ação
+
+O código é opcional no cadastro. Se ficar em branco, o sistema o gera assim:
+
+1. Normaliza o nome (sem acentos, minúsculas) e descarta palavras vazias (artigos, preposições e conjunções, como "de", "da", "para", "com").
+2. Testa candidatos de 3 letras, nesta ordem: iniciais das três primeiras palavras; inicial da 1ª + duas consoantes da 2ª; inicial da 1ª + duas primeiras letras da 2ª; duas letras da 1ª + inicial da 2ª; consoantes da 1ª palavra; três primeiras letras da 1ª; outras combinações das letras das palavras.
+3. Usa o primeiro candidato que comece por letra e não esteja em uso no plano (comparação sem diferenciar maiúsculas).
+4. Na falta, usa duas letras + dígito (2 a 9) ou um sorteio.
+
+**Sorteio** (uso interno, como último recurso): 3 caracteres, o primeiro sempre letra, sem os caracteres ambíguos O, 0, I e 1. Não há botão de sorteio na tela, para manter a interface simples.
+
+Enquanto o usuário digita o nome com o código em branco, o formulário mostra a sugestão ("Se deixar em branco: …") e avisa se um código digitado já está em uso.
+
+### 4.9 Diagrama de rede
+
+- **Leiaute:** dagre, da esquerda para a direita, com grafo composto (as etapas viram grupos). Nós artificiais "Início" (ligado às ações sem predecessoras) e "Fim" (ligado às ações sem sucessoras).
+- **Desenho:** SVG próprio, com cores dos tokens do tema. Espaçamento: 34 px entre caixas da mesma coluna e 48 px entre colunas.
+- **Traçado das setas (roteamento por canais, com distância mínima obrigatória):**
+  1. **Colunas e corredores.** As caixas de uma mesma posição na sequência formam uma coluna; o espaço entre duas colunas é um corredor.
+  2. **Portas distribuídas.** Cada seta sai e chega por um ponto próprio na lateral da caixa. As saídas são ordenadas pela altura do destino; as chegadas, pela altura da origem. Nos círculos de Início e Fim, as portas ficam distribuídas no arco.
+  3. **Escolha do caminho.** Setas entre colunas vizinhas fazem um "L", com o trecho vertical no corredor entre elas. Setas longas passam por uma "faixa" em cada coluna intermediária; para cada uma, o sistema compara três traçados:
+     - **vagas do dagre**: a posição que o dagre reservou para a seta em cada coluna, já escolhida por ele para reduzir cruzamentos (é o que o Mermaid usa);
+     - **mudar de altura cedo**: no primeiro corredor, seguindo depois na altura do destino;
+     - **mudar de altura tarde**: seguir na altura da origem e só mudar no último corredor.
+     Cada traçado só é aceito se as faixas não atravessarem caixas (margem de 8 px) nem ficarem a menos de 7 px da faixa de outra seta. Entre os aceitos, vence o de menor custo: número estimado de cruzamentos com as demais setas, mais 0,35 por curva, com pequena preferência pelas vagas do dagre. São feitas duas rodadas, com as setas críticas primeiro.
+     - **Portas reavaliadas:** depois da escolha, a ordem das portas de cada caixa é refeita pela altura para onde cada seta realmente vai (ou de onde vem), e a escolha é repetida uma vez.
+  4. **Trilhos exclusivos e ordenados.** Cada trecho vertical tem trilho próprio no corredor, a 8 px do vizinho. A ordem dos trilhos é escolhida por inserção gulosa, colocando cada trecho na posição que gera menos cruzamentos com os já posicionados. A regra: o trecho à esquerda cruza o da direita se a altura de entrada do da direita estiver dentro do intervalo vertical do da esquerda, ou se a altura de saída do da esquerda estiver dentro do intervalo do da direita.
+  5. **Alargamento automático.** Se um corredor não comporta seus trilhos mais 14 px de margem de cada lado, as colunas seguintes são deslocadas para a direita e os blocos de etapa acompanham.
+  6. **Cantos arredondados** (raio de 5 px), para distinguir curva de cruzamento.
+  - Histórico: as versões 16 a 18 permitiam que setas compartilhassem trechos, o que tornava algumas ligações ambíguas (ex.: VRA → VCT parecia sair de WXP). A versão 19 separou os trilhos, mas ignorava as vagas do dagre e gerava cruzamentos evitáveis; a versão 20 passou a considerá-las e a escolher o traçado pelo menor número de cruzamentos.
+  - Limite conhecido: cruzamentos que decorrem da própria posição das caixas (por exemplo, uma ação entre outras duas que estão ligadas) não são eliminados; isso exigiria reposicionar as caixas.
+- **Blocos de etapa:** altura calculada pelo dagre, que já reserva espaço para o título; largura recalculada pelas caixas da etapa (com 18 px de folga), para acompanhar o alargamento dos corredores.
+- **Classificação das caixas:** concluída (verde); sem folga (vermelha); folga ≤ limite `nearCrit` (laranja, "quase sem folga"); com folga (azul).
+- **Ícones:** ✓ concluída; ▶ em andamento; ! atrasada (término previsto mais de meio dia útil depois do plano original).
+- **Textos da caixa:** "código · nome" (quebrado em linhas), "prazo arredondado d · folga" (folga arredondada para baixo; 0 nas críticas) e as siglas dos responsáveis (ou os nomes, sem sigla), opcional.
+- **Seta crítica:** liga duas ações críticas em que o fim de uma coincide com o início da outra; também do Início e para o Fim, quando aplicável.
+- **Zoom:** inicia ajustado à largura (mínimo 55%); botões −, + e "Ajustar à tela" (30% a 200%).
+- **Exportação Mermaid** (aba Importar e exportar) reproduz o mesmo diagrama: nós Início e Fim, `subgraph` por etapa, rótulos com prazo, folga e siglas e `classDef` nas cores da paleta.
+
+### 4.10 Validação feita
+
+Com o plano da PI² Fase 1, o cálculo determinístico reproduziu o da planilha original: 115 dias úteis, término em 22/03/2027 (a planilha arredonda para 23/03) e caminho crítico G8P → WKT → KQU → WN3.
+
+---
+
+## 5. Modelo de dados
+
+### 5.1 `projects/{idDoPlano}` — plano
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| name | texto | Nome do plano |
+| start | data ISO | Início |
+| target | data ISO | Prazo final (meta) |
+| statusDate | data ISO | Data de status |
+| holidays | texto | Datas sem expediente (dd/mm/aaaa, separadas por vírgula) |
+| dist | "tri" ou "beta" | Distribuição da simulação |
+| iters | número | Número de simulações |
+| seed | número | Semente |
+| nearCrit | número | Limite de folga, em dias úteis, para "quase sem folga" (padrão 10) |
+| createdAt | data e hora ISO | Criação |
+| baseline | objeto | `{at, fin, useCost, tasks: {código: {es, ef, v}}}` |
+
+### 5.2 `projects/{idDoPlano}/tasks/{código}` — ação
+
+O código da ação é o próprio identificador do documento e não pode ser alterado.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| name | texto | Rótulo: nome curto usado no cronograma e no diagrama. Se o usuário não informar, recebe a própria descrição |
+| desc | texto | Ação (descrição completa). Fica vazio quando é igual ao rótulo |
+| order | número | Ordem de exibição |
+| preds | lista de códigos | Depende de |
+| owners | lista de ids de pessoa | Responsáveis |
+| o, m, p | número | Estimativas em dias úteis |
+| cost, ac | número | Custo previsto e custo real |
+| pct | 0 a 100 | % concluído |
+| aS, aF | data ISO | Início e término reais |
+| stage | texto | Etapa. Usada para os blocos do diagrama e os `subgraph` do Mermaid. Editável no cadastro e na tabela da aba Ações |
+| status | texto | Situação herdada da importação da PI²; ainda não exibida |
+
+### 5.3 `people/{id}` — responsável (lista global)
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| name | texto | Nome |
+| sigla | texto (até 12) | Usada onde falta espaço |
+| unit | texto | Setor |
+| createdAt | data e hora ISO | Criação |
+
+### 5.4 Dados por visitante (navegador)
+
+O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localStorage` de cada navegador. Nunca são compartilhados.
+
+---
+
+## 6. Importação e exportação
+
+### 6.1 Planilha (TSV/CSV)
+
+- O separador é detectado automaticamente: tabulação, ponto e vírgula ou vírgula.
+- O cabeçalho é reconhecido por sinônimos, sem diferenciar acentos e maiúsculas. Exemplos: Código / ID / Sigla; **Etapa** / Fase / Bloco; Ação / Tarefa / Atividade; **Rótulo** / Rótulo no diagrama / Nome curto; **Descrição**; Predecessores / Depende de / PRE; Otimista / Mais provável / Pessimista (ou O / M / P); Duração; Responsável / Principais responsáveis; Custo; % concluído; Início real; Término real; Custo real.
+- **Ação × rótulo:** se houver coluna de rótulo, ela vira o nome curto (`name`) e a coluna Ação vira a descrição (`desc`). Sem rótulo, a Ação vira o nome. A coluna "Entrega" não é mais confundida com a ação.
+- A planilha da PI², copiada a partir da linha de títulos, é reconhecida por completo pela aba Importar.
+- Sem cabeçalho reconhecível, as colunas são lidas na ordem: código, ação, predecessores, O, M, P.
+- Sem coluna de código, ele é extraído do início do nome ("LEV - Levantamento…"). Na falta, reaproveita o código de uma ação já existente com o mesmo nome; se não houver, é gerado automaticamente (seção 4.8), com aviso na conferência.
+- Responsáveis são associados à lista pelo nome ou pela sigla. Os que não existem são cadastrados.
+- Ações com código existente são atualizadas apenas nos campos presentes.
+
+### 6.2 Mermaid
+
+- Aceita `flowchart` e `graph`, com nós em formatos variados, setas `-->`, `---`, `==>` e `-.->`, rótulos de seta e encadeamentos com `&`.
+- O identificador do nó vira o código; o texto do nó vira o nome.
+- Não traz estimativas de prazo.
+
+### 6.3 Exportação
+
+- **Para planilha (TSV):** código, etapa, rótulo e ação, com datas calculadas, folga, indicação de "sem folga" e chance de ditar o prazo.
+- **Mermaid:** rede com as ações sem folga destacadas.
+
+### 6.4 Responsáveis em lote
+
+- Uma pessoa por linha, no formato `Nome; Sigla; Setor`, ou colagem de planilha com cabeçalho em qualquer ordem.
+- Nomes já cadastrados não são duplicados; só a sigla e o setor são atualizados, se informados.
+
+---
+
+## 7. Permissões e compartilhamento
+
+- Compartilhamento pelo botão **Compartilhar** da página no Claude.
+- **Colaborador** e **Editor** podem editar; **Leitor** e **Comentador** só consultam.
+- Visitantes de fora da organização no Claude, em geral, só leem.
+- Visitantes sem login não veem dados.
+
+---
+
+## 8. Decisões tomadas
+
+| Decisão | Motivo |
+|---|---|
+| Monte Carlo como método principal de previsão; PERT clássico só como comparação | O PERT ignora caminhos paralelos e superestima a chance de cumprir o prazo. Na PI², o PERT dá 93% e a simulação, 74%, para 14/04/2027 |
+| Distribuição triangular como padrão | Melhor relação custo-benefício e mais conservadora; beta-PERT fica disponível como opção |
+| Ranking por SSI ("prioridade de atenção") | A criticidade, sozinha, orienta mal as ações; o SSI combina criticidade e incerteza |
+| Índice de criticidade fora do Gantt | Confundia a leitura do cronograma; segue disponível na aba Previsões |
+| SPI(t) como indicador de ritmo | O SPI tradicional converge para 1 no fim e esconde atrasos |
+| Linguagem simples, com termo técnico em itálico | Usuários leigos; o termo técnico permite aprofundar |
+| Lista de responsáveis global, com sigla | Reuso entre planos; a sigla atende espaços curtos, como diagramas PERT |
+| Dependências e responsáveis por lista com busca | Evita erros de digitação e dependências circulares |
+| Nome provisório "Sistema de Gerenciamento de Planos de Ação" | Definido pelo demandante; alternativas como "Baliza" ficaram registradas |
+| Supabase descartado | O plano gratuito pausa projetos após 7 dias de pouca atividade |
+| Manual ilustrado congelado até a estabilização do sistema | Evitar retrabalho: as telas mudam a cada melhoria. A documentação técnica segue sendo atualizada a cada mudança |
+| Firebase como próximo backend; servidor institucional como meta | Não pausa por inatividade e tem login próprio; o servidor da UFCI-MG é a solução mais sólida para uso oficial |
+
+---
+
+## 9. Pendências e próximos passos
+
+1. **Hospedagem fora do Claude**, para acesso sem conta do Claude: migrar o `Store` para o Firebase, com consulta aberta e edição por usuários cadastrados com e-mail e senha.
+2. **Etapas:** o campo já existe no cadastro e na tabela de ações. Falta uma visão para renomear uma etapa em todas as ações de uma vez e definir a ordem das etapas.
+3. Avaliar baixar o diagrama como imagem (exige a capacidade `downloads`).
+4. Registrar o andamento real da PI² (% concluído das ações atrasadas e em andamento) e definir a data de status.
+5. Avaliar um registro de alterações (quem mudou o quê e quando).
+6. Ao final das melhorias, refazer as telas e revisar o manual ilustrado e o manual em texto.
+
+---
+
+## 10. Histórico de versões da página
+
+| Versão | Mudança |
+|---|---|
+| 1 | Primeira versão: CPM, PERT, Monte Carlo, Gantt, linha de base, valor agregado, importação TSV e Mermaid, base compartilhada |
+| 2 | Setas de dependência no Gantt |
+| 3 | Paleta do Relatório de Gestão |
+| 4–5 | Nome "Sistema de Gerenciamento de Planos de Ação" e identificação da UFCI-MG |
+| 6 | Linguagem simples, termos técnicos em itálico e aba "Entenda os termos" |
+| 7 | Legenda do índice de criticidade esclarecida; ações 100% exibidas como concluídas sem data de status |
+| 8 | Índice de criticidade retirado do Gantt |
+| 9 | SSI ("prioridade de atenção") como ordenação da aba Previsões |
+| 10 | Campo "Depende de" com busca por código ou nome e bloqueio de dependência circular |
+| 11 | Lista global de responsáveis (nome, sigla, setor) e campo "Responsáveis" com busca; responsáveis da PI² migrados do texto para a lista |
+| 12 | Cadastro de responsáveis em lote |
+| 13 | Botão Ajuda (manual ilustrado); rótulos do gráfico de previsões escalonados para não se sobrepor |
+| 14 | Código da ação opcional: geração automática pelas palavras da ação ou sorteio |
+| 15 | Botão "Sortear" retirado; restam código digitado ou gerado automaticamente |
+| 16 | Aba Diagrama (rede PERT/CPM com etapas); limite de "quase sem folga" em Configurar; exportação Mermaid com etapas, Início/Fim e cores |
+| 17 | Diagrama: novo traçado de setas (sem voltas e sem atravessar caixas) e blocos de etapa sem sobreposição |
+| 18 | Diagrama: setas em leque a partir da origem e proibição de trechos compartilhados entre setas sem relação |
+| 19 | Diagrama: roteamento por canais (portas distribuídas, trilhos exclusivos, alargamento de corredores, cantos arredondados) |
+| 20 | Diagrama: setas longas pelas vagas do dagre ou por traçado alternativo com menos cruzamentos; ordem de trilhos e de portas otimizada |
+| 21 | Campos Etapa, Ação (descrição) e Rótulo no cadastro e na tabela de ações; importação reconhece Etapa, Rótulo, Descrição, PRE e Principais responsáveis; exportação com etapa e rótulo; glossário com Rótulo e Etapa |
+
+### Notas de implementação recentes
+
+- **Seletores com busca (`picker`)**: componente único para dependências (`kind=pred`) e responsáveis (`kind=own`). A lista suspensa (`#pick`) é um elemento fixo no `body`, posicionado pelo retângulo do campo, para não ser cortada pelas tabelas com rolagem. Cada inclusão ou remoção grava na hora (`preds` ou `owners`).
+- **Proteção contra re-renderização durante a digitação**: painéis marcados com `data-live` adiam a atualização da tela enquanto o foco está num campo deles; a atualização ocorre ao sair do campo.
+- **Capturas do manual**: geradas com Playwright e Chromium sobre a página em modo local, com um plano fictício injetado e as fontes servidas localmente. O roteiro está na pasta de trabalho da sessão (`man/shoot.py`) e pode ser reaproveitado na revisão do manual.
+
+## 11. Referências
+
+- VAN SLYKE, R. M. Monte Carlo methods and the PERT problem. *Operations Research*, v. 11, n. 5, 1963.
+- WILLIAMS, T. M. Criticality in stochastic networks. *Journal of the Operational Research Society*, v. 43, n. 4, 1992.
+- LIPKE, W. Schedule is different. *The Measurable News*, 2003.
+- PROJECT MANAGEMENT INSTITUTE. *Practice Standard for Project Risk Management*. 2009.
+- VANHOUCKE, M. Using activity sensitivity and network topology information to monitor project time performance. *Omega*, v. 38, n. 5, 2010.
+- ELMAGHRABY, S. E. On criticality and sensitivity in activity networks. *European Journal of Operational Research*, v. 127, 2000.
