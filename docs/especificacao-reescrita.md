@@ -257,13 +257,16 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 
 ### 8.1 Topo
 
+- **Barra do aplicativo compacta**, com fundo próprio na cor escura da paleta (verde-azulado escuro no tema claro; quase preto no tema escuro), fixa no alto ao rolar a página, com 48 px de altura e sem faixa decorativa. Reúne numa linha: logotipo e nome do sistema (só "Planos de Ação" no celular), seletor de plano, Ajuda (?), Configurar o plano (engrenagem) e o menu do usuário (iniciais). Objetivo: o máximo de tela para as ações.
+- **Ferramentas da lista compactas:** no celular, os filtros de situação ficam numa faixa que rola para o lado; a legenda de cores e símbolos fica escondida, aberta pelo botão "Legenda".
+
 - Logotipo, nome do sistema e instituição.
 - Seletor de plano.
 - **Ajuda:** painel dentro do sistema. Contém o glossário, que antes era a aba "Entenda os termos", e, futuramente, o manual. Cada "Termo técnico" na tela abre a explicação correspondente.
 - **Configurar o plano** (engrenagem): painel lateral com: dados do plano (nome, datas, prazo final, datas excluídas com motivo); campos opcionais em uso; documentos do plano; retratos (salvar e listar); importar e exportar; cópia de segurança.
 - **Menu do usuário:** seus dados (e-mail, nome, responsável ligado), trocar senha (pede a senha atual), sair. Sem login, aparece o botão "Entrar".
 - **Configurar o sistema:** reservado para o futuro (por exemplo, gestão de usuários e permissões). O nome "Configurar o plano" evita confusão com ele.
-- **Linha do tempo do plano**, no lugar dos quadros de indicadores: um eixo **fino**, do início do plano ao prazo final, com a parte já decorrida, a marca de hoje e três pontos: **conclusão prevista**, **data segura** (P80) e **prazo final**. Uma faixa clara destaca o intervalo entre a conclusão prevista e a data segura. As datas aparecem numa **legenda** de uma linha logo abaixo, com o símbolo de cada ponto; a chance de cumprir o prazo vem junto ao prazo final. Ocupa pouco espaço vertical.
+- **Linha do tempo do plano**, no lugar dos quadros de indicadores: um eixo **fino**, do início do plano ao prazo final, com a parte já decorrida, a marca de hoje e três pontos: **conclusão prevista**, **data segura** (P80) e **prazo final**. Uma faixa clara destaca o intervalo entre a conclusão prevista e a data segura. **As datas ficam na própria linha**, junto de cada marca, acima ou abaixo do eixo, distribuídas automaticamente para não se sobreporem; no celular, em formato curto (dia/mês). Uma legenda de uma linha explica só os símbolos, com a chance de cumprir o prazo junto ao prazo final.
 
 ### 8.2 Abas
 
