@@ -6,16 +6,17 @@ Leia este arquivo inteiro antes de qualquer tarefa. Ele vale para **qualquer pes
 
 ## 1. O que é este projeto
 
-**Sistema de Gerenciamento de Planos de Ação** da DGDI, a Diretoria de Governança e Desenvolvimento Institucional da UFCI-MG (Universidade Federal de Ciência e Inovação de Minas Gerais).
+**Sistema de Gerenciamento de Planos de Ação** da DGDI, da Diretoria de Governança e Desenvolvimento Institucional da UFCI-MG (Universidade Federal de Ciência e Inovação de Minas Gerais).
 
 O sistema serve para planejar e acompanhar planos de ação institucionais:
 
-- caminho crítico em dias úteis;
-- PERT e Monte Carlo;
-- Gantt e diagrama de rede por etapas;
-- valor agregado e Earned Schedule;
-- importação e exportação por planilha e Mermaid.
+- calcula quando o plano deve terminar e quais ações não podem atrasar (caminho crítico, em dias úteis);
+- estima a chance de cumprir o prazo (PERT e simulação de Monte Carlo);
+- desenha o cronograma e o fluxo das ações por etapa (Gantt e diagrama de rede);
+- compara o andamento real com o plano original (valor agregado e Earned Schedule);
+- importa e exporta ações por planilha e por fluxograma (Mermaid).
 
+Além disso, ele tem estes atributos:
 - **Site oficial:** https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. O GitHub Pages publica a partir da branch `main`, pasta raiz.
 - **Banco de dados:** Firebase Firestore, projeto `sistema-planos-de-acao`. A leitura é pública; para gravar é preciso login com e-mail e senha.
 - **Público:** gestores e equipes **leigos** em gerenciamento de projetos.
