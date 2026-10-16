@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.6 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.7 da página)
 
 ---
 
@@ -345,6 +345,14 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 4. Avaliar um registro de alterações (quem mudou o quê e quando).
 5. Ao final das melhorias, refazer as telas e revisar o manual ilustrado e o manual em texto.
 
+**Ideias futuras:**
+
+- **Previsão por classe de referência** (*reference class forecasting*). Objetivo: combater a **falácia do planejamento**, a tendência de subestimar prazos ao olhar só para o caso em mãos (a "visão de dentro"), descrita por Kahneman e Tversky. A correção proposta por Kahneman e Lovallo, e transformada em método por Flyvbjerg, é a "visão de fora": partir do que de fato aconteceu em casos semelhantes. Proposta em dois níveis:
+  1. **Alerta:** ao estimar uma ação, o sistema mostra quanto, nas ações já concluídas, o prazo real superou o estimado. Exemplo: "Nas ações concluídas, o prazo real foi, em média, 40% maior que o mais provável."
+  2. **Sugestão de estimativa:** o sistema propõe os três pontos já corrigidos pela razão entre prazo real e estimado, observada em ações semelhantes (mesma equipe, responsável ou tipo de ação). Quando houver poucos dados de um grupo, usa a média geral e se aproxima do grupo conforme os dados aumentam (estimativa bayesiana hierárquica).
+  - **Dados necessários:** as estimativas originais e as datas reais de liberação e conclusão. O histórico de reestimativas, previsto na reescrita, fornece exatamente isso. Por isso, ele deve guardar a estimativa original de cada ação e todas as revisões.
+  - Referências: KAHNEMAN, D.; TVERSKY, A. Intuitive prediction: biases and corrective procedures (1979); LOVALLO, D.; KAHNEMAN, D. Delusions of success. *Harvard Business Review* (2003); FLYVBJERG, B. From Nobel Prize to project management: getting risks right. *Project Management Journal* (2006); KAHNEMAN, D. *Rápido e devagar* (2011).
+
 ---
 
 ## 10. Histórico de versões da página
@@ -380,6 +388,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.4 | Pendência registrada: níveis de permissão, obrigatórios antes da fase de produção. Sem mudança no sistema |
 | 24.5 | Regras de contribuição movidas para `AGENTS.md`, fonte única para qualquer pessoa ou IA; `CLAUDE.md` passa a importá-lo e guarda só a cópia da documentação no claude.ai; gatilho para proteger a `main` registrado. Sem mudança no sistema |
 | 24.6 | `AGENTS.md`: descrição do sistema reescrita em linguagem simples, com o termo técnico entre parênteses. Sem mudança no sistema |
+| 24.7 | Ideia futura registrada: previsão por classe de referência, contra a falácia do planejamento. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
