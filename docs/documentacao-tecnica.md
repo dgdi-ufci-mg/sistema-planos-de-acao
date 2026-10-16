@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.8 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.9 da página)
 
 ---
 
@@ -392,6 +392,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.6 | `AGENTS.md`: descrição do sistema reescrita em linguagem simples, com o termo técnico entre parênteses. Sem mudança no sistema |
 | 24.7 | Ideia futura registrada: previsão por classe de referência, contra a falácia do planejamento. Sem mudança no sistema |
 | 24.8 | Especificação da reescrita (versão 2) registrada em `docs/especificacao-reescrita.md`, para revisão. Sem mudança no sistema |
+| 24.9 | Especificação da reescrita: tipos de responsável, campos opcionais por plano, "Configurar o plano", cores contínuas por prioridade de execução e símbolos da planilha da PI². Sem mudança no sistema |
 
 ### Notas de implementação recentes
 

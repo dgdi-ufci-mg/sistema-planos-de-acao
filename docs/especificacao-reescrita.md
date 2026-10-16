@@ -80,9 +80,10 @@ A reescrita é feita numa **branch separada**. O site atual continua no ar. Quan
 | documentos | Lista `{nome, data, link}`: documentos do plano, como o plano aprovado e revisões, guardados por link (por exemplo, no SEI) |
 | simulacoes | Número de simulações (padrão 10.000) |
 | semente | Semente da simulação (padrão 20261014) |
+| camposOpcionais | Quais campos opcionais o plano usa: etapa, descrição, entrega e notas. Desligados, eles somem do formulário, da tabela e das exportações, mas os dados já gravados são mantidos |
 | criadoEm | Data e hora de criação |
 
-Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (o limite de "quase sem folga" é revisto na seção 7.3).
+Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (a categoria "quase sem folga" deixa de existir; ver seção 7.3).
 
 ### 4.2 Ação: `projects/{id}/acoes/{código}`
 
@@ -93,7 +94,7 @@ Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é
 | etapa | Etapa (blocos do diagrama) |
 | rotulo | Nome curto, usado no cronograma e no diagrama |
 | descricao | Descrição completa |
-| entrega | Entrega esperada (coluna "Entrega" da planilha da PI²) |
+| entrega | Entrega esperada (coluna "Entrega" da planilha da PI²). Campo opcional |
 | dependeDe | Lista de códigos das ações anteriores |
 | responsaveis | Lista de ids de responsáveis |
 | estimativas | Histórico de estimativas, da primeira à mais recente (seção 5.3) |
@@ -127,7 +128,10 @@ Retratos são só leitura: servem para comparar e conferir.
 
 ### 4.5 Responsável: `people/{id}`
 
-Como hoje (nome, sigla, setor), mais o campo opcional **usuario**: o e-mail de login ligado a esta pessoa. Ele permite o filtro "Minhas ações" e prepara os níveis de permissão.
+Lista global, com cadastro livre, como hoje: nome, sigla e setor. Um responsável pode ser de dois tipos, sem que o sistema precise distingui-los por um campo próprio:
+
+- **Membro da equipe com acesso ao sistema:** tem o campo opcional **usuario**, o e-mail de login ligado a ele. Para esses, funcionam o filtro "Minhas ações" e, no futuro, os níveis de permissão.
+- **Responsável diverso:** pessoa de fora do sistema, unidade organizacional, equipe ou grupo de unidades. Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
 
 ---
 
@@ -215,9 +219,27 @@ Legenda: "Quanto a incerteza desta ação ameaça o prazo final. Quanto maior, m
 
 Fundamento: o SSI combina a criticidade com a incerteza da ação em relação à do plano. Ele indica onde reduzir incerteza traz mais benefício, uma pergunta diferente da 7.1. Uma ação previsível no caminho crítico tem prioridade de execução alta e SSI quase nulo.
 
-### 7.3 Folga
+### 7.3 Cores no fluxo e no cronograma
 
-A folga em dias úteis continua no cronograma e no fluxo. A cor "quase sem folga" e seu limite serão revistos durante o protótipo, à luz do princípio "números contínuos, não categorias".
+- **Intensidade contínua pela prioridade de execução:** a cor de cada ação não concluída varia gradualmente do **cinza** (índice de criticidade 0%) ao **vermelho** (100%). Quanto mais vermelha, mais um atraso nela atrasa o plano.
+- **Verde:** ação concluída.
+- Saem as categorias "sem folga", "quase sem folga" e "com folga", o limite de 10 dias (`nearCrit`) e as setas vermelhas do caminho crítico determinístico. Tudo passa a seguir uma única medida, a mesma da barra da seção 7.1. Isso evita que uma ação apareça como "crítica" numa tela e com prioridade baixa em outra.
+- A folga em dias úteis continua visível como número, no detalhe da ação e no rótulo do fluxo.
+- A legenda mostra a faixa de cores, de cinza a vermelho, com "menos prioritária" e "mais prioritária" nas pontas.
+- As cores do gradiente seguem a paleta do logotipo e são ajustadas para o tema escuro.
+
+### 7.4 Símbolos
+
+Os mesmos da planilha da PI², no fluxo, no cronograma e na aba Ações:
+
+| Símbolo | Significado |
+|---|---|
+| ✅ | Concluída |
+| 🔓 | Liberada |
+| ⏰ | Atrasada |
+| (nenhum) | Aguardando |
+
+Saem o símbolo "▶ em andamento", porque o sistema não registra mais o início real, e o "❗ prioritária", substituído pela intensidade da cor.
 
 ---
 
@@ -228,8 +250,9 @@ A folga em dias úteis continua no cronograma e no fluxo. A cor "quase sem folga
 - Logotipo, nome do sistema e instituição.
 - Seletor de plano.
 - **Ajuda:** painel dentro do sistema. Contém o glossário, que antes era a aba "Entenda os termos", e, futuramente, o manual. Cada "Termo técnico" na tela abre a explicação correspondente.
-- **Engrenagem:** painel lateral com: dados do plano (nome, datas, prazo final, datas excluídas com motivo); documentos do plano; retratos (salvar e listar); importar e exportar; cópia de segurança.
+- **Configurar o plano** (engrenagem): painel lateral com: dados do plano (nome, datas, prazo final, datas excluídas com motivo); campos opcionais em uso; documentos do plano; retratos (salvar e listar); importar e exportar; cópia de segurança.
 - **Menu do usuário:** seus dados (e-mail, nome, responsável ligado), trocar senha (pede a senha atual), sair. Sem login, aparece o botão "Entrar".
+- **Configurar o sistema:** reservado para o futuro (por exemplo, gestão de usuários e permissões). O nome "Configurar o plano" evita confusão com ele.
 - **Indicadores do plano:** conclusão prevista, data segura (P80) e chance de cumprir o prazo final.
 
 ### 8.2 Abas
@@ -273,7 +296,9 @@ Três botões no topo levam a cada parte:
 | Aba Entenda os termos | Vai para a Ajuda |
 | Escolha triangular/beta | Uma só distribuição (seção 5.2) |
 | Crucialidade | Redundante com o SSI (seção 5.7) |
-| Carimbo "Prioritária" | Substituído pela barra contínua (seção 7.1) |
+| Carimbo "Prioritária" e símbolo ❗ | Substituídos pela barra contínua e pela intensidade da cor (seções 7.1 e 7.3) |
+| Categorias de folga (sem folga, quase sem folga, com folga) e limite `nearCrit` | Substituídas pela intensidade contínua da cor (seção 7.3) |
+| Símbolo "▶ em andamento" | O início real não é mais registrado |
 | Plano original único (baseline) | Substituído por retratos |
 | Modo do artefato do Claude | Versão descontinuada |
 
