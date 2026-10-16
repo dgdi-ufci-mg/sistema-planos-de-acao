@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.14 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.15 da página)
 
 ---
 
@@ -400,6 +400,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.12 | Especificação da reescrita: fases e etapas como separadores recolhíveis, linha do tempo no topo, animação dos filtros, campo "Não começa antes de" e seção de pontos para reavaliação. Sem mudança no sistema |
 | 24.13 | Especificação da reescrita: linha do tempo fina, com as datas em legenda. Sem mudança no sistema |
 | 24.14 | Especificação da reescrita: barra do aplicativo compacta com fundo próprio, datas sobre a linha do tempo, ferramentas da lista compactas. Sem mudança no sistema |
+| 24.15 | Especificação da reescrita: linha do tempo movida para a aba Visualização. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
