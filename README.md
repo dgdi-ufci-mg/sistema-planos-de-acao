@@ -60,6 +60,7 @@ Depois disso, o site passa a abrir já conectado: qualquer pessoa consulta, e qu
 | `docs/documentacao-tecnica.md` | Arquitetura, fórmulas, modelo de dados, decisões e histórico de versões |
 | `docs/manual-do-usuario.md` | Manual em linguagem simples (em revisão, ver abaixo) |
 | `CONTRIBUTING.md` | Como colaborar |
+| `CLAUDE.md` | Regras de trabalho para o Claude (assistente de IA) neste repositório |
 
 O manual do usuário está **congelado** até o sistema estabilizar, para evitar retrabalho com telas que ainda mudam.
 
