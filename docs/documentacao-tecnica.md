@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.4 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.5 da página)
 
 ---
 
@@ -68,7 +68,7 @@ As gravações em um mesmo documento são serializadas (fila por caminho). Erros
 ### 2.5 Repositório e colaboração
 
 - **Código-fonte:** https://github.com/dgdi-ufci-mg/sistema-planos-de-acao (organização "DGDI | UFCI-MG", repositório público).
-- **Estrutura:** `index.html` (o sistema), `config.js` (configuração do Firebase), `firestore.rules` (regras de acesso), `logo.png` (logotipo), `docs/` (documentação técnica e manual), `README.md`, `CONTRIBUTING.md` (guia de colaboração), `CLAUDE.md` (regras para sessões do Claude) e `LICENSE` (GPL v3).
+- **Estrutura:** `index.html` (o sistema), `config.js` (configuração do Firebase), `firestore.rules` (regras de acesso), `logo.png` (logotipo), `docs/` (documentação técnica e manual), `README.md`, `CONTRIBUTING.md` (guia de colaboração), `AGENTS.md` (regras para quem contribui, pessoa ou IA), `CLAUDE.md` (aponta para o `AGENTS.md` e traz o que é exclusivo do Claude) e `LICENSE` (GPL v3).
 - **Fluxo:** sugestões e problemas por Issues; mudanças por pull request, com revisão antes de entrar na `main`. Toda mudança relevante atualiza esta documentação e o histórico de versões.
 - **Publicação:** GitHub Pages a partir da `main`, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. Tudo o que entra na `main` vai ao ar em 1 a 2 minutos.
 - **Cópias:** esta documentação também fica nos documentos do projeto no Claude, para consulta nas conversas de chat. A versão do repositório é a de referência; a cópia é sempre substituída a partir dela, nunca editada diretamente.
@@ -378,6 +378,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.2 | Arquivo `CLAUDE.md` com as regras de trabalho para sessões do Claude no repositório (uma mudança por vez, documentação a cada mudança, testes, publicação, cópia da documentação no claude.ai). Sem mudança no sistema |
 | 24.3 | Documentação atualizada para a hospedagem atual (GitHub Pages + Firebase): situação, componentes, modos, limitações, permissões e pendências. Sem mudança no sistema |
 | 24.4 | Pendência registrada: níveis de permissão, obrigatórios antes da fase de produção. Sem mudança no sistema |
+| 24.5 | Regras de contribuição movidas para `AGENTS.md`, fonte única para qualquer pessoa ou IA; `CLAUDE.md` passa a importá-lo e guarda só a cópia da documentação no claude.ai; gatilho para proteger a `main` registrado. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
