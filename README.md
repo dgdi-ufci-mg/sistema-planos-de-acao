@@ -58,6 +58,7 @@ Depois disso, o site passa a abrir já conectado: qualquer pessoa consulta, e qu
 | `firestore.rules` | Regras de acesso ao banco de dados |
 | `LICENSE` | Licença GPL v3 |
 | `docs/documentacao-tecnica.md` | Arquitetura, fórmulas, modelo de dados, decisões e histórico de versões |
+| `docs/especificacao-reescrita.md` | Decisões para a versão 2 do sistema (em revisão) |
 | `docs/manual-do-usuario.md` | Manual em linguagem simples (em revisão, ver abaixo) |
 | `CONTRIBUTING.md` | Como colaborar |
 | `AGENTS.md` | Regras de trabalho para quem contribui, pessoa ou assistente de IA |

@@ -1,0 +1,320 @@
+# Especificação da reescrita (versão 2)
+
+**Situação:** em revisão pelo responsável. Nada aqui está implementado ainda.
+**Data:** 16/10/2026
+
+Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
+
+---
+
+## 1. Por que reescrever
+
+- **Código difícil de revisar.** O `index.html` atual foi feito em etapas, como artefato do Claude: são 1.300 linhas compactas, com nomes curtos. A cada versão, limpar fica mais caro.
+- **O modelo de acompanhamento mudou.** Saem o valor agregado e o Earned Schedule. Entram situações, reestimativas com histórico, retratos e notas. Reformar o código atual seria limpar partes que serão descartadas.
+- **Não é do zero.** A lógica já testada é mantida e reescrita de forma legível: calendário de dias úteis, caminho crítico, Monte Carlo, roteamento das linhas do diagrama e conexão com o Firebase.
+
+---
+
+## 2. Princípios
+
+- **KISS** ("mantenha simples"): a solução mais simples que resolve o problema é a melhor.
+- **YAGNI** ("você não vai precisar disso"): nada é construído antes de haver necessidade real.
+- **Código limpo:** nomes claros, funções pequenas, um assunto por arquivo, sem duplicação e sem código morto. Código que perde a função é apagado, não escondido; o histórico do Git guarda tudo.
+- **Só pedir o necessário:** o usuário informa apenas dados que o sistema usa. Exemplo: a data de início real de uma ação não é pedida, porque não entra em nenhum cálculo.
+- **Aceitar o mundo real:** o sistema absorve registros atrasados, reprogramações e imprecisões sem travar o usuário. Exemplo: a data de conclusão pode ser registrada com qualquer data, mesmo passada.
+- **Linguagem simples:** mantém-se o princípio atual. Termo técnico em itálico, como "Termo técnico: …", e clicável, abrindo a explicação na Ajuda.
+- **Números contínuos, não categorias:** indicadores contínuos aparecem como barras, com o número discreto em cinza. Cortes arbitrários, como "acima de 50% é prioritária", são evitados, porque tratam como diferentes casos praticamente iguais (paradoxo de sorites). Carimbos ficam só para fatos binários, como "Atrasada".
+
+---
+
+## 3. Arquitetura
+
+### 3.1 Arquivos, sem compilação
+
+O sistema passa de um arquivo único para **poucos arquivos por assunto**, carregados direto pelo navegador como módulos JavaScript (`<script type="module">`). Não há etapa de compilação, npm nem *framework*. Os motivos estão na seção 10.
+
+Estrutura prevista:
+
+```
+index.html            estrutura da página
+css/estilo.css        aparência, variáveis de cor, temas claro e escuro
+js/calendario.js      dias úteis e feriados
+js/calculo.js         estimativas, caminho crítico, situações (funções puras, sem tela)
+js/simulacao.js       Monte Carlo (funções puras)
+js/dados.js           Store: Firestore e memória local; cópia de segurança; migração
+js/acesso.js          login, menu do usuário
+js/markdown.js        formatação segura das notas
+js/telas/*.js         uma tela por arquivo: acoes, visualizacao, responsaveis, configurar, ajuda
+js/app.js             estado, navegação, partida
+testes/*.test.js      testes automáticos (node --test)
+```
+
+- **Funções puras:** cálculo e simulação não acessam a tela nem o banco. Recebem dados e devolvem resultados. Isso permite testá-las com o Node, sem navegador.
+- **Tipos por comentários (JSDoc):** cada função tem, acima dela, a descrição do que recebe e devolve. Editores e a verificação do TypeScript (`tsc --checkJs`) apontam erros sem exigir compilação.
+- **Bibliotecas externas:** continuam só por CDN e com versão fixa: dagre 0.8.5 e Firebase compat 10.14.1.
+- **Teste local:** módulos não abrem com clique duplo no arquivo. É preciso um servidor simples, por exemplo `python3 -m http.server`. O README e o AGENTS.md serão atualizados.
+- **Modo legado do artefato do Claude:** removido.
+
+### 3.2 Testes
+
+- **Testes de unidade** das funções de calendário, cálculo, simulação e Markdown, com `node --test`, sem dependências.
+- **Teste de comparação:** o plano da PI² precisa produzir, na versão 2, as mesmas datas do caminho crítico da versão atual, já que essa regra não muda. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência.
+- **Teste visual:** capturas de tela das três abas, nos temas claro e escuro e na largura de celular.
+
+### 3.3 Fluxo de trabalho
+
+A reescrita é feita numa **branch separada**. O site atual continua no ar. Quando a versão 2 estiver pronta, ela entra na `main` por *pull request*, depois da aprovação do responsável. É a exceção à regra "uma mudança por vez".
+
+---
+
+## 4. Modelo de dados
+
+### 4.1 Plano: `projects/{id}`
+
+| Campo | Descrição |
+|---|---|
+| nome | Nome do plano |
+| inicio | Data de início do plano |
+| prazoFinal | Prazo final (por exemplo, o fixado por ato da Diretoria-Geral) |
+| datasExcluidas | Lista `{data, motivo}`: feriados e outras datas sem expediente, cada uma com o motivo, para conferência posterior |
+| documentos | Lista `{nome, data, link}`: documentos do plano, como o plano aprovado e revisões, guardados por link (por exemplo, no SEI) |
+| simulacoes | Número de simulações (padrão 10.000) |
+| semente | Semente da simulação (padrão 20261014) |
+| criadoEm | Data e hora de criação |
+
+Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (o limite de "quase sem folga" é revisto na seção 7.3).
+
+### 4.2 Ação: `projects/{id}/acoes/{código}`
+
+| Campo | Descrição |
+|---|---|
+| codigo | Identificador único. Não muda depois de criado |
+| ordem | Ordem de exibição |
+| etapa | Etapa (blocos do diagrama) |
+| rotulo | Nome curto, usado no cronograma e no diagrama |
+| descricao | Descrição completa |
+| entrega | Entrega esperada (coluna "Entrega" da planilha da PI²) |
+| dependeDe | Lista de códigos das ações anteriores |
+| responsaveis | Lista de ids de responsáveis |
+| estimativas | Histórico de estimativas, da primeira à mais recente (seção 5.3) |
+| concluidaEm | Data de conclusão, ou vazio |
+| notas | Texto em Markdown (seção 8.5) |
+
+Saem: custo, custo gasto, % concluído, início real e término real separado.
+
+### 4.3 Estimativa: cada item de `estimativas`
+
+| Campo | Descrição |
+|---|---|
+| em | Data em que a estimativa foi feita |
+| por | Usuário que a registrou |
+| o, m, p | Otimista, mais provável e pessimista, em dias úteis |
+| contaDe | `"liberacao"` (a primeira estimativa conta da liberação) ou `"data"` (reestimativas contam do dia `em`) |
+| motivo | Opcional |
+
+A primeira estimativa nunca é alterada. Corrigir um erro de digitação logo após cadastrar substitui a estimativa mais recente, sem criar histórico, desde que seja no mesmo dia e antes de qualquer reestimativa.
+
+### 4.4 Retrato: `projects/{id}/retratos/{id}`
+
+| Campo | Descrição |
+|---|---|
+| nome | Por exemplo, "Plano aprovado" ou "Replanejamento de dezembro" |
+| criadoEm, criadoPor | Data e autor |
+| acoes | Cópia, para cada ação, de: estimativa vigente, datas previstas de liberação e conclusão, dependências e situação |
+| resumo | Conclusão prevista, data segura e chance de cumprir o prazo naquele momento |
+
+Retratos são só leitura: servem para comparar e conferir.
+
+### 4.5 Responsável: `people/{id}`
+
+Como hoje (nome, sigla, setor), mais o campo opcional **usuario**: o e-mail de login ligado a esta pessoa. Ele permite o filtro "Minhas ações" e prepara os níveis de permissão.
+
+---
+
+## 5. Regras de cálculo
+
+### 5.1 Contagem do tempo
+
+- Prazos em **dias úteis**, descontadas as datas excluídas do plano.
+- Uma ação é **liberada** quando todas as anteriores estão concluídas. Sem ações anteriores, é liberada no início do plano.
+- **O prazo de uma ação conta da liberação até a conclusão**, incluindo o tempo até alguém começar. A data de início real não é registrada. Isso precisa estar claro no formulário de estimativa e na Ajuda.
+
+### 5.2 Estimativa de cada ação
+
+- Fórmula PERT: (O + 4M + P) / 6, a média da distribuição beta-PERT.
+- **Uma só distribuição em todo o sistema: beta-PERT.** A escolha entre triangular e beta é retirada. Motivos: coerência entre as datas do cronograma e a simulação, simplicidade para o usuário leigo e estabilidade das datas e carimbos. O otimismo nas estimativas será tratado pela previsão por classe de referência, não por troca de fórmula.
+
+### 5.3 Reestimativa
+
+- Disponível **a qualquer momento** para ação liberada e não concluída. Para ação atrasada, aparece em destaque, com alerta.
+- O usuário informa os três pontos do **tempo que falta, a partir de hoje**.
+- Cada reestimativa é registrada com data, autor, três pontos e motivo opcional.
+- Conclusão prevista de uma ação reestimada: data da reestimativa + PERT dos novos três pontos.
+- A tela da ação mostra a estimativa original, o número de reprogramações e quantos dias úteis o término andou desde a primeira estimativa.
+
+### 5.4 Ações concluídas
+
+Entram em todos os cálculos com a **duração real**, da liberação à conclusão, sem sorteio.
+
+### 5.5 Regra interna: nada termina no passado
+
+Para uma ação liberada e não concluída cuja conclusão prevista já passou sem reestimativa, **o cálculo considera conclusão a partir de hoje**. Na simulação, vale o mesmo: um sorteio que terminaria antes de hoje passa a terminar hoje.
+
+A regra não restringe o usuário; só evita previsões otimistas demais. Na tela, quando ela estiver em ação, aparece ao lado da data prevista: "Prazo vencido sem reestimativa: o cálculo considera conclusão a partir de hoje." Ela deve constar na Ajuda e no manual, quando este for refeito.
+
+### 5.6 Recálculo
+
+Tudo é recalculado a cada mudança: conclusão, reestimativa ou edição. A estimativa vigente de cada ação é a mais recente.
+
+### 5.7 Simulação de Monte Carlo
+
+- Distribuição beta-PERT; semente fixa e número de simulações configuráveis.
+- Ações concluídas: duração real. Ações reestimadas: a contagem começa na data da reestimativa. Regra da seção 5.5 aplicada.
+- **Resultados do plano:** datas P50, P80 e P95 da conclusão, chance de cumprir o prazo final e distribuição das datas finais (gráfico).
+- **Resultados por ação:** índice de criticidade e SSI.
+- **Sai a crucialidade.** Ela mede praticamente o mesmo que o SSI e é menos estável; não acrescenta nada à decisão.
+
+---
+
+## 6. Situações e carimbo
+
+### 6.1 Situação: exatamente uma
+
+| Situação | Quando |
+|---|---|
+| **Aguardando** | Alguma ação anterior não foi concluída |
+| **Liberada** | Todas as anteriores concluídas (ou nenhuma anterior), e esta não concluída |
+| **Concluída** | Tem data de conclusão |
+
+### 6.2 Carimbo **Atrasada**
+
+- Aplica-se à ação **liberada** cuja data prevista de conclusão (PERT da estimativa mais recente) já passou.
+- O atraso é medido contra a **estimativa mais recente**, de propósito. A reestimativa tira o carimbo. É uma "colher de chá" ao executor, que exige dele uma atitude ativa (assumir uma nova data). O histórico de reprogramações registra a dimensão do problema.
+- Uma ação aguardando nunca recebe o carimbo, porque, pela regra da seção 5.5, a previsão das anteriores não fica no passado.
+- Não existe mais o carimbo "Prioritária": a prioridade é mostrada pela barra contínua da seção 7.1.
+
+---
+
+## 7. Indicadores por ação
+
+Barras horizontais, com o número em cinza ao lado. A tabela pode ser ordenada por qualquer uma delas.
+
+### 7.1 Prioridade de execução
+
+*Termo técnico: índice de criticidade.*
+
+Legenda: "Quanto um atraso nesta ação atrasa o fim do plano. Por exemplo, com 70%, cada dia de atraso nesta ação atrasa o plano em cerca de 0,7 dia. Considera só o prazo final; outros motivos de prioridade ficam a critério da equipe."
+
+Fundamento: em cada simulação, um dia a mais numa ação atrasa o fim do plano em um dia se ela estiver no caminho crítico, e em zero se não estiver. A média é o índice de criticidade. Por isso ele mede exatamente o efeito esperado de um atraso.
+
+### 7.2 Prioridade de revisão do planejamento
+
+*Termo técnico: SSI (índice de sensibilidade do cronograma).*
+
+Legenda: "Quanto a incerteza desta ação ameaça o prazo final. Quanto maior, mais vale revisar as estimativas, dividir a ação ou reduzir riscos."
+
+Fundamento: o SSI combina a criticidade com a incerteza da ação em relação à do plano. Ele indica onde reduzir incerteza traz mais benefício, uma pergunta diferente da 7.1. Uma ação previsível no caminho crítico tem prioridade de execução alta e SSI quase nulo.
+
+### 7.3 Folga
+
+A folga em dias úteis continua no cronograma e no fluxo. A cor "quase sem folga" e seu limite serão revistos durante o protótipo, à luz do princípio "números contínuos, não categorias".
+
+---
+
+## 8. Interface
+
+### 8.1 Topo
+
+- Logotipo, nome do sistema e instituição.
+- Seletor de plano.
+- **Ajuda:** painel dentro do sistema. Contém o glossário, que antes era a aba "Entenda os termos", e, futuramente, o manual. Cada "Termo técnico" na tela abre a explicação correspondente.
+- **Engrenagem:** painel lateral com: dados do plano (nome, datas, prazo final, datas excluídas com motivo); documentos do plano; retratos (salvar e listar); importar e exportar; cópia de segurança.
+- **Menu do usuário:** seus dados (e-mail, nome, responsável ligado), trocar senha (pede a senha atual), sair. Sem login, aparece o botão "Entrar".
+- **Indicadores do plano:** conclusão prevista, data segura (P80) e chance de cumprir o prazo final.
+
+### 8.2 Abas
+
+**Ações · Visualização · Responsáveis**, em ordem de frequência de uso.
+
+### 8.3 Aba Ações
+
+Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha da PI².
+
+- **Linha compacta:** código e rótulo; situação e carimbo; responsáveis; conclusão prevista; as duas barras de prioridade.
+- **Detalhe, ao tocar na linha:** descrição; entrega; etapa; dependências; estimativa vigente e original; histórico de reprogramações; botão de reestimar; data de conclusão; notas.
+- **No celular:** cada linha vira um cartão.
+- Filtros: situação, responsável, "Minhas ações".
+- **Protótipo antes da implementação:** esta aba será prototipada com dados fictícios e publicada como página de teste privada, para avaliação do responsável no computador e no celular.
+
+### 8.4 Aba Visualização
+
+Três botões no topo levam a cada parte:
+
+- **Fluxo:** "Fluxo das ações". *Termo técnico: diagrama de rede (PERT/CPM).* É o diagrama atual, por etapas.
+- **Cronograma:** Gantt, com opção de comparar com um retrato (linha fina sob cada barra).
+- **Data final:** "Em que data o plano pode terminar", o gráfico da simulação de Monte Carlo.
+
+### 8.5 Notas
+
+- Texto em **Markdown**, editado num campo com três botões, **N**, *I* e link, que inserem a marcação. Fora da edição, a nota aparece formatada.
+- Aceita negrito, itálico, links, endereços da web automáticos, listas e quebras de linha.
+- **Segurança:** o texto é sempre tratado como texto e só esses elementos são convertidos. Nenhum HTML digitado é executado. Links só para `http`, `https` e `mailto`, abrindo em nova aba. Sem biblioteca externa: o conversor é pequeno e próprio, com testes.
+
+---
+
+## 9. O que sai
+
+| Item | Motivo |
+|---|---|
+| Valor agregado, Earned Schedule e o indicador "Ritmo" | Exigem % concluído e custos, raramente disponíveis; difíceis para leigos. A pergunta útil ("quando termina, com o que já aconteceu?") é respondida pelo recálculo contínuo |
+| Campos de custo, custo gasto, % concluído e início real | Só serviam ao valor agregado, ou não são usados (KISS, "só pedir o necessário") |
+| Aba Andamento | O acompanhamento passa a acontecer em cada ação |
+| Abas Cronograma, Diagrama e Previsões | Reunidas em Visualização e Ações |
+| Aba Entenda os termos | Vai para a Ajuda |
+| Escolha triangular/beta | Uma só distribuição (seção 5.2) |
+| Crucialidade | Redundante com o SSI (seção 5.7) |
+| Carimbo "Prioritária" | Substituído pela barra contínua (seção 7.1) |
+| Plano original único (baseline) | Substituído por retratos |
+| Modo do artefato do Claude | Versão descontinuada |
+
+---
+
+## 10. Decisão: vários arquivos, sem compilação
+
+- **Vários arquivos:** separação de responsabilidades; testes automáticos dos cálculos; leitura mais fácil por pessoas e IAs. O custo, a necessidade de um servidor simples para testar localmente, é pequeno.
+- **Sem compilação:** qualquer pessoa edita e vê o resultado; menos ferramentas a manter numa instituição em que as equipes mudam; menos riscos de segurança. A checagem de tipos vem dos comentários JSDoc.
+- A regra "um único arquivo" do AGENTS.md será substituída quando a versão 2 entrar no ar.
+
+---
+
+## 11. Migração dos dados atuais
+
+A versão 2 converte os dados atuais na primeira leitura de cada plano, antes de qualquer gravação. Antes, é feita uma cópia de segurança completa.
+
+| Atual | Versão 2 |
+|---|---|
+| `name` / `desc` | `rotulo` / `descricao` |
+| `stage`, `preds`, `owners`, `order` | `etapa`, `dependeDe`, `responsaveis`, `ordem` |
+| `o, m, p` | primeira estimativa, `contaDe: "liberacao"` |
+| `aF` (término real) | `concluidaEm` |
+| `cost`, `ac`, `pct`, `aS` | descartados |
+| `status` (importado da PI²) | descartado; a situação é calculada |
+| `baseline` do plano | retrato "Plano original", com as datas guardadas |
+| `holidays` (texto) | `datasExcluidas` com motivo vazio |
+| coluna "Entrega" da planilha | `entrega` (importação passa a reconhecê-la) |
+
+---
+
+## 12. Ordem de trabalho
+
+1. Revisão desta especificação pelo responsável.
+2. Protótipo da aba Ações, publicado como página de teste privada.
+3. Reescrita na branch, com testes.
+4. *Pull request*, revisão e entrada no ar.
+5. Atualização da documentação técnica, do AGENTS.md, do README e do CONTRIBUTING.md; remoção deste arquivo.
+
+## 13. Fora desta reescrita
+
+- **Níveis de permissão:** obrigatórios antes da fase de produção (documentação técnica, seção 9).
+- **Previsão por classe de referência:** ideia futura (documentação técnica, seção 9). O histórico de estimativas da seção 4.3 já guarda os dados de que ela precisará.
+- **Manual do usuário:** refeito depois da versão 2.
