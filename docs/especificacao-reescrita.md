@@ -264,7 +264,10 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha da PI².
 
 - **Linha compacta:** código e rótulo; situação e carimbo; responsáveis; conclusão prevista; as duas barras de prioridade.
-- **Detalhe, ao tocar na linha:** descrição; entrega; etapa; dependências; estimativa vigente e original; histórico de reprogramações; botão de reestimar; data de conclusão; notas.
+- **Cada linha é um cartão** com leve sombra e cantos arredondados, para separar visualmente as ações. A faixa colorida à esquerda segue a cor de prioridade (seção 7.3).
+- **Detalhe numa janela sobreposta**, ao tocar na linha, com o fundo escurecido, como no Todoist. Assim nenhum campo da lista fica escondido. A janela abre com uma animação curta. No celular, ela sobe da parte de baixo da tela e ocupa quase toda a altura.
+- **Conteúdo da janela:** no topo, código, etapa e rótulo; um resumo com situação, conclusão prevista, responsáveis e as duas barras. Abaixo: descrição, entrega, dependências e notas; botões de reestimar e de registrar a conclusão; alerta da regra interna, quando houver; histórico de estimativas, com o resumo das reprogramações.
+- **Fica fora da janela** o quadro de estimativa vigente com folga, data de liberação e fórmula: carga cognitiva sem uso prático. A estimativa vigente aparece como último item do histórico, e a fórmula fica na Ajuda.
 - **No celular:** cada linha vira um cartão.
 - Filtros: situação, responsável, "Minhas ações".
 - **Protótipo antes da implementação:** esta aba será prototipada com dados fictícios e publicada como página de teste privada, para avaliação do responsável no computador e no celular.
