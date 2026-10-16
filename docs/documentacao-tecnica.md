@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.3 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.4 da página)
 
 ---
 
@@ -305,7 +305,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 - **Edição:** só usuários cadastrados pelo administrador no Firebase (Authentication → Usuários), que entram pelo botão **Entrar**.
 - O cadastro por conta própria fica desativado no console do Firebase.
 - Cada usuário pode trocar a senha pelo link "Esqueci a senha".
-- Não há níveis diferentes de edição: quem tem login pode alterar e excluir qualquer plano.
+- Não há níveis diferentes de edição: quem tem login pode alterar e excluir qualquer plano. **Precisa ser corrigido antes da fase de produção** (ver seção 9).
 
 ---
 
@@ -332,6 +332,12 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 ---
 
 ## 9. Pendências e próximos passos
+
+**Obrigatório antes da fase de produção:**
+
+- **Níveis de permissão.** Hoje, qualquer usuário com login pode alterar e excluir qualquer plano (ver seção 7). Antes do uso oficial, é preciso definir perfis de acesso, por exemplo: administrador; responsável por um plano; colaborador que só atualiza o andamento das próprias ações. Isso exige mudar o `firestore.rules` e o sistema. Desde já, recomenda-se cadastrar no Firebase só pessoas de confiança e manter cópias de segurança periódicas.
+
+**Melhorias:**
 
 1. **Etapas:** o campo já existe no cadastro e na tabela de ações. Falta uma visão para renomear uma etapa em todas as ações de uma vez e definir a ordem das etapas.
 2. Avaliar baixar o diagrama como imagem.
@@ -371,6 +377,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.1 | Novo logotipo (rosa dos ventos, `logo.png`, embutido no cabeçalho e usado como ícone da aba); paleta refeita a partir do logotipo: verde-azulado (destaque e ações com folga), vermelho (sem folga), dourado (quase sem folga), laranja (faixa e histograma); fundos neutros quentes; tema escuro equivalente; cores das etapas no diagrama e do Mermaid atualizadas |
 | 24.2 | Arquivo `CLAUDE.md` com as regras de trabalho para sessões do Claude no repositório (uma mudança por vez, documentação a cada mudança, testes, publicação, cópia da documentação no claude.ai). Sem mudança no sistema |
 | 24.3 | Documentação atualizada para a hospedagem atual (GitHub Pages + Firebase): situação, componentes, modos, limitações, permissões e pendências. Sem mudança no sistema |
+| 24.4 | Pendência registrada: níveis de permissão, obrigatórios antes da fase de produção. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
