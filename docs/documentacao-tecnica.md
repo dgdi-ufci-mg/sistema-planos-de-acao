@@ -1,8 +1,8 @@
 # Sistema de Gerenciamento de Planos de Ação — Documentação técnica
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
-**Situação:** protótipo em uso, publicado como artefato no Claude
-**Última atualização deste documento:** 16/10/2026 (versão 24.2 da página)
+**Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
+**Última atualização deste documento:** 16/10/2026 (versão 24.3 da página)
 
 ---
 
@@ -31,31 +31,31 @@ Gestores e equipes sem formação em gerenciamento de projetos. A ferramenta pre
 ### 2.1 Componentes
 
 - **Página única (HTML, CSS e JavaScript).** Dependências externas: fontes do Google Fonts (Barlow Semi Condensed, Source Sans 3 e IBM Plex Mono) e a biblioteca de leiaute de grafos **dagre 0.8.5** (cdn.jsdelivr.net), usada só para calcular as posições do diagrama de rede.
-- **Hospedagem:** artefato publicado no Claude (claude.ai) e, a partir de 14/10/2026, repositório no GitHub (ver 2.5).
-- **Persistência:** banco de documentos do próprio artefato (capacidade `db`), compartilhado entre os visitantes autenticados e atualizado em tempo real.
-- **Identificação de permissões:** capacidade `user`, usada para saber se o visitante pode editar.
+- **Hospedagem:** GitHub Pages, a partir da branch `main` do repositório (ver 2.5). Até 14/10/2026, o sistema era um artefato publicado no Claude (claude.ai); essa versão está descontinuada.
+- **Persistência:** Firebase Firestore (projeto `sistema-planos-de-acao`), compartilhado entre todos os visitantes e atualizado em tempo real.
+- **Permissões:** Firebase Authentication (e-mail e senha) e regras do `firestore.rules`: leitura pública, gravação só com login.
 
 ### 2.2 Modos de operação
 
 | Modo | Quando ocorre | Comportamento |
 |---|---|---|
-| Compartilhado | Visitante autenticado no Claude | Lê e grava na base; mudanças aparecem para todos |
-| Só consulta | Autenticado sem permissão de edição | Lê a base; campos ficam desabilitados |
-| Local | Visitante sem login, ou fora do Claude | Calcula normalmente, mas nada é salvo; cada pessoa vê só o que digitou |
-| Firebase · consulta | Fora do Claude, com `config.js` preenchido, sem login | Lê o Firestore; botão **Entrar** no topo; campos de edição bloqueados |
-| Firebase · edição | Fora do Claude, com login por e-mail e senha | Lê e grava no Firestore em tempo real; botão **Sair** no topo |
+| Firebase · consulta | Site oficial, sem login | Lê o Firestore; botão **Entrar** no topo; campos de edição bloqueados |
+| Firebase · edição | Site oficial, com login por e-mail e senha | Lê e grava no Firestore em tempo real; botão **Sair** no topo |
+| Local | Cópia com `config.js` vazio (testes) | Calcula normalmente, mas nada é salvo; cada pessoa vê só o que digitou |
+| Compartilhado / Só consulta (legado) | Página aberta como artefato no Claude | Usa a base do artefato. Código mantido, mas a versão no Claude está descontinuada |
 
-### 2.3 Limitação conhecida
+### 2.3 Limitações conhecidas
 
-Visitantes **sem conta do Claude** não acessam a base, mesmo com o link público, e veem a página vazia. A solução definitiva é hospedar o sistema fora do Claude (ver seção 9).
+- O plano gratuito do Firebase tem cotas diárias de leitura e gravação, suficientes para o uso atual.
+- A meta de longo prazo é hospedar o sistema num servidor institucional da UFCI-MG.
 
 ### 2.4 Camada de armazenamento
 
-Toda leitura e gravação passa pelo objeto `Store`, com duas implementações: base compartilhada (`db`) e memória local. Isso isola a troca futura de backend, como Firebase ou servidor institucional: basta reimplementar o `Store`.
+Toda leitura e gravação passa pelo objeto `Store`, com duas implementações: base compartilhada (Firestore, ou a base do artefato no modo legado) e memória local. Isso isola a troca futura de backend, como um servidor institucional: basta reimplementar o `Store`.
 
 As gravações em um mesmo documento são serializadas (fila por caminho). Erros de permissão colocam a página em modo só consulta, e falhas transitórias são repetidas uma vez.
 
-**Escolha do banco na inicialização (`boot`):** (1) se a página roda no Claude e a capacidade `db` responde, usa a base do artefato; (2) senão, se `window.FIREBASE_CONFIG` (arquivo `config.js`) tiver `projectId`, carrega o Firebase e usa o Firestore; (3) senão, modo local.
+**Escolha do banco na inicialização (`boot`):** (1) se a página roda no Claude e a capacidade `db` responde, usa a base do artefato (legado); (2) senão, se `window.FIREBASE_CONFIG` (arquivo `config.js`) tiver `projectId`, carrega o Firebase e usa o Firestore; (3) senão, modo local.
 
 **Firebase:** SDK *compat* 10.14.1, carregado sob demanda de cdn.jsdelivr.net (`firebase-app`, `firebase-auth` e `firebase-firestore`). O objeto `firebase.firestore()` tem a mesma interface usada pelo `Store` (`collection().onSnapshot`, `doc().set/update/delete`, `collection().doc().id`), então o `Store` funciona sem alteração. Mesmos caminhos de dados: `projects/{id}`, `projects/{id}/tasks/{código}`, `people/{id}`.
 - **Autenticação:** e-mail e senha (Firebase Authentication), persistência local no navegador, recuperação de senha por e-mail. Mensagens de erro traduzidas.
@@ -68,10 +68,10 @@ As gravações em um mesmo documento são serializadas (fila por caminho). Erros
 ### 2.5 Repositório e colaboração
 
 - **Código-fonte:** https://github.com/dgdi-ufci-mg/sistema-planos-de-acao (organização "DGDI | UFCI-MG", repositório público).
-- **Estrutura:** `index.html` (o sistema), `config.js` (configuração do Firebase), `firestore.rules` (regras de acesso), `docs/` (documentação técnica e manual), `README.md` e `CONTRIBUTING.md` (guia de colaboração), `LICENSE` (GPL v3).
+- **Estrutura:** `index.html` (o sistema), `config.js` (configuração do Firebase), `firestore.rules` (regras de acesso), `logo.png` (logotipo), `docs/` (documentação técnica e manual), `README.md`, `CONTRIBUTING.md` (guia de colaboração), `CLAUDE.md` (regras para sessões do Claude) e `LICENSE` (GPL v3).
 - **Fluxo:** sugestões e problemas por Issues; mudanças por pull request, com revisão antes de entrar na `main`. Toda mudança relevante atualiza esta documentação e o histórico de versões.
-- **Publicação:** GitHub Pages a partir da `main` (endereço previsto: `https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/`). Fora do Claude, o sistema roda em modo local até a migração do `Store` para o Firebase.
-- **Cópias:** esta documentação também fica nos documentos do projeto no Claude; a versão do repositório é a de referência a partir de 14/10/2026.
+- **Publicação:** GitHub Pages a partir da `main`, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. Tudo o que entra na `main` vai ao ar em 1 a 2 minutos.
+- **Cópias:** esta documentação também fica nos documentos do projeto no Claude, para consulta nas conversas de chat. A versão do repositório é a de referência; a cópia é sempre substituída a partir dela, nunca editada diretamente.
 
 ---
 
@@ -301,10 +301,11 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 ## 7. Permissões e compartilhamento
 
-- Compartilhamento pelo botão **Compartilhar** da página no Claude.
-- **Colaborador** e **Editor** podem editar; **Leitor** e **Comentador** só consultam.
-- Visitantes de fora da organização no Claude, em geral, só leem.
-- Visitantes sem login não veem dados.
+- **Consulta:** qualquer pessoa com o endereço do site vê todos os planos, sem login.
+- **Edição:** só usuários cadastrados pelo administrador no Firebase (Authentication → Usuários), que entram pelo botão **Entrar**.
+- O cadastro por conta própria fica desativado no console do Firebase.
+- Cada usuário pode trocar a senha pelo link "Esqueci a senha".
+- Não há níveis diferentes de edição: quem tem login pode alterar e excluir qualquer plano.
 
 ---
 
@@ -332,12 +333,11 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 ## 9. Pendências e próximos passos
 
-1. **Hospedagem fora do Claude:** código pronto (versão 22). Falta o administrador criar o projeto no Firebase (passo a passo no README), preencher `config.js` e migrar os dados com a cópia de segurança.
-2. **Etapas:** o campo já existe no cadastro e na tabela de ações. Falta uma visão para renomear uma etapa em todas as ações de uma vez e definir a ordem das etapas.
-3. Avaliar baixar o diagrama como imagem (exige a capacidade `downloads`).
-4. Registrar o andamento real da PI² (% concluído das ações atrasadas e em andamento) e definir a data de status.
-5. Avaliar um registro de alterações (quem mudou o quê e quando).
-6. Ao final das melhorias, refazer as telas e revisar o manual ilustrado e o manual em texto.
+1. **Etapas:** o campo já existe no cadastro e na tabela de ações. Falta uma visão para renomear uma etapa em todas as ações de uma vez e definir a ordem das etapas.
+2. Avaliar baixar o diagrama como imagem.
+3. Registrar o andamento real da PI² (% concluído das ações atrasadas e em andamento) e definir a data de status.
+4. Avaliar um registro de alterações (quem mudou o quê e quando).
+5. Ao final das melhorias, refazer as telas e revisar o manual ilustrado e o manual em texto.
 
 ---
 
@@ -370,6 +370,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24 | Sistema publicado no GitHub Pages com Firebase; dados migrados do artefato do Claude por cópia e restauração (14/10/2026) |
 | 24.1 | Novo logotipo (rosa dos ventos, `logo.png`, embutido no cabeçalho e usado como ícone da aba); paleta refeita a partir do logotipo: verde-azulado (destaque e ações com folga), vermelho (sem folga), dourado (quase sem folga), laranja (faixa e histograma); fundos neutros quentes; tema escuro equivalente; cores das etapas no diagrama e do Mermaid atualizadas |
 | 24.2 | Arquivo `CLAUDE.md` com as regras de trabalho para sessões do Claude no repositório (uma mudança por vez, documentação a cada mudança, testes, publicação, cópia da documentação no claude.ai). Sem mudança no sistema |
+| 24.3 | Documentação atualizada para a hospedagem atual (GitHub Pages + Firebase): situação, componentes, modos, limitações, permissões e pendências. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
