@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.11 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.12 da página)
 
 ---
 
@@ -339,6 +339,8 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 - **Níveis de permissão.** Hoje, qualquer usuário com login pode alterar e excluir qualquer plano (ver seção 7). Antes do uso oficial, é preciso definir perfis de acesso, por exemplo: administrador; responsável por um plano; colaborador que só atualiza o andamento das próprias ações. Isso exige mudar o `firestore.rules` e o sistema. Desde já, recomenda-se cadastrar no Firebase só pessoas de confiança e manter cópias de segurança periódicas.
 
+**Pontos para reavaliação (decisões da versão 2):** data de liberação de ações criadas depois ("Não começa antes de") e estimativa livre antes da liberação. Detalhes e alternativas em [`especificacao-reescrita.md`](especificacao-reescrita.md), seção 14. Reavaliar com o sistema em uso.
+
 **Melhorias:**
 
 1. **Etapas:** o campo já existe no cadastro e na tabela de ações. Falta uma visão para renomear uma etapa em todas as ações de uma vez e definir a ordem das etapas.
@@ -395,6 +397,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.9 | Especificação da reescrita: tipos de responsável, campos opcionais por plano, "Configurar o plano", cores contínuas por prioridade de execução e símbolos da planilha da PI². Sem mudança no sistema |
 | 24.10 | Especificação da reescrita: linhas da aba Ações como cartões e detalhe em janela sobreposta, conforme avaliação do protótipo. Sem mudança no sistema |
 | 24.11 | Especificação da reescrita: editor visual das notas, nova ação em janela central, seletores com busca, código opcional, edição no lugar, modo planilha e regra de liberação de ações criadas depois. Sem mudança no sistema |
+| 24.12 | Especificação da reescrita: fases e etapas como separadores recolhíveis, linha do tempo no topo, animação dos filtros, campo "Não começa antes de" e seção de pontos para reavaliação. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 

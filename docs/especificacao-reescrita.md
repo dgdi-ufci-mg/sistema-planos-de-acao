@@ -80,7 +80,8 @@ A reescrita é feita numa **branch separada**. O site atual continua no ar. Quan
 | documentos | Lista `{nome, data, link}`: documentos do plano, como o plano aprovado e revisões, guardados por link (por exemplo, no SEI) |
 | simulacoes | Número de simulações (padrão 10.000) |
 | semente | Semente da simulação (padrão 20261014) |
-| camposOpcionais | Quais campos opcionais o plano usa: etapa, descrição, entrega e notas. Desligados, eles somem do formulário, da tabela e das exportações, mas os dados já gravados são mantidos |
+| estrutura | Lista de **fases**, cada uma com sua lista de **etapas**: `[{id, nome, etapas:[{id, nome}]}]`, na ordem de exibição (seção 8.3) |
+| camposOpcionais | Quais campos opcionais o plano usa: fases e etapas, descrição, entrega e notas. Desligados, eles somem do formulário, da tabela e das exportações, mas os dados já gravados são mantidos |
 | criadoEm | Data e hora de criação |
 
 Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (a categoria "quase sem folga" deixa de existir; ver seção 7.3).
@@ -91,7 +92,7 @@ Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é
 |---|---|
 | codigo | Identificador único. Não muda depois de criado |
 | ordem | Ordem de exibição |
-| etapa | Etapa (blocos do diagrama) |
+| etapa | Id da etapa a que a ação pertence (e, por ela, a fase). Vazio: ação sem fase nem etapa |
 | rotulo | Nome curto, usado no cronograma e no diagrama |
 | descricao | Descrição completa |
 | entrega | Entrega esperada (coluna "Entrega" da planilha da PI²). Campo opcional |
@@ -99,7 +100,8 @@ Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é
 | responsaveis | Lista de ids de responsáveis |
 | estimativas | Histórico de estimativas, da primeira à mais recente (seção 5.3) |
 | concluidaEm | Data de conclusão, ou vazio |
-| criadaEm | Data de criação da ação (seção 5.1) |
+| naoAntesDe | Data mínima de liberação, opcional (seção 5.1) |
+| criadaEm | Data de criação da ação |
 | notas | Texto em Markdown (seção 8.5) |
 
 Saem: custo, custo gasto, % concluído, início real e término real separado.
@@ -142,7 +144,11 @@ Lista global, com cadastro livre, como hoje: nome, sigla e setor. Um responsáve
 
 - Prazos em **dias úteis**, descontadas as datas excluídas do plano.
 - Uma ação é **liberada** quando todas as anteriores estão concluídas. Sem ações anteriores, é liberada no início do plano.
-- **Ação criada depois que as anteriores terminaram:** a liberação conta a partir da data de criação, não da conclusão das anteriores. Sem essa regra, uma ação nova já nasceria atrasada. Para isso, a ação guarda `criadaEm`.
+- **"Não começa antes de" (data mínima, opcional).** A ação só é liberada quando todas as anteriores estiverem concluídas **e** essa data tiver chegado. Liberação = a mais tardia entre a conclusão das anteriores e a data mínima. É o mesmo conceito da restrição "não iniciar antes de" do MS Project, numa forma simples.
+  - **Nova ação:** o campo já vem preenchido com a data de criação. Assim, uma ação criada depois que as anteriores terminaram não nasce atrasada. O usuário pode apagar a data, se a ação puder começar assim que as anteriores terminarem.
+  - **Outros usos:** ações que dependem de uma data externa, como liberação de orçamento, início do semestre ou publicação de um ato.
+  - Enquanto a data não chega, a ação fica "Aguardando", com a indicação "a partir de dd/mm".
+  - **Em reavaliação** (seção 14, item 1).
 - **O prazo de uma ação conta da liberação até a conclusão**, incluindo o tempo até alguém começar. A data de início real não é registrada. Isso precisa estar claro no formulário de estimativa e na Ajuda.
 
 ### 5.2 Estimativa de cada ação
@@ -152,7 +158,7 @@ Lista global, com cadastro livre, como hoje: nome, sigla e setor. Um responsáve
 
 ### 5.3 Reestimativa
 
-- **Antes da liberação**, a estimativa pode ser alterada livremente, sem histórico: ainda é planejamento. A estimativa "original" que vale para o histórico e para a previsão por classe de referência é a vigente no momento da liberação. *(Em decisão pelo responsável.)*
+- **Antes da liberação**, a estimativa pode ser alterada livremente, sem histórico: ainda é planejamento. A estimativa "original", que vale para o histórico e para a previsão por classe de referência, é a vigente no momento da liberação. Aceita pelo responsável, mas **em reavaliação** (seção 14, item 2).
 
 - Disponível **a qualquer momento** para ação liberada e não concluída. Para ação atrasada, aparece em destaque, com alerta.
 - O usuário informa os três pontos do **tempo que falta, a partir de hoje**.
@@ -257,7 +263,7 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 - **Configurar o plano** (engrenagem): painel lateral com: dados do plano (nome, datas, prazo final, datas excluídas com motivo); campos opcionais em uso; documentos do plano; retratos (salvar e listar); importar e exportar; cópia de segurança.
 - **Menu do usuário:** seus dados (e-mail, nome, responsável ligado), trocar senha (pede a senha atual), sair. Sem login, aparece o botão "Entrar".
 - **Configurar o sistema:** reservado para o futuro (por exemplo, gestão de usuários e permissões). O nome "Configurar o plano" evita confusão com ele.
-- **Indicadores do plano:** conclusão prevista, data segura (P80) e chance de cumprir o prazo final.
+- **Linha do tempo do plano**, no lugar dos quadros de indicadores: um eixo do início do plano ao prazo final, com a parte já decorrida até hoje, a marca de hoje e três datas: **conclusão prevista**, **data segura** (P80) e **prazo final**. Uma faixa destaca o intervalo entre a conclusão prevista e a data segura. Os rótulos ficam numa faixa acima do eixo, afastados entre si, com linhas finas até a posição de cada data; isso evita sobreposição quando as datas são próximas. A chance de cumprir o prazo aparece junto ao prazo final.
 
 ### 8.2 Abas
 
@@ -267,6 +273,9 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 
 Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha da PI².
 
+- **Fases e etapas como separadores**, como na gestão clássica de projetos (estrutura analítica): fase > etapa > ações. Cada separador mostra o nome, o número de ações, quantas foram concluídas, as atrasadas e a data em que o grupo termina, com uma pequena barra de progresso. Fases e etapas podem ser **recolhidas e expandidas** com animação suave, e há um botão para recolher todas as fases. O aninhamento aparece por recuo leve. Ações sem etapa ficam num grupo "Sem fase nem etapa". O agrupamento vale na ordem "Ordem do plano"; nas ordenações por prioridade ou data, a lista fica corrida, para que a ordem escolhida prevaleça.
+- **Fases e etapas são cadastradas em "Configurar o plano"** (criar e renomear; reordenar e excluir na versão final). Na ação, a etapa é escolhida numa lista agrupada por fase. O campo opcional "Fases e etapas" pode ser desligado; nesse caso, a lista fica sem separadores.
+- **Animação dos filtros:** ao filtrar ou reordenar, as ações que continuam deslizam até a nova posição e as que entram aparecem suavemente. Respeita a preferência do sistema por menos movimento.
 - **Linha compacta:** código e rótulo; situação e carimbo; responsáveis; conclusão prevista; as duas barras de prioridade.
 - **Cada linha é um cartão** com leve sombra e cantos arredondados, para separar visualmente as ações. A faixa colorida à esquerda segue a cor de prioridade (seção 7.3).
 - **Detalhe numa janela sobreposta**, ao tocar na linha, com o fundo escurecido, como no Todoist. Assim nenhum campo da lista fica escondido. A janela abre com uma animação curta. No celular, ela sobe da parte de baixo da tela e ocupa quase toda a altura.
@@ -332,7 +341,8 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano, antes de
 | Atual | Versão 2 |
 |---|---|
 | `name` / `desc` | `rotulo` / `descricao` |
-| `stage`, `preds`, `owners`, `order` | `etapa`, `dependeDe`, `responsaveis`, `ordem` |
+| `stage` (texto) | vira uma etapa da estrutura do plano, numa fase única "Fase 1", a ser reorganizada pelo usuário |
+| `preds`, `owners`, `order` | `dependeDe`, `responsaveis`, `ordem` |
 | `o, m, p` | primeira estimativa, `contaDe: "liberacao"` |
 | `aF` (término real) | `concluidaEm` |
 | `cost`, `ac`, `pct`, `aS` | descartados |
@@ -356,3 +366,11 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano, antes de
 - **Níveis de permissão:** obrigatórios antes da fase de produção (documentação técnica, seção 9).
 - **Previsão por classe de referência:** ideia futura (documentação técnica, seção 9). O histórico de estimativas da seção 4.3 já guarda os dados de que ela precisará.
 - **Manual do usuário:** refeito depois da versão 2.
+
+## 14. Pontos para reavaliação
+
+Decisões aceitas para seguir em frente, mas que o responsável pediu para **reavaliar depois**, com o sistema em uso. Quem mexer nessas regras deve ler esta seção antes.
+
+1. **Data de liberação de ações criadas depois (seção 5.1).** Problema: hoje toda ação começa a contar no dia em que a anterior termina. Uma ação criada no meio do plano, cujas anteriores já terminaram, nasceria atrasada. Solução adotada: campo opcional "Não começa antes de", preenchido com a data de criação. Alternativas consideradas: (a) contar sempre da data de criação, regra invisível e confusa; (b) permitir defasagem entre ações, como "começa 5 dias após a anterior" no MS Project, mais complexa (YAGNI). A reavaliar: se o campo é compreendido pelos usuários e se a data de criação é o padrão certo.
+2. **Estimativa livre antes da liberação (seção 5.3).** Enquanto a ação aguarda, a estimativa muda sem histórico; a "original" passa a ser a vigente na liberação. A reavaliar: se isso esconde o otimismo do planejamento inicial, o que prejudicaria a previsão por classe de referência. Alternativa: registrar também essas mudanças, sem contá-las como reprogramação.
+

@@ -33,6 +33,7 @@ A versão antiga, publicada como artefato no claude.ai, está **descontinuada**.
 5. **Teste antes de publicar** (ver seção 7). Nunca envie à `main` código que não foi executado.
 6. **Depois de publicar, confira o site no ar.** Se houver navegador disponível, abra o endereço oficial e confirme a mudança, recarregando se preciso: o GitHub Pages leva 1 a 2 minutos. Diga ao usuário o que conferir.
 7. **Avaliações e listas de sugestões não são ordens.** Exemplo: o arquivo `claude/avaliacao-v12.md`, que fica no projeto do claude.ai e não no repositório. Ele foi escrito para a versão 12 e não foi verificado. Só aplique um item quando o responsável pedir aquele item. Antes, confirme no código atual se o problema existe.
+8. **Pontos para reavaliação.** Antes de mexer nas regras de liberação das ações ou de estimativas, leia a seção "Pontos para reavaliação" da especificação da reescrita (`docs/especificacao-reescrita.md`) ou, depois da versão 2, da documentação técnica. São decisões provisórias que o responsável quer rever.
 
 ## 3. Como se comunicar com quem pede
 
