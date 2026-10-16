@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.17 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.18 da página)
 
 ---
 
@@ -403,6 +403,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.15 | Especificação da reescrita: linha do tempo movida para a aba Visualização. Sem mudança no sistema |
 | 24.16 | Especificação da reescrita: ferramentas da aba Ações no celular (uma linha, painel "Filtros e ordem", botão flutuante de nova ação). Sem mudança no sistema |
 | 24.17 | Especificação da reescrita: "Prioridade de revisão" passa a mostrar a contribuição para a variância do prazo, no lugar do SSI; fundamentos matemáticos de todos os indicadores por ação documentados (seção 15 da especificação). Sem mudança no sistema |
+| 24.18 | Especificação da reescrita: barra da "Prioridade de revisão" em escala fixa de 0% a 100%. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 

@@ -229,7 +229,7 @@ Legenda: "Esta ação responde por 18% da incerteza do prazo final. Quanto maior
 
 - **O que mostra:** a parcela da incerteza do prazo final que vem de cada ação. As parcelas de todas as ações não concluídas somam 100%.
 - **Número em cinza:** a parcela em porcentagem inteira; abaixo de 1%, aparece "<1%".
-- **Barra:** proporcional à parcela, na escala da maior parcela do plano (a maior ocupa a barra inteira), para que as diferenças fiquem visíveis mesmo quando as parcelas são pequenas.
+- **Barra:** proporcional à parcela, numa escala fixa de 0% a 100%. Assim, a barra e o número dizem a mesma coisa, e o tamanho da barra pode ser comparado entre planos.
 - **Fundamento:** é a medida padrão das ferramentas de análise de risco de cronograma (gráfico "tornado"). Uma ação previsível no caminho crítico tem prioridade de execução alta e parcela quase nula: não há incerteza nela para reduzir. Detalhes matemáticos na seção 15.
 - **Natureza relativa:** a parcela compara as ações entre si. Isso é adequado aqui, porque a barra serve para ordenar onde revisar o planejamento, não para disparar alertas.
 
