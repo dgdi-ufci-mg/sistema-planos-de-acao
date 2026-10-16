@@ -263,7 +263,7 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 - **Configurar o plano** (engrenagem): painel lateral com: dados do plano (nome, datas, prazo final, datas excluídas com motivo); campos opcionais em uso; documentos do plano; retratos (salvar e listar); importar e exportar; cópia de segurança.
 - **Menu do usuário:** seus dados (e-mail, nome, responsável ligado), trocar senha (pede a senha atual), sair. Sem login, aparece o botão "Entrar".
 - **Configurar o sistema:** reservado para o futuro (por exemplo, gestão de usuários e permissões). O nome "Configurar o plano" evita confusão com ele.
-- **Linha do tempo do plano**, no lugar dos quadros de indicadores: um eixo do início do plano ao prazo final, com a parte já decorrida até hoje, a marca de hoje e três datas: **conclusão prevista**, **data segura** (P80) e **prazo final**. Uma faixa destaca o intervalo entre a conclusão prevista e a data segura. Os rótulos ficam numa faixa acima do eixo, afastados entre si, com linhas finas até a posição de cada data; isso evita sobreposição quando as datas são próximas. A chance de cumprir o prazo aparece junto ao prazo final.
+- **Linha do tempo do plano**, no lugar dos quadros de indicadores: um eixo **fino**, do início do plano ao prazo final, com a parte já decorrida, a marca de hoje e três pontos: **conclusão prevista**, **data segura** (P80) e **prazo final**. Uma faixa clara destaca o intervalo entre a conclusão prevista e a data segura. As datas aparecem numa **legenda** de uma linha logo abaixo, com o símbolo de cada ponto; a chance de cumprir o prazo vem junto ao prazo final. Ocupa pouco espaço vertical.
 
 ### 8.2 Abas
 
