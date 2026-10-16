@@ -99,6 +99,7 @@ Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é
 | responsaveis | Lista de ids de responsáveis |
 | estimativas | Histórico de estimativas, da primeira à mais recente (seção 5.3) |
 | concluidaEm | Data de conclusão, ou vazio |
+| criadaEm | Data de criação da ação (seção 5.1) |
 | notas | Texto em Markdown (seção 8.5) |
 
 Saem: custo, custo gasto, % concluído, início real e término real separado.
@@ -141,6 +142,7 @@ Lista global, com cadastro livre, como hoje: nome, sigla e setor. Um responsáve
 
 - Prazos em **dias úteis**, descontadas as datas excluídas do plano.
 - Uma ação é **liberada** quando todas as anteriores estão concluídas. Sem ações anteriores, é liberada no início do plano.
+- **Ação criada depois que as anteriores terminaram:** a liberação conta a partir da data de criação, não da conclusão das anteriores. Sem essa regra, uma ação nova já nasceria atrasada. Para isso, a ação guarda `criadaEm`.
 - **O prazo de uma ação conta da liberação até a conclusão**, incluindo o tempo até alguém começar. A data de início real não é registrada. Isso precisa estar claro no formulário de estimativa e na Ajuda.
 
 ### 5.2 Estimativa de cada ação
@@ -149,6 +151,8 @@ Lista global, com cadastro livre, como hoje: nome, sigla e setor. Um responsáve
 - **Uma só distribuição em todo o sistema: beta-PERT.** A escolha entre triangular e beta é retirada. Motivos: coerência entre as datas do cronograma e a simulação, simplicidade para o usuário leigo e estabilidade das datas e carimbos. O otimismo nas estimativas será tratado pela previsão por classe de referência, não por troca de fórmula.
 
 ### 5.3 Reestimativa
+
+- **Antes da liberação**, a estimativa pode ser alterada livremente, sem histórico: ainda é planejamento. A estimativa "original" que vale para o histórico e para a previsão por classe de referência é a vigente no momento da liberação. *(Em decisão pelo responsável.)*
 
 - Disponível **a qualquer momento** para ação liberada e não concluída. Para ação atrasada, aparece em destaque, com alerta.
 - O usuário informa os três pontos do **tempo que falta, a partir de hoje**.
@@ -270,6 +274,12 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
 - **Fica fora da janela** o quadro de estimativa vigente com folga, data de liberação e fórmula: carga cognitiva sem uso prático. A estimativa vigente aparece como último item do histórico, e a fórmula fica na Ajuda.
 - **No celular:** cada linha vira um cartão.
 - Filtros: situação, responsável, "Minhas ações".
+- **Edição no lugar, na janela:** cada campo (rótulo, etapa, descrição, entrega, dependências, responsáveis e notas) é editado ao ser clicado, com Salvar e Cancelar. A estimativa também, enquanto a ação aguarda (seção 5.3).
+- **Nova ação numa janela central**, como no Todoist, com: rótulo; **código opcional** (se vazio, o sistema sugere um a partir do rótulo; se preenchido, precisa ter de 2 a 8 letras ou números e não pode repetir um código existente, com aviso enquanto se digita); etapa; descrição; entrega; dependências; responsáveis; três pontos de estimativa.
+- **Seletores com busca** para dependências e responsáveis: ao digitar, aparecem as opções que contêm o texto (código ou nome da ação; nome, sigla ou setor da pessoa). Setas e Enter escolhem; cada escolha vira uma etiqueta com ×. Nas dependências, ficam de fora a própria ação e as que dependem dela, o que impede ciclos. Nos responsáveis, a última opção é "Cadastrar … como responsável".
+- **Modo "Editar em planilha"**, ao lado da lista: uma grade com todas as ações e uma coluna por campo, para edição rápida por usuários experientes. Cada célula é salva ao sair dela; Enter desce para a linha de baixo; é possível colar um bloco copiado do Google Planilhas ou do Excel, inclusive criando linhas novas. Dependências e responsáveis são digitados como códigos e siglas separados por vírgula, com validação (código inexistente, ciclo, sigla desconhecida). Células que não podem ser editadas ali ficam cinza, com o motivo ao passar o mouse; por exemplo, a estimativa de uma ação liberada, que só muda por reestimativa.
+- **Edição nas linhas da lista:** feita pelo modo planilha. Na lista, tocar na linha abre a janela; tornar os campos da linha editáveis causaria edições acidentais, principalmente no celular.
+- **O código não muda** depois de criado, porque é a referência usada nas dependências.
 - **Protótipo antes da implementação:** esta aba será prototipada com dados fictícios e publicada como página de teste privada, para avaliação do responsável no computador e no celular.
 
 ### 8.4 Aba Visualização
@@ -282,7 +292,7 @@ Três botões no topo levam a cada parte:
 
 ### 8.5 Notas
 
-- Texto em **Markdown**, editado num campo com três botões, **N**, *I* e link, que inserem a marcação. Fora da edição, a nota aparece formatada.
+- **Editor visual** (o que se vê é o que se obtém), com botões de negrito, itálico, link e lista, e os atalhos Ctrl+B, Ctrl+I e Ctrl+K. Por trás, a nota é guardada em **Markdown**, que pode ser levado para qualquer lugar. Ao salvar, o conteúdo do editor é convertido para Markdown, e só os elementos permitidos são mantidos. Texto colado entra sem formatação, para não trazer estilos de outros programas. Sem biblioteca externa.
 - Aceita negrito, itálico, links, endereços da web automáticos, listas e quebras de linha.
 - **Segurança:** o texto é sempre tratado como texto e só esses elementos são convertidos. Nenhum HTML digitado é executado. Links só para `http`, `https` e `mailto`, abrindo em nova aba. Sem biblioteca externa: o conversor é pequeno e próprio, com testes.
 
