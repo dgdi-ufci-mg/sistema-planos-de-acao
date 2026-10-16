@@ -258,7 +258,8 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 ### 8.1 Topo
 
 - **Barra do aplicativo compacta**, com fundo próprio na cor escura da paleta (verde-azulado escuro no tema claro; quase preto no tema escuro), fixa no alto ao rolar a página, com 48 px de altura e sem faixa decorativa. Reúne numa linha: logotipo e nome do sistema (só "Planos de Ação" no celular), seletor de plano, Ajuda (?), Configurar o plano (engrenagem) e o menu do usuário (iniciais). Objetivo: o máximo de tela para as ações.
-- **Ferramentas da lista compactas:** no celular, os filtros de situação ficam numa faixa que rola para o lado; a legenda de cores e símbolos fica escondida, aberta pelo botão "Legenda".
+- **Ferramentas da lista no computador:** filtros de situação, Lista ou Editar em planilha, Minhas ações, responsável, ordenação, Recolher fases, Legenda e Nova ação. A legenda de cores e símbolos fica escondida até ser aberta.
+- **Ferramentas da lista no celular**, em uma só linha: os filtros de situação numa faixa que rola para o lado e um botão **"Filtros e ordem"**, que mostra quantas opções estão ativas. Ele abre um painel que sobe de baixo, com: Minhas ações, responsável, ordenação, recolher ou expandir fases, legenda e "Limpar filtros e ordem". **Nova ação** vira um botão flutuante (+) no canto inferior direito. A edição em planilha fica só no computador. Nos cartões de ações concluídas, as barras de prioridade, sem uso, não aparecem.
 
 - Logotipo, nome do sistema e instituição.
 - Seletor de plano.
