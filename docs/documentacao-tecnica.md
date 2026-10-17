@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 26 da página)
+**Última atualização deste documento:** 17/10/2026 (versão 26.1 da página)
 
 ---
 
@@ -356,6 +356,12 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
   2. **Sugestão de estimativa:** o sistema propõe os três pontos já corrigidos pela razão entre prazo real e estimado, observada em ações semelhantes (mesma equipe, responsável ou tipo de ação). Quando houver poucos dados de um grupo, usa a média geral e se aproxima do grupo conforme os dados aumentam (estimativa bayesiana hierárquica).
   - **Dados necessários:** as estimativas originais e as datas reais de liberação e conclusão. O histórico de reestimativas, previsto na reescrita, fornece exatamente isso. Por isso, ele deve guardar a estimativa original de cada ação e todas as revisões.
   - Referências: KAHNEMAN, D.; TVERSKY, A. Intuitive prediction: biases and corrective procedures (1979); LOVALLO, D.; KAHNEMAN, D. Delusions of success. *Harvard Business Review* (2003); FLYVBJERG, B. From Nobel Prize to project management: getting risks right. *Project Management Journal* (2006); KAHNEMAN, D. *Rápido e devagar* (2011).
+- **Aplicativo para celular, com acesso restrito à instituição.** Objetivo: distribuição gratuita, com uso só por pessoas da UFCI-MG. Proposta em etapas:
+  1. **Primeiro, aplicativo instalável pelo navegador** (*Termo técnico: PWA, progressive web app*): manifesto e ícones para instalar o site na tela inicial do Android e do iPhone, sem lojas, sem custo e sem revisão da Apple ou do Google.
+  2. **Restrição pelo login, não pela loja.** Mesmo a distribuição "não listada" da Apple deixa o app disponível para quem tiver o link. O controle de acesso fica no Firebase: mudar o `firestore.rules` para exigir login também na leitura (hoje pública, ver seção 7) e, se desejado, aceitar só e-mails do domínio institucional.
+  3. **Lojas, se necessárias:** empacotar o site (por exemplo, com o Capacitor). **iPhone:** distribuição não listada, que exige aprovação na revisão da Apple, conta de teste para os revisores e funções além de um site embrulhado. **Android:** publicação comum na Play Store, com login obrigatório; a opção "privada" exige celulares gerenciados pela instituição.
+  - **Custos e conta:** o programa de desenvolvedor da Apple é anual (US$ 99), com isenção para instituições de ensino e órgãos públicos só em alguns países; verificar se o Brasil está incluído. O Google cobra taxa única. As contas devem ser da instituição (CNPJ), não pessoais.
+  - **Quando:** depois da versão 2 estabilizar ou da migração para o servidor institucional. A restrição da leitura depende de decisão do responsável, porque muda a regra atual de consulta aberta (seção 8).
 
 ---
 
@@ -414,6 +420,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.26 | Especificação da reescrita: transição da barra simétrica (substitui a volta rápida da 24.25, que ficou desigual). Sem mudança no sistema |
 | 25 | Especificação da reescrita: Ajuda e manual saem da barra e passam para o menu do usuário; sem login, o menu traz Ajuda e Entrar. Sem mudança no sistema |
 | 26 | Especificação da reescrita: seletor de plano e "Configurar o plano" fundidos num menu do plano, com "Novo plano"; a engrenagem sai da barra. Sem mudança no sistema |
+| 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
