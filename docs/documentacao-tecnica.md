@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.23 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.24 da página)
 
 ---
 
@@ -409,6 +409,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.21 | Especificação da reescrita: campo "Não começa antes de" escondido quando vazio, com link para defini-lo. Sem mudança no sistema |
 | 24.22 | Especificação da reescrita: barra superior vítrea e neutra; sem logotipo no celular na vertical. Sem mudança no sistema |
 | 24.23 | Especificação da reescrita: barra superior escura no topo da página e vidro transparente ao rolar. Sem mudança no sistema |
+| 24.24 | Especificação da reescrita: escurecimento leve da barra no topo da página. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
