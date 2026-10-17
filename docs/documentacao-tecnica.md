@@ -423,6 +423,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 25 | Especificação da reescrita: Ajuda e manual saem da barra e passam para o menu do usuário; sem login, o menu traz Ajuda e Entrar. Sem mudança no sistema |
 | 26 | Especificação da reescrita: seletor de plano e "Configurar o plano" fundidos num menu do plano, com "Novo plano"; a engrenagem sai da barra. Sem mudança no sistema |
 | 27 | Especificação da reescrita: regras de edição simultânea (seção 4.6), que fecham três falhas da versão 1: listas regravadas inteiras, código de ação nova conferido só na tela e sobrescrita silenciosa. Sem mudança no sistema |
+| 28 | Especificação da reescrita: preparação para a troca de banco (seção 3.4): `Store` com operações do sistema, um arquivo por banco em `js/banco/`, testes como contrato e cópia de segurança como ponte; seção 4.6 sem termos do Firestore. Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

@@ -41,7 +41,9 @@ css/estilo.css        aparência, variáveis de cor, temas claro e escuro
 js/calendario.js      dias úteis e feriados
 js/calculo.js         estimativas, caminho crítico, situações (funções puras, sem tela)
 js/simulacao.js       Monte Carlo (funções puras)
-js/dados.js           Store: Firestore e memória local; cópia de segurança; migração
+js/dados.js           Store: operações do sistema, sem termos de banco (seção 3.4)
+js/banco/firestore.js como o Firestore executa cada operação
+js/banco/local.js     o mesmo, em memória (modo local e testes)
 js/acesso.js          login, menu do usuário
 js/markdown.js        formatação segura das notas
 js/telas/*.js         uma tela por arquivo: acoes, visualizacao, responsaveis, configurar, ajuda
@@ -60,6 +62,19 @@ testes/*.test.js      testes automáticos (node --test)
 - **Testes de unidade** das funções de calendário, cálculo, simulação e Markdown, com `node --test`, sem dependências.
 - **Teste de comparação:** o plano da PI² precisa produzir, na versão 2, as mesmas datas do caminho crítico da versão atual, já que essa regra não muda. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência.
 - **Teste visual:** capturas de tela das três abas, nos temas claro e escuro e na largura de celular.
+
+### 3.4 Preparação para a troca de banco
+
+A meta de longo prazo é hospedar o sistema no servidor da UFCI-MG, com PostgreSQL. A versão 2 não faz essa troca, mas não pode dificultá-la.
+
+- **O `Store` fala a língua do sistema, não a do banco.** Oferece operações com nomes do domínio, como `criarAcao`, `alterarCampo`, `acrescentarResponsavel`, `retirarResponsavel`, `registrarEstimativa`, `concluirAcao`, `salvarRetrato` e `acompanharPlano`. Nenhum termo do Firestore (coleção, documento, `onSnapshot`, `arrayUnion`) aparece fora de `js/banco/firestore.js`.
+- **Cada banco é um arquivo** em `js/banco/`, que executa as mesmas operações. Hoje: Firestore e memória local. Depois: um que conversa com o servidor da UFCI-MG.
+- **As regras de edição simultânea (seção 4.6) são do sistema.** No Firestore, viram transações e acréscimos em listas. No PostgreSQL, viram restrições do próprio banco, como código único por plano, tabelas de ligação para responsáveis e dependências, e conferência da última alteração antes de gravar.
+- **Tempo real como operação, não como recurso do banco.** `acompanharPlano` avisa a tela quando algo muda. No Firestore, isso vem pronto. No servidor, pode começar com consultas periódicas, por exemplo a cada 10 segundos.
+- **Os mesmos testes para todos os bancos.** Os testes de `node --test` rodam contra o banco em memória e servem de contrato: um banco novo precisa passar neles.
+- **A cópia de segurança é a ponte.** O arquivo da cópia tem formato próprio, independente do banco, e documentado. A troca será: exportar do Firebase, importar no servidor e conferir com o teste de comparação.
+
+Fica para a época da troca, fora da versão 2: o programa do servidor, que passa a conter as permissões hoje no `firestore.rules` (já com os níveis de permissão pendentes), e o login institucional, que exigirá recadastrar os usuários.
 
 ### 3.3 Fluxo de trabalho
 
@@ -143,14 +158,14 @@ Várias pessoas podem editar o mesmo plano ao mesmo tempo. Nenhuma gravação po
 
 | Situação | Regra |
 |---|---|
-| Duas pessoas mudam campos diferentes | Cada gravação leva só o campo alterado (`update`), nunca o documento inteiro |
-| Responsáveis e "depende de" | Acrescentar e retirar itens um a um (`arrayUnion` e `arrayRemove`), nunca regravar a lista inteira. Assim, se duas pessoas acrescentam responsáveis ao mesmo tempo, os dois ficam |
-| Reestimativa | Entra no fim do histórico (`arrayUnion`), sem regravar as anteriores. A correção de digitação da seção 4.3, que substitui a mais recente, usa transação: só grava se ninguém tiver acrescentado outra estimativa nesse meio-tempo |
-| Ação nova | Criada só se o código estiver livre no banco, conferido numa transação, e não só na tela de quem cria. Se outra pessoa criou o mesmo código antes, aparece "Já existe uma ação com o código X. Escolha outro." |
+| Duas pessoas mudam campos diferentes | Cada gravação leva só o campo alterado, nunca a ação inteira |
+| Responsáveis e "depende de" | Acrescentar e retirar itens um a um, nunca regravar a lista inteira. Assim, se duas pessoas acrescentam responsáveis ao mesmo tempo, os dois ficam |
+| Reestimativa | Entra no fim do histórico, sem regravar as anteriores. A correção de digitação da seção 4.3, que substitui a mais recente, só grava se ninguém tiver acrescentado outra estimativa nesse meio-tempo |
+| Ação nova | Criada só se o código estiver livre no banco, e não só na tela de quem cria. Se outra pessoa criou o mesmo código antes, aparece "Já existe uma ação com o código X. Escolha outro." |
 | Mesmo campo, mesma ação, quase juntas | Vale a última gravação, mas sem surpresa: se a ação aberta na janela for alterada por outra pessoa, a janela mostra "Fulano alterou esta ação agora" e atualiza os campos que não estão sendo editados. O campo em edição fica como está, e a pessoa decide se grava |
-| Importação, restauração e regravação de documentos inteiros | Só em operações explícitas, com confirmação, e nunca durante a edição comum |
+| Importação, restauração e regravação de ações inteiras | Só em operações explícitas, com confirmação, e nunca durante a edição comum |
 
-Os campos `alteradaEm` e `alteradaPor` (seção 4.2) servem para o aviso. Essas regras valem só para o Firestore; o modo local tem um usuário só. Cada regra tem um teste em `node --test`, com duas gravações concorrentes simuladas.
+Os campos `alteradaEm` e `alteradaPor` (seção 4.2) servem para o aviso. As regras dizem o que garantir, não como: cada banco as executa do seu jeito (seção 3.4). No modo local há um usuário só. Cada regra tem um teste em `node --test`, com duas gravações concorrentes simuladas.
 
 ---
 
