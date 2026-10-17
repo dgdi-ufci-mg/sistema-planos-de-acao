@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 24.20 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 24.21 da página)
 
 ---
 
@@ -406,6 +406,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.18 | Especificação da reescrita: barra da "Prioridade de revisão" em escala fixa de 0% a 100%. Sem mudança no sistema |
 | 24.19 | Especificação da reescrita: modo Quadro (Kanban) na aba Ações, com colunas Aguardando, Liberadas e Concluídas. Sem mudança no sistema |
 | 24.20 | Especificação da reescrita: efeito vítreo na barra superior ao rolar. Sem mudança no sistema |
+| 24.21 | Especificação da reescrita: campo "Não começa antes de" escondido quando vazio, com link para defini-lo. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
