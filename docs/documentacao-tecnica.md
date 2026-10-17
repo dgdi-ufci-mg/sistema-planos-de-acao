@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 16/10/2026 (versão 25 da página)
+**Última atualização deste documento:** 16/10/2026 (versão 26 da página)
 
 ---
 
@@ -413,6 +413,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.25 | Especificação da reescrita: volta da barra ao estado do topo quase instantânea. Sem mudança no sistema |
 | 24.26 | Especificação da reescrita: transição da barra simétrica (substitui a volta rápida da 24.25, que ficou desigual). Sem mudança no sistema |
 | 25 | Especificação da reescrita: Ajuda e manual saem da barra e passam para o menu do usuário; sem login, o menu traz Ajuda e Entrar. Sem mudança no sistema |
+| 26 | Especificação da reescrita: seletor de plano e "Configurar o plano" fundidos num menu do plano, com "Novo plano"; a engrenagem sai da barra. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
