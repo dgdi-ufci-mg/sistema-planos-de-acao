@@ -63,6 +63,10 @@ testes/*.test.js      testes automáticos (node --test)
 - **Teste de comparação:** o plano da PI² precisa produzir, na versão 2, as mesmas datas do caminho crítico da versão atual, já que essa regra não muda. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência.
 - **Teste visual:** capturas de tela das três abas, nos temas claro e escuro e na largura de celular.
 
+### 3.3 Fluxo de trabalho
+
+A reescrita é feita numa **branch separada**. O site atual continua no ar. Quando a versão 2 estiver pronta, ela entra na `main` por *pull request*, depois da aprovação do responsável. É a exceção à regra "uma mudança por vez".
+
 ### 3.4 Preparação para a troca de banco
 
 A meta de longo prazo é hospedar o sistema no servidor da UFCI-MG, com PostgreSQL. A versão 2 não faz essa troca, mas não pode dificultá-la.
@@ -75,10 +79,6 @@ A meta de longo prazo é hospedar o sistema no servidor da UFCI-MG, com PostgreS
 - **A cópia de segurança é a ponte.** O arquivo da cópia tem formato próprio, independente do banco, e documentado. A troca será: exportar do Firebase, importar no servidor e conferir com o teste de comparação.
 
 Fica para a época da troca, fora da versão 2: o programa do servidor, que passa a conter as permissões hoje no `firestore.rules` (já com os níveis de permissão pendentes), e o login institucional, que exigirá recadastrar os usuários.
-
-### 3.3 Fluxo de trabalho
-
-A reescrita é feita numa **branch separada**. O site atual continua no ar. Quando a versão 2 estiver pronta, ela entra na `main` por *pull request*, depois da aprovação do responsável. É a exceção à regra "uma mudança por vez".
 
 ---
 
