@@ -339,6 +339,8 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 - **Níveis de permissão.** Hoje, qualquer usuário com login pode alterar e excluir qualquer plano (ver seção 7). Antes do uso oficial, é preciso definir perfis de acesso, por exemplo: administrador; responsável por um plano; colaborador que só atualiza o andamento das próprias ações. Isso exige mudar o `firestore.rules` e o sistema. Desde já, recomenda-se cadastrar no Firebase só pessoas de confiança e manter cópias de segurança periódicas.
 
+- **Edição simultânea (versão 1).** Três falhas, de risco baixo enquanto poucas pessoas editam: (a) responsáveis e "depende de" são regravados como lista inteira, e dois acréscimos simultâneos podem perder um deles; (b) o código de uma ação nova é conferido só na tela de quem cria, e duas criações simultâneas com o mesmo código apagam a primeira em silêncio; (c) duas mudanças no mesmo campo valem pela última, sem aviso. A correção está na seção 4.6 da [`especificacao-reescrita.md`](especificacao-reescrita.md) e entra na versão 2.
+
 **Pontos para reavaliação (decisões da versão 2):** data de liberação de ações criadas depois ("Não começa antes de") e estimativa livre antes da liberação. Detalhes e alternativas em [`especificacao-reescrita.md`](especificacao-reescrita.md), seção 14. Reavaliar com o sistema em uso.
 
 **Melhorias:**
@@ -420,6 +422,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.26 | Especificação da reescrita: transição da barra simétrica (substitui a volta rápida da 24.25, que ficou desigual). Sem mudança no sistema |
 | 25 | Especificação da reescrita: Ajuda e manual saem da barra e passam para o menu do usuário; sem login, o menu traz Ajuda e Entrar. Sem mudança no sistema |
 | 26 | Especificação da reescrita: seletor de plano e "Configurar o plano" fundidos num menu do plano, com "Novo plano"; a engrenagem sai da barra. Sem mudança no sistema |
+| 27 | Especificação da reescrita: regras de edição simultânea (seção 4.6), que fecham três falhas da versão 1: listas regravadas inteiras, código de ação nova conferido só na tela e sobrescrita silenciosa. Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

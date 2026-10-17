@@ -103,6 +103,7 @@ Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é
 | naoAntesDe | Data mínima de liberação, opcional (seção 5.1) |
 | criadaEm | Data de criação da ação |
 | notas | Texto em Markdown (seção 8.5) |
+| alteradaEm, alteradaPor | Momento e autor da última gravação (seção 4.6) |
 
 Saem: custo, custo gasto, % concluído, início real e término real separado.
 
@@ -135,6 +136,21 @@ Lista global, com cadastro livre, como hoje: nome, sigla e setor. Um responsáve
 
 - **Membro da equipe com acesso ao sistema:** tem o campo opcional **usuario**, o e-mail de login ligado a ele. Para esses, funcionam o filtro "Minhas ações" e, no futuro, os níveis de permissão.
 - **Responsável diverso:** pessoa de fora do sistema, unidade organizacional, equipe ou grupo de unidades. Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
+
+### 4.6 Edição simultânea
+
+Várias pessoas podem editar o mesmo plano ao mesmo tempo. Nenhuma gravação pode apagar, em silêncio, o trabalho de outra pessoa. A versão 1 já grava só o campo alterado e mostra as mudanças em tempo real; a versão 2 mantém isso e fecha três falhas encontradas na versão 1 em 17/10/2026 (registradas em "Pendências" da documentação técnica).
+
+| Situação | Regra |
+|---|---|
+| Duas pessoas mudam campos diferentes | Cada gravação leva só o campo alterado (`update`), nunca o documento inteiro |
+| Responsáveis e "depende de" | Acrescentar e retirar itens um a um (`arrayUnion` e `arrayRemove`), nunca regravar a lista inteira. Assim, se duas pessoas acrescentam responsáveis ao mesmo tempo, os dois ficam |
+| Reestimativa | Entra no fim do histórico (`arrayUnion`), sem regravar as anteriores. A correção de digitação da seção 4.3, que substitui a mais recente, usa transação: só grava se ninguém tiver acrescentado outra estimativa nesse meio-tempo |
+| Ação nova | Criada só se o código estiver livre no banco, conferido numa transação, e não só na tela de quem cria. Se outra pessoa criou o mesmo código antes, aparece "Já existe uma ação com o código X. Escolha outro." |
+| Mesmo campo, mesma ação, quase juntas | Vale a última gravação, mas sem surpresa: se a ação aberta na janela for alterada por outra pessoa, a janela mostra "Fulano alterou esta ação agora" e atualiza os campos que não estão sendo editados. O campo em edição fica como está, e a pessoa decide se grava |
+| Importação, restauração e regravação de documentos inteiros | Só em operações explícitas, com confirmação, e nunca durante a edição comum |
+
+Os campos `alteradaEm` e `alteradaPor` (seção 4.2) servem para o aviso. Essas regras valem só para o Firestore; o modo local tem um usuário só. Cada regra tem um teste em `node --test`, com duas gravações concorrentes simuladas.
 
 ---
 
