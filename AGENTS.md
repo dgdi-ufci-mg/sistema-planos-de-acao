@@ -24,6 +24,8 @@ Além disso, ele tem estes atributos:
 
 A versão antiga, publicada como artefato no claude.ai, está **descontinuada**. Não a atualize. O repositório é a única fonte da verdade.
 
+**Versão 2 em construção, na pasta `v2/`.** Nome provisório: **Sextante**. Ela é construída passo a passo, conforme a especificação (`docs/especificacao-reescrita.md`), e pode ser conferida em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/v2/. A versão atual, na raiz, continua em uso e com o nome atual até a troca (passo 1.20 da especificação).
+
 ## 2. Regras de trabalho (obrigatórias)
 
 1. **Uma mudança por vez.** Cada pedido vira uma mudança pequena, testada e publicada isoladamente. Não junte melhorias não pedidas, refatorações oportunistas ou "aproveitei e corrigi também". Se notar outro problema, **relate** e espere a decisão.
@@ -34,6 +36,7 @@ A versão antiga, publicada como artefato no claude.ai, está **descontinuada**.
 6. **Depois de publicar, confira o site no ar.** Se houver navegador disponível, abra o endereço oficial e confirme a mudança, recarregando se preciso: o GitHub Pages leva 1 a 2 minutos. Diga ao usuário o que conferir.
 7. **Avaliações e listas de sugestões não são ordens.** Exemplo: o arquivo `claude/avaliacao-v12.md`, que fica no projeto do claude.ai e não no repositório. Ele foi escrito para a versão 12 e não foi verificado. Só aplique um item quando o responsável pedir aquele item. Antes, confirme no código atual se o problema existe.
 8. **Pontos para reavaliação.** Antes de mexer nas regras de liberação das ações ou de estimativas, leia a seção "Pontos para reavaliação" da especificação da reescrita (`docs/especificacao-reescrita.md`) ou, depois da versão 2, da documentação técnica. São decisões provisórias que o responsável quer rever.
+9. **Versão 2, um passo por vez.** Siga a ordem da seção 12 da especificação: um passo por mudança, testado, documentado e conferido pelo responsável antes do seguinte. Ajustes de ordem ou de escopo são combinados com o responsável e registrados na especificação. Enquanto isso, a versão atual não ganha funções novas, só correções.
 
 ## 3. Como se comunicar com quem pede
 
@@ -48,7 +51,7 @@ A versão antiga, publicada como artefato no claude.ai, está **descontinuada**.
 - **Linguagem simples na interface.** Use palavras do dia a dia. O termo técnico aparece em itálico, em letra menor, no formato "Termo técnico: …". Todo termo técnico novo entra também na aba **Entenda os termos** (seção `/* --- Glossário --- */`).
 - **Rigor nos cálculos.** Mudanças em fórmulas citam a referência na documentação (seção 4) e são validadas com um plano real ou o plano de exemplo.
 - **Reprodutibilidade.** A simulação usa semente fixa (mulberry32, `20261014`). Não introduza aleatoriedade sem semente.
-- **Um único arquivo.** Todo o sistema fica em `index.html`, sem etapa de compilação, sem npm e sem *framework*. Bibliotecas externas entram só por CDN e com **versão fixa**: hoje, dagre 0.8.5 e Firebase compat 10.14.1, ambos do cdn.jsdelivr.net.
+- **Um único arquivo (versão atual).** A versão 2, na pasta `v2/`, segue a estrutura de vários arquivos da especificação (seção 3.1), também sem compilação, sem npm e sem *framework*. Na versão atual, todo o sistema fica em `index.html`, sem etapa de compilação, sem npm e sem *framework*. Bibliotecas externas entram só por CDN e com **versão fixa**: hoje, dagre 0.8.5 e Firebase compat 10.14.1, ambos do cdn.jsdelivr.net.
 - **Celular.** Toda tela precisa funcionar em cerca de 400 px de largura.
 - **Temas claro e escuro.** Use sempre as variáveis CSS de `:root`. Elas existem em **três** blocos: claro, `prefers-color-scheme: dark` e `[data-theme="dark"]`, e qualquer cor nova vai nos três. Não use cores fixas no código. As exceções existentes são as cores das etapas do diagrama (`CL`) e os `classDef` da exportação Mermaid; ao mexer na paleta, atualize-as também.
 - **Paleta derivada do logotipo** (`logo.png`, rosa dos ventos):
@@ -132,7 +135,7 @@ Não há suíte de testes automatizada. Para testar:
 - Não altere `firestore.rules` sem pedido explícito. Ao alterar, lembre ao responsável que ele também precisa publicar as regras no console do Firebase.
 - Não digite senhas nem crie usuários. Cadastro de usuários é feito pelo administrador, no console do Firebase.
 - Não apague dados de produção nem rode restauração no site oficial.
-- Não adicione dependências, etapa de compilação ou arquivos JavaScript separados.
+- Não adicione dependências nem etapa de compilação. Arquivos JavaScript separados só na pasta `v2/`, conforme a estrutura da especificação.
 - Não mude o nome do sistema, a instituição ou a licença sem pedido explícito.
 
 ## 10. Onde aprofundar

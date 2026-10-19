@@ -68,7 +68,7 @@ As gravações em um mesmo documento são serializadas (fila por caminho). Erros
 ### 2.5 Repositório e colaboração
 
 - **Código-fonte:** https://github.com/dgdi-ufci-mg/sistema-planos-de-acao (organização "DGDI | UFCI-MG", repositório público).
-- **Estrutura:** `index.html` (o sistema), `config.js` (configuração do Firebase), `firestore.rules` (regras de acesso), `logo.png` (logotipo), `docs/` (documentação técnica e manual), `README.md`, `CONTRIBUTING.md` (guia de colaboração), `AGENTS.md` (regras para quem contribui, pessoa ou IA), `CLAUDE.md` (aponta para o `AGENTS.md` e traz o que é exclusivo do Claude) e `LICENSE` (GPL v3).
+- **Estrutura:** `index.html` (o sistema), `v2/` (versão 2, Sextante, em construção; ver a especificação da reescrita), `config.js` (configuração do Firebase), `firestore.rules` (regras de acesso), `logo.png` (logotipo), `docs/` (documentação técnica e manual), `README.md`, `CONTRIBUTING.md` (guia de colaboração), `AGENTS.md` (regras para quem contribui, pessoa ou IA), `CLAUDE.md` (aponta para o `AGENTS.md` e traz o que é exclusivo do Claude) e `LICENSE` (GPL v3).
 - **Fluxo:** sugestões e problemas por Issues; mudanças por pull request, com revisão antes de entrar na `main`. Toda mudança relevante atualiza esta documentação e o histórico de versões.
 - **Publicação:** GitHub Pages a partir da `main`, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. Tudo o que entra na `main` vai ao ar em 1 a 2 minutos.
 - **Cópias:** esta documentação também fica nos documentos do projeto no Claude, para consulta nas conversas de chat. A versão do repositório é a de referência; a cópia é sempre substituída a partir dela, nunca editada diretamente.
@@ -439,6 +439,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 33 | Especificação da reescrita: ordem de trabalho em fases e passos (seção 12, em aprovação), construção passo a passo na pasta `/v2/` (seção 3.3), documentos com identificação no SIPAC/Protocolo, "Não liberada" e ícones em todas as seções, extração personalizada e volta à situação inicial. Sem mudança no sistema |
 | 33.1 | Especificação da reescrita: segundo projeto Firebase para a versão 2, abertura do sistema pelo último plano, exclusão encadeada com janela de alternativas, troca simplificada, nome candidato "Dira". Sem mudança no sistema |
 | 34 | Especificação da reescrita: nome provisório "Sextante" para a versão 2, como variável única no código. Sem mudança no sistema |
+| 35 | Versão 2, passo 0.1: pasta `v2/` publicada com página provisória; AGENTS.md ajustado (regra 9, um passo por vez; arquivos separados só em `v2/`); ordem de trabalho aprovada. Sem mudança na versão atual |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

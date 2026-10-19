@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em revisão pelo responsável. Nada aqui está implementado ainda. A ordem de trabalho (seção 12) aguarda aprovação.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -431,13 +431,13 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano, antes de
 
 ---
 
-## 12. Ordem de trabalho (proposta, aguardando aprovação)
+## 12. Ordem de trabalho
 
-Cada item é um passo: pequeno, testado, documentado e conferido pelo responsável antes do seguinte (seção 3.3). As fases servem de mapa.
+Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com ajustes de ordem ou de escopo combinados no percurso. Cada item é um passo: pequeno, testado, documentado e conferido pelo responsável antes do seguinte (seção 3.3). As fases servem de mapa. Passos concluídos ficam marcados com ✔.
 
 ### Fase 0: preparação (nada muda para os usuários)
 
-0.1. Pasta `/v2/` no site; AGENTS.md ajustado (a regra do arquivo único passa a valer só para a versão atual; testes com `node --test`).
+0.1. ✔ Pasta `/v2/` no site, com página provisória; AGENTS.md ajustado (a regra do arquivo único passa a valer só para a versão atual; testes com `node --test`).
 0.2. Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
 0.3. Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
 0.4. Plano de exemplo, com dados fictícios, e cópia do plano da PI² para o teste de comparação (só leitura dos dados reais).
