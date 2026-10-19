@@ -108,7 +108,15 @@ Existe uma cópia desta documentação fora do repositório, no projeto do claud
 
 ## 7. Como testar
 
-Não há suíte de testes automatizada. Para testar:
+**Versão 2 (`v2/`):** testes automáticos, sem dependências. Rode dentro da pasta `v2/`:
+
+```sh
+cd v2 && node --test --test-reporter=spec
+```
+
+Todos precisam passar antes de publicar. Para ver a página, sirva a raiz do repositório (`python3 -m http.server`) e abra `/v2/`: módulos JavaScript não abrem com clique duplo no arquivo.
+
+**Versão atual (raiz):** não há suíte de testes automatizada. Para testar:
 
 1. **Sintaxe:** extraia o JavaScript e rode `node --check`, por exemplo assim:
    ```sh

@@ -1,0 +1,6 @@
+{
+  "name": "sextante",
+  "private": true,
+  "type": "module",
+  "description": "Marca os arquivos .js como módulos para o Node rodar os testes. Não há dependências nem npm."
+}

@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 e 0.2.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -49,7 +49,9 @@ js/markdown.js        formatação segura das notas
 js/telas/*.js         uma tela por arquivo: acoes, visualizacao, responsaveis, configurar, ajuda
 js/identidade.js      nome do sistema e textos de identificação, num lugar só (seção 3.1)
 js/app.js             estado, navegação, partida
-testes/*.test.js      testes automáticos (node --test)
+testes/*.test.js      testes automáticos (node --test, rodado dentro de v2/)
+testes/contrato-banco.js  garantias que todo banco cumpre (seção 3.4)
+package.json          só marca os arquivos como módulos para o Node; sem dependências
 ```
 
 - **Funções puras:** cálculo e simulação não acessam a tela nem o banco. Recebem dados e devolvem resultados. Isso permite testá-las com o Node, sem navegador.
@@ -105,6 +107,7 @@ Fica para a época da troca, fora da versão 2: o programa do servidor, que pass
 | estrutura | Lista de **fases**, cada uma com sua lista de **etapas**: `[{id, nome, etapas:[{id, nome}]}]`, na ordem de exibição (seção 8.3) |
 | camposOpcionais | Quais campos opcionais o plano usa: fases e etapas, descrição, entrega e notas. Desligados, eles somem do formulário, da tabela e das exportações, mas os dados já gravados são mantidos |
 | criadoEm | Data e hora de criação |
+| alteradoEm, alteradoPor | Momento e autor da última gravação no plano |
 | excluidoEm, excluidoPor | Exclusão lógica (seção 4.7). Vazio: plano ativo |
 
 Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (a categoria "quase sem folga" deixa de existir; ver seção 7.3).
@@ -438,7 +441,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 ### Fase 0: preparação (nada muda para os usuários)
 
 0.1. ✔ Pasta `/v2/` no site, com página provisória; AGENTS.md ajustado (a regra do arquivo único passa a valer só para a versão atual; testes com `node --test`).
-0.2. Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
+0.2. ✔ Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
 0.3. Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
 0.4. Plano de exemplo, com dados fictícios, e cópia do plano da PI² para o teste de comparação (só leitura dos dados reais).
 0.5. Base visual: cores, temas claro e escuro, ícones em SVG e barra do topo.

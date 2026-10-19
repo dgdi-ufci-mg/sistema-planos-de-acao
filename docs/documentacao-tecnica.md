@@ -440,6 +440,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 33.1 | Especificação da reescrita: segundo projeto Firebase para a versão 2, abertura do sistema pelo último plano, exclusão encadeada com janela de alternativas, troca simplificada, nome candidato "Dira". Sem mudança no sistema |
 | 34 | Especificação da reescrita: nome provisório "Sextante" para a versão 2, como variável única no código. Sem mudança no sistema |
 | 35 | Versão 2, passo 0.1: pasta `v2/` publicada com página provisória; AGENTS.md ajustado (regra 9, um passo por vez; arquivos separados só em `v2/`); ordem de trabalho aprovada. Sem mudança na versão atual |
+| 36 | Versão 2, passo 0.2: estrutura de arquivos em `v2/` (identidade, Store, banco em memória), 16 testes automáticos com `node --test`, contrato dos bancos; AGENTS.md com o comando de teste da versão 2. Sem mudança na versão atual |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes
