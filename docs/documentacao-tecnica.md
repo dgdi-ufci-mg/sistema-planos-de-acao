@@ -442,6 +442,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 35 | Versão 2, passo 0.1: pasta `v2/` publicada com página provisória; AGENTS.md ajustado (regra 9, um passo por vez; arquivos separados só em `v2/`); ordem de trabalho aprovada. Sem mudança na versão atual |
 | 36 | Versão 2, passo 0.2: estrutura de arquivos em `v2/` (identidade, Store, banco em memória), 16 testes automáticos com `node --test`, contrato dos bancos; AGENTS.md com o comando de teste da versão 2. Sem mudança na versão atual |
 | 37 | Versão 2, passo 0.3: dicionário de dados completo na seção 4 da especificação (convenções, diagrama das relações, tabelas com tipo e obrigatoriedade, valores calculados, mapeamento para Firebase e PostgreSQL, entidades previstas); `v2/js/modelo.js`; Store recusa campos fora do dicionário; teste do dicionário (31 testes no total). Sem mudança na versão atual |
+| 38 | Especificação da reescrita: entregas obrigatórias nos planos formalizados e registro do alcance com evidência (seção 16.7, passo 2.6 da ordem de trabalho). Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

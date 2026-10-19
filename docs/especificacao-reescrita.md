@@ -376,7 +376,7 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
 - **Histórico de alterações** (passo 1.16): quem, quando, entidade, chave, campo, valor antigo e valor novo; coleção ou tabela própria, só de acréscimo (seção 16.4).
-- **Fase 2:** tipo do plano, visibilidade, plano aberto ou fechado, arquivamento e papéis por plano (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
+- **Fase 2:** entregas do plano e registro do alcance, com evidência (seção 16.7); tipo do plano, visibilidade, plano aberto ou fechado, arquivamento e papéis por plano (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
 
 ---
 
@@ -659,11 +659,12 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.3. Arquivar e desarquivar; regra do último administrador; telas mínimas de administração (plano órfão).
 2.4. Tipos de plano e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1).
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
-2.6. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
-2.7. Checklist.
-2.8. Comentários.
-2.9. Extração personalizada (seção 16.6).
-2.10. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
+2.6. Entregas dos planos formalizados: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7).
+2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
+2.8. Checklist.
+2.9. Comentários.
+2.10. Extração personalizada (seção 16.6).
+2.11. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
 
 ### Fase 3: tarefas de equipe
 
@@ -688,7 +689,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 ### Decisões pendentes, com o passo em que precisam estar tomadas
 
-- **Nome padrão da situação inicial** nos planos sem dependências, como "A fazer" (passo 2.6).
+- **Nome padrão da situação inicial** nos planos sem dependências, como "A fazer" (passo 2.7).
 
 ## 13. Fora desta reescrita
 
@@ -815,3 +816,13 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
 
 - **No sistema, "Extração personalizada":** escolher os planos, os campos (com os nomes do dicionário de dados) e os filtros, e exportar em Excel (.xlsx), LibreOffice (.ods), CSV com ponto e vírgula, ou PDF pela impressão do navegador. Inclui exportar um plano com o histórico de alterações.
 - **No Data Lakehouse, não no sistema:** painéis entre planos (por programa, objetivo ou unidade) e análises livres, com ferramentas próprias de painel (por exemplo, Superset ou Metabase), alimentadas por ETL com Apache Spark ou Apache Hop a partir do PostgreSQL. Construir um "Power BI interno" no sistema foi descartado: seria um produto à parte.
+
+### 16.7 Entregas dos planos formalizados
+
+Pedido do responsável em 19/10/2026.
+
+- **Cadastro obrigatório:** todo plano vinculado a um Programa do PEI/PDI (tipo 1, seção 16.1) precisa ter as **entregas** que se quer alcançar cadastradas. O plano não é criado sem pelo menos uma entrega.
+- **Registro do alcance:** uma tela própria registra, para cada entrega, se foi alcançada, quando, por quem e com qual **evidência**: o documento que demonstra o resultado (identificação no SIPAC/Protocolo e link, como os documentos do plano; envio do arquivo no servidor da UFCI-MG, passo 4.3).
+- **Diferença em relação ao campo `entrega` da ação:** aquele descreve o produto de uma ação; estas são os resultados do plano como um todo, os que importam para o PEI/PDI.
+- **Em aberto, a definir no passo 2.6:** se as ações se ligam às entregas; se a entrega tem meta numérica (por exemplo, "capacitar 200 servidores") ou só "alcançada ou não"; se há alcance parcial; quem pode registrar o alcance e se alguém valida o registro.
+
