@@ -99,6 +99,7 @@ Fica para a época da troca, fora da versão 2: o programa do servidor, que pass
 | estrutura | Lista de **fases**, cada uma com sua lista de **etapas**: `[{id, nome, etapas:[{id, nome}]}]`, na ordem de exibição (seção 8.3) |
 | camposOpcionais | Quais campos opcionais o plano usa: fases e etapas, descrição, entrega e notas. Desligados, eles somem do formulário, da tabela e das exportações, mas os dados já gravados são mantidos |
 | criadoEm | Data e hora de criação |
+| excluidoEm, excluidoPor | Exclusão lógica (seção 4.7). Vazio: plano ativo |
 
 Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (a categoria "quase sem folga" deixa de existir; ver seção 7.3).
 
@@ -120,6 +121,7 @@ Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é
 | criadaEm | Data de criação da ação |
 | notas | Texto em Markdown (seção 8.5) |
 | alteradaEm, alteradaPor | Momento e autor da última gravação (seção 4.6) |
+| excluidaEm, excluidaPor | Exclusão lógica (seção 4.7). Vazio: ação ativa |
 
 Saem: custo, custo gasto, % concluído, início real e término real separado.
 
@@ -148,7 +150,7 @@ Retratos são só leitura: servem para comparar e conferir.
 
 ### 4.5 Responsável: `people/{id}`
 
-Lista global, com cadastro livre, como hoje: nome, sigla e setor. Um responsável pode ser de dois tipos, sem que o sistema precise distingui-los por um campo próprio:
+Lista global, com cadastro livre, como hoje: nome, sigla e setor, mais `excluidoEm` e `excluidoPor` (exclusão lógica, seção 4.7). Um responsável pode ser de dois tipos, sem que o sistema precise distingui-los por um campo próprio:
 
 - **Membro da equipe com acesso ao sistema:** tem o campo opcional **usuario**, o e-mail de login ligado a ele. Para esses, funcionam o filtro "Minhas ações" e, no futuro, os níveis de permissão.
 - **Responsável diverso:** pessoa de fora do sistema, unidade organizacional, equipe ou grupo de unidades. Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
@@ -167,6 +169,18 @@ Várias pessoas podem editar o mesmo plano ao mesmo tempo. Nenhuma gravação po
 | Importação, restauração e regravação de ações inteiras | Só em operações explícitas, com confirmação, e nunca durante a edição comum |
 
 Os campos `alteradaEm` e `alteradaPor` (seção 4.2) servem para o aviso. As regras dizem o que garantir, não como: cada banco as executa do seu jeito (seção 3.4). No modo local há um usuário só. Cada regra tem um teste em `node --test`, com duas gravações concorrentes simuladas.
+
+### 4.7 Exclusão lógica
+
+Nada é apagado de verdade pelo uso comum do sistema. Excluir um plano, uma ação ou um responsável grava **quando** e **quem** excluiu (`excluidoEm`/`excluidaEm` e `excluidoPor`/`excluidaPor`), e o item some da tela.
+
+- **Um único filtro, no `Store`.** As operações comuns (listar ações, calcular, exportar) devolvem só itens ativos. Ver os excluídos exige pedir explicitamente: a lixeira, a cópia de segurança e as cargas para o Data Lakehouse. Como nenhuma outra parte do código lê o banco (seção 3.4), o filtro existe num lugar só.
+- **Teste automático:** um plano de exemplo com uma ação excluída; o teste confere que ela não aparece na lista, no quadro, no cálculo, na simulação nem nas exportações, e que aparece na lixeira e na cópia de segurança.
+- **Desfazer:** a lixeira do plano mostra as ações excluídas, com quem e quando, e permite restaurá-las.
+- **Código ocupado:** o código de uma ação excluída continua reservado. Ao tentar criar uma ação com ele, o sistema oferece restaurar a antiga.
+- **Carga incremental:** `alteradaEm` muda também na exclusão, para que a carga perceba.
+
+Motivos da escolha, em vez de uma lista separada de exclusões: uma única consulta para a carga incremental, possibilidade de desfazer, auditoria completa (inclusive o conteúdo do que foi excluído) e retratos antigos que continuam mostrando o nome das ações.
 
 ---
 
