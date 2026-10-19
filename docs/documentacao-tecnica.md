@@ -436,6 +436,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 32 | Especificação da reescrita: seção 16, ampliação do escopo em discussão (tipos de plano, situações personalizadas, papéis e visibilidade, arquivamento, histórico de alterações, checklist, comentários, relatórios). Sem mudança no sistema |
 | 32.1 | Especificação da reescrita, seção 16: "Não liberada" no lugar de "Aguardando", aviso ao criar dependência numa ação liberada, ícones SVG no lugar de emojis, regra dos comentários. Sem mudança no sistema |
 | 33 | Especificação da reescrita: ordem de trabalho em fases e passos (seção 12, em aprovação), construção passo a passo na pasta `/v2/` (seção 3.3), documentos com identificação no SIPAC/Protocolo, "Não liberada" e ícones em todas as seções, extração personalizada e volta à situação inicial. Sem mudança no sistema |
+| 33.1 | Especificação da reescrita: segundo projeto Firebase para a versão 2, abertura do sistema pelo último plano, exclusão encadeada com janela de alternativas, troca simplificada, nome candidato "Dira". Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

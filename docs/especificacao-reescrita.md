@@ -69,8 +69,8 @@ testes/*.test.js      testes automáticos (node --test)
 A versão 2 é construída **passo a passo**, seguindo a regra "uma mudança por vez" do AGENTS.md, na ordem da seção 12. Cada passo é testado, documentado e conferido pelo responsável antes do seguinte.
 
 - **Onde:** numa pasta própria do site, `/v2/`, publicada junto com a versão atual. O responsável confere cada passo no endereço `.../sistema-planos-de-acao/v2/`, inclusive pelo celular. A versão atual continua na raiz até a troca (passo 1.20).
-- **Dados:** nas Fases 0 e 1, até o passo 1.14, a versão 2 usa só o banco em memória e o plano de exemplo; nada é gravado. A partir do passo 1.14, usa uma área de dados separada da versão atual, para nunca tocar nos planos reais (decisão pendente na seção 12).
-- **Versão atual congelada:** enquanto a versão 2 é construída, a versão atual recebe só correções de erros.
+- **Dados:** nas Fases 0 e 1, até o passo 1.14, a versão 2 usa só o banco em memória e o plano de exemplo; nada é gravado. A partir do passo 1.14, usa **um segundo projeto no Firebase**, só para a versão 2 (decisão do responsável em 19/10/2026), com arquivo de configuração próprio dentro de `/v2/`. Os planos reais ficam fisicamente separados. O responsável cria o projeto no console, com orientação passo a passo.
+- **Versão atual sem novidades:** enquanto a versão 2 é construída, a versão atual continua no ar como está. Não ganha funções novas, para não fazer o trabalho duas vezes; recebe só correções, se algo quebrar.
 
 ### 3.4 Preparação para a troca de banco
 
@@ -183,6 +183,11 @@ Nada é apagado de verdade pelo uso comum do sistema. Excluir um plano, uma aç�
 - **Um único filtro, no `Store`.** As operações comuns (listar ações, calcular, exportar) devolvem só itens ativos. Ver os excluídos exige pedir explicitamente: a lixeira, a cópia de segurança e as cargas para o Data Lakehouse. Como nenhuma outra parte do código lê o banco (seção 3.4), o filtro existe num lugar só.
 - **Teste automático:** um plano de exemplo com uma ação excluída; o teste confere que ela não aparece na lista, no quadro, no cálculo, na simulação nem nas exportações, e que aparece na lixeira e na cópia de segurança.
 - **Desfazer:** a lixeira do plano mostra as ações excluídas, com quem e quando, e permite restaurá-las.
+- **Exclusão encadeada:** excluir algo que outros itens usam abre uma janela que explica a consequência e oferece alternativas.
+  - **Ação de que outras dependem:** (a) ligar as dependentes às anteriores da ação excluída, mantendo a sequência lógica; é a opção já marcada, e só aparece se a excluída tiver anteriores; (b) só retirar a dependência; (c) cancelar e rever a estrutura.
+  - **Responsável que está em ações:** (a) substituir por outro responsável; (b) só retirar das ações; (c) cancelar.
+  - **Etapa ou fase com ações:** (a) mover as ações para outra etapa; (b) deixar as ações sem etapa; (c) cancelar.
+  - Cada mudança feita assim entra no histórico de alterações das ações afetadas. Restaurar o item da lixeira não refaz as ligações alteradas; o histórico mostra como eram.
 - **Código ocupado:** o código de uma ação excluída continua reservado. Ao tentar criar uma ação com ele, o sistema oferece restaurar a antiga.
 - **Carga incremental:** `alteradaEm` muda também na exclusão, para que a carga perceba.
 
@@ -441,7 +446,7 @@ Cada item é um passo: pequeno, testado, documentado e conferido pelo responsáv
 1.1. Calendário (dias úteis, datas excluídas com motivo) e caminho crítico, com "Não começa antes de". Teste de comparação com a PI².
 1.2. Situações (Não liberada, Liberada, Concluída), carimbo Atrasada e regra "nada termina no passado".
 1.3. Simulação beta-PERT sem travar a tela, semente imutável, versão do cálculo e as duas prioridades. Documentação para conferência por fora (seção 15).
-1.4. Tela inicial: boas-vindas, "Ver um plano de exemplo" e, com o banco vazio, restauração da cópia de segurança.
+1.4. Abertura do sistema: quem não tem plano vê a tela de boas-vindas (criar plano, "Ver um plano de exemplo" e, com o banco vazio, restaurar a cópia de segurança); quem tem planos vai direto ao último plano aberto naquele aparelho; quem chega por um link de plano abre esse plano. As boas-vindas continuam acessíveis pelo menu do plano, e o plano de exemplo, pela Ajuda.
 1.5. Topo: menu do plano (lista, "Configurar este plano", "Novo plano"), menu do usuário e Ajuda (glossário e links "o que é?").
 1.6. Lista de ações: cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e animações; no celular, painel "Filtros e ordem" e botão (+).
 1.7. Janela da ação: edição no lugar, seletores com busca (sem ciclos), reestimativa, conclusão e histórico de estimativas.
@@ -457,7 +462,7 @@ Cada item é um passo: pequeno, testado, documentado e conferido pelo responsáv
 1.17. Aba Visualização: linha do tempo, fluxo, cronograma com comparação de retrato e data final.
 1.18. Retratos manuais.
 1.19. Importação e exportação (planilha e Mermaid), cópia de segurança e restauração.
-1.20. Troca: aviso aos usuários, cópia de segurança, gravação congelada na versão atual, migração dos dados (seção 11) e versão 2 na raiz. Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas; AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.
+1.20. Troca: cópia de segurança, migração dos dados (seção 11) e versão 2 na raiz. Se houver outros usuários nessa época, também aviso prévio e gravação congelada na versão atual durante a migração. Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas; AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.
 1.21. Piloto: plano da PI² atualizado com o andamento real e acompanhado na versão 2.
 1.22. Manual do usuário, quando o responsável liberar.
 
@@ -491,13 +496,12 @@ Cada item é um passo: pequeno, testado, documentado e conferido pelo responsáv
 - Previsão por classe de referência (documentação técnica, seção 9).
 - Aplicativo instalável no celular (PWA; documentação técnica, seção 9).
 - Avaliar baixar o diagrama como imagem.
+- Editor visual do fluxo dentro do sistema, que torne desnecessárias a importação e a exportação por Mermaid (desejo do responsável).
 - Reavaliar os pontos da seção 14 com o sistema em uso.
-- Revisar o nome do sistema, já que "Planos de Ação" deixa de abranger todos os tipos de plano (decisão do responsável).
+- Revisar o nome do sistema, já que "Planos de Ação" deixa de abranger todos os tipos de plano (decisão do responsável). Candidato: **Dira** ("bússola" em suaíli), em harmonia com o logotipo. Antes de adotar: conferir se não coincide com sigla de unidade da instituição e pesquisar marcas registradas no INPI.
 
 ### Decisões pendentes, com o passo em que precisam estar tomadas
 
-- **Área de dados separada da versão 2** (passo 1.14).
-- **Exclusão encadeada** (passo 1.15): o que acontece ao excluir uma ação de que outras dependem, um responsável atribuído a ações e uma fase ou etapa que tem ações.
 - **Nome padrão da situação inicial** nos planos sem dependências, como "A fazer" (passo 2.6).
 
 ## 13. Fora desta reescrita
