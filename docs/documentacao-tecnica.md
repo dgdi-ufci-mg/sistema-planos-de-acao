@@ -219,6 +219,8 @@ Com o plano da PI² Fase 1, o cálculo determinístico reproduziu o da planilha 
 
 ## 5. Modelo de dados
 
+**Esta seção é o dicionário de dados do sistema.** Toda alteração na estrutura do banco (entidade, campo, tipo, valores permitidos, chave ou relação) deve ser registrada aqui, no mesmo commit que a faz. Motivos: permitir que futuras pessoas compreendam o banco e servir de base às cargas (ETL) para o Data Lakehouse da instituição.
+
 ### 5.1 `projects/{idDoPlano}` — plano
 
 | Campo | Tipo | Descrição |
@@ -313,6 +315,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 | Decisão | Motivo |
 |---|---|
+| Dicionário de dados sempre atualizado, no mesmo commit de cada mudança no banco; na versão 2, com teste automático que compara código e dicionário | Facilita a compreensão do banco por quem vier depois e as cargas para o Data Lakehouse; o teste impede que código e documento divirjam |
 | Monte Carlo como método principal de previsão; PERT clássico só como comparação | O PERT ignora caminhos paralelos e superestima a chance de cumprir o prazo. Na PI², o PERT dá 93% e a simulação, 74%, para 14/04/2027 |
 | Distribuição triangular como padrão | Melhor relação custo-benefício e mais conservadora; beta-PERT fica disponível como opção |
 | Ranking por SSI ("prioridade de atenção") | A criticidade, sozinha, orienta mal as ações; o SSI combina criticidade e incerteza |
@@ -424,6 +427,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 26 | Especificação da reescrita: seletor de plano e "Configurar o plano" fundidos num menu do plano, com "Novo plano"; a engrenagem sai da barra. Sem mudança no sistema |
 | 27 | Especificação da reescrita: regras de edição simultânea (seção 4.6), que fecham três falhas da versão 1: listas regravadas inteiras, código de ação nova conferido só na tela e sobrescrita silenciosa. Sem mudança no sistema |
 | 28 | Especificação da reescrita: preparação para a troca de banco (seção 3.4): `Store` com operações do sistema, um arquivo por banco em `js/banco/`, testes como contrato e cópia de segurança como ponte; seção 4.6 sem termos do Firestore. Sem mudança no sistema |
+| 29 | Regra do dicionário de dados: toda mudança na estrutura do banco é registrada na seção 5 (e, na versão 2, na seção 4 da especificação) no mesmo commit; teste automático do dicionário previsto para a versão 2. Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

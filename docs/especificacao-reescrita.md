@@ -61,6 +61,7 @@ testes/*.test.js      testes automáticos (node --test)
 
 - **Testes de unidade** das funções de calendário, cálculo, simulação e Markdown, com `node --test`, sem dependências.
 - **Teste de comparação:** o plano da PI² precisa produzir, na versão 2, as mesmas datas do caminho crítico da versão atual, já que essa regra não muda. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência.
+- **Teste do dicionário de dados:** compara os campos usados pelo código (tipos JSDoc do modelo) com os da seção 4 e falha se divergirem. Roda com os demais, em toda mudança.
 - **Teste visual:** capturas de tela das três abas, nos temas claro e escuro e na largura de celular.
 
 ### 3.3 Fluxo de trabalho
