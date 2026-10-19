@@ -89,7 +89,7 @@ Regras do código:
   - Os detalhes estão na seção 5 da documentação.
 - O **código** da ação é o identificador do documento e **não pode ser mudado** depois de criado.
 - Um campo novo no documento exige revisar: importação, exportação, cópia de segurança, `firestore.rules` (se mudar o caminho) e a documentação.
-- **Dicionário de dados sempre atualizado.** Toda mudança na estrutura do banco (entidade, campo, tipo, valores permitidos, chave ou relação) atualiza o dicionário de dados **no mesmo commit**. Hoje ele é a seção 5 da documentação técnica; para a versão 2, a seção 4 da especificação da reescrita. Ele serve a quem for manter o sistema e às cargas para o Data Lakehouse da instituição.
+- **Dicionário de dados sempre atualizado.** Toda mudança na estrutura do banco (entidade, campo, tipo, valores permitidos, chave ou relação) atualiza o dicionário de dados **no mesmo commit**. Hoje ele é a seção 5 da documentação técnica; para a versão 2, a seção 4 da especificação da reescrita, com o lado do código em `v2/js/modelo.js`. Ele serve a quem for manter o sistema e às cargas para o Data Lakehouse da instituição.
 - **Teste do dicionário (versão 2).** Um teste automático compara os campos usados no código com os do dicionário e falha se divergirem. Rode-o em **toda** mudança, junto com os demais testes, e não só depois de muitas alterações: é rápido, e uma divergência pequena é fácil de corrigir.
 
 ## 6. Documentação técnica: como atualizar

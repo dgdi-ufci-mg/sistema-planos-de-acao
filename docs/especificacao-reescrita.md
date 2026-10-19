@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 e 0.2.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.3.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -41,6 +41,7 @@ css/estilo.css        aparência, variáveis de cor, temas claro e escuro
 js/calendario.js      dias úteis e feriados
 js/calculo.js         estimativas, caminho crítico, situações (funções puras, sem tela)
 js/simulacao.js       Monte Carlo (funções puras)
+js/modelo.js          campos de cada entidade: o lado "código" do dicionário de dados (seção 4)
 js/dados.js           Store: operações do sistema, sem termos de banco (seção 3.4)
 js/banco/firestore.js como o Firestore executa cada operação
 js/banco/local.js     o mesmo, em memória (modo local e testes)
@@ -91,79 +92,223 @@ Fica para a época da troca, fora da versão 2: o programa do servidor, que pass
 
 ---
 
-## 4. Modelo de dados
+## 4. Modelo de dados (dicionário de dados)
 
-### 4.1 Plano: `projects/{id}`
+**Esta seção é o dicionário de dados da versão 2.** Toda mudança na estrutura do banco atualiza esta seção no mesmo commit (AGENTS.md). O teste `testes/dicionario.test.js` compara cada tabela marcada abaixo com `js/modelo.js`, a lista de campos que o código usa, e falha se divergirem. O Store recusa gravar campos que não estejam nessa lista.
 
-| Campo | Descrição |
-|---|---|
-| nome | Nome do plano |
-| inicio | Data de início do plano |
-| prazoFinal | Prazo final (por exemplo, o fixado por ato da Diretoria-Geral) |
-| datasExcluidas | Lista `{data, motivo}`: feriados e outras datas sem expediente, cada uma com o motivo, para conferência posterior |
-| documentos | Lista `{nome, data, identificacao, link}`: documentos do plano, como o plano aprovado e revisões. `identificacao` é o número do documento no sistema de protocolo da instituição (SIPAC/Protocolo); `link` é opcional. O envio do próprio arquivo ao sistema fica para o servidor da UFCI-MG (Fase 4): no Firebase gratuito, guardar arquivos exige o plano pago |
-| simulacoes | Número de simulações (padrão 10.000). Definido na criação do plano e **imutável** depois |
-| semente | Semente da simulação (padrão 20261014). Definida na criação do plano e **imutável** depois |
-| estrutura | Lista de **fases**, cada uma com sua lista de **etapas**: `[{id, nome, etapas:[{id, nome}]}]`, na ordem de exibição (seção 8.3) |
-| camposOpcionais | Quais campos opcionais o plano usa: fases e etapas, descrição, entrega e notas. Desligados, eles somem do formulário, da tabela e das exportações, mas os dados já gravados são mantidos |
-| criadoEm | Data e hora de criação |
-| alteradoEm, alteradoPor | Momento e autor da última gravação no plano |
-| excluidoEm, excluidoPor | Exclusão lógica (seção 4.7). Vazio: plano ativo |
+Quando a versão 2 entrar no ar, esta seção passa para a documentação técnica.
 
-Saem: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (a categoria "quase sem folga" deixa de existir; ver seção 7.3).
+### Convenções
 
-### 4.2 Ação: `projects/{id}/acoes/{código}`
+- **Data:** texto `AAAA-MM-DD`, sem hora nem fuso. É uma data do calendário, lida no horário de Brasília. Exemplo: `2026-10-19`.
+- **Momento:** texto ISO 8601 em UTC, com milissegundos e `Z`. Exemplo: `2026-10-19T13:45:00.000Z` (10h45 em Brasília).
+- **Id:** texto gerado pelo sistema (UUID). Exemplo: `3f2b8c1e-…`. Exceção: a ação, cuja chave é o código.
+- **Usuário:** e-mail de login de quem gravou. Vazio quando não há login (modo local).
+- **Dias úteis:** número de dias úteis do plano, descontadas as datas excluídas. Aceita frações, como `2.5`.
+- **Vazio:** campo ausente ou `null`. "Obrig." indica se o campo precisa ter valor.
+- **Exclusão lógica:** nada é apagado; `excluidoEm` preenchido indica item excluído (seção 4.7).
+- **Nomes dos campos:** em português, sem acentos, no formato `palavraPalavra`.
 
-| Campo | Descrição |
-|---|---|
-| codigo | Identificador único. Não muda depois de criado |
-| ordem | Ordem de exibição |
-| etapa | Id da etapa a que a ação pertence (e, por ela, a fase). Vazio: ação sem fase nem etapa |
-| rotulo | Nome curto, usado no cronograma e no diagrama |
-| descricao | Descrição completa |
-| entrega | Entrega esperada (coluna "Entrega" da planilha da PI²). Campo opcional |
-| dependeDe | Lista de códigos das ações anteriores |
-| responsaveis | Lista de ids de responsáveis |
-| estimativas | Histórico de estimativas, da primeira à mais recente (seção 5.3) |
-| concluidaEm | Data de conclusão, ou vazio |
-| naoAntesDe | Data mínima de liberação, opcional (seção 5.1) |
-| criadaEm | Data de criação da ação |
-| notas | Texto em Markdown (seção 8.5) |
-| alteradaEm, alteradaPor | Momento e autor da última gravação (seção 4.6) |
-| excluidaEm, excluidaPor | Exclusão lógica (seção 4.7). Vazio: ação ativa |
+### Entidades e relações
 
-Saem: custo, custo gasto, % concluído, início real e término real separado.
+```mermaid
+erDiagram
+  PLANO ||--o{ FASE : "estrutura"
+  FASE ||--o{ ETAPA : "etapas"
+  ETAPA |o--o{ ACAO : "etapa"
+  PLANO ||--o{ ACAO : "contém"
+  ACAO }o--o{ ACAO : "dependeDe"
+  ACAO }o--o{ RESPONSAVEL : "responsaveis"
+  ACAO ||--|{ ESTIMATIVA : "estimativas"
+  PLANO ||--o{ RETRATO : "retratos"
+  RETRATO ||--|{ RETRATO_ACAO : "acoes"
+  PLANO ||--o{ DATA_EXCLUIDA : "datasExcluidas"
+  PLANO ||--o{ DOCUMENTO : "documentos"
+```
+
+- Um **plano** tem ações, retratos, datas excluídas, documentos e uma estrutura de fases e etapas.
+- Uma **ação** pertence a um plano e, opcionalmente, a uma etapa; depende de outras ações do mesmo plano; tem responsáveis e um histórico de estimativas.
+- **Responsáveis** são globais: os mesmos para todos os planos.
+
+### 4.1 Plano
+
+<!-- dicionario: plano -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do plano. Imutável | `3f2b8c1e-…` |
+| `nome` | texto | sim | Nome do plano | `PI² · Fase 1` |
+| `inicio` | data | não | Início do plano: a partir dele contam os dias úteis | `2026-08-03` |
+| `prazoFinal` | data | não | Prazo final, por exemplo o fixado por ato da Diretoria-Geral | `2027-04-14` |
+| `datasExcluidas` | lista de data excluída (4.1.1) | não | Feriados e outras datas sem expediente | |
+| `documentos` | lista de documento (4.1.2) | não | Documentos do plano, como o plano aprovado e suas revisões | |
+| `simulacoes` | inteiro | sim | Número de simulações. Padrão 10.000. Definido na criação e **imutável** (seção 5.7) | `10000` |
+| `semente` | inteiro | sim | Semente da simulação. Padrão 20261014. Definida na criação e **imutável** (seção 5.7) | `20261014` |
+| `estrutura` | lista de fase (4.1.3) | não | Fases e etapas, na ordem de exibição (seção 8.3) | |
+| `camposOpcionais` | campos opcionais (4.1.4) | não | Quais campos opcionais o plano usa. Ausente: todos ligados | |
+| `criadoEm` | momento | sim | Criação do plano. Imutável | `2026-10-19T13:45:00.000Z` |
+| `alteradoEm` | momento | sim | Última gravação no plano | |
+| `alteradoPor` | usuário | não | Autor da última gravação | `ana@ufci.edu.br` |
+| `excluidoEm` | momento | não | Exclusão lógica (seção 4.7). Vazio: plano ativo | |
+| `excluidoPor` | usuário | não | Quem excluiu | |
+
+Saem da versão atual: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (seção 7.3).
+
+#### 4.1.1 Data excluída: cada item de `datasExcluidas`
+
+<!-- dicionario: dataExcluida -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `data` | data | sim | Dia sem expediente, que não conta como dia útil | `2026-11-20` |
+| `motivo` | texto | não | Motivo, para conferência posterior | `Consciência Negra` |
+
+#### 4.1.2 Documento: cada item de `documentos`
+
+<!-- dicionario: documento -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `nome` | texto | sim | Nome do documento | `Plano aprovado` |
+| `data` | data | não | Data do documento | `2026-08-01` |
+| `identificacao` | texto | não | Número no sistema de protocolo da instituição (SIPAC/Protocolo) | `23062.001234/2026-11` |
+| `link` | texto (endereço web) | não | Endereço para abrir o documento. O envio do arquivo fica para o servidor da UFCI-MG (passo 4.3) | `https://…` |
+
+#### 4.1.3 Fase e etapa: cada item de `estrutura` e de `etapas`
+
+<!-- dicionario: fase -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador da fase. Imutável | `f1` |
+| `nome` | texto | sim | Nome da fase | `Planejamento` |
+| `etapas` | lista de etapa | sim | Etapas da fase, na ordem de exibição | |
+
+<!-- dicionario: etapa -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador da etapa, usado no campo `etapa` da ação. Imutável | `e1` |
+| `nome` | texto | sim | Nome da etapa | `Requisitos e arquitetura` |
+
+#### 4.1.4 Campos opcionais: o objeto `camposOpcionais`
+
+<!-- dicionario: camposOpcionais -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `fasesEtapas` | sim/não | não | Usa fases e etapas. Desligado: lista sem separadores | `true` |
+| `descricao` | sim/não | não | Usa o campo descrição das ações | `true` |
+| `entrega` | sim/não | não | Usa o campo entrega das ações | `false` |
+| `notas` | sim/não | não | Usa as notas das ações | `true` |
+
+Desligar um campo o esconde do formulário, da tabela e das exportações; os dados já gravados são mantidos.
+
+### 4.2 Ação
+
+Chave: o par (plano, `codigo`). O código é único dentro do plano.
+
+<!-- dicionario: acao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `codigo` | texto | sim | Identificador da ação no plano: de 2 a 8 letras ou números. Imutável, porque é a referência das dependências | `LEV` |
+| `ordem` | inteiro | sim | Posição na "Ordem do plano" | `3` |
+| `etapa` | id | não | Etapa a que a ação pertence (e, por ela, a fase). Vazio: sem fase nem etapa | `e1` |
+| `rotulo` | texto | sim | Nome curto, usado no cronograma e no diagrama | `Levantar requisitos` |
+| `descricao` | texto | não | Descrição completa | |
+| `entrega` | texto | não | Entrega esperada (coluna "Entrega" da planilha da PI²) | `Documento de requisitos` |
+| `dependeDe` | lista de código | sim | Códigos das ações anteriores, do mesmo plano. Lista vazia: sem anteriores | `["LEV","REQ"]` |
+| `responsaveis` | lista de id | sim | Ids dos responsáveis (4.5). Lista vazia: sem responsável | |
+| `estimativas` | lista de estimativa (4.3) | sim | Da primeira à mais recente. A vigente é a última | |
+| `concluidaEm` | data | não | Data de conclusão. Vazio: não concluída | `2026-09-22` |
+| `naoAntesDe` | data | não | Data mínima de liberação, "Não começa antes de" (seção 5.1) | `2026-10-19` |
+| `notas` | texto (Markdown) | não | Notas da ação (seção 8.5) | |
+| `criadaEm` | momento | sim | Criação da ação. Imutável | |
+| `alteradaEm` | momento | sim | Última gravação na ação (seção 4.6) | |
+| `alteradaPor` | usuário | não | Autor da última gravação | |
+| `excluidaEm` | momento | não | Exclusão lógica (seção 4.7). Vazio: ação ativa | |
+| `excluidaPor` | usuário | não | Quem excluiu | |
+
+Saem da versão atual: custo, custo gasto, % concluído, início real e término real separado.
 
 ### 4.3 Estimativa: cada item de `estimativas`
 
-| Campo | Descrição |
-|---|---|
-| em | Data em que a estimativa foi feita |
-| por | Usuário que a registrou |
-| o, m, p | Otimista, mais provável e pessimista, em dias úteis |
-| contaDe | `"liberacao"` (a primeira estimativa conta da liberação) ou `"data"` (reestimativas contam do dia `em`) |
-| motivo | Opcional |
+<!-- dicionario: estimativa -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `em` | data | sim | Dia em que a estimativa foi feita | `2026-10-19` |
+| `por` | usuário | não | Quem registrou | |
+| `o` | dias úteis | sim | Otimista | `3` |
+| `m` | dias úteis | sim | Mais provável. Entre `o` e `p` | `5` |
+| `p` | dias úteis | sim | Pessimista | `10` |
+| `contaDe` | texto | sim | `liberacao`: conta da liberação (primeira estimativa); `data`: conta do dia `em` (reestimativa) | `data` |
+| `motivo` | texto | não | Motivo da reestimativa | `Atraso do fornecedor` |
 
-A primeira estimativa nunca é alterada. Corrigir um erro de digitação logo após cadastrar substitui a estimativa mais recente, sem criar histórico, desde que seja no mesmo dia e antes de qualquer reestimativa.
+A primeira estimativa nunca é alterada. Corrigir um erro de digitação logo após cadastrar substitui a estimativa mais recente, sem criar histórico, desde que seja no mesmo dia e antes de qualquer reestimativa. Enquanto a ação não está liberada, a estimativa muda sem histórico (seção 5.3).
 
-### 4.4 Retrato: `projects/{id}/retratos/{id}`
+### 4.4 Retrato
 
-| Campo | Descrição |
-|---|---|
-| nome | Por exemplo, "Plano aprovado" ou "Replanejamento de dezembro" |
-| criadoEm, criadoPor | Data e autor |
-| acoes | Cópia, para cada ação, de: estimativa vigente, datas previstas de liberação e conclusão, dependências e situação |
-| resumo | Conclusão prevista, data segura e chance de cumprir o prazo naquele momento |
-| origem | `"manual"` (salvo por um administrador do plano) ou `"automatico"` (salvo pelo sistema, na periodicidade definida pelo Administrador do Sistema). Na tela, cada origem tem um selo próprio |
-| semente, simulacoes, versaoCalculo | Parâmetros usados, para que o cálculo possa ser refeito igual no futuro |
+Chave: id. Pertence a um plano. Só leitura depois de criado.
 
-Retratos são só leitura: servem para comparar e conferir. Os **automáticos não podem ser excluídos** à mão, para o histórico usado no Data Lakehouse não ter buracos. O retrato automático depende de um programa que rode sozinho no servidor; por isso, chega com o servidor da UFCI-MG (seção 3.4). No Firebase gratuito, só há retratos manuais.
+<!-- dicionario: retrato -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do retrato | |
+| `nome` | texto | sim | Nome dado ao retrato | `Plano aprovado` |
+| `origem` | texto | sim | `manual` (salvo por um administrador do plano) ou `automatico` (salvo pelo sistema). Na tela, cada origem tem um selo | `manual` |
+| `criadoEm` | momento | sim | Quando foi salvo | |
+| `criadoPor` | usuário | não | Quem salvou. Vazio nos automáticos | |
+| `semente` | inteiro | sim | Semente usada no cálculo | `20261014` |
+| `simulacoes` | inteiro | sim | Número de simulações usado | `10000` |
+| `versaoCalculo` | inteiro | sim | Versão do método de cálculo (seção 5.7) | `1` |
+| `resumo` | resumo do retrato (4.4.2) | sim | Resultado do plano naquele momento | |
+| `acoes` | lista de ação do retrato (4.4.1) | sim | Situação de cada ação naquele momento | |
 
-### 4.5 Responsável: `people/{id}`
+Os retratos **automáticos não podem ser excluídos** à mão, para o histórico usado no Data Lakehouse não ter buracos. O retrato automático depende de um programa no servidor; chega com o servidor da UFCI-MG (passo 4.4). No Firebase gratuito, só há retratos manuais.
 
-Lista global, com cadastro livre, como hoje: nome, sigla e setor, mais `excluidoEm` e `excluidoPor` (exclusão lógica, seção 4.7). Um responsável pode ser de dois tipos, sem que o sistema precise distingui-los por um campo próprio:
+#### 4.4.1 Ação do retrato: cada item de `acoes`
 
-- **Membro da equipe com acesso ao sistema:** tem o campo opcional **usuario**, o e-mail de login ligado a ele. Para esses, funcionam o filtro "Minhas ações" e, no futuro, os níveis de permissão.
+<!-- dicionario: retratoAcao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `codigo` | texto | sim | Código da ação | `LEV` |
+| `rotulo` | texto | sim | Rótulo naquele momento, para o retrato continuar legível se a ação for excluída | |
+| `o` | dias úteis | sim | Otimista da estimativa vigente | |
+| `m` | dias úteis | sim | Mais provável da estimativa vigente | |
+| `p` | dias úteis | sim | Pessimista da estimativa vigente | |
+| `dependeDe` | lista de código | sim | Dependências naquele momento | |
+| `situacao` | texto | sim | `naoLiberada`, `liberada` ou `concluida` | `liberada` |
+| `atrasada` | sim/não | sim | Carimbo Atrasada naquele momento | `false` |
+| `liberacaoPrevista` | data | sim | Data prevista de liberação | |
+| `conclusaoPrevista` | data | sim | Data prevista de conclusão | |
+| `prioridadeExecucao` | número de 0 a 1 | sim | Índice de criticidade (seção 7.1) | `0.72` |
+| `prioridadeRevisao` | número de 0 a 1 | sim | Contribuição para a variância do prazo (seção 7.2) | `0.18` |
+
+#### 4.4.2 Resumo do retrato: o objeto `resumo`
+
+<!-- dicionario: retratoResumo -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `conclusaoPrevista` | data | sim | Conclusão prevista do plano (P50) | `2026-12-22` |
+| `dataSegura` | data | sim | Data com 80% de chance (P80) | `2027-01-15` |
+| `p95` | data | sim | Data com 95% de chance | `2027-02-03` |
+| `chancePrazo` | número de 0 a 1 | não | Chance de cumprir o prazo final. Vazio se o plano não tem prazo final | `0.74` |
+
+### 4.5 Responsável
+
+Chave: id. Lista global, com cadastro livre, compartilhada por todos os planos.
+
+<!-- dicionario: responsavel -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do responsável. Imutável | |
+| `nome` | texto | sim | Nome da pessoa, equipe ou unidade | `Ana Souza` |
+| `sigla` | texto | não | Sigla curta, usada em espaços pequenos como o diagrama | `ANA` |
+| `setor` | texto | não | Setor ou unidade | `DGDI` |
+| `usuario` | usuário | não | E-mail de login ligado a este responsável. Vazio: responsável sem login | `ana@ufci.edu.br` |
+| `criadoEm` | momento | sim | Cadastro do responsável. Imutável | |
+| `alteradoEm` | momento | sim | Última gravação | |
+| `alteradoPor` | usuário | não | Autor da última gravação | |
+| `excluidoEm` | momento | não | Exclusão lógica (seção 4.7) | |
+| `excluidoPor` | usuário | não | Quem excluiu | |
+
+Um responsável pode ser de dois tipos, sem campo próprio para distingui-los:
+
+- **Membro da equipe com acesso ao sistema:** tem `usuario`. Para esses, funcionam o filtro "Minhas ações" e, na Fase 2, os papéis por plano.
 - **Responsável diverso:** pessoa de fora do sistema, unidade organizacional, equipe ou grupo de unidades. Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
 
 ### 4.6 Edição simultânea
@@ -197,6 +342,41 @@ Nada é apagado de verdade pelo uso comum do sistema. Excluir um plano, uma aç�
 - **Carga incremental:** `alteradaEm` muda também na exclusão, para que a carga perceba.
 
 Motivos da escolha, em vez de uma lista separada de exclusões: uma única consulta para a carga incremental, possibilidade de desfazer, auditoria completa (inclusive o conteúdo do que foi excluído) e retratos antigos que continuam mostrando o nome das ações.
+
+### 4.8 Valores calculados, que não ficam no banco
+
+O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que deriva deles e da data de hoje é calculado na tela, a cada mudança, e **não é gravado**: um valor gravado ficaria velho no dia seguinte e criaria duas fontes de verdade. Quem fizer cargas para o Data Lakehouse encontra esses valores congelados nos retratos (4.4).
+
+| Valor | Onde é definido |
+|---|---|
+| Situação (Não liberada, Liberada, Concluída) e carimbo Atrasada | Seção 6 |
+| Datas previstas de liberação e de conclusão, folga | Seções 5.1 a 5.5 |
+| Estimativa vigente, número de reprogramações, deslocamento do término | Seção 5.3 |
+| Conclusão prevista (P50), data segura (P80), P95 e chance de cumprir o prazo | Seção 5.7 |
+| Prioridade de execução e prioridade de revisão | Seções 7.1, 7.2 e 15 |
+
+### 4.9 Onde cada entidade é guardada
+
+| Entidade | Firebase (versão 2, segundo projeto) | PostgreSQL (servidor da UFCI-MG, proposta) |
+|---|---|---|
+| Plano | `planos/{id}` | tabela `plano` |
+| Data excluída, documento | listas dentro do plano | tabelas `plano_data_excluida`, `plano_documento` |
+| Fase, etapa | lista `estrutura` dentro do plano | tabelas `fase`, `etapa` |
+| Ação | `planos/{id}/acoes/{codigo}` | tabela `acao`, chave (`plano_id`, `codigo`) |
+| Dependência | lista `dependeDe` dentro da ação | tabela `acao_dependencia` |
+| Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
+| Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
+| Retrato | `planos/{id}/retratos/{id}` | tabelas `retrato`, `retrato_acao` |
+| Responsável | `responsaveis/{id}` | tabela `responsavel` |
+
+Os nomes do Firebase passam a ser em português, porque a versão 2 usa um projeto novo (seção 3.3); a migração (seção 11) converte os nomes da versão atual (`projects`, `tasks`, `people`). No PostgreSQL, as listas viram tabelas de ligação e as regras da seção 4.6 viram restrições do banco (seção 3.4).
+
+### 4.10 Entidades previstas, ainda fora do código
+
+Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
+
+- **Histórico de alterações** (passo 1.16): quem, quando, entidade, chave, campo, valor antigo e valor novo; coleção ou tabela própria, só de acréscimo (seção 16.4).
+- **Fase 2:** tipo do plano, visibilidade, plano aberto ou fechado, arquivamento e papéis por plano (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
 
 ---
 
@@ -430,6 +610,7 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano, antes de
 | `status` (importado da PI²) | descartado; a situação é calculada |
 | `baseline` do plano | retrato "Plano original", com as datas guardadas |
 | `holidays` (texto) | `datasExcluidas` com motivo vazio |
+| coleções `projects`, `tasks` e `people` | `planos`, `acoes` e `responsaveis`, no segundo projeto do Firebase (seção 4.9) |
 | coluna "Entrega" da planilha | `entrega` (importação passa a reconhecê-la) |
 
 ---
@@ -442,7 +623,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 0.1. ✔ Pasta `/v2/` no site, com página provisória; AGENTS.md ajustado (a regra do arquivo único passa a valer só para a versão atual; testes com `node --test`).
 0.2. ✔ Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
-0.3. Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
+0.3. ✔ Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
 0.4. Plano de exemplo, com dados fictícios, e cópia do plano da PI² para o teste de comparação (só leitura dos dados reais).
 0.5. Base visual: cores, temas claro e escuro, ícones em SVG e barra do topo.
 

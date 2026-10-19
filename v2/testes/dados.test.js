@@ -89,10 +89,25 @@ describe("Store: ações", () => {
 });
 
 describe("Store: responsáveis", () => {
-  it("cria e lista responsáveis", async () => {
+  it("cria e lista responsáveis, com carimbos", async () => {
     const store = storeDeTeste();
     await store.criarResponsavel({ nome: "Ana Souza", sigla: "ANA", setor: "DGDI" });
     const [ana] = await store.listarResponsaveis();
     assert.deepEqual([ana.nome, ana.sigla, ana.setor], ["Ana Souza", "ANA", "DGDI"]);
+    assert.ok(ana.criadoEm);
+    assert.equal(ana.alteradoPor, "ana@ufci.edu.br");
+  });
+});
+
+describe("Store: só grava campos do dicionário de dados", () => {
+  it("recusa campo desconhecido no plano, na ação e no responsável", async () => {
+    const store = storeDeTeste();
+    await assert.rejects(store.criarPlano({ nome: "P", custo: 10 }), { codigo: "campo-desconhecido" });
+    const planoId = await store.criarPlano({ nome: "P" });
+    await assert.rejects(store.alterarPlano(planoId, { nearCrit: 10 }), { codigo: "campo-desconhecido" });
+    await assert.rejects(store.criarAcao(planoId, { codigo: "LEV", rotulo: "x", pct: 50 }), { codigo: "campo-desconhecido" });
+    await store.criarAcao(planoId, { codigo: "LEV", rotulo: "x" });
+    await assert.rejects(store.alterarAcao(planoId, "LEV", { name: "y" }), { codigo: "campo-desconhecido" });
+    await assert.rejects(store.criarResponsavel({ nome: "Ana", email: "a@b" }), { codigo: "campo-desconhecido" });
   });
 });

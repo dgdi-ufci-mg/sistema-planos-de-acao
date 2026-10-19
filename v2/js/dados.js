@@ -6,6 +6,7 @@
  * Quem executa as operações é o banco recebido (por enquanto, o banco em memória).
  */
 import { ErroDeDados } from "./banco/local.js";
+import { CAMPOS } from "./modelo.js";
 
 export { ErroDeDados };
 
@@ -36,6 +37,12 @@ export function criarStore(banco, opcoes = {}) {
   const usuario = opcoes.usuario ?? null;
   const novoId = opcoes.novoId ?? (() => globalThis.crypto.randomUUID());
 
+  /** Recusa campos fora do dicionário de dados (especificação, seção 4). */
+  const recusarDesconhecidos = (campos, entidade) => {
+    const desconhecido = Object.keys(campos).find((campo) => !CAMPOS[entidade].includes(campo));
+    if (desconhecido) throw new ErroDeDados("campo-desconhecido", `O campo "${desconhecido}" não existe em ${entidade}.`);
+  };
+
   const recusarFixos = (campos, fixos) => {
     const proibido = Object.keys(campos).find((campo) => fixos.includes(campo));
     if (proibido) throw new ErroDeDados("campo-fixo", `O campo "${proibido}" não pode ser alterado.`);
@@ -44,11 +51,13 @@ export function criarStore(banco, opcoes = {}) {
   return {
     // --- planos ---
     /** Cria um plano. Semente e número de simulações ficam fixos daqui em diante. */
-    async criarPlano({ nome, inicio, prazoFinal, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO }) {
+    async criarPlano(dados) {
+      recusarDesconhecidos(dados, "plano");
+      const { nome, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO, ...outros } = dados;
       if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do plano.");
       const id = novoId();
       await banco.criarPlano(id, {
-        nome: nome.trim(), inicio, prazoFinal, semente, simulacoes,
+        ...outros, nome: nome.trim(), semente, simulacoes,
         criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario,
       });
       return id;
@@ -56,13 +65,16 @@ export function criarStore(banco, opcoes = {}) {
     lerPlano: (id) => banco.lerPlano(id),
     listarPlanos: () => banco.listarPlanos(),
     async alterarPlano(id, campos) {
+      recusarDesconhecidos(campos, "plano");
       recusarFixos(campos, FIXOS_DO_PLANO);
       await banco.alterarPlano(id, { ...campos, alteradoEm: agora(), alteradoPor: usuario });
     },
 
     // --- ações ---
     /** Cria uma ação no fim da ordem do plano. O código precisa estar livre. */
-    async criarAcao(planoId, { codigo, rotulo, ...outros }) {
+    async criarAcao(planoId, dados) {
+      recusarDesconhecidos(dados, "acao");
+      const { codigo, rotulo, ...outros } = dados;
       if (!CODIGO_VALIDO.test(codigo ?? "")) {
         throw new ErroDeDados("codigo-invalido", "O código deve ter de 2 a 8 letras ou números.");
       }
@@ -84,19 +96,26 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Grava só os campos informados, com data e autor da alteração. */
     async alterarAcao(planoId, codigo, campos) {
+      recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
       await banco.alterarAcao(planoId, codigo, { ...campos, alteradaEm: agora(), alteradaPor: usuario });
     },
 
     // --- responsáveis ---
-    async criarResponsavel({ nome, sigla, setor = "" }) {
+    async criarResponsavel(dados) {
+      recusarDesconhecidos(dados, "responsavel");
+      const { nome, sigla = "", ...outros } = dados;
       if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do responsável.");
-      return banco.criarResponsavel(novoId(), { nome: nome.trim(), sigla: (sigla ?? "").trim(), setor });
+      return banco.criarResponsavel(novoId(), {
+        ...outros, nome: nome.trim(), sigla: sigla.trim(),
+        criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario,
+      });
     },
     listarResponsaveis: () => banco.listarResponsaveis(),
     async alterarResponsavel(id, campos) {
-      recusarFixos(campos, ["id"]);
-      await banco.alterarResponsavel(id, campos);
+      recusarDesconhecidos(campos, "responsavel");
+      recusarFixos(campos, ["id", "criadoEm"]);
+      await banco.alterarResponsavel(id, { ...campos, alteradoEm: agora(), alteradoPor: usuario });
     },
 
     // --- tempo real ---
