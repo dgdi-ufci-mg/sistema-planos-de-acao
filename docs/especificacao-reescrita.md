@@ -94,8 +94,8 @@ Fica para a época da troca, fora da versão 2: o programa do servidor, que pass
 | prazoFinal | Prazo final (por exemplo, o fixado por ato da Diretoria-Geral) |
 | datasExcluidas | Lista `{data, motivo}`: feriados e outras datas sem expediente, cada uma com o motivo, para conferência posterior |
 | documentos | Lista `{nome, data, link}`: documentos do plano, como o plano aprovado e revisões, guardados por link (por exemplo, no SEI) |
-| simulacoes | Número de simulações (padrão 10.000) |
-| semente | Semente da simulação (padrão 20261014) |
+| simulacoes | Número de simulações (padrão 10.000). Definido na criação do plano e **imutável** depois |
+| semente | Semente da simulação (padrão 20261014). Definida na criação do plano e **imutável** depois |
 | estrutura | Lista de **fases**, cada uma com sua lista de **etapas**: `[{id, nome, etapas:[{id, nome}]}]`, na ordem de exibição (seção 8.3) |
 | camposOpcionais | Quais campos opcionais o plano usa: fases e etapas, descrição, entrega e notas. Desligados, eles somem do formulário, da tabela e das exportações, mas os dados já gravados são mantidos |
 | criadoEm | Data e hora de criação |
@@ -145,8 +145,10 @@ A primeira estimativa nunca é alterada. Corrigir um erro de digitação logo ap
 | criadoEm, criadoPor | Data e autor |
 | acoes | Cópia, para cada ação, de: estimativa vigente, datas previstas de liberação e conclusão, dependências e situação |
 | resumo | Conclusão prevista, data segura e chance de cumprir o prazo naquele momento |
+| origem | `"manual"` (salvo por um administrador do plano) ou `"automatico"` (salvo pelo sistema, na periodicidade definida pelo Administrador do Sistema). Na tela, cada origem tem um selo próprio |
+| semente, simulacoes, versaoCalculo | Parâmetros usados, para que o cálculo possa ser refeito igual no futuro |
 
-Retratos são só leitura: servem para comparar e conferir.
+Retratos são só leitura: servem para comparar e conferir. Os **automáticos não podem ser excluídos** à mão, para o histórico usado no Data Lakehouse não ter buracos. O retrato automático depende de um programa que rode sozinho no servidor; por isso, chega com o servidor da UFCI-MG (seção 3.4). No Firebase gratuito, só há retratos manuais.
 
 ### 4.5 Responsável: `people/{id}`
 
@@ -229,7 +231,10 @@ Tudo é recalculado a cada mudança: conclusão, reestimativa ou edição. A est
 
 ### 5.7 Simulação de Monte Carlo
 
-- Distribuição beta-PERT; semente fixa e número de simulações configuráveis.
+- Distribuição beta-PERT.
+- **Semente e número de simulações visíveis, mas imutáveis.** São definidos na criação do plano (pelo usuário ou com o padrão) e aparecem em "Configurar este plano" só para leitura. Assim, qualquer pessoa ou IA pode conferir os resultados por fora, em planilha, Python ou R, e ninguém pode trocar a semente até o número "ficar bonito".
+- **Conferência por fora:** a seção 15 documenta o gerador de números (mulberry32), a ordem dos sorteios e o método de sorteio da beta-PERT, para permitir reproduzir os resultados **exatamente**. Uma ferramenta com outro gerador chega a resultados estatisticamente equivalentes, com diferença da ordem de meio ponto percentual na chance de cumprir o prazo.
+- **Versão do cálculo:** se um dia o método de cálculo mudar (por exemplo, a correção de um erro), a mesma semente passa a dar outro resultado. Por isso, o código tem um número de versão do cálculo, guardado em cada retrato.
 - Ações concluídas: duração real. Ações reestimadas: a contagem começa na data da reestimativa. Regra da seção 5.5 aplicada.
 - **Resultados do plano:** datas P50, P80 e P95 da conclusão, chance de cumprir o prazo final e distribuição das datas finais (gráfico).
 - **Resultados por ação:** índice de criticidade (seção 7.1) e contribuição para a variância do prazo (seção 7.2). Fórmulas e justificativas na seção 15.

@@ -315,6 +315,8 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 | Decisão | Motivo |
 |---|---|
+| Versão 2: semente e número de simulações definidos na criação do plano, visíveis e imutáveis; retratos guardam semente, simulações e versão do cálculo | Permite conferir os resultados por fora (planilha, Python, R) sem permitir trocar a semente para obter um número mais favorável |
+| Versão 2: retratos com origem manual ou automática; automáticos não podem ser excluídos | Histórico contínuo para o Data Lakehouse; o automático depende do servidor da UFCI-MG |
 | Versão 2: exclusão lógica (marcar como excluído) em planos, ações e responsáveis, em vez de apagar ou de registrar as exclusões à parte | Carga incremental com uma consulta só, possibilidade de desfazer, auditoria completa e retratos íntegros; o risco de itens excluídos reaparecerem é contido por um filtro único no `Store` e por teste automático |
 | Dicionário de dados sempre atualizado, no mesmo commit de cada mudança no banco; na versão 2, com teste automático que compara código e dicionário | Facilita a compreensão do banco por quem vier depois e as cargas para o Data Lakehouse; o teste impede que código e documento divirjam |
 | Monte Carlo como método principal de previsão; PERT clássico só como comparação | O PERT ignora caminhos paralelos e superestima a chance de cumprir o prazo. Na PI², o PERT dá 93% e a simulação, 74%, para 14/04/2027 |
@@ -430,6 +432,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 28 | Especificação da reescrita: preparação para a troca de banco (seção 3.4): `Store` com operações do sistema, um arquivo por banco em `js/banco/`, testes como contrato e cópia de segurança como ponte; seção 4.6 sem termos do Firestore. Sem mudança no sistema |
 | 29 | Regra do dicionário de dados: toda mudança na estrutura do banco é registrada na seção 5 (e, na versão 2, na seção 4 da especificação) no mesmo commit; teste automático do dicionário previsto para a versão 2. Sem mudança no sistema |
 | 30 | Especificação da reescrita: exclusão lógica de planos, ações e responsáveis (seção 4.7), com lixeira e teste automático. Sem mudança no sistema |
+| 31 | Especificação da reescrita: semente e simulações imutáveis e visíveis, com versão do cálculo; retratos manuais e automáticos. Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes
