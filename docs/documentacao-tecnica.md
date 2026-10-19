@@ -315,6 +315,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 | Decisão | Motivo |
 |---|---|
+| Versão 2: nome provisório "Sextante", definido num único lugar do código (`js/identidade.js`) | O sistema deixa de tratar só de planos de ação; o nome segue em avaliação e precisa ser fácil de trocar |
 | Versão 2: semente e número de simulações definidos na criação do plano, visíveis e imutáveis; retratos guardam semente, simulações e versão do cálculo | Permite conferir os resultados por fora (planilha, Python, R) sem permitir trocar a semente para obter um número mais favorável |
 | Versão 2: retratos com origem manual ou automática; automáticos não podem ser excluídos | Histórico contínuo para o Data Lakehouse; o automático depende do servidor da UFCI-MG |
 | Versão 2: exclusão lógica (marcar como excluído) em planos, ações e responsáveis, em vez de apagar ou de registrar as exclusões à parte | Carga incremental com uma consulta só, possibilidade de desfazer, auditoria completa e retratos íntegros; o risco de itens excluídos reaparecerem é contido por um filtro único no `Store` e por teste automático |
@@ -437,6 +438,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 32.1 | Especificação da reescrita, seção 16: "Não liberada" no lugar de "Aguardando", aviso ao criar dependência numa ação liberada, ícones SVG no lugar de emojis, regra dos comentários. Sem mudança no sistema |
 | 33 | Especificação da reescrita: ordem de trabalho em fases e passos (seção 12, em aprovação), construção passo a passo na pasta `/v2/` (seção 3.3), documentos com identificação no SIPAC/Protocolo, "Não liberada" e ícones em todas as seções, extração personalizada e volta à situação inicial. Sem mudança no sistema |
 | 33.1 | Especificação da reescrita: segundo projeto Firebase para a versão 2, abertura do sistema pelo último plano, exclusão encadeada com janela de alternativas, troca simplificada, nome candidato "Dira". Sem mudança no sistema |
+| 34 | Especificação da reescrita: nome provisório "Sextante" para a versão 2, como variável única no código. Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

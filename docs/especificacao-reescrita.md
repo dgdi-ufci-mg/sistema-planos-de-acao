@@ -47,6 +47,7 @@ js/banco/local.js     o mesmo, em memória (modo local e testes)
 js/acesso.js          login, menu do usuário
 js/markdown.js        formatação segura das notas
 js/telas/*.js         uma tela por arquivo: acoes, visualizacao, responsaveis, configurar, ajuda
+js/identidade.js      nome do sistema e textos de identificação, num lugar só (seção 3.1)
 js/app.js             estado, navegação, partida
 testes/*.test.js      testes automáticos (node --test)
 ```
@@ -56,6 +57,7 @@ testes/*.test.js      testes automáticos (node --test)
 - **Bibliotecas externas:** continuam só por CDN e com versão fixa: dagre 0.8.5 e Firebase compat 10.14.1.
 - **Teste local:** módulos não abrem com clique duplo no arquivo. É preciso um servidor simples, por exemplo `python3 -m http.server`. O README e o AGENTS.md serão atualizados.
 - **Modo legado do artefato do Claude:** removido.
+- **Nome do sistema como variável:** o nome aparece na tela, no título da aba do navegador, na Ajuda e nas exportações, mas é definido num único lugar, `js/identidade.js`. Trocar o nome é mudar uma linha. Nome provisório da versão 2: **Sextante** (decisão do responsável em 19/10/2026), sob avaliação.
 
 ### 3.2 Testes
 
@@ -498,7 +500,7 @@ Cada item é um passo: pequeno, testado, documentado e conferido pelo responsáv
 - Avaliar baixar o diagrama como imagem.
 - Editor visual do fluxo dentro do sistema, que torne desnecessárias a importação e a exportação por Mermaid (desejo do responsável).
 - Reavaliar os pontos da seção 14 com o sistema em uso.
-- Revisar o nome do sistema, já que "Planos de Ação" deixa de abranger todos os tipos de plano (decisão do responsável). Candidato: **Dira** ("bússola" em suaíli), em harmonia com o logotipo. Antes de adotar: conferir se não coincide com sigla de unidade da instituição e pesquisar marcas registradas no INPI.
+- Revisar o nome do sistema, já que "Planos de Ação" deixa de abranger todos os tipos de plano (decisão do responsável). Nome provisório adotado: **Sextante**, instrumento de navegação, em harmonia com o logotipo; continua sob avaliação. Antes de torná-lo definitivo: pesquisar marcas registradas no INPI ("Sextante" já é o nome de uma editora conhecida no Brasil, o que pode gerar confusão, embora de outro ramo). Outro candidato considerado: **Dira** ("bússola" em suaíli), sujeito às mesmas verificações e à de não coincidir com sigla de unidade da instituição.
 
 ### Decisões pendentes, com o passo em que precisam estar tomadas
 
