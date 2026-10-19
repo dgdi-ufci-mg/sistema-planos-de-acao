@@ -1,7 +1,7 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em revisão pelo responsável. Nada aqui está implementado ainda.
-**Data:** 16/10/2026
+**Situação:** em revisão pelo responsável. Nada aqui está implementado ainda. A ordem de trabalho (seção 12) aguarda aprovação.
+**Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
 
@@ -66,7 +66,11 @@ testes/*.test.js      testes automáticos (node --test)
 
 ### 3.3 Fluxo de trabalho
 
-A reescrita é feita numa **branch separada**. O site atual continua no ar. Quando a versão 2 estiver pronta, ela entra na `main` por *pull request*, depois da aprovação do responsável. É a exceção à regra "uma mudança por vez".
+A versão 2 é construída **passo a passo**, seguindo a regra "uma mudança por vez" do AGENTS.md, na ordem da seção 12. Cada passo é testado, documentado e conferido pelo responsável antes do seguinte.
+
+- **Onde:** numa pasta própria do site, `/v2/`, publicada junto com a versão atual. O responsável confere cada passo no endereço `.../sistema-planos-de-acao/v2/`, inclusive pelo celular. A versão atual continua na raiz até a troca (passo 1.20).
+- **Dados:** nas Fases 0 e 1, até o passo 1.14, a versão 2 usa só o banco em memória e o plano de exemplo; nada é gravado. A partir do passo 1.14, usa uma área de dados separada da versão atual, para nunca tocar nos planos reais (decisão pendente na seção 12).
+- **Versão atual congelada:** enquanto a versão 2 é construída, a versão atual recebe só correções de erros.
 
 ### 3.4 Preparação para a troca de banco
 
@@ -93,7 +97,7 @@ Fica para a época da troca, fora da versão 2: o programa do servidor, que pass
 | inicio | Data de início do plano |
 | prazoFinal | Prazo final (por exemplo, o fixado por ato da Diretoria-Geral) |
 | datasExcluidas | Lista `{data, motivo}`: feriados e outras datas sem expediente, cada uma com o motivo, para conferência posterior |
-| documentos | Lista `{nome, data, link}`: documentos do plano, como o plano aprovado e revisões, guardados por link (por exemplo, no SEI) |
+| documentos | Lista `{nome, data, identificacao, link}`: documentos do plano, como o plano aprovado e revisões. `identificacao` é o número do documento no sistema de protocolo da instituição (SIPAC/Protocolo); `link` é opcional. O envio do próprio arquivo ao sistema fica para o servidor da UFCI-MG (Fase 4): no Firebase gratuito, guardar arquivos exige o plano pago |
 | simulacoes | Número de simulações (padrão 10.000). Definido na criação do plano e **imutável** depois |
 | semente | Semente da simulação (padrão 20261014). Definida na criação do plano e **imutável** depois |
 | estrutura | Lista de **fases**, cada uma com sua lista de **etapas**: `[{id, nome, etapas:[{id, nome}]}]`, na ordem de exibição (seção 8.3) |
@@ -195,7 +199,7 @@ Motivos da escolha, em vez de uma lista separada de exclusões: uma única consu
 - **"Não começa antes de" (data mínima, opcional).** A ação só é liberada quando todas as anteriores estiverem concluídas **e** essa data tiver chegado. Liberação = a mais tardia entre a conclusão das anteriores e a data mínima. É o mesmo conceito da restrição "não iniciar antes de" do MS Project, numa forma simples.
   - **Nova ação:** o campo já vem preenchido com a data de criação. Assim, uma ação criada depois que as anteriores terminaram não nasce atrasada. O usuário pode apagar a data, se a ação puder começar assim que as anteriores terminarem.
   - **Outros usos:** ações que dependem de uma data externa, como liberação de orçamento, início do semestre ou publicação de um ato.
-  - Enquanto a data não chega, a ação fica "Aguardando", com a indicação "a partir de dd/mm".
+  - Enquanto a data não chega, a ação fica "Não liberada", com a indicação "a partir de dd/mm".
   - **Na janela da ação:** o campo só aparece quando tem data. Vazio, dá lugar a um link discreto, "+ Definir data mínima de início", que abre o campo. Em ações concluídas, não aparece.
   - **Em reavaliação** (seção 14, item 1).
 - **O prazo de uma ação conta da liberação até a conclusão**, incluindo o tempo até alguém começar. A data de início real não é registrada. Isso precisa estar claro no formulário de estimativa e na Ajuda.
@@ -248,7 +252,7 @@ Tudo é recalculado a cada mudança: conclusão, reestimativa ou edição. A est
 
 | Situação | Quando |
 |---|---|
-| **Aguardando** | Alguma ação anterior não foi concluída |
+| **Não liberada** | Alguma ação anterior não foi concluída, ou a data mínima ("Não começa antes de") não chegou. Antes chamada "Aguardando" (seção 16.2) |
 | **Liberada** | Todas as anteriores concluídas (ou nenhuma anterior), e esta não concluída |
 | **Concluída** | Tem data de conclusão |
 
@@ -256,7 +260,7 @@ Tudo é recalculado a cada mudança: conclusão, reestimativa ou edição. A est
 
 - Aplica-se à ação **liberada** cuja data prevista de conclusão (PERT da estimativa mais recente) já passou.
 - O atraso é medido contra a **estimativa mais recente**, de propósito. A reestimativa tira o carimbo. É uma "colher de chá" ao executor, que exige dele uma atitude ativa (assumir uma nova data). O histórico de reprogramações registra a dimensão do problema.
-- Uma ação aguardando nunca recebe o carimbo, porque, pela regra da seção 5.5, a previsão das anteriores não fica no passado.
+- Uma ação não liberada nunca recebe o carimbo, porque, pela regra da seção 5.5, a previsão das anteriores não fica no passado.
 - Não existe mais o carimbo "Prioritária": a prioridade é mostrada pela barra contínua da seção 7.1.
 
 ---
@@ -300,10 +304,12 @@ Os mesmos da planilha da PI², no fluxo, no cronograma e na aba Ações:
 
 | Símbolo | Significado |
 |---|---|
-| ✅ | Concluída |
-| 🔓 | Liberada |
-| ⏰ | Atrasada |
-| (nenhum) | Aguardando |
+| Visto num círculo | Concluída |
+| Cadeado aberto | Liberada |
+| Cadeado fechado | Não liberada |
+| Relógio | Atrasada |
+
+São ícones em SVG, desenhados no mesmo estilo e coloridos pelas variáveis dos temas, e não emojis (seção 16.2). O protótipo ainda usa emojis e "Aguardando"; vale esta seção.
 
 Saem o símbolo "▶ em andamento", porque o sistema não registra mais o início real, e o "❗ prioritária", substituído pela intensidade da cor.
 
@@ -346,8 +352,8 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
 - **Nova ação numa janela central**, como no Todoist, com: rótulo; **código opcional** (se vazio, o sistema sugere um a partir do rótulo; se preenchido, precisa ter de 2 a 8 letras ou números e não pode repetir um código existente, com aviso enquanto se digita); etapa; descrição; entrega; dependências; responsáveis; três pontos de estimativa.
 - **Seletores com busca** para dependências e responsáveis: ao digitar, aparecem as opções que contêm o texto (código ou nome da ação; nome, sigla ou setor da pessoa). Setas e Enter escolhem; cada escolha vira uma etiqueta com ×. Nas dependências, ficam de fora a própria ação e as que dependem dela, o que impede ciclos. Nos responsáveis, a última opção é "Cadastrar … como responsável".
 - **Modo "Editar em planilha"**, ao lado da lista: uma grade com todas as ações e uma coluna por campo, para edição rápida por usuários experientes. Cada célula é salva ao sair dela; Enter desce para a linha de baixo; é possível colar um bloco copiado do Google Planilhas ou do Excel, inclusive criando linhas novas. Dependências e responsáveis são digitados como códigos e siglas separados por vírgula, com validação (código inexistente, ciclo, sigla desconhecida). Células que não podem ser editadas ali ficam cinza, com o motivo ao passar o mouse; por exemplo, a estimativa de uma ação liberada, que só muda por reestimativa.
-- **Modo "Quadro"** (estilo Kanban, como o Trello), ao lado de Lista e Editar em planilha: os mesmos cartões em três colunas, **Aguardando**, **Liberadas** e **Concluídas**, cada uma com a contagem. "Atrasada" não é coluna: é o carimbo ⏰ no cartão, e o filtro "Atrasadas" continua disponível. O cartão mostra código, rótulo, etapa, responsáveis, conclusão prevista e a barra de prioridade de execução, com a faixa de cor à esquerda; tocar nele abre a janela da ação.
-  - **Arrastar** (no computador): de Liberadas para Concluídas abre o registro da conclusão, com a data; de Concluídas para Liberadas desfaz a conclusão. A coluna Aguardando não aceita cartões, porque a liberação é automática (quando as anteriores terminam e a data mínima chega); a descrição da coluna explica isso.
+- **Modo "Quadro"** (estilo Kanban, como o Trello), ao lado de Lista e Editar em planilha: os mesmos cartões em três colunas, **Não liberadas**, **Liberadas** e **Concluídas**, cada uma com a contagem. "Atrasada" não é coluna: é o carimbo (ícone de relógio) no cartão, e o filtro "Atrasadas" continua disponível. O cartão mostra código, rótulo, etapa, responsáveis, conclusão prevista e a barra de prioridade de execução, com a faixa de cor à esquerda; tocar nele abre a janela da ação.
+  - **Arrastar** (no computador): de Liberadas para Concluídas abre o registro da conclusão, com a data; de Concluídas para Liberadas desfaz a conclusão. A coluna Não liberadas não aceita cartões, porque a liberação é automática (quando as anteriores terminam e a data mínima chega); a descrição da coluna explica isso.
   - **No celular:** as colunas ficam lado a lado, deslizando para o lado, uma por vez; a escolha entre Lista e Quadro fica no painel "Filtros e ordem". Concluir é feito pela janela da ação.
   - No Quadro, a lista não é separada por fases e etapas; a etapa aparece em cada cartão.
 - **Edição nas linhas da lista:** feita pelo modo planilha. Na lista, tocar na linha abre a janela; tornar os campos da linha editáveis causaria edições acidentais, principalmente no celular.
@@ -418,19 +424,85 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano, antes de
 
 ---
 
-## 12. Ordem de trabalho
+## 12. Ordem de trabalho (proposta, aguardando aprovação)
 
-1. Revisão desta especificação pelo responsável.
-2. Protótipo da aba Ações, publicado como página de teste privada.
-3. Reescrita na branch, com testes.
-4. *Pull request*, revisão e entrada no ar.
-5. Atualização da documentação técnica, do AGENTS.md, do README e do CONTRIBUTING.md; remoção deste arquivo.
+Cada item é um passo: pequeno, testado, documentado e conferido pelo responsável antes do seguinte (seção 3.3). As fases servem de mapa.
+
+### Fase 0: preparação (nada muda para os usuários)
+
+0.1. Pasta `/v2/` no site; AGENTS.md ajustado (a regra do arquivo único passa a valer só para a versão atual; testes com `node --test`).
+0.2. Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
+0.3. Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
+0.4. Plano de exemplo, com dados fictícios, e cópia do plano da PI² para o teste de comparação (só leitura dos dados reais).
+0.5. Base visual: cores, temas claro e escuro, ícones em SVG e barra do topo.
+
+### Fase 1: núcleo (substitui a versão atual)
+
+1.1. Calendário (dias úteis, datas excluídas com motivo) e caminho crítico, com "Não começa antes de". Teste de comparação com a PI².
+1.2. Situações (Não liberada, Liberada, Concluída), carimbo Atrasada e regra "nada termina no passado".
+1.3. Simulação beta-PERT sem travar a tela, semente imutável, versão do cálculo e as duas prioridades. Documentação para conferência por fora (seção 15).
+1.4. Tela inicial: boas-vindas, "Ver um plano de exemplo" e, com o banco vazio, restauração da cópia de segurança.
+1.5. Topo: menu do plano (lista, "Configurar este plano", "Novo plano"), menu do usuário e Ajuda (glossário e links "o que é?").
+1.6. Lista de ações: cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e animações; no celular, painel "Filtros e ordem" e botão (+).
+1.7. Janela da ação: edição no lugar, seletores com busca (sem ciclos), reestimativa, conclusão e histórico de estimativas.
+1.8. Notas com editor visual (Markdown seguro).
+1.9. Nova ação: janela central, código opcional.
+1.10. Modo Quadro.
+1.11. Modo "Editar em planilha", no computador.
+1.12. Aba Responsáveis, com a ligação ao usuário que faz funcionar "Minhas ações".
+1.13. Configurar o plano: dados, datas excluídas, fases e etapas, campos opcionais, documentos (identificação no SIPAC/Protocolo e link) e semente visível.
+1.14. Firebase: área de dados separada, login, troca de senha e edição simultânea com aviso (seção 4.6).
+1.15. Exclusão lógica e lixeira, para planos, ações e responsáveis, com as regras de exclusão encadeada.
+1.16. Histórico de alterações (seção 16.4).
+1.17. Aba Visualização: linha do tempo, fluxo, cronograma com comparação de retrato e data final.
+1.18. Retratos manuais.
+1.19. Importação e exportação (planilha e Mermaid), cópia de segurança e restauração.
+1.20. Troca: aviso aos usuários, cópia de segurança, gravação congelada na versão atual, migração dos dados (seção 11) e versão 2 na raiz. Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas; AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.
+1.21. Piloto: plano da PI² atualizado com o andamento real e acompanhado na versão 2.
+1.22. Manual do usuário, quando o responsável liberar.
+
+### Fase 2: organização e permissões (obrigatória antes do uso oficial)
+
+2.1. Papéis por plano (Administrador do plano, Usuário, Leitor) e plano aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3).
+2.2. Visibilidade: pública, institucional ou restrita.
+2.3. Arquivar e desarquivar; regra do último administrador; telas mínimas de administração (plano órfão).
+2.4. Tipos de plano e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1).
+2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
+2.6. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
+2.7. Checklist.
+2.8. Comentários.
+2.9. Extração personalizada (seção 16.6).
+2.10. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
+
+### Fase 3: tarefas de equipe
+
+3.1. Tipo "Tarefas de equipe": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist.
+
+### Fase 4: servidor da UFCI-MG
+
+4.1. PostgreSQL e programa do servidor, com as permissões.
+4.2. Login institucional (Identificação Única), com recadastro dos usuários.
+4.3. Envio de arquivos dos documentos do plano.
+4.4. Retratos automáticos, com periodicidade definida pelo Administrador do Sistema.
+4.5. ETL para o Data Lakehouse (Apache Spark ou Apache Hop).
+
+### Futuro, sem fase
+
+- Previsão por classe de referência (documentação técnica, seção 9).
+- Aplicativo instalável no celular (PWA; documentação técnica, seção 9).
+- Avaliar baixar o diagrama como imagem.
+- Reavaliar os pontos da seção 14 com o sistema em uso.
+- Revisar o nome do sistema, já que "Planos de Ação" deixa de abranger todos os tipos de plano (decisão do responsável).
+
+### Decisões pendentes, com o passo em que precisam estar tomadas
+
+- **Área de dados separada da versão 2** (passo 1.14).
+- **Exclusão encadeada** (passo 1.15): o que acontece ao excluir uma ação de que outras dependem, um responsável atribuído a ações e uma fase ou etapa que tem ações.
+- **Nome padrão da situação inicial** nos planos sem dependências, como "A fazer" (passo 2.6).
 
 ## 13. Fora desta reescrita
 
-- **Níveis de permissão:** obrigatórios antes da fase de produção (documentação técnica, seção 9).
-- **Previsão por classe de referência:** ideia futura (documentação técnica, seção 9). O histórico de estimativas da seção 4.3 já guarda os dados de que ela precisará.
-- **Manual do usuário:** refeito depois da versão 2.
+Tudo o que foi combinado está na seção 12, inclusive o que fica para o futuro. O manual do usuário continua congelado até o responsável liberar (passo 1.22).
 
 ## 14. Pontos para reavaliação
 
@@ -503,7 +575,7 @@ Decisões acordadas com o responsável em 19/10/2026. A fase em que cada uma ent
 
 "Plano" passa a ser o nome genérico. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
 
-1. **Plano de Ação estrategicamente formalizado:** derivado do PEI/PDI. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano), e informar o documento que o aprovou.
+1. **Plano de Ação estrategicamente formalizado:** derivado do PEI/PDI. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCI-MG.
 2. **Projeto ou Plano de Ação de propósito geral:** mesmo motor do tipo 1, sem vínculo obrigatório ao catálogo.
 3. **Tarefas de equipe:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível.
 
@@ -519,6 +591,8 @@ Uma ação sem estimativa não entra nas previsões. Desligar as previsões é u
 - **Concluída:** obrigatória em todos os tipos. Símbolo: visto (✓) num círculo.
 
 O carimbo **Atrasada** continua independente das situações.
+
+**Volta à liberação:** quando as anteriores de uma ação Não liberada terminam, ela volta sempre para a situação inicial (Liberada ou o nome dado a ela), e não para a situação personalizada em que estava antes. É mais simples e previsível.
 
 **Nova dependência numa ação liberada:** se alguém acrescenta como anterior uma ação ainda não concluída, abre-se um aviso antes de gravar: a ação passará para Não liberada e sairá da sua situação atual (por exemplo, "Em teste"). A pessoa confirma ou desiste.
 
@@ -549,4 +623,5 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
 
 ### 16.6 Relatórios e extração de dados
 
-Uma interface de relatórios e extração de dados para administradores, com escopo a definir.
+- **No sistema, "Extração personalizada":** escolher os planos, os campos (com os nomes do dicionário de dados) e os filtros, e exportar em Excel (.xlsx), LibreOffice (.ods), CSV com ponto e vírgula, ou PDF pela impressão do navegador. Inclui exportar um plano com o histórico de alterações.
+- **No Data Lakehouse, não no sistema:** painéis entre planos (por programa, objetivo ou unidade) e análises livres, com ferramentas próprias de painel (por exemplo, Superset ou Metabase), alimentadas por ETL com Apache Spark ou Apache Hop a partir do PostgreSQL. Construir um "Power BI interno" no sistema foi descartado: seria um produto à parte.
