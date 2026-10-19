@@ -492,3 +492,57 @@ Ações concluídas e ações de duração fixa (σᵢ = 0, em que rᵢ fica ind
 - VANHOUCKE, M. Using activity sensitivity and network topology information to monitor project time performance. *Omega*, v. 38, 2010. (Compara CI, SSI e crucialidade.)
 - HULETT, D. *Practical Schedule Risk Analysis*. Gower, 2009. (Análise de risco de cronograma e gráficos de sensibilidade.)
 
+
+---
+
+## 16. Ampliação do escopo (em discussão)
+
+Decisões acordadas com o responsável em 19/10/2026. A fase em que cada uma entra (versão 2 ou depois) ainda será definida. Quando for, cada item migra para a seção correspondente desta especificação.
+
+### 16.1 Finalidades e tipos de plano
+
+"Plano" passa a ser o nome genérico. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
+
+1. **Plano de Ação estrategicamente formalizado:** derivado do PEI/PDI. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano), e informar o documento que o aprovou.
+2. **Projeto ou Plano de Ação de propósito geral:** mesmo motor do tipo 1, sem vínculo obrigatório ao catálogo.
+3. **Tarefas de equipe:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível.
+
+Nos tipos 1 e 2, a criação oferece **modelos prontos de configuração**, como na escolha de opções no início de um jogo: "Cronograma estruturado" (dependências, estimativas e previsões ligadas; por exemplo, obras e eventos), "Cronograma aberto" (sem dependências, estimativas opcionais; por exemplo, projetos de TI) e "Personalizado". Escolhido o modelo, cada opção pode ser ajustada. No tipo 3, não há modelo: as colunas são criadas no dia a dia.
+
+Uma ação sem estimativa não entra nas previsões. Desligar as previsões é um campo opcional do plano.
+
+### 16.2 Situações das ações
+
+- **Aguardando** (nome em discussão: "Bloqueada"): calculada pelo sistema; só existe em planos com dependências.
+- **Liberada** (nos planos sem dependências, com nome a definir, como "A fazer"): base das ações não bloqueadas.
+- **Situações personalizadas:** criadas pelo administrador do plano, como "Selecionada", "Em andamento", "Em teste" e "Em revisão". São subtipos de Liberada e viram colunas do quadro.
+- **Concluída:** obrigatória em todos os tipos.
+
+O carimbo **Atrasada** continua independente das situações.
+
+### 16.3 Papéis e visibilidade
+
+- **Login institucional** (Identificação Única) quando houver o servidor da UFCI-MG. Todo usuário institucional pode criar planos e é administrador dos planos que cria.
+- **Papéis por plano:** Administrador do plano, Usuário do plano, Leitor. Sem papel no plano, a pessoa vê o plano só se a visibilidade permitir.
+- **Responsáveis sem login** continuam existindo: pessoa, equipe ou unidade.
+- **Administrador do Sistema:** sem passe livre. Acessa as telas de administração e, nos planos, tem os mesmos papéis de qualquer usuário. Única exceção: nomear um novo administrador para um plano órfão, com registro de quem fez e quando.
+- **Gestor da Estratégia:** mantém o catálogo do PEI/PDI.
+- **Todo plano tem pelo menos um administrador.** O último não pode ser removido.
+- **Arquivar e desarquivar:** disponível para os administradores do plano. Um plano arquivado fica só para leitura e sai da lista principal. Arquivar é diferente de excluir.
+- **Visibilidade, escolhida pelo administrador:** Público (qualquer pessoa com o link, sem login), Institucional (qualquer usuário com login) ou Restrito (só quem tem papel no plano).
+- **Plano aberto ou fechado,** chave do administrador. Aberto: usuários do plano atualizam todas as ações. Fechado: cada um atualiza só as ações em que é responsável. Atualizar inclui estimar, reestimar, alterar o escopo, concluir e escrever notas. Criar e excluir ações e configurar o plano são exclusivos dos administradores.
+
+### 16.4 Histórico de alterações
+
+Toda alteração de uma ação é registrada, **por qualquer pessoa, inclusive administradores**: quem, quando, campo, valor antigo e valor novo. O histórico aparece na janela da ação.
+
+Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O registro é gravado junto com a alteração, de forma que um não exista sem o outro. Fica numa coleção (ou tabela) própria, só de acréscimo, e não dentro da ação. Serve à transparência, à auditoria e às cargas para o Data Lakehouse.
+
+### 16.5 Checklist e comentários
+
+- **Checklist:** lista simples de itens dentro da ação, como no Planner. Não ocupa espaço até alguém tocar em "Adicionar checklist". O cartão mostra o progresso, como "2/5".
+- **Comentários:** espaço de conversa na ação, com autor e data, para quando há mais de uma pessoa com login envolvida.
+
+### 16.6 Relatórios e extração de dados
+
+Uma interface de relatórios e extração de dados para administradores, com escopo a definir.
