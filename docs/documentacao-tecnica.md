@@ -434,6 +434,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 30 | Especificação da reescrita: exclusão lógica de planos, ações e responsáveis (seção 4.7), com lixeira e teste automático. Sem mudança no sistema |
 | 31 | Especificação da reescrita: semente e simulações imutáveis e visíveis, com versão do cálculo; retratos manuais e automáticos. Sem mudança no sistema |
 | 32 | Especificação da reescrita: seção 16, ampliação do escopo em discussão (tipos de plano, situações personalizadas, papéis e visibilidade, arquivamento, histórico de alterações, checklist, comentários, relatórios). Sem mudança no sistema |
+| 32.1 | Especificação da reescrita, seção 16: "Não liberada" no lugar de "Aguardando", aviso ao criar dependência numa ação liberada, ícones SVG no lugar de emojis, regra dos comentários. Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

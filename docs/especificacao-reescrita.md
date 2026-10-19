@@ -513,12 +513,16 @@ Uma ação sem estimativa não entra nas previsões. Desligar as previsões é u
 
 ### 16.2 Situações das ações
 
-- **Aguardando** (nome em discussão: "Bloqueada"): calculada pelo sistema; só existe em planos com dependências.
-- **Liberada** (nos planos sem dependências, com nome a definir, como "A fazer"): base das ações não bloqueadas.
+- **Não liberada** (substitui "Aguardando"): calculada pelo sistema; só existe em planos com dependências. Símbolo: cadeado fechado.
+- **Liberada:** base das ações não bloqueadas. Símbolo: cadeado aberto. Nos planos sem dependências, o nome padrão na tela é outro, para não confundir (como "A fazer"), e o administrador do plano pode renomeá-lo, como no Planner.
 - **Situações personalizadas:** criadas pelo administrador do plano, como "Selecionada", "Em andamento", "Em teste" e "Em revisão". São subtipos de Liberada e viram colunas do quadro.
-- **Concluída:** obrigatória em todos os tipos.
+- **Concluída:** obrigatória em todos os tipos. Símbolo: visto (✓) num círculo.
 
 O carimbo **Atrasada** continua independente das situações.
+
+**Nova dependência numa ação liberada:** se alguém acrescenta como anterior uma ação ainda não concluída, abre-se um aviso antes de gravar: a ação passará para Não liberada e sairá da sua situação atual (por exemplo, "Em teste"). A pessoa confirma ou desiste.
+
+**Símbolos, não emojis.** Emojis mudam de desenho e de cor conforme o aparelho e não combinam com um sistema institucional. Situações, carimbos e filtros usam um conjunto único de ícones em SVG, desenhados no mesmo estilo e coloridos pelas variáveis de cor dos temas claro e escuro.
 
 ### 16.3 Papéis e visibilidade
 
@@ -541,7 +545,7 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
 ### 16.5 Checklist e comentários
 
 - **Checklist:** lista simples de itens dentro da ação, como no Planner. Não ocupa espaço até alguém tocar em "Adicionar checklist". O cartão mostra o progresso, como "2/5".
-- **Comentários:** espaço de conversa na ação, com autor e data, para quando há mais de uma pessoa com login envolvida.
+- **Comentários:** espaço de conversa na ação, com autor e data. Aparece sempre que o plano tem mais de um usuário com login (um administrador e um único responsável já formam duas pessoas).
 
 ### 16.6 Relatórios e extração de dados
 
