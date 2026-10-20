@@ -380,7 +380,7 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
 - **Histórico de alterações** (passo 1.16): quem, quando, entidade, chave, campo, valor antigo e valor novo; coleção ou tabela própria, só de acréscimo (seção 16.4).
-- **Fase 2:** entregas do plano e registro do alcance, com evidência (seção 16.7); tipo do plano, visibilidade, plano aberto ou fechado, arquivamento e papéis por plano (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
+- **Fase 2:** entregas do plano e registro do alcance, com evidência (seção 16.7); tipo do plano, visibilidade, plano aberto ou fechado, encerramento e papéis por plano (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
 
 ---
 
@@ -660,7 +660,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 2.1. Papéis por plano (Administrador do plano, Usuário, Leitor) e plano aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3).
 2.2. Visibilidade: pública, institucional ou restrita.
-2.3. Arquivar e desarquivar; regra do último administrador; telas mínimas de administração (plano órfão).
+2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (plano órfão).
 2.4. Tipos de plano e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1).
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
 2.6. Entregas dos planos formalizados: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7).
@@ -670,9 +670,9 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.10. Extração personalizada (seção 16.6).
 2.11. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
 
-### Fase 3: tarefas de equipe
+### Fase 3: quadro de equipe
 
-3.1. Tipo "Tarefas de equipe": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist.
+3.1. Tipo "Quadro de equipe": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist.
 
 ### Fase 4: servidor da UFCI-MG
 
@@ -768,11 +768,11 @@ Decisões acordadas com o responsável em 19/10/2026. A fase em que cada uma ent
 
 ### 16.1 Finalidades e tipos de plano
 
-"Plano" passa a ser o nome genérico. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
+**Nomes na tela (decisão de 20/10/2026):** cada tipo é chamado pelo próprio nome, para não se confundir com o "Plano de Entregas" e o "Plano de Trabalho" do PGD. A palavra geral, para os três juntos, está em escolha; até lá, "plano" é usado só dentro desta especificação e do código. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
 
-1. **Plano de Ação estrategicamente formalizado:** derivado do PEI/PDI. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCI-MG.
-2. **Projeto ou Plano de Ação de propósito geral:** mesmo motor do tipo 1, sem vínculo obrigatório ao catálogo.
-3. **Tarefas de equipe:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível.
+1. **Plano de Ação:** só os estrategicamente formalizados, derivados do PEI/PDI. Mantém o sentido institucional exato. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCI-MG.
+2. **Projeto:** os de propósito geral; mesmo motor do tipo 1, sem vínculo obrigatório ao catálogo.
+3. **Quadro de equipe:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível.
 
 Nos tipos 1 e 2, a criação oferece **modelos prontos de configuração**, como na escolha de opções no início de um jogo: "Cronograma estruturado" (dependências, estimativas e previsões ligadas; por exemplo, obras e eventos), "Cronograma aberto" (sem dependências, estimativas opcionais; por exemplo, projetos de TI) e "Personalizado". Escolhido o modelo, cada opção pode ser ajustada. No tipo 3, não há modelo: as colunas são criadas no dia a dia.
 
@@ -801,7 +801,7 @@ O carimbo **Atrasada** continua independente das situações.
 - **Administrador do Sistema:** sem passe livre. Acessa as telas de administração e, nos planos, tem os mesmos papéis de qualquer usuário. Única exceção: nomear um novo administrador para um plano órfão, com registro de quem fez e quando.
 - **Gestor da Estratégia:** mantém o catálogo do PEI/PDI.
 - **Todo plano tem pelo menos um administrador.** O último não pode ser removido.
-- **Arquivar e desarquivar:** disponível para os administradores do plano. Um plano arquivado fica só para leitura e sai da lista principal. Arquivar é diferente de excluir.
+- **Encerrar e reabrir** (decisão de 20/10/2026, no lugar de "arquivar"): disponível para os administradores do plano. "Encerrar" diz o que aconteceu com o plano, que terminou; é o que justifica as exigências sobre as entregas (seção 16.7). Um plano encerrado fica só para leitura, sai da lista principal e continua acessível. Encerrar é diferente de excluir.
 - **Visibilidade, escolhida pelo administrador:** Público (qualquer pessoa com o link, sem login), Institucional (qualquer usuário com login) ou Restrito (só quem tem papel no plano).
 - **Plano aberto ou fechado,** chave do administrador. Aberto: usuários do plano atualizam todas as ações. Fechado: cada um atualiza só as ações em que é responsável. Atualizar inclui estimar, reestimar, alterar o escopo, concluir e escrever notas. Criar e excluir ações e configurar o plano são exclusivos dos administradores.
 
@@ -837,28 +837,19 @@ Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
 - **Alcance parcial, sem cortes arbitrários:** nas metas percentuais e quantitativas, o alcance é contínuo: valor alcançado comparado à meta (por exemplo, 150 de 200, ou 75%), mostrado como barra (princípio dos números contínuos, seção 2). Quem precisa medir o parcial escolhe meta percentual ou quantitativa ao planejar.
 - **Situação da entrega: uma lista única**, válida a qualquer momento do plano, sem uma fase separada de encerramento (KISS; decisão de 20/10/2026):
 
-  | Situação | Significado | Evidência | Justificativa |
-  |---|---|---|---|
-  | **Não iniciada** | Nada foi feito | não | só ao arquivar o plano com a entrega nesta situação |
-  | **Em andamento** | Houve avanço, e a entrega continua sendo buscada | só ao arquivar o plano com ela | não |
-  | **Alcançada** | Entrega obtida | sim | não |
-  | **Parcialmente alcançada** | A busca terminou com parte do resultado | sim | sim |
-  | **Não alcançada** | A busca terminou sem resultado | não | sim |
-  | **Cancelada** | Decidiu-se não buscar mais, por exemplo por mudança de estratégia. Continua visível e não conta como não alcançada | não | sim |
+  | Situação | Algo foi feito? | O que se obteve | A busca da entrega… | Evidência | Justificativa |
+  |---|---|---|---|---|---|
+  | **Não iniciada** | não | nada | continua, ou o plano foi encerrado | não | só ao encerrar o plano |
+  | **Em andamento** | sim | nada ou parte | continua | só ao encerrar o plano | não |
+  | **Alcançada** | sim | tudo | terminou | sim | não |
+  | **Parcialmente alcançada** | sim | parte | terminou | sim | sim |
+  | **Não alcançada** | sim | nada | terminou | não | sim |
+  | **Cancelada** | qualquer | qualquer | foi interrompida por decisão, por exemplo por mudança de estratégia | não | sim |
 
-  **Tabela de decisão** (para a Ajuda e o manual: qual situação escolher):
+  A tabela serve também de **tabela de decisão** para a Ajuda e o manual: respondendo às três perguntas (algo foi feito? o que se obteve? a busca continua?), chega-se a uma única situação. Uma entrega cancelada continua visível e não conta como não alcançada. "Nada feito" é sempre "Não iniciada", inclusive no encerramento; "Não alcançada" pressupõe que algo foi feito.
 
-  | A busca da entrega… | O que se obteve até agora | Situação |
-  |---|---|---|
-  | continua | nada | Não iniciada |
-  | continua | parte | Em andamento |
-  | continua ou terminou | tudo | Alcançada |
-  | terminou | parte | Parcialmente alcançada |
-  | terminou | nada | Não alcançada |
-  | foi interrompida por decisão | qualquer coisa | Cancelada |
-
-  "Em andamento" e "Parcialmente alcançada" têm avanço parcial; a diferença é se a busca continua. O mesmo vale para "Não iniciada" e "Não alcançada". Uma entrega "Em andamento" no fim do plano é a porta para continuá-la no plano seguinte (caminho A, abaixo).
-- **Arquivar o plano** exige completar o registro das entregas que ficaram pelo caminho: justificativa para cada uma "Não iniciada" (nesse momento, elas se igualam às não alcançadas e às canceladas) e evidência para cada uma "Em andamento". Durante a execução, "Em andamento" não exige evidência, para não travar o trabalho nem estimular evidências de faz de conta (decisão de 20/10/2026).
+  "Em andamento" e "Parcialmente alcançada" podem ter o mesmo avanço; a diferença é se a busca continua. Uma entrega "Em andamento" no fim do plano é a porta para continuá-la no plano seguinte (caminho A, abaixo).
+- **Encerrar o plano** exige completar o registro das entregas que ficaram pelo caminho: justificativa para cada uma "Não iniciada" (nesse momento, elas se igualam às não alcançadas e às canceladas) e evidência para cada uma "Em andamento". Durante a execução, "Em andamento" não exige evidência, para não travar o trabalho nem estimular evidências de faz de conta (decisão de 20/10/2026).
 - **Metas numéricas:** a situação também é escolhida pelo administrador; o valor alcançado aparece ao lado, como barra. Se os dois não combinarem (por exemplo, "Alcançada" com valor abaixo da meta), o sistema avisa antes de gravar.
 - **Entregas que atravessam planos (caminho A, decisão de 20/10/2026):** a entrega pertence a um plano, que responde pelo seu período. Ao criar o plano seguinte, é possível "continuar" uma entrega do anterior: ela é trazida para o novo plano com uma ligação "continua a entrega X". A cadeia de ligações mostra a trajetória completa ao painel do Programa e ao Data Lakehouse. Foi descartado o caminho B (entrega independente, ligada a vários planos), pela dificuldade de definir quem a administra, onde se registra o alcance e como conciliar visibilidades diferentes.
 - **Registro do alcance:** feito pelo administrador do plano, numa tela própria. Cada registro tem data, valor alcançado (ou sim/não), descrição e **pelo menos uma evidência**. Os registros se acumulam como histórico (um registro novo não apaga o anterior); o mais recente é o alcance atual.
