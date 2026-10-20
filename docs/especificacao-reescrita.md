@@ -821,7 +821,7 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
 
 Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
 
-- **Cadastro obrigatório:** todo plano vinculado a um Programa do PEI/PDI (tipo 1, seção 16.1) precisa ter as **entregas** que se quer alcançar. Momento exato da exigência em discussão (criação do plano ou vínculo formal).
+- **Cadastro obrigatório:** todo plano vinculado a um Programa do PEI/PDI (tipo 1, seção 16.1) precisa ter as **entregas** que se quer alcançar. O plano pode ser criado sem entregas, como rascunho, com o aviso fixo "sem entregas cadastradas"; o vínculo ao Programa só se conclui depois de haver pelo menos uma entrega. Assim, ninguém precisa cadastrar uma entrega de mentira só para criar o plano (decisão de 20/10/2026).
 - **Só um sentido para "entrega":** as entregas são resultados do plano como um todo, os que importam para o PEI/PDI. O antigo campo `entrega` da ação foi retirado (seção 4.2), para não haver dois sentidos para a mesma palavra. Produtos intermediários continuam descritos nas próprias ações.
 - **Tipo de meta, como no Programa de Gestão e Desempenho (PGD) da instituição:**
   - **Percentual:** taxas e proporções. Exemplo: "95% dos pedidos atendidos em até 24 horas".
