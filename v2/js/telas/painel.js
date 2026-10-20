@@ -1,5 +1,5 @@
 /**
- * Peças comuns de tela: painel lateral, que sobe de baixo no celular, e aviso curto.
+ * Peças comuns de tela: painel lateral, que desliza da direita, e aviso curto.
  */
 let fecharAtual = null;
 
@@ -15,10 +15,19 @@ export function abrirPainel(titulo, conteudoHtml) {
       <div class="painel-corpo">${conteudoHtml}</div>
     </aside>`;
   document.body.append(camada);
+  requestAnimationFrame(() => requestAnimationFrame(() => camada.classList.add("aberta")));
   const aoTeclar = (e) => { if (e.key === "Escape") fecharPainel(); };
   camada.addEventListener("click", (e) => { if (e.target.closest("[data-fechar]")) fecharPainel(); });
   document.addEventListener("keydown", aoTeclar);
-  fecharAtual = () => { camada.remove(); document.removeEventListener("keydown", aoTeclar); fecharAtual = null; };
+  fecharAtual = () => {
+    document.removeEventListener("keydown", aoTeclar);
+    fecharAtual = null;
+    camada.classList.remove("aberta");
+    const animado = getComputedStyle(camada.querySelector(".painel")).transitionDuration !== "0s";
+    if (!animado) return camada.remove();
+    camada.addEventListener("transitionend", () => camada.remove(), { once: true });
+    setTimeout(() => camada.remove(), 500); /* se a animação não terminar (aba em segundo plano) */
+  };
   camada.querySelector(".painel [data-fechar]").focus();
   return camada.querySelector(".painel-corpo");
 }
