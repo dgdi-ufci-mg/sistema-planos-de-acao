@@ -126,14 +126,14 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
     const donos = a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean)
       .map((p) => `<span class="dono${meus?.includes(p.id) ? " eu" : ""}" title="${esc(p.nome)}">${esc(p.sigla || p.nome)}</span>`).join("");
     const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
-    const nota = l.situacao === "concluida" ? "concluída"
-      : l.reprogramacoes ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";
+    const nota = l.situacao !== "concluida" && l.reprogramacoes
+      ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-codigo="${esc(a.codigo)}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome"><span class="codigo">${esc(a.codigo)}</span><span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
         <div class="sit"><span class="${s.classe}">${ICONES[s.icone]}</span><span>${s.texto}</span>${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</div>
         <div class="donos">${donos}</div>
-        <div class="conc"><span class="mlab">Conclusão prevista</span><span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>${nota ? `<small>${nota}</small>` : ""}</div>
+        <div class="conc"><span class="mlab">${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</span><span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>${nota ? `<small>${nota}</small>` : ""}</div>
         <div class="ex"><span class="mlab">Prioridade de execução</span>${medidor(l.execucao, "Prioridade de execução", "var(--calor)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>
         <div class="rv"><span class="mlab">Prioridade de revisão</span>${medidor(l.revisao, `Responde por ${revisao} da incerteza do prazo final`, "var(--accent)", revisao)}</div>
         <span class="seta">${ICONES.seguir}</span>
@@ -154,11 +154,6 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
     </section>`;
   }
 
-  const cabecalhoHtml = `<div class="cabecalho so-computador">
-    <span>Ação</span><span>Situação</span><span>Responsáveis</span><span>Conclusão prevista</span>
-    <span>Prioridade de execução <a href="#" class="oque" data-termo="exec">o que é?</a></span>
-    <span>Prioridade de revisão <a href="#" class="oque" data-termo="rev">o que é?</a></span><span></span></div>`;
-
   function desenharLista({ animar = false } = {}) {
     const antes = new Map();
     if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.codigo, el.getBoundingClientRect());
@@ -174,7 +169,7 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
       corpo = ls.map(linhaHtml).join("")
         + (usaFases ? `<p class="tec">Em "Ordem do espaço", as ações aparecem separadas por fases e etapas.</p>` : "");
     }
-    lista.innerHTML = cabecalhoHtml + corpo;
+    lista.innerHTML = corpo;
     if (animar && !reduzirMovimento()) animarMudanca(antes);
   }
 
@@ -269,6 +264,7 @@ function legendaHtml() {
   return `<div class="legenda-itens">
     <span>Cor à esquerda: menos prioritária <span class="gradiente" aria-hidden="true"></span> mais prioritária</span>
     <span><span class="amostra-ok" aria-hidden="true"></span> concluída</span>
+    <span>Barras: <a href="#" class="oque" data-termo="exec">prioridade de execução</a> e <a href="#" class="oque" data-termo="rev">prioridade de revisão</a></span>
     <span class="simbolos">
       <span><span class="icone-concluida">${ICONES.concluida}</span>Concluída</span>
       <span><span class="icone-liberada">${ICONES.liberada}</span>Liberada</span>
