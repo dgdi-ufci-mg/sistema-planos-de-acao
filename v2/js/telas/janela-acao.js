@@ -2,12 +2,13 @@
  * Janela da ação (especificação, seções 5.3, 5.4 e 8.3; passo 1.7).
  * Resumo da ação, edição no lugar (com Salvar e Cancelar), seletores com busca para
  * dependências e responsáveis (sem ciclos), reestimativa, conclusão e histórico de estimativas.
- * As listas mudam item a item, na hora (seção 4.6). As notas ganham editor no passo 1.8.
+ * As listas mudam item a item, na hora (seção 4.6). Notas com editor visual, guardadas em Markdown seguro (passo 1.8).
  */
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { duracaoPert } from "../calculo.js";
 import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias } from "../acao.js";
+import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { seloHtml } from "./pessoas.js";
 
@@ -125,7 +126,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
             ? "Prazo em dias úteis, da liberação até a conclusão, incluindo o tempo até alguém começar. Enquanto a ação não está liberada, a estimativa pode ser ajustada livremente."
             : "Correção de digitação: vale só hoje, antes de qualquer reestimativa.") : ""}
 
-        ${campos.notas !== false && acao.notas ? `<div class="campo-acao"><span class="campo-nome">Notas</span><div class="texto-livre">${esc(acao.notas)}</div><span class="tec">O editor de notas chega no passo 1.8.</span></div>` : ""}
+        ${campos.notas !== false ? notasHtml(acao) : ""}
       </div>
 
       ${historicoHtml(acao, resumoEst)}`;
@@ -165,6 +166,62 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
       <p class="erro" data-erro hidden></p>
       <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar>Cancelar</button></div>
     </form>`;
+  }
+
+  /** Notas: mostradas já formatadas; ao clicar, editor visual com negrito, itálico, link e lista (seção 8.5). */
+  function notasHtml(acao) {
+    const html = markdownParaHtml(acao.notas);
+    if (editando !== "notas") {
+      return `<div class="campo-acao" data-campo="notas"><span class="campo-nome">Notas</span>
+        <div class="editavel nota-html" data-editar="notas" tabindex="0" role="button" title="Clique para editar">${html || `<span class="vazio">Clique para escrever</span>`}</div></div>`;
+    }
+    return `<div class="campo-acao" data-campo="notas"><span class="campo-nome">Notas</span>
+      <form class="editor" data-salvar="notas">
+        <div class="barra-notas" role="toolbar" aria-label="Formatação">
+          <button type="button" class="botao discreto" data-formatar="bold" title="Negrito (Ctrl+B)" aria-label="Negrito"><b>N</b></button>
+          <button type="button" class="botao discreto" data-formatar="italic" title="Itálico (Ctrl+I)" aria-label="Itálico"><i>I</i></button>
+          <button type="button" class="botao discreto" data-formatar="link" title="Link (Ctrl+K)">Link</button>
+          <button type="button" class="botao discreto" data-formatar="lista" title="Lista com marcadores">Lista</button>
+        </div>
+        <div class="barra-link" data-barra-link hidden>
+          <input type="url" inputmode="url" placeholder="https://…" aria-label="Endereço do link" data-endereco-link>
+          <button type="button" class="botao" data-aplicar-link>Aplicar</button>
+        </div>
+        <div class="editor-notas nota-html" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Notas" data-editor-notas>${html}</div>
+        <p class="erro" data-erro hidden></p>
+        <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar>Cancelar</button></div>
+      </form></div>`;
+  }
+
+  /* ---------- editor visual das notas ---------- */
+  let selecaoGuardada = null;
+  const editorNotas = () => corpo.querySelector("[data-editor-notas]");
+  function formatar(comando) {
+    const ed = editorNotas();
+    if (!ed) return;
+    ed.focus();
+    if (comando === "link") return abrirBarraDeLink();
+    document.execCommand(comando === "lista" ? "insertUnorderedList" : comando);
+  }
+  function abrirBarraDeLink() {
+    const s = getSelection();
+    selecaoGuardada = s.rangeCount && editorNotas().contains(s.anchorNode) ? s.getRangeAt(0).cloneRange() : null;
+    const barraLink = corpo.querySelector("[data-barra-link]");
+    barraLink.hidden = false;
+    const entrada = barraLink.querySelector("input");
+    entrada.value = "";
+    entrada.focus();
+  }
+  function aplicarLink() {
+    const url = corpo.querySelector("[data-endereco-link]").value.trim();
+    if (!linkSeguro(url)) { avisar("Use um endereço que comece com https://, http:// ou mailto:."); return; }
+    const ed = editorNotas();
+    ed.focus();
+    const s = getSelection();
+    if (selecaoGuardada) { s.removeAllRanges(); s.addRange(selecaoGuardada); }
+    if (s.rangeCount && !s.isCollapsed && ed.contains(s.anchorNode)) document.execCommand("createLink", false, url);
+    else document.execCommand("insertHTML", false, `<a href="${esc(url)}">${esc(url)}</a>&nbsp;`);
+    corpo.querySelector("[data-barra-link]").hidden = true;
   }
 
   function tresPontosHtml(e) {
@@ -288,6 +345,8 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     const v = {};
     for (const el of corpo.querySelectorAll("form [name], [data-buscar]")) v[el.name || el.dataset.buscar] = el.value;
     v.foco = document.activeElement && corpo.contains(document.activeElement) ? (document.activeElement.name || document.activeElement.dataset.buscar) : null;
+    const ed = editorNotas();
+    if (ed) v.notas = ed.innerHTML;
     return v;
   }
   function restaurarValores(v) {
@@ -296,6 +355,8 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
       if (chave in v) el.value = v[chave];
     }
     if (v.foco) corpo.querySelector(`[name="${v.foco}"], [data-buscar="${v.foco}"]`)?.focus();
+    const ed = editorNotas();
+    if (ed && v.notas != null) ed.innerHTML = v.notas;
   }
 
   /* ---------- gravação dos editores ---------- */
@@ -315,6 +376,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
       estimativa: () => store.corrigirEstimativa(espacoId, codigo, tres()),
       reestimar: () => store.reestimar(espacoId, codigo, { ...tres(), motivo: f.motivo }),
       concluir: () => store.concluir(espacoId, codigo, f.data),
+      notas: () => store.alterarAcao(espacoId, codigo, { notas: htmlParaMarkdown(form.querySelector("[data-editor-notas]")) }),
     };
     const mensagens = { reestimar: "Reestimativa registrada.", concluir: "Conclusão registrada. As ações seguintes foram recalculadas." };
     try {
@@ -334,7 +396,14 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
   function editar(nome) {
     editando = nome;
     desenhar();
-    corpo.querySelector(`[data-salvar="${nome}"] [name]`)?.focus();
+    const ed = editorNotas();
+    if (nome === "notas" && ed) {
+      ed.focus();
+      getSelection().selectAllChildren(ed);
+      getSelection().collapseToEnd();
+    } else {
+      corpo.querySelector(`[data-salvar="${nome}"] [name]`)?.focus();
+    }
   }
   function cancelar() {
     const nome = editando;
@@ -360,9 +429,19 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     }
     const sug = t.closest("[data-sugestao]");
     if (sug) return escolher(sug.closest("[data-seletor]").dataset.seletor, Number(sug.dataset.sugestao));
+    const fmt = t.closest("[data-formatar]");
+    if (fmt) return formatar(fmt.dataset.formatar);
+    if (t.closest("[data-aplicar-link]")) return aplicarLink();
+    if (t.closest("[data-editor-notas] a")) e.preventDefault(); // no editor, o link é texto a editar, não para abrir
+  });
+  /* texto colado nas notas entra sem formatação (seção 8.5) */
+  corpo.addEventListener("paste", (e) => {
+    if (!e.target.closest("[data-editor-notas]")) return;
+    e.preventDefault();
+    document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
   });
   /* a sugestão é escolhida no clique; o mousedown não pode tirar o foco da busca antes disso */
-  corpo.addEventListener("mousedown", (e) => { if (e.target.closest("[data-sugestao]")) e.preventDefault(); });
+  corpo.addEventListener("mousedown", (e) => { if (e.target.closest("[data-sugestao], [data-formatar]")) e.preventDefault(); });
   corpo.addEventListener("submit", (e) => { e.preventDefault(); salvar(e.target); });
   corpo.addEventListener("input", (e) => {
     const nome = e.target.dataset.buscar;
@@ -395,6 +474,12 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
       }
       return;
     }
+    if (e.target.matches("[data-endereco-link]")) {
+      if (e.key === "Enter") { e.preventDefault(); aplicarLink(); }
+      if (e.key === "Escape") { e.preventDefault(); corpo.querySelector("[data-barra-link]").hidden = true; editorNotas()?.focus(); }
+      return;
+    }
+    if (e.target.matches("[data-editor-notas]") && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); abrirBarraDeLink(); return; }
     if (e.key === "Escape" && editando) { e.preventDefault(); cancelar(); return; }
     if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-editar]")) { e.preventDefault(); editar(e.target.dataset.editar); }
   });
