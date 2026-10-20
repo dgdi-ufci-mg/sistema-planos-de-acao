@@ -1,11 +1,19 @@
 /**
- * Partida da versão 2. Por enquanto (passo 0.5): identidade, barra do topo
- * e a vitrine da base visual na página provisória.
+ * Partida da versão 2: identidade, barra do topo e abertura do sistema
+ * (especificação, passo 1.4):
+ * - quem chega por um link de espaço (#/espaco/<id>) abre esse espaço;
+ * - senão, abre o último espaço aberto neste aparelho, se ele ainda existir;
+ * - senão, vê as boas-vindas.
+ * Até o passo 1.14, os dados ficam só na memória: ao recarregar, tudo recomeça.
  */
 import { NOME, INSTITUICAO } from "./identidade.js";
-import { ICONES } from "./icones.js";
+import { criarBancoLocal } from "./banco/local.js";
+import { criarStore } from "./dados.js";
+import { carregarExemplo } from "./exemplo.js";
+import { mostrarBoasVindas } from "./telas/abertura.js";
+import { mostrarEspaco } from "./telas/espaco.js";
 
-document.title = `${NOME} (versão 2, em construção)`;
+document.title = NOME;
 document.querySelector("[data-nome]").textContent = NOME;
 document.querySelector("[data-instituicao]").textContent = INSTITUICAO;
 
@@ -23,20 +31,41 @@ window.addEventListener("scroll", () => {
 }, { passive: true });
 marcarRolagem();
 
-/* vitrine: símbolos, cores e botões */
-const SITUACOES = [
-  ["concluida", "Concluída"], ["liberada", "Liberada"], ["naoLiberada", "Não liberada"], ["atrasada", "Atrasada"],
-];
-const classe = (nome) => nome.replace(/[A-Z]/g, (l) => `-${l.toLowerCase()}`);
-document.querySelector("#situacoes").innerHTML = SITUACOES
-  .map(([chave, texto]) => `<li><span class="icone-${classe(chave)}">${ICONES[chave]}</span>${texto}</li>`).join("");
+/* lembrança do último espaço, só neste aparelho; sem armazenamento, segue sem ela */
+const CHAVE_ULTIMO = "sextante.ultimoEspaco";
+const lembrar = (id) => { try { localStorage.setItem(CHAVE_ULTIMO, id); } catch { /* sem armazenamento */ } };
+const esquecer = () => { try { localStorage.removeItem(CHAVE_ULTIMO); } catch { /* sem armazenamento */ } };
+const ultimo = () => { try { return localStorage.getItem(CHAVE_ULTIMO); } catch { return null; } };
 
-const CORES = [
-  ["--accent", "Destaque"], ["--crit", "Crítico, atraso"], ["--warn", "Atenção"], ["--ok", "Concluído"],
-  ["--laranja", "Laranja do logotipo"], ["--bg", "Fundo"], ["--surface", "Superfície"], ["--ink", "Texto"],
-];
-document.querySelector("#amostras").innerHTML = CORES
-  .map(([variavel, nome]) => `<div class="amostra"><span style="background:var(${variavel})"></span><p>${nome}<br><small class="mono">${variavel}</small></p></div>`).join("");
+const hoje = (() => {
+  const d = new Date();
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+})();
+const store = criarStore(criarBancoLocal());
+const principal = document.querySelector("#principal");
 
-for (const botao of document.querySelectorAll("[data-icone]")) botao.insertAdjacentHTML("afterbegin", ICONES[botao.dataset.icone]);
-document.querySelector("#enchimento").textContent = "Texto de preenchimento. ".repeat(160);
+async function abrirEspaco(id) {
+  const espaco = await store.lerEspaco(id);
+  if (!espaco) return false;
+  lembrar(id);
+  if (location.hash !== `#/espaco/${id}`) history.replaceState(null, "", `#/espaco/${id}`);
+  mostrarEspaco(principal, espaco, await store.listarAcoes(id), { hoje, aoVoltar: boasVindas });
+  window.scrollTo(0, 0);
+  return true;
+}
+
+function boasVindas() {
+  esquecer();
+  history.replaceState(null, "", location.pathname + location.search);
+  mostrarBoasVindas(principal, {
+    aoCriar: async (dados) => abrirEspaco(await store.criarEspaco(dados)),
+    aoVerExemplo: async () => abrirEspaco(await carregarExemplo(store)),
+  });
+}
+
+async function partida() {
+  const doLink = location.hash.match(/^#\/espaco\/([\w-]+)$/)?.[1];
+  for (const id of [doLink, ultimo()]) if (id && await abrirEspaco(id)) return;
+  boasVindas();
+}
+partida();

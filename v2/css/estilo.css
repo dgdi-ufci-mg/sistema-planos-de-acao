@@ -136,13 +136,25 @@ body::before {
   .topo, body::before { transition: none; }
 }
 
-/* ---------- página provisória (passo 0.5) ---------- */
-.aviso { margin-top: 12px; background: var(--warn-soft); color: var(--warn-ink); border: 1px dashed var(--warn); border-radius: var(--raio); padding: 8px 12px; font-size: .9rem; }
-.vitrine h2 { font-size: 1.2rem; margin-bottom: 10px; }
-.situacoes { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0; padding: 0; list-style: none; }
+/* ---------- componentes comuns ---------- */
+.aviso { margin: 12px 0 0; background: var(--warn-soft); color: var(--warn-ink); border: 1px dashed var(--warn); border-radius: var(--raio); padding: 8px 12px; font-size: .9rem; }
+.botoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.situacoes { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 12px 0; padding: 0; list-style: none; }
 .situacoes li { display: inline-flex; align-items: center; gap: 6px; }
-.amostras { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
-.amostra { border: 1px solid var(--line); border-radius: var(--raio); overflow: hidden; font-size: .8rem; }
-.amostra span { display: block; height: 34px; }
-.amostra p { margin: 0; padding: 4px 8px; }
-.amostra small { color: var(--muted); }
+#principal { display: flex; flex-direction: column; gap: 14px; }
+#principal h1 { font-size: 1.6rem; }
+#principal h2 { font-size: 1.25rem; margin-bottom: 8px; }
+
+/* ---------- formulários ---------- */
+.formulario { display: flex; flex-direction: column; gap: 12px; }
+.campo { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: .9rem; }
+.campo small { font-weight: 400; color: var(--muted); }
+.campo input { font-weight: 400; font-size: 1rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
+.campos-lado-a-lado { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.erro { margin: 0; color: var(--crit-ink); font-weight: 600; }
+
+/* ---------- resumo do espaço (provisório, passo 1.4) ---------- */
+.numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.numeros div { background: var(--sunk); border: 1px solid var(--grid); border-radius: var(--raio); padding: 8px 10px; }
+.numeros dt { font-size: .82rem; color: var(--muted); }
+.numeros dd { margin: 0; font-family: var(--f-dados); font-size: 1.1rem; font-weight: 500; }

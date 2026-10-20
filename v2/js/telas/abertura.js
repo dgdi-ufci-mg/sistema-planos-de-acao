@@ -1,0 +1,73 @@
+/**
+ * Tela de boas-vindas (especificação, passo 1.4): para quem ainda não tem espaço.
+ * Oferece criar um espaço e ver o exemplo. A restauração de uma cópia de
+ * segurança entra aqui no passo 1.19, junto com a cópia.
+ */
+import { NOME } from "../identidade.js";
+import { ICONES } from "../icones.js";
+
+const hojeIso = () => {
+  const d = new Date();
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+};
+
+/**
+ * @param {HTMLElement} alvo
+ * @param {{aoCriar: (dados: object) => Promise<void>, aoVerExemplo: () => Promise<void>}} acoes
+ */
+export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo }) {
+  alvo.innerHTML = `
+    <section class="cartao boas-vindas">
+      <h1>Bem-vindo ao ${NOME}</h1>
+      <p>Para cada ação, você informa quanto tempo ela deve levar e de quais outras ações ela depende.
+      O sistema calcula as datas, mostra quais ações não podem atrasar sem atrasar todo o trabalho,
+      estima a chance de cumprir o prazo e acompanha o andamento.</p>
+      <div class="botoes">
+        <button class="botao principal" type="button" data-acao="criar">${ICONES.mais}Criar um espaço de planejamento</button>
+        <button class="botao" type="button" data-acao="exemplo">Ver um exemplo</button>
+      </div>
+    </section>
+    <section class="cartao" data-formulario hidden>
+      <h2>Novo espaço de planejamento</h2>
+      <form class="formulario" novalidate>
+        <label class="campo"><span>Nome</span>
+          <input name="nome" required maxlength="120" placeholder="Por exemplo: Implantação do novo sistema acadêmico"></label>
+        <div class="campos-lado-a-lado">
+          <label class="campo"><span>Início</span><input name="inicio" type="date" required value="${hojeIso()}"></label>
+          <label class="campo"><span>Prazo final <small>(opcional)</small></span><input name="prazoFinal" type="date"></label>
+        </div>
+        <p class="erro" data-erro hidden></p>
+        <div class="botoes">
+          <button class="botao principal" type="submit">Criar</button>
+          <button class="botao" type="button" data-acao="cancelar">Cancelar</button>
+        </div>
+      </form>
+    </section>`;
+
+  const formulario = alvo.querySelector("[data-formulario]");
+  const erro = alvo.querySelector("[data-erro]");
+  const mostrarErro = (texto) => { erro.textContent = texto; erro.hidden = !texto; };
+
+  alvo.querySelector('[data-acao="criar"]').addEventListener("click", () => {
+    formulario.hidden = false;
+    formulario.querySelector('[name="nome"]').focus();
+  });
+  alvo.querySelector('[data-acao="cancelar"]').addEventListener("click", () => {
+    formulario.hidden = true;
+    mostrarErro("");
+  });
+  alvo.querySelector('[data-acao="exemplo"]').addEventListener("click", () => aoVerExemplo());
+  formulario.querySelector("form").addEventListener("submit", async (evento) => {
+    evento.preventDefault();
+    const dados = Object.fromEntries(new FormData(evento.target));
+    if (!dados.nome.trim()) return mostrarErro("Informe o nome do espaço.");
+    if (!dados.inicio) return mostrarErro("Informe a data de início.");
+    if (dados.prazoFinal && dados.prazoFinal < dados.inicio) return mostrarErro("O prazo final não pode ser antes do início.");
+    if (!dados.prazoFinal) delete dados.prazoFinal;
+    try {
+      await aoCriar(dados);
+    } catch (e) {
+      mostrarErro(e.message);
+    }
+  });
+}

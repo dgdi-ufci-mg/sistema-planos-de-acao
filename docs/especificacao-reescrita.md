@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5 e 1.1 a 1.3.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5 e 1.1 a 1.4.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -47,7 +47,7 @@ js/banco/firestore.js como o Firestore executa cada operação
 js/banco/local.js     o mesmo, em memória (modo local e testes)
 js/acesso.js          login, menu do usuário
 js/markdown.js        formatação segura das notas
-js/telas/*.js         uma tela por arquivo: acoes, visualizacao, responsaveis, configurar, ajuda
+js/telas/*.js         uma tela por arquivo: abertura, espaco, acoes, visualizacao, responsaveis, configurar, ajuda
 js/identidade.js      nome do sistema e textos de identificação, num lugar só (seção 3.1)
 js/exemplo.js         espaço de exemplo, com dados fictícios
 js/icones.js          ícones em SVG, no lugar de emojis
@@ -639,7 +639,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.1. ✔ Calendário (dias úteis, datas excluídas com motivo; `js/calendario.js`) e caminho crítico, com "Não começa antes de" (`js/calculo.js`). Teste de comparação com a PI²: o cálculo da versão atual é executado no teste, a partir do `index.html` da raiz, e as 29 ações dão as mesmas datas, folgas e ações críticas (conclusão em 22/03/2027, 115 dias úteis). Ações concluídas, reestimativas e a regra "nada termina no passado" entram no passo 1.2.
 1.2. ✔ Situações (Não liberada, Liberada, Concluída), carimbo Atrasada e regra "nada termina no passado", mais ações concluídas com a duração real e reestimativas contadas do dia em que foram feitas (`js/calculo.js`, com a data de hoje como parâmetro). A regra do passado vale exatamente para as ações com carimbo Atrasada: prazo vencido sem reestimativa. Conclusão prevista para hoje não é atraso.
 1.3. ✔ Simulação beta-PERT, semente imutável, versão do cálculo e as duas prioridades (`js/simulacao.js`). Documentação para conferência por fora (seção 15.6). Referência da PI² registrada na seção 3.2. Desempenho: 29 ações e 10.000 simulações levam cerca de 0,2 s num computador; se, nos testes no celular, a tela travar, a simulação passa a rodar em segundo plano (*Termo técnico: Web Worker*) no passo 1.6, junto com a tela que a usa.
-1.4. Abertura do sistema: quem não tem espaço vê a tela de boas-vindas (criar espaço, "Ver um exemplo" e, com o banco vazio, restaurar a cópia de segurança); quem tem espaços vai direto ao último espaço aberto naquele aparelho; quem chega por um link de espaço abre esse espaço. As boas-vindas continuam acessíveis pelo menu do espaço, e o espaço de exemplo, pela Ajuda.
+1.4. ✔ Abertura do sistema: quem não tem espaço vê a tela de boas-vindas (criar espaço, "Ver um exemplo" e, com o banco vazio, restaurar a cópia de segurança); quem tem espaços vai direto ao último espaço aberto naquele aparelho; quem chega por um link de espaço abre esse espaço. As boas-vindas continuam acessíveis pelo menu do espaço, e o exemplo, pela Ajuda (passo 1.5). Feito no passo 1.4: boas-vindas com "Criar um espaço de planejamento" (nome, início e prazo final) e "Ver um exemplo"; link de espaço no endereço (`#/espaco/<id>`); lembrança do último espaço no aparelho; e um resumo provisório do espaço aberto (situações, conclusão prevista, data segura e chance), para conferir o cálculo na tela até a lista de ações do passo 1.6. A restauração de cópia entra nas boas-vindas no passo 1.19, junto com a cópia de segurança.
 1.5. Topo: menu do espaço (lista, "Configurar este espaço", "Novo espaço"), menu do usuário e Ajuda (glossário e links "o que é?").
 1.6. Lista de ações: cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e animações; no celular, painel "Filtros e ordem" e botão (+).
 1.7. Janela da ação: edição no lugar, seletores com busca (sem ciclos), reestimativa, conclusão e histórico de estimativas.
