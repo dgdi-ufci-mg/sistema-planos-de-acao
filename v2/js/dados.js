@@ -7,6 +7,7 @@
  */
 import { ErroDeDados } from "./banco/local.js";
 import { CAMPOS } from "./modelo.js";
+import { ajustarTons } from "./responsaveis.js";
 
 export { ErroDeDados };
 
@@ -18,7 +19,7 @@ export const SEMENTE_PADRAO = 20261014;
 const CODIGO_VALIDO = /^[A-Za-z0-9]{2,8}$/;
 
 /** Campos que não mudam depois de criados. */
-const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm"];
+const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons"] // tons: o Store cuida deles;
 const FIXOS_DA_ACAO = ["codigo", "criadaEm"];
 
 /**
@@ -55,6 +56,20 @@ export function criarStore(banco, opcoes = {}) {
     const proibido = Object.keys(campos).find((campo) => fixos.includes(campo));
     if (proibido) throw new ErroDeDados("campo-fixo", `O campo "${proibido}" não pode ser alterado.`);
   };
+
+  /**
+   * Refaz os tons das pessoas do espaço depois de mudar quem é responsável (seção 4.1).
+   * Grava só o campo `tons`, sem carimbo de alteração: é arrumação do sistema, não edição de alguém.
+   */
+  async function arrumarTons(espacoId) {
+    const [espaco, acoes, responsaveis] = await Promise.all([
+      banco.lerEspaco(espacoId), banco.listarAcoes(espacoId), banco.listarResponsaveis(),
+    ]);
+    const pessoas = new Set(responsaveis.filter((r) => r.tipo === "pessoa").map((r) => r.id));
+    const emUso = [...new Set(acoes.sort((a, b) => a.ordem - b.ordem).flatMap((a) => a.responsaveis ?? []))].filter((id) => pessoas.has(id));
+    const tons = ajustarTons(espaco.tons, emUso);
+    if (JSON.stringify(tons) !== JSON.stringify(espaco.tons ?? {})) await banco.alterarEspaco(espacoId, { tons });
+  }
 
   return {
     // --- espaços ---
@@ -95,6 +110,7 @@ export function criarStore(banco, opcoes = {}) {
         codigo, rotulo: rotulo.trim(), ordem,
         criadaEm: agora(), alteradaEm: agora(), alteradaPor: usuario,
       });
+      if (outros.responsaveis?.length) await arrumarTons(espacoId);
     },
     lerAcao: (espacoId, codigo) => banco.lerAcao(espacoId, codigo),
     /** Ações do espaço, na ordem do espaço. */
@@ -107,6 +123,7 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
       await banco.alterarAcao(espacoId, codigo, { ...campos, alteradaEm: agora(), alteradaPor: usuario });
+      if ("responsaveis" in campos) await arrumarTons(espacoId);
     },
 
     // --- responsáveis ---

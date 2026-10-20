@@ -23,10 +23,13 @@
   --barra-controle: rgba(22, 63, 58, .06);
   --barra-controle-foco: rgba(22, 63, 58, .12);
   --texto-sobre-destaque: #FFFFFF;
-  /* tons das pessoas (círculos dos responsáveis): fundo e texto */
-  --tom-1: #D6EEE9; --tom-1-texto: #00594F; --tom-2: #FBEAC8; --tom-2-texto: #7A5410;
-  --tom-3: #FDE1CC; --tom-3-texto: #9A4210; --tom-4: #F8DADB; --tom-4-texto: #8E1C21;
-  --tom-5: #DCE6F2; --tom-5-texto: #2B4A6F; --tom-6: #E1EEDC; --tom-6-texto: #3B6E3A;
+  /* tons das pessoas (círculos dos responsáveis), na ordem de distribuição: fundo e texto.
+     15 matizes espaçados por igual (OKLCH, mesma claridade); ver js/responsaveis.js */
+  --tom-1: #FFCDD0; --tom-1-texto: #7E2E39; --tom-2: #ABEBF4; --tom-2-texto: #005C6B; --tom-3: #DFE3B1; --tom-3-texto: #505100;
+  --tom-4: #E6D4FF; --tom-4-texto: #5A3B7E; --tom-5: #FED5B2; --tom-5-texto: #753C00; --tom-6: #BAECCF; --tom-6-texto: #005E36;
+  --tom-7: #C2E1FF; --tom-7-texto: #1D4D87; --tom-8: #FFCDE3; --tom-8-texto: #782F54; --tom-9: #FFD0BF; --tom-9-texto: #7D3319;
+  --tom-10: #B3E7FF; --tom-10-texto: #00567D; --tom-11: #CCE8BD; --tom-11-texto: #305A12; --tom-12: #F6D0F5; --tom-12-texto: #6B346C;
+  --tom-13: #F1DCAD; --tom-13-texto: #674700; --tom-14: #AEEDE2; --tom-14-texto: #005F53; --tom-15: #D4DAFF; --tom-15-texto: #424487;
   --f-titulo: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-texto: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-dados: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -52,9 +55,11 @@
     --barra-controle: rgba(255, 255, 255, .07);
     --barra-controle-foco: rgba(255, 255, 255, .14);
     --texto-sobre-destaque: #062B26;
-      --tom-1: #103B35; --tom-1-texto: #7FE0CD; --tom-2: #3A2B12; --tom-2-texto: #FFD58F;
-    --tom-3: #3E2412; --tom-3-texto: #FFB27A; --tom-4: #3D1618; --tom-4-texto: #FF9A9D;
-    --tom-5: #1B2A3D; --tom-5-texto: #A9C6EA; --tom-6: #1B3320; --tom-6-texto: #A9D6A9;
+      --tom-1: #5C2C31; --tom-1-texto: #FFC0C4; --tom-2: #004750; --tom-2-texto: #8CE9F6; --tom-3: #3F400D; --tom-3-texto: #D9DE98;
+    --tom-4: #45335B; --tom-4-texto: #E3CAFF; --tom-5: #573410; --tom-5-texto: #FFCB99; --tom-6: #14482F; --tom-6-texto: #A4EAC2;
+    --tom-7: #223E61; --tom-7-texto: #B0DBFF; --tom-8: #582D42; --tom-8-texto: #FFBFDF; --tom-9: #5C2F20; --tom-9-texto: #FFC4AC;
+    --tom-10: #05435B; --tom-10-texto: #99E3FF; --tom-11: #2C451E; --tom-11-texto: #BEE5AA; --tom-12: #502F50; --tom-12-texto: #F8C3F7;
+    --tom-13: #4D3A05; --tom-13-texto: #F1D492; --tom-14: #004941; --tom-14-texto: #90EBDD; --tom-15: #353961; --tom-15-texto: #CAD2FF;
     color-scheme: dark;
   }
 }
@@ -76,9 +81,11 @@
   --barra-controle: rgba(255, 255, 255, .07);
   --barra-controle-foco: rgba(255, 255, 255, .14);
   --texto-sobre-destaque: #062B26;
-  --tom-1: #103B35; --tom-1-texto: #7FE0CD; --tom-2: #3A2B12; --tom-2-texto: #FFD58F;
-  --tom-3: #3E2412; --tom-3-texto: #FFB27A; --tom-4: #3D1618; --tom-4-texto: #FF9A9D;
-  --tom-5: #1B2A3D; --tom-5-texto: #A9C6EA; --tom-6: #1B3320; --tom-6-texto: #A9D6A9;
+  --tom-1: #5C2C31; --tom-1-texto: #FFC0C4; --tom-2: #004750; --tom-2-texto: #8CE9F6; --tom-3: #3F400D; --tom-3-texto: #D9DE98;
+  --tom-4: #45335B; --tom-4-texto: #E3CAFF; --tom-5: #573410; --tom-5-texto: #FFCB99; --tom-6: #14482F; --tom-6-texto: #A4EAC2;
+  --tom-7: #223E61; --tom-7-texto: #B0DBFF; --tom-8: #582D42; --tom-8-texto: #FFBFDF; --tom-9: #5C2F20; --tom-9-texto: #FFC4AC;
+  --tom-10: #05435B; --tom-10-texto: #99E3FF; --tom-11: #2C451E; --tom-11-texto: #BEE5AA; --tom-12: #502F50; --tom-12-texto: #F8C3F7;
+  --tom-13: #4D3A05; --tom-13-texto: #F1D492; --tom-14: #004941; --tom-14-texto: #90EBDD; --tom-15: #353961; --tom-15-texto: #CAD2FF;
   color-scheme: dark;
 }
 

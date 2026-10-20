@@ -9,7 +9,7 @@
 export const CAMPOS = Object.freeze({
   espaco: [
     "id", "nome", "inicio", "prazoFinal", "datasExcluidas", "documentos",
-    "simulacoes", "semente", "estrutura", "camposOpcionais",
+    "simulacoes", "semente", "estrutura", "camposOpcionais", "tons",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
   dataExcluida: ["data", "motivo"],

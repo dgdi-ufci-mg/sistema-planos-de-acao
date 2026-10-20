@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 20/10/2026 (versão 51 da página)
+**Última atualização deste documento:** 20/10/2026 (versão 52 da página)
 
 ---
 
@@ -471,6 +471,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 50.2 | Versão 2: o resumo de cada fase e etapa (ações, concluídas, atrasadas, término e barra de progresso) só aparece com o grupo recolhido. Sem mudança na versão atual |
 | 50.3 | Versão 2: no celular, a fase ou etapa recolhida mostra só a barrinha de progresso e, se houver atraso, o relógio vermelho; no computador, as atrasadas do resumo passam a ser escritas por extenso. Sem mudança na versão atual |
 | 51 | Versão 2: responsáveis no cartão como no GitHub, pessoa num círculo com as iniciais e um tom tirado do nome, unidade num quadrado com a sigla, pessoas antes das unidades e "+N" acima de três pessoas (`v2/js/responsaveis.js`). Dicionário de dados da versão 2 (especificação, seção 4.5): novo campo `tipo` do responsável, `pessoa` ou `unidade`, obrigatório; só pessoa pode ter login. Sem mudança na versão atual |
+| 52 | Versão 2: cada pessoa tem um tom só seu dentro do espaço, de uma paleta de 15, guardado no novo campo `tons` do espaço (dicionário, seção 4.1 da especificação) e mantido pelo sistema: menor tom livre para quem chega, tom liberado quando a pessoa deixa de ser responsável, repetição só acima de 15 pessoas (`ajustarTons` em `v2/js/responsaveis.js`, chamado pelo `Store` ao gravar responsáveis de uma ação). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

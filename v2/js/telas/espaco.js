@@ -125,12 +125,13 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
   const etapaDe = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
 
   /** Pessoas em círculos com as iniciais (sobrepostos, até três e "+N"); depois, unidades em quadrados com a sigla. */
+  const tomDa = (p) => espaco.tons?.[p.id] ?? tomDe(p.nome);
   function donosHtml(lista) {
     const { pessoas: ps, unidades } = separar(lista);
     const visiveis = ps.length > PESSOAS_NO_CARTAO ? ps.slice(0, PESSOAS_NO_CARTAO - 1) : ps;
     const resto = ps.slice(visiveis.length);
     return `${ps.length ? `<span class="pessoas">${visiveis.map((p) =>
-      `<span class="avatar${meus?.includes(p.id) ? " eu" : ""}" style="--tom:var(--tom-${tomDe(p.nome)});--tom-texto:var(--tom-${tomDe(p.nome)}-texto)" title="${esc(p.nome)}" role="img" aria-label="${esc(p.nome)}">${esc(iniciais(p.nome))}</span>`).join("")}${resto.length
+      `<span class="avatar${meus?.includes(p.id) ? " eu" : ""}" style="--tom:var(--tom-${tomDa(p)});--tom-texto:var(--tom-${tomDa(p)}-texto)" title="${esc(p.nome)}" role="img" aria-label="${esc(p.nome)}">${esc(iniciais(p.nome))}</span>`).join("")}${resto.length
       ? `<span class="avatar mais" title="${esc(resto.map((p) => p.nome).join(", "))}" role="img" aria-label="Mais ${resto.length}: ${esc(resto.map((p) => p.nome).join(", "))}">+${resto.length}</span>` : ""}</span>` : ""}${unidades.map((u) =>
       `<span class="unidade" title="${esc(u.nome)}" role="img" aria-label="${esc(u.nome)}">${esc(u.sigla || iniciais(u.nome))}</span>`).join("")}`;
   }
