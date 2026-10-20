@@ -316,12 +316,12 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | Decisão | Motivo |
 |---|---|
 | Versão 2: "Espaço de Planejamento" como palavra geral para Plano de Ação, Projeto e Quadro de equipe; "espaço" na fala e nas telas estreitas | "Plano" colidiria com o Plano de Entregas e o Plano de Trabalho do PGD; o qualificativo evita o sentido físico e outros "espaços" |
-| Versão 2: retrato é cópia integral do plano (exceto comentários e histórico de alterações), guardado em cabeçalho e um registro por ação | Retrato autossuficiente e recalculável; a divisão evita o limite de tamanho de documento do Firebase |
+| Versão 2: retrato é cópia integral do espaço (exceto comentários e histórico de alterações), guardado em cabeçalho e um registro por ação | Retrato autossuficiente e recalculável; a divisão evita o limite de tamanho de documento do Firebase |
 | Versão 2: comentários com histórico próprio; "apagar" só esconde da tela, nunca do banco | Possíveis injúrias, calúnias ou difamações precisam poder ser recuperadas pelas autoridades |
-| Versão 2: nome provisório "Sextante", definido num único lugar do código (`js/identidade.js`) | O sistema deixa de tratar só de planos de ação; o nome segue em avaliação e precisa ser fácil de trocar |
-| Versão 2: semente e número de simulações definidos na criação do plano, visíveis e imutáveis; retratos guardam semente, simulações e versão do cálculo | Permite conferir os resultados por fora (planilha, Python, R) sem permitir trocar a semente para obter um número mais favorável |
+| Versão 2: nome provisório "Sextante", definido num único lugar do código (`js/identidade.js`) | O sistema deixa de tratar só de espaços de ação; o nome segue em avaliação e precisa ser fácil de trocar |
+| Versão 2: semente e número de simulações definidos na criação do espaço, visíveis e imutáveis; retratos guardam semente, simulações e versão do cálculo | Permite conferir os resultados por fora (planilha, Python, R) sem permitir trocar a semente para obter um número mais favorável |
 | Versão 2: retratos com origem manual ou automática; automáticos não podem ser excluídos | Histórico contínuo para o Data Lakehouse; o automático depende do servidor da UFCI-MG |
-| Versão 2: exclusão lógica (marcar como excluído) em planos, ações e responsáveis, em vez de apagar ou de registrar as exclusões à parte | Carga incremental com uma consulta só, possibilidade de desfazer, auditoria completa e retratos íntegros; o risco de itens excluídos reaparecerem é contido por um filtro único no `Store` e por teste automático |
+| Versão 2: exclusão lógica (marcar como excluído) em espaços, ações e responsáveis, em vez de apagar ou de registrar as exclusões à parte | Carga incremental com uma consulta só, possibilidade de desfazer, auditoria completa e retratos íntegros; o risco de itens excluídos reaparecerem é contido por um filtro único no `Store` e por teste automático |
 | Dicionário de dados sempre atualizado, no mesmo commit de cada mudança no banco; na versão 2, com teste automático que compara código e dicionário | Facilita a compreensão do banco por quem vier depois e as cargas para o Data Lakehouse; o teste impede que código e documento divirjam |
 | Monte Carlo como método principal de previsão; PERT clássico só como comparação | O PERT ignora caminhos paralelos e superestima a chance de cumprir o prazo. Na PI², o PERT dá 93% e a simulação, 74%, para 14/04/2027 |
 | Distribuição triangular como padrão | Melhor relação custo-benefício e mais conservadora; beta-PERT fica disponível como opção |
@@ -453,6 +453,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 40.2 | Especificação da reescrita: "Em andamento" exige evidência só ao arquivar o plano; tabela de decisão das situações das entregas, a incluir na Ajuda e no manual (seção 16.7 e passo 1.22). Sem mudança no sistema |
 | 41 | Especificação da reescrita: tabela única das situações das entregas, com "Algo foi feito?" e função de tabela de decisão; "encerrar e reabrir" no lugar de "arquivar"; tipos com nomes próprios (Plano de Ação, Projeto, Quadro de equipe), palavra geral em escolha. Sem mudança no sistema |
 | 41.1 | Especificação da reescrita: palavra geral "Espaço de Planejamento" (seção 16.1). Sem mudança no sistema |
+| 42 | Versão 2: "plano" (o conjunto) passa a se chamar "espaço" em todo o código (`espaco`, `criarEspaco`, coleção `espacos`), no dicionário de dados e em toda a especificação; "Plano de Ação" fica só para o tipo formalizado. Legendas de prioridade passam a falar em "conclusão". Sem mudança na versão atual |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

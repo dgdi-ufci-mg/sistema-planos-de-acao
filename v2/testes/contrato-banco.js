@@ -14,25 +14,25 @@ export function testarContratoDoBanco(nome, criarBanco) {
   describe(`Contrato do banco: ${nome}`, () => {
     const acao = (codigo, extra = {}) => ({ codigo, rotulo: `Ação ${codigo}`, ordem: 1, ...extra });
 
-    it("cria, lê e lista planos", async () => {
+    it("cria, lê e lista espaços", async () => {
       const banco = criarBanco();
-      await banco.criarPlano("p1", { nome: "Plano 1" });
-      assert.equal((await banco.lerPlano("p1")).nome, "Plano 1");
-      assert.equal((await banco.listarPlanos()).length, 1);
-      assert.equal(await banco.lerPlano("nao-existe"), null);
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      assert.equal((await banco.lerEspaco("p1")).nome, "Espaço 1");
+      assert.equal((await banco.listarEspacos()).length, 1);
+      assert.equal(await banco.lerEspaco("nao-existe"), null);
     });
 
-    it("não cria ação com código já usado no plano", async () => {
+    it("não cria ação com código já usado no espaço", async () => {
       const banco = criarBanco();
-      await banco.criarPlano("p1", { nome: "Plano 1" });
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
       await banco.criarAcao("p1", acao("LEV"));
       await assert.rejects(banco.criarAcao("p1", acao("LEV")), { codigo: "codigo-ocupado" });
     });
 
-    it("aceita o mesmo código em planos diferentes", async () => {
+    it("aceita o mesmo código em espaços diferentes", async () => {
       const banco = criarBanco();
-      await banco.criarPlano("p1", { nome: "Plano 1" });
-      await banco.criarPlano("p2", { nome: "Plano 2" });
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarEspaco("p2", { nome: "Espaço 2" });
       await banco.criarAcao("p1", acao("LEV"));
       await banco.criarAcao("p2", acao("LEV"));
       assert.equal((await banco.listarAcoes("p2")).length, 1);
@@ -40,7 +40,7 @@ export function testarContratoDoBanco(nome, criarBanco) {
 
     it("alterar uma ação grava só os campos informados", async () => {
       const banco = criarBanco();
-      await banco.criarPlano("p1", { nome: "Plano 1" });
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
       await banco.criarAcao("p1", acao("LEV", { descricao: "original" }));
       await banco.alterarAcao("p1", "LEV", { rotulo: "Novo rótulo" });
       const lida = await banco.lerAcao("p1", "LEV");
@@ -50,18 +50,18 @@ export function testarContratoDoBanco(nome, criarBanco) {
 
     it("quem lê recebe uma cópia, e não o dado guardado", async () => {
       const banco = criarBanco();
-      await banco.criarPlano("p1", { nome: "Plano 1" });
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
       await banco.criarAcao("p1", acao("LEV", { dependeDe: [] }));
       const lida = await banco.lerAcao("p1", "LEV");
       lida.dependeDe.push("XYZ");
       assert.deepEqual((await banco.lerAcao("p1", "LEV")).dependeDe, []);
     });
 
-    it("avisa quem acompanha o plano a cada mudança, e para quando pedido", async () => {
+    it("avisa quem acompanha o espaço a cada mudança, e para quando pedido", async () => {
       const banco = criarBanco();
-      await banco.criarPlano("p1", { nome: "Plano 1" });
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
       const avisos = [];
-      const parar = banco.acompanharPlano("p1", (foto) => avisos.push(foto.acoes.length));
+      const parar = banco.acompanharEspaco("p1", (foto) => avisos.push(foto.acoes.length));
       await banco.criarAcao("p1", acao("LEV"));
       parar();
       await banco.criarAcao("p1", acao("REQ"));
@@ -70,8 +70,8 @@ export function testarContratoDoBanco(nome, criarBanco) {
 
     it("recusa alterar o que não existe", async () => {
       const banco = criarBanco();
-      await assert.rejects(banco.alterarPlano("nao-existe", { nome: "x" }), { codigo: "nao-encontrado" });
-      await banco.criarPlano("p1", { nome: "Plano 1" });
+      await assert.rejects(banco.alterarEspaco("nao-existe", { nome: "x" }), { codigo: "nao-encontrado" });
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
       await assert.rejects(banco.alterarAcao("p1", "NADA", { rotulo: "x" }), { codigo: "nao-encontrado" });
     });
   });

@@ -10,7 +10,7 @@ import { CAMPOS } from "./modelo.js";
 
 export { ErroDeDados };
 
-/** Padrões de um plano novo (especificação, seções 4.1 e 5.7). */
+/** Padrões de um espaço novo (especificação, seções 4.1 e 5.7). */
 export const SIMULACOES_PADRAO = 10000;
 export const SEMENTE_PADRAO = 20261014;
 
@@ -18,7 +18,7 @@ export const SEMENTE_PADRAO = 20261014;
 const CODIGO_VALIDO = /^[A-Za-z0-9]{2,8}$/;
 
 /** Campos que não mudam depois de criados. */
-const FIXOS_DO_PLANO = ["id", "semente", "simulacoes", "criadoEm"];
+const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm"];
 const FIXOS_DA_ACAO = ["codigo", "criadaEm"];
 
 /**
@@ -49,56 +49,56 @@ export function criarStore(banco, opcoes = {}) {
   };
 
   return {
-    // --- planos ---
-    /** Cria um plano. Semente e número de simulações ficam fixos daqui em diante. */
-    async criarPlano(dados) {
-      recusarDesconhecidos(dados, "plano");
+    // --- espaços ---
+    /** Cria um espaço. Semente e número de simulações ficam fixos daqui em diante. */
+    async criarEspaco(dados) {
+      recusarDesconhecidos(dados, "espaco");
       const { nome, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO, ...outros } = dados;
-      if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do plano.");
+      if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do espaço.");
       const id = novoId();
-      await banco.criarPlano(id, {
+      await banco.criarEspaco(id, {
         ...outros, nome: nome.trim(), semente, simulacoes,
         criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario,
       });
       return id;
     },
-    lerPlano: (id) => banco.lerPlano(id),
-    listarPlanos: () => banco.listarPlanos(),
-    async alterarPlano(id, campos) {
-      recusarDesconhecidos(campos, "plano");
-      recusarFixos(campos, FIXOS_DO_PLANO);
-      await banco.alterarPlano(id, { ...campos, alteradoEm: agora(), alteradoPor: usuario });
+    lerEspaco: (id) => banco.lerEspaco(id),
+    listarEspacos: () => banco.listarEspacos(),
+    async alterarEspaco(id, campos) {
+      recusarDesconhecidos(campos, "espaco");
+      recusarFixos(campos, FIXOS_DO_ESPACO);
+      await banco.alterarEspaco(id, { ...campos, alteradoEm: agora(), alteradoPor: usuario });
     },
 
     // --- ações ---
-    /** Cria uma ação no fim da ordem do plano. O código precisa estar livre. */
-    async criarAcao(planoId, dados) {
+    /** Cria uma ação no fim da ordem do espaço. O código precisa estar livre. */
+    async criarAcao(espacoId, dados) {
       recusarDesconhecidos(dados, "acao");
       const { codigo, rotulo, ...outros } = dados;
       if (!CODIGO_VALIDO.test(codigo ?? "")) {
         throw new ErroDeDados("codigo-invalido", "O código deve ter de 2 a 8 letras ou números.");
       }
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o rótulo da ação.");
-      const acoes = await banco.listarAcoes(planoId);
+      const acoes = await banco.listarAcoes(espacoId);
       const ordem = Math.max(0, ...acoes.map((a) => a.ordem ?? 0)) + 1;
-      await banco.criarAcao(planoId, {
+      await banco.criarAcao(espacoId, {
         dependeDe: [], responsaveis: [], estimativas: [],
         ...outros,
         codigo, rotulo: rotulo.trim(), ordem,
         criadaEm: agora(), alteradaEm: agora(), alteradaPor: usuario,
       });
     },
-    lerAcao: (planoId, codigo) => banco.lerAcao(planoId, codigo),
-    /** Ações do plano, na ordem do plano. */
-    async listarAcoes(planoId) {
-      const acoes = await banco.listarAcoes(planoId);
+    lerAcao: (espacoId, codigo) => banco.lerAcao(espacoId, codigo),
+    /** Ações do espaço, na ordem do espaço. */
+    async listarAcoes(espacoId) {
+      const acoes = await banco.listarAcoes(espacoId);
       return acoes.sort((a, b) => a.ordem - b.ordem);
     },
     /** Grava só os campos informados, com data e autor da alteração. */
-    async alterarAcao(planoId, codigo, campos) {
+    async alterarAcao(espacoId, codigo, campos) {
       recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
-      await banco.alterarAcao(planoId, codigo, { ...campos, alteradaEm: agora(), alteradaPor: usuario });
+      await banco.alterarAcao(espacoId, codigo, { ...campos, alteradaEm: agora(), alteradaPor: usuario });
     },
 
     // --- responsáveis ---
@@ -119,6 +119,6 @@ export function criarStore(banco, opcoes = {}) {
     },
 
     // --- tempo real ---
-    acompanharPlano: (planoId, aoMudar) => banco.acompanharPlano(planoId, aoMudar),
+    acompanharEspaco: (espacoId, aoMudar) => banco.acompanharEspaco(espacoId, aoMudar),
   };
 }

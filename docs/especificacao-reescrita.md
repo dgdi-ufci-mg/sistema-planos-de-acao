@@ -65,7 +65,7 @@ package.json          só marca os arquivos como módulos para o Node; sem depen
 ### 3.2 Testes
 
 - **Testes de unidade** das funções de calendário, cálculo, simulação e Markdown, com `node --test`, sem dependências.
-- **Teste de comparação:** o plano da PI² precisa produzir, na versão 2, as mesmas datas do caminho crítico da versão atual, já que essa regra não muda. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência.
+- **Teste de comparação:** o espaço da PI² precisa produzir, na versão 2, as mesmas datas do caminho crítico da versão atual, já que essa regra não muda. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência.
 - **Teste do dicionário de dados:** compara os campos usados pelo código (tipos JSDoc do modelo) com os da seção 4 e falha se divergirem. Roda com os demais, em toda mudança.
 - **Teste visual:** capturas de tela das três abas, nos temas claro e escuro e na largura de celular.
 
@@ -74,7 +74,7 @@ package.json          só marca os arquivos como módulos para o Node; sem depen
 A versão 2 é construída **passo a passo**, seguindo a regra "uma mudança por vez" do AGENTS.md, na ordem da seção 12. Cada passo é testado, documentado e conferido pelo responsável antes do seguinte.
 
 - **Onde:** numa pasta própria do site, `/v2/`, publicada junto com a versão atual. O responsável confere cada passo no endereço `.../sistema-planos-de-acao/v2/`, inclusive pelo celular. A versão atual continua na raiz até a troca (passo 1.20).
-- **Dados:** nas Fases 0 e 1, até o passo 1.14, a versão 2 usa só o banco em memória e o plano de exemplo; nada é gravado. A partir do passo 1.14, usa **um segundo projeto no Firebase**, só para a versão 2 (decisão do responsável em 19/10/2026), com arquivo de configuração próprio dentro de `/v2/`. Os planos reais ficam fisicamente separados. O responsável cria o projeto no console, com orientação passo a passo.
+- **Dados:** nas Fases 0 e 1, até o passo 1.14, a versão 2 usa só o banco em memória e o espaço de exemplo; nada é gravado. A partir do passo 1.14, usa **um segundo projeto no Firebase**, só para a versão 2 (decisão do responsável em 19/10/2026), com arquivo de configuração próprio dentro de `/v2/`. Os espaços reais ficam fisicamente separados. O responsável cria o projeto no console, com orientação passo a passo.
 - **Versão atual sem novidades:** enquanto a versão 2 é construída, a versão atual continua no ar como está. Não ganha funções novas, para não fazer o trabalho duas vezes; recebe só correções, se algo quebrar.
 
 ### 3.4 Preparação para a troca de banco
@@ -83,7 +83,7 @@ A meta de longo prazo é hospedar o sistema no servidor da UFCI-MG, com PostgreS
 
 - **O `Store` fala a língua do sistema, não a do banco.** Oferece operações com nomes do domínio, como `criarAcao`, `alterarCampo`, `acrescentarResponsavel`, `retirarResponsavel`, `registrarEstimativa`, `concluirAcao`, `salvarRetrato` e `acompanharPlano`. Nenhum termo do Firestore (coleção, documento, `onSnapshot`, `arrayUnion`) aparece fora de `js/banco/firestore.js`.
 - **Cada banco é um arquivo** em `js/banco/`, que executa as mesmas operações. Hoje: Firestore e memória local. Depois: um que conversa com o servidor da UFCI-MG.
-- **As regras de edição simultânea (seção 4.6) são do sistema.** No Firestore, viram transações e acréscimos em listas. No PostgreSQL, viram restrições do próprio banco, como código único por plano, tabelas de ligação para responsáveis e dependências, e conferência da última alteração antes de gravar.
+- **As regras de edição simultânea (seção 4.6) são do sistema.** No Firestore, viram transações e acréscimos em listas. No PostgreSQL, viram restrições do próprio banco, como código único por espaço, tabelas de ligação para responsáveis e dependências, e conferência da última alteração antes de gravar.
 - **Tempo real como operação, não como recurso do banco.** `acompanharPlano` avisa a tela quando algo muda. No Firestore, isso vem pronto. No servidor, pode começar com consultas periódicas, por exemplo a cada 10 segundos.
 - **Os mesmos testes para todos os bancos.** Os testes de `node --test` rodam contra o banco em memória e servem de contrato: um banco novo precisa passar neles.
 - **A cópia de segurança é a ponte.** O arquivo da cópia tem formato próprio, independente do banco, e documentado. A troca será: exportar do Firebase, importar no servidor e conferir com o teste de comparação.
@@ -104,7 +104,7 @@ Quando a versão 2 entrar no ar, esta seção passa para a documentação técni
 - **Momento:** texto ISO 8601 em UTC, com milissegundos e `Z`. Exemplo: `2026-10-19T13:45:00.000Z` (10h45 em Brasília).
 - **Id:** texto gerado pelo sistema (UUID). Exemplo: `3f2b8c1e-…`. Exceção: a ação, cuja chave é o código.
 - **Usuário:** e-mail de login de quem gravou. Vazio quando não há login (modo local).
-- **Dias úteis:** número de dias úteis do plano, descontadas as datas excluídas. Aceita frações, como `2.5`.
+- **Dias úteis:** número de dias úteis do espaço, descontadas as datas excluídas. Aceita frações, como `2.5`.
 - **Vazio:** campo ausente ou `null`. "Obrig." indica se o campo precisa ter valor.
 - **Exclusão lógica:** nada é apagado; `excluidoEm` preenchido indica item excluído (seção 4.7).
 - **Nomes dos campos:** em português, sem acentos, no formato `palavraPalavra`.
@@ -113,44 +113,44 @@ Quando a versão 2 entrar no ar, esta seção passa para a documentação técni
 
 ```mermaid
 erDiagram
-  PLANO ||--o{ FASE : "estrutura"
+  ESPACO ||--o{ FASE : "estrutura"
   FASE ||--o{ ETAPA : "etapas"
   ETAPA |o--o{ ACAO : "etapa"
-  PLANO ||--o{ ACAO : "contém"
+  ESPACO ||--o{ ACAO : "contém"
   ACAO }o--o{ ACAO : "dependeDe"
   ACAO }o--o{ RESPONSAVEL : "responsaveis"
   ACAO ||--|{ ESTIMATIVA : "estimativas"
-  PLANO ||--o{ RETRATO : "retratos"
+  ESPACO ||--o{ RETRATO : "retratos"
   RETRATO ||--o{ RETRATO_ACAO : "acoes"
-  PLANO ||--o{ DATA_EXCLUIDA : "datasExcluidas"
-  PLANO ||--o{ DOCUMENTO : "documentos"
+  ESPACO ||--o{ DATA_EXCLUIDA : "datasExcluidas"
+  ESPACO ||--o{ DOCUMENTO : "documentos"
 ```
 
-**Como ler o diagrama:** notação "pé de galinha" (*Termo técnico: crow's foot, de James Martin*), padrão em modelagem de dados. Em cada ponta da linha: `||` exatamente um; `|o` zero ou um; `|{` um ou muitos; `o{` zero ou muitos (o "pé" indica "muitos"). Exemplo: entre PLANO e ACAO, cada ação pertence a exatamente um plano, e um plano tem zero ou muitas ações.
+**Como ler o diagrama:** notação "pé de galinha" (*Termo técnico: crow's foot, de James Martin*), padrão em modelagem de dados. Em cada ponta da linha: `||` exatamente um; `|o` zero ou um; `|{` um ou muitos; `o{` zero ou muitos (o "pé" indica "muitos"). Exemplo: entre ESPACO e ACAO, cada ação pertence a exatamente um espaço, e um espaço tem zero ou muitas ações.
 
-- Um **plano** tem ações, retratos, datas excluídas, documentos e uma estrutura de fases e etapas.
-- Uma **ação** pertence a um plano e, opcionalmente, a uma etapa; depende de outras ações do mesmo plano; tem responsáveis e um histórico de estimativas.
-- **Responsáveis** são globais: os mesmos para todos os planos.
+- Um **espaço** tem ações, retratos, datas excluídas, documentos e uma estrutura de fases e etapas.
+- Uma **ação** pertence a um espaço e, opcionalmente, a uma etapa; depende de outras ações do mesmo espaço; tem responsáveis e um histórico de estimativas.
+- **Responsáveis** são globais: os mesmos para todos os espaços.
 
-### 4.1 Plano
+### 4.1 Espaço de Planejamento
 
-<!-- dicionario: plano -->
+<!-- dicionario: espaco -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
-| `id` | id | sim | Identificador do plano. Imutável | `3f2b8c1e-…` |
-| `nome` | texto | sim | Nome do plano | `PI² · Fase 1` |
-| `inicio` | data | não | Início do plano: a partir dele contam os dias úteis | `2026-08-03` |
+| `id` | id | sim | Identificador do espaço. Imutável | `3f2b8c1e-…` |
+| `nome` | texto | sim | Nome do espaço | `PI² · Fase 1` |
+| `inicio` | data | não | Início do espaço: a partir dele contam os dias úteis | `2026-08-03` |
 | `prazoFinal` | data | não | Prazo final, por exemplo o fixado por ato da Diretoria-Geral | `2027-04-14` |
 | `datasExcluidas` | lista de data excluída (4.1.1) | não | Feriados e outras datas sem expediente | |
-| `documentos` | lista de documento (4.1.2) | não | Documentos do plano, como o plano aprovado e suas revisões | |
+| `documentos` | lista de documento (4.1.2) | não | Documentos do espaço, como o espaço aprovado e suas revisões | |
 | `simulacoes` | inteiro | sim | Número de simulações. Padrão 10.000. Definido na criação e **imutável** (seção 5.7) | `10000` |
 | `semente` | inteiro | sim | Semente da simulação. Padrão 20261014. Definida na criação e **imutável** (seção 5.7) | `20261014` |
 | `estrutura` | lista de fase (4.1.3) | não | Fases e etapas, na ordem de exibição (seção 8.3) | |
-| `camposOpcionais` | campos opcionais (4.1.4) | não | Quais campos opcionais o plano usa. Ausente: todos ligados | |
-| `criadoEm` | momento | sim | Criação do plano. Imutável | `2026-10-19T13:45:00.000Z` |
-| `alteradoEm` | momento | sim | Última gravação no plano | |
+| `camposOpcionais` | campos opcionais (4.1.4) | não | Quais campos opcionais o espaço usa. Ausente: todos ligados | |
+| `criadoEm` | momento | sim | Criação do espaço. Imutável | `2026-10-19T13:45:00.000Z` |
+| `alteradoEm` | momento | sim | Última gravação no espaço | |
 | `alteradoPor` | usuário | não | Autor da última gravação | `ana@ufci.edu.br` |
-| `excluidoEm` | momento | não | Exclusão lógica (seção 4.7). Vazio: plano ativo | |
+| `excluidoEm` | momento | não | Exclusão lógica (seção 4.7). Vazio: espaço ativo | |
 | `excluidoPor` | usuário | não | Quem excluiu | |
 
 Saem da versão atual: `dist` (escolha de distribuição), `statusDate` (a data de referência é sempre hoje), `baseline` (substituído pelos retratos) e `nearCrit` (seção 7.3).
@@ -201,17 +201,17 @@ Desligar um campo o esconde do formulário, da tabela e das exportações; os da
 
 ### 4.2 Ação
 
-Chave: o par (plano, `codigo`). O código é único dentro do plano.
+Chave: o par (espaço, `codigo`). O código é único dentro do espaço.
 
 <!-- dicionario: acao -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
-| `codigo` | texto | sim | Identificador da ação no plano: de 2 a 8 letras ou números. Imutável, porque é a referência das dependências | `LEV` |
-| `ordem` | inteiro | sim | Posição na "Ordem do plano" | `3` |
+| `codigo` | texto | sim | Identificador da ação no espaço: de 2 a 8 letras ou números. Imutável, porque é a referência das dependências | `LEV` |
+| `ordem` | inteiro | sim | Posição na "Ordem do espaço" | `3` |
 | `etapa` | id | não | Etapa a que a ação pertence (e, por ela, a fase). Vazio: sem fase nem etapa | `e1` |
 | `rotulo` | texto | sim | Nome curto, usado no cronograma e no diagrama | `Levantar requisitos` |
 | `descricao` | texto | não | Descrição completa | |
-| `dependeDe` | lista de código | sim | Códigos das ações anteriores, do mesmo plano. Lista vazia: sem anteriores | `["LEV","REQ"]` |
+| `dependeDe` | lista de código | sim | Códigos das ações anteriores, do mesmo espaço. Lista vazia: sem anteriores | `["LEV","REQ"]` |
 | `responsaveis` | lista de id | sim | Ids dos responsáveis (4.5). Lista vazia: sem responsável | |
 | `estimativas` | lista de estimativa (4.3) | sim | Da primeira à mais recente. A vigente é a última | |
 | `concluidaEm` | data | não | Data de conclusão. Vazio: não concluída | `2026-09-22` |
@@ -223,7 +223,7 @@ Chave: o par (plano, `codigo`). O código é único dentro do plano.
 | `excluidaEm` | momento | não | Exclusão lógica (seção 4.7). Vazio: ação ativa | |
 | `excluidaPor` | usuário | não | Quem excluiu | |
 
-Saem da versão atual: custo, custo gasto, % concluído, início real e término real separado. O campo `entrega` da ação, previsto antes, foi retirado em 20/10/2026 para não se confundir com as **entregas do plano** (seção 16.7); o que a coluna "Entrega" da planilha da PI² dizia passa para a descrição.
+Saem da versão atual: custo, custo gasto, % concluído, início real e término real separado. O campo `entrega` da ação, previsto antes, foi retirado em 20/10/2026 para não se confundir com as **entregas do Plano de Ação** (seção 16.7); o que a coluna "Entrega" da planilha da PI² dizia passa para a descrição.
 
 ### 4.3 Estimativa: cada item de `estimativas`
 
@@ -242,26 +242,26 @@ A primeira estimativa nunca é alterada. Corrigir um erro de digitação logo ap
 
 ### 4.4 Retrato
 
-Chave: id. Pertence a um plano. Só leitura depois de criado.
+Chave: id. Pertence a um espaço. Só leitura depois de criado.
 
-**O retrato é uma cópia integral do plano naquele momento** (decisão de 20/10/2026): o plano com todos os campos, todas as ações ativas com todos os campos (inclusive notas e o histórico completo de estimativas), os responsáveis citados e os resultados calculados. Assim ele se sustenta sozinho, mesmo que tudo mude ou seja excluído depois, e permite refazer o cálculo exatamente. Só ficam de fora os **comentários** e o **histórico de alterações**, que já são permanentes por conta própria (seções 16.4 e 16.5).
+**O retrato é uma cópia integral do espaço naquele momento** (decisão de 20/10/2026): o espaço com todos os campos, todas as ações ativas com todos os campos (inclusive notas e o histórico completo de estimativas), os responsáveis citados e os resultados calculados. Assim ele se sustenta sozinho, mesmo que tudo mude ou seja excluído depois, e permite refazer o cálculo exatamente. Só ficam de fora os **comentários** e o **histórico de alterações**, que já são permanentes por conta própria (seções 16.4 e 16.5).
 
-O retrato é guardado em duas partes: o cabeçalho, abaixo, e um registro por ação (4.4.1). Assim, um plano grande com notas longas não esbarra no limite de tamanho de um documento do Firebase (cerca de 1 MB).
+O retrato é guardado em duas partes: o cabeçalho, abaixo, e um registro por ação (4.4.1). Assim, um espaço grande com notas longas não esbarra no limite de tamanho de um documento do Firebase (cerca de 1 MB).
 
 <!-- dicionario: retrato -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
 | `id` | id | sim | Identificador do retrato | |
 | `nome` | texto | sim | Nome dado ao retrato | `Plano aprovado` |
-| `origem` | texto | sim | `manual` (salvo por um administrador do plano) ou `automatico` (salvo pelo sistema). Na tela, cada origem tem um selo | `manual` |
+| `origem` | texto | sim | `manual` (salvo por um administrador do espaço) ou `automatico` (salvo pelo sistema). Na tela, cada origem tem um selo | `manual` |
 | `criadoEm` | momento | sim | Quando foi salvo | |
 | `criadoPor` | usuário | não | Quem salvou. Vazio nos automáticos | |
 | `semente` | inteiro | sim | Semente usada no cálculo | `20261014` |
 | `simulacoes` | inteiro | sim | Número de simulações usado | `10000` |
 | `versaoCalculo` | inteiro | sim | Versão do método de cálculo (seção 5.7) | `1` |
-| `plano` | plano (4.1) | sim | Cópia integral do plano, com todos os campos de 4.1 | |
+| `espaco` | espaço (4.1) | sim | Cópia integral do espaço, com todos os campos de 4.1 | |
 | `responsaveis` | lista de responsável (4.5) | sim | Cópia integral dos responsáveis citados nas ações, para os nomes continuarem legíveis | |
-| `resumo` | resumo do retrato (4.4.2) | sim | Resultado do plano naquele momento | |
+| `resumo` | resumo do retrato (4.4.2) | sim | Resultado do espaço naquele momento | |
 
 Os retratos **automáticos não podem ser excluídos** à mão, para o histórico usado no Data Lakehouse não ter buracos. O retrato automático depende de um programa no servidor; chega com o servidor da UFCI-MG (passo 4.4). No Firebase gratuito, só há retratos manuais.
 
@@ -287,14 +287,14 @@ Cada ação do retrato tem **todos os campos da ação (4.2)**, copiados como es
 <!-- dicionario: retratoResumo -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
-| `conclusaoPrevista` | data | sim | Conclusão prevista do plano (P50) | `2026-12-22` |
+| `conclusaoPrevista` | data | sim | Conclusão prevista do espaço (P50) | `2026-12-22` |
 | `dataSegura` | data | sim | Data com 80% de chance (P80) | `2027-01-15` |
 | `p95` | data | sim | Data com 95% de chance | `2027-02-03` |
-| `chancePrazo` | número de 0 a 1 | não | Chance de cumprir o prazo final. Vazio se o plano não tem prazo final | `0.74` |
+| `chancePrazo` | número de 0 a 1 | não | Chance de cumprir o prazo final. Vazio se o espaço não tem prazo final | `0.74` |
 
 ### 4.5 Responsável
 
-Chave: id. Lista global, com cadastro livre, compartilhada por todos os planos.
+Chave: id. Lista global, com cadastro livre, compartilhada por todos os espaços.
 
 <!-- dicionario: responsavel -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
@@ -312,12 +312,12 @@ Chave: id. Lista global, com cadastro livre, compartilhada por todos os planos.
 
 Um responsável pode ser de dois tipos, sem campo próprio para distingui-los:
 
-- **Membro da equipe com acesso ao sistema:** tem `usuario`. Para esses, funcionam o filtro "Minhas ações" e, na Fase 2, os papéis por plano.
+- **Membro da equipe com acesso ao sistema:** tem `usuario`. Para esses, funcionam o filtro "Minhas ações" e, na Fase 2, os papéis por espaço.
 - **Responsável diverso:** pessoa de fora do sistema, unidade organizacional, equipe ou grupo de unidades. Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
 
 ### 4.6 Edição simultânea
 
-Várias pessoas podem editar o mesmo plano ao mesmo tempo. Nenhuma gravação pode apagar, em silêncio, o trabalho de outra pessoa. A versão 1 já grava só o campo alterado e mostra as mudanças em tempo real; a versão 2 mantém isso e fecha três falhas encontradas na versão 1 em 17/10/2026 (registradas em "Pendências" da documentação técnica).
+Várias pessoas podem editar o mesmo espaço ao mesmo tempo. Nenhuma gravação pode apagar, em silêncio, o trabalho de outra pessoa. A versão 1 já grava só o campo alterado e mostra as mudanças em tempo real; a versão 2 mantém isso e fecha três falhas encontradas na versão 1 em 17/10/2026 (registradas em "Pendências" da documentação técnica).
 
 | Situação | Regra |
 |---|---|
@@ -332,11 +332,11 @@ Os campos `alteradaEm` e `alteradaPor` (seção 4.2) servem para o aviso. As reg
 
 ### 4.7 Exclusão lógica
 
-Nada é apagado de verdade pelo uso comum do sistema. Excluir um plano, uma ação ou um responsável grava **quando** e **quem** excluiu (`excluidoEm`/`excluidaEm` e `excluidoPor`/`excluidaPor`), e o item some da tela.
+Nada é apagado de verdade pelo uso comum do sistema. Excluir um espaço, uma ação ou um responsável grava **quando** e **quem** excluiu (`excluidoEm`/`excluidaEm` e `excluidoPor`/`excluidaPor`), e o item some da tela.
 
 - **Um único filtro, no `Store`.** As operações comuns (listar ações, calcular, exportar) devolvem só itens ativos. Ver os excluídos exige pedir explicitamente: a lixeira, a cópia de segurança e as cargas para o Data Lakehouse. Como nenhuma outra parte do código lê o banco (seção 3.4), o filtro existe num lugar só.
-- **Teste automático:** um plano de exemplo com uma ação excluída; o teste confere que ela não aparece na lista, no quadro, no cálculo, na simulação nem nas exportações, e que aparece na lixeira e na cópia de segurança.
-- **Desfazer:** a lixeira do plano mostra as ações excluídas, com quem e quando, e permite restaurá-las.
+- **Teste automático:** um espaço de exemplo com uma ação excluída; o teste confere que ela não aparece na lista, no quadro, no cálculo, na simulação nem nas exportações, e que aparece na lixeira e na cópia de segurança.
+- **Desfazer:** a lixeira do espaço mostra as ações excluídas, com quem e quando, e permite restaurá-las.
 - **Exclusão encadeada:** excluir algo que outros itens usam abre uma janela que explica a consequência e oferece alternativas.
   - **Ação de que outras dependem:** (a) ligar as dependentes às anteriores da ação excluída, mantendo a sequência lógica; é a opção já marcada, e só aparece se a excluída tiver anteriores; (b) só retirar a dependência; (c) cancelar e rever a estrutura.
   - **Responsável que está em ações:** (a) substituir por outro responsável; (b) só retirar das ações; (c) cancelar.
@@ -363,14 +363,14 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 
 | Entidade | Firebase (versão 2, segundo projeto) | PostgreSQL (servidor da UFCI-MG, proposta) |
 |---|---|---|
-| Plano | `planos/{id}` | tabela `plano` |
-| Data excluída, documento | listas dentro do plano | tabelas `plano_data_excluida`, `plano_documento` |
-| Fase, etapa | lista `estrutura` dentro do plano | tabelas `fase`, `etapa` |
-| Ação | `planos/{id}/acoes/{codigo}` | tabela `acao`, chave (`plano_id`, `codigo`) |
+| Espaço | `espacos/{id}` | tabela `espaco` |
+| Data excluída, documento | listas dentro do espaço | tabelas `espaco_data_excluida`, `espaco_documento` |
+| Fase, etapa | lista `estrutura` dentro do espaço | tabelas `fase`, `etapa` |
+| Ação | `espacos/{id}/acoes/{codigo}` | tabela `acao`, chave (`espaco_id`, `codigo`) |
 | Dependência | lista `dependeDe` dentro da ação | tabela `acao_dependencia` |
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
-| Retrato | cabeçalho em `planos/{id}/retratos/{id}`; ações em `planos/{id}/retratos/{id}/acoes/{codigo}` | tabelas `retrato`, `retrato_acao` |
+| Retrato | cabeçalho em `espacos/{id}/retratos/{id}`; ações em `espacos/{id}/retratos/{id}/acoes/{codigo}` | tabelas `retrato`, `retrato_acao` |
 | Responsável | `responsaveis/{id}` | tabela `responsavel` |
 
 Os nomes do Firebase passam a ser em português, porque a versão 2 usa um projeto novo (seção 3.3); a migração (seção 11) converte os nomes da versão atual (`projects`, `tasks`, `people`). No PostgreSQL, as listas viram tabelas de ligação e as regras da seção 4.6 viram restrições do banco (seção 3.4).
@@ -380,7 +380,7 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
 - **Histórico de alterações** (passo 1.16): quem, quando, entidade, chave, campo, valor antigo e valor novo; coleção ou tabela própria, só de acréscimo (seção 16.4).
-- **Fase 2:** entregas do plano e registro do alcance, com evidência (seção 16.7); tipo do plano, visibilidade, plano aberto ou fechado, encerramento e papéis por plano (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
+- **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
 
 ---
 
@@ -388,8 +388,8 @@ Entram no dicionário, com tabela marcada e teste, no passo em que forem constru
 
 ### 5.1 Contagem do tempo
 
-- Prazos em **dias úteis**, descontadas as datas excluídas do plano.
-- Uma ação é **liberada** quando todas as anteriores estão concluídas. Sem ações anteriores, é liberada no início do plano.
+- Prazos em **dias úteis**, descontadas as datas excluídas do espaço.
+- Uma ação é **liberada** quando todas as anteriores estão concluídas. Sem ações anteriores, é liberada no início do espaço.
 - **"Não começa antes de" (data mínima, opcional).** A ação só é liberada quando todas as anteriores estiverem concluídas **e** essa data tiver chegado. Liberação = a mais tardia entre a conclusão das anteriores e a data mínima. É o mesmo conceito da restrição "não iniciar antes de" do MS Project, numa forma simples.
   - **Nova ação:** o campo já vem preenchido com a data de criação. Assim, uma ação criada depois que as anteriores terminaram não nasce atrasada. O usuário pode apagar a data, se a ação puder começar assim que as anteriores terminarem.
   - **Outros usos:** ações que dependem de uma data externa, como liberação de orçamento, início do semestre ou publicação de um ato.
@@ -430,11 +430,11 @@ Tudo é recalculado a cada mudança: conclusão, reestimativa ou edição. A est
 ### 5.7 Simulação de Monte Carlo
 
 - Distribuição beta-PERT.
-- **Semente e número de simulações visíveis, mas imutáveis.** São definidos na criação do plano (pelo usuário ou com o padrão) e aparecem em "Configurar este plano" só para leitura. Assim, qualquer pessoa ou IA pode conferir os resultados por fora, em planilha, Python ou R, e ninguém pode trocar a semente até o número "ficar bonito".
+- **Semente e número de simulações visíveis, mas imutáveis.** São definidos na criação do espaço (pelo usuário ou com o padrão) e aparecem em "Configurar este espaço" só para leitura. Assim, qualquer pessoa ou IA pode conferir os resultados por fora, em planilha, Python ou R, e ninguém pode trocar a semente até o número "ficar bonito".
 - **Conferência por fora:** a seção 15 deve documentar, junto com o código da versão 2, o gerador de números (mulberry32), a ordem dos sorteios e o método de sorteio da beta-PERT, para permitir reproduzir os resultados **exatamente**. Uma ferramenta com outro gerador chega a resultados estatisticamente equivalentes, com diferença da ordem de meio ponto percentual na chance de cumprir o prazo.
 - **Versão do cálculo:** se um dia o método de cálculo mudar (por exemplo, a correção de um erro), a mesma semente passa a dar outro resultado. Por isso, o código tem um número de versão do cálculo, guardado em cada retrato.
 - Ações concluídas: duração real. Ações reestimadas: a contagem começa na data da reestimativa. Regra da seção 5.5 aplicada.
-- **Resultados do plano:** datas P50, P80 e P95 da conclusão, chance de cumprir o prazo final e distribuição das datas finais (gráfico).
+- **Resultados do espaço:** datas P50, P80 e P95 da conclusão, chance de cumprir o prazo final e distribuição das datas finais (gráfico).
 - **Resultados por ação:** índice de criticidade (seção 7.1) e contribuição para a variância do prazo (seção 7.2). Fórmulas e justificativas na seção 15.
 - **Saem da tela o SSI e a crucialidade** como números próprios. A contribuição para a variância é a forma padrão e mais comunicável de responder à pergunta que os dois respondiam (seção 15.4).
 
@@ -467,9 +467,9 @@ Barras horizontais, com o número em cinza ao lado. A tabela pode ser ordenada p
 
 *Termo técnico: índice de criticidade.*
 
-Legenda: "Quanto um atraso nesta ação atrasa o fim do plano. Por exemplo, com 70%, cada dia de atraso nesta ação atrasa o plano em cerca de 0,7 dia. Considera só o prazo final; outros motivos de prioridade ficam a critério da equipe."
+Legenda: "Quanto um atraso nesta ação atrasa a conclusão prevista. Por exemplo, com 70%, cada dia de atraso nesta ação atrasa a conclusão em cerca de 0,7 dia. Considera só o prazo final; outros motivos de prioridade ficam a critério da equipe."
 
-Fundamento: em cada simulação, um dia a mais numa ação atrasa o fim do plano em um dia se ela estiver no caminho crítico, e em zero se não estiver. A média é o índice de criticidade. Por isso ele mede exatamente o efeito esperado de um atraso.
+Fundamento: em cada simulação, um dia a mais numa ação atrasa a conclusão de todas as ações em um dia se ela estiver no caminho crítico, e em zero se não estiver. A média é o índice de criticidade. Por isso ele mede exatamente o efeito esperado de um atraso.
 
 ### 7.2 Prioridade de revisão do planejamento
 
@@ -479,13 +479,13 @@ Legenda: "Esta ação responde por 18% da incerteza do prazo final. Quanto maior
 
 - **O que mostra:** a parcela da incerteza do prazo final que vem de cada ação. As parcelas de todas as ações não concluídas somam 100%.
 - **Número em cinza:** a parcela em porcentagem inteira; abaixo de 1%, aparece "<1%".
-- **Barra:** proporcional à parcela, numa escala fixa de 0% a 100%. Assim, a barra e o número dizem a mesma coisa, e o tamanho da barra pode ser comparado entre planos.
+- **Barra:** proporcional à parcela, numa escala fixa de 0% a 100%. Assim, a barra e o número dizem a mesma coisa, e o tamanho da barra pode ser comparado entre espaços.
 - **Fundamento:** é a medida padrão das ferramentas de análise de risco de cronograma (gráfico "tornado"). Uma ação previsível no caminho crítico tem prioridade de execução alta e parcela quase nula: não há incerteza nela para reduzir. Detalhes matemáticos na seção 15.
 - **Natureza relativa:** a parcela compara as ações entre si. Isso é adequado aqui, porque a barra serve para ordenar onde revisar o planejamento, não para disparar alertas.
 
 ### 7.3 Cores no fluxo e no cronograma
 
-- **Intensidade contínua pela prioridade de execução:** a cor de cada ação não concluída varia gradualmente do **cinza** (índice de criticidade 0%) ao **vermelho** (100%). Quanto mais vermelha, mais um atraso nela atrasa o plano.
+- **Intensidade contínua pela prioridade de execução:** a cor de cada ação não concluída varia gradualmente do **cinza** (índice de criticidade 0%) ao **vermelho** (100%). Quanto mais vermelha, mais um atraso nela atrasa a conclusão.
 - **Verde:** ação concluída.
 - Saem as categorias "sem folga", "quase sem folga" e "com folga", o limite de 10 dias (`nearCrit`) e as setas vermelhas do caminho crítico determinístico. Tudo passa a seguir uma única medida, a mesma da barra da seção 7.1. Isso evita que uma ação apareça como "crítica" numa tela e com prioridade baixa em outra.
 - A folga em dias úteis continua visível como número, no detalhe da ação e no rótulo do fluxo.
@@ -513,16 +513,16 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 
 ### 8.1 Topo
 
-- **Barra do aplicativo compacta, com dois estados**, como no Spotify do iPhone: **no topo da página**, sem rolagem, fica **levemente mais escura** que o fundo da página (cerca de 18% mais escura no tema claro e 30% no escuro, sem tom verde), com os textos na cor normal; **ao rolar**, transforma-se suavemente em **vidro bem transparente** (cerca de 20% de véu no tema claro e 30% no escuro), que desfoca o conteúdo que passa por baixo, com uma linha fina na base e uma sombra suave. **A ida e a volta são simétricas**: a mesma transição de 0,3 s, com o mesmo desfoque nos dois estados (só a cor, a linha e a sombra mudam), para a volta ao topo ser o inverso exato da descida. Fica fixa no alto, com 48 px de altura. Reúne numa linha: logotipo e nome do sistema, menu do plano (nome do plano aberto, com uma setinha) e menu do usuário (iniciais). A Ajuda não tem botão próprio na barra: fica no menu do usuário, para poluir menos a tela. No celular, o nome encolhe para "Planos de Ação"; **no celular na vertical, logotipo e nome somem**, e o menu do plano ocupa o espaço (KISS). Quem ativou "Reduzir transparência" no sistema, ou usa navegador sem suporte ao desfoque, vê a barra opaca, na cor de fundo da página. Objetivo: o máximo de tela para as ações.
+- **Barra do aplicativo compacta, com dois estados**, como no Spotify do iPhone: **no topo da página**, sem rolagem, fica **levemente mais escura** que o fundo da página (cerca de 18% mais escura no tema claro e 30% no escuro, sem tom verde), com os textos na cor normal; **ao rolar**, transforma-se suavemente em **vidro bem transparente** (cerca de 20% de véu no tema claro e 30% no escuro), que desfoca o conteúdo que passa por baixo, com uma linha fina na base e uma sombra suave. **A ida e a volta são simétricas**: a mesma transição de 0,3 s, com o mesmo desfoque nos dois estados (só a cor, a linha e a sombra mudam), para a volta ao topo ser o inverso exato da descida. Fica fixa no alto, com 48 px de altura. Reúne numa linha: logotipo e nome do sistema, menu do espaço (nome do espaço aberto, com uma setinha) e menu do usuário (iniciais). A Ajuda não tem botão próprio na barra: fica no menu do usuário, para poluir menos a tela. No celular, o nome encolhe para "Planos de Ação"; **no celular na vertical, logotipo e nome somem**, e o menu do espaço ocupa o espaço (KISS). Quem ativou "Reduzir transparência" no sistema, ou usa navegador sem suporte ao desfoque, vê a barra opaca, na cor de fundo da página. Objetivo: o máximo de tela para as ações.
 - **Ferramentas da lista no computador:** filtros de situação, Lista ou Editar em planilha, Minhas ações, responsável, ordenação, Recolher fases, Legenda e Nova ação. A legenda de cores e símbolos fica escondida até ser aberta.
 - **Ferramentas da lista no celular**, em uma só linha: os filtros de situação numa faixa que rola para o lado e um botão **"Filtros e ordem"**, que mostra quantas opções estão ativas. Ele abre um painel que sobe de baixo, com: Minhas ações, responsável, ordenação, recolher ou expandir fases, legenda e "Limpar filtros e ordem". **Nova ação** vira um botão flutuante (+) no canto inferior direito. A edição em planilha fica só no computador. Nos cartões de ações concluídas, as barras de prioridade, sem uso, não aparecem.
 
 - Logotipo, nome do sistema e instituição.
-- **Menu do plano:** junta o seletor de plano e "Configurar o plano", que deixa de ter botão próprio (engrenagem). Ao tocar no nome do plano, abre uma lista com os planos (✓ no plano aberto), uma linha divisória, "Configurar este plano" e "Novo plano" (nome, datas e prazo final). Sem login, mostra só a lista de planos. Segue o padrão de troca de espaço de trabalho do Slack e do Notion. Custo aceito: configurar passa a exigir dois toques, e a lista deixa de ser a nativa do celular. Busca na lista só quando houver muitos planos (YAGNI).
+- **Menu do espaço:** junta o seletor de espaço e "Configurar o espaço", que deixa de ter botão próprio (engrenagem). Ao tocar no nome do espaço, abre uma lista com os espaços (✓ no espaço aberto), uma linha divisória, "Configurar este espaço" e "Novo espaço" (nome, datas e prazo final). Sem login, mostra só a lista de espaços. Segue o padrão de troca de espaço de trabalho do Slack e do Notion. Custo aceito: configurar passa a exigir dois toques, e a lista deixa de ser a nativa do celular. Busca na lista só quando houver muitos espaços (YAGNI).
 - **Ajuda:** painel dentro do sistema, aberto pelo item "Ajuda e manual" do menu do usuário ou pelos links "o que é?" da tela. Contém o glossário, que antes era a aba "Entenda os termos", e, futuramente, o manual. Cada "Termo técnico" na tela abre a explicação correspondente.
-- **Configurar o plano** (item "Configurar este plano" do menu do plano): painel lateral com: dados do plano (nome, datas, prazo final, datas excluídas com motivo); campos opcionais em uso; documentos do plano; retratos (salvar e listar); importar e exportar; cópia de segurança.
+- **Configurar o espaço** (item "Configurar este espaço" do menu do espaço): painel lateral com: dados do espaço (nome, datas, prazo final, datas excluídas com motivo); campos opcionais em uso; documentos do espaço; retratos (salvar e listar); importar e exportar; cópia de segurança.
 - **Menu do usuário:** seus dados (e-mail, nome, responsável ligado), Ajuda e manual, trocar senha (pede a senha atual), sair. Sem login, o lugar das iniciais mostra um ícone de pessoa, e o menu traz só "Ajuda e manual" e "Entrar", para quem só consulta não perder o acesso à Ajuda.
-- **Configurar o sistema:** reservado para o futuro (por exemplo, gestão de usuários e permissões). O nome "Configurar o plano" evita confusão com ele.
+- **Configurar o sistema:** reservado para o futuro (por exemplo, gestão de usuários e permissões). O nome "Configurar o espaço" evita confusão com ele.
 
 ### 8.2 Abas
 
@@ -532,8 +532,8 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 
 Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha da PI².
 
-- **Fases e etapas como separadores**, como na gestão clássica de projetos (estrutura analítica): fase > etapa > ações. Cada separador mostra o nome, o número de ações, quantas foram concluídas, as atrasadas e a data em que o grupo termina, com uma pequena barra de progresso. Fases e etapas podem ser **recolhidas e expandidas** com animação suave, e há um botão para recolher todas as fases. O aninhamento aparece por recuo leve. Ações sem etapa ficam num grupo "Sem fase nem etapa". O agrupamento vale na ordem "Ordem do plano"; nas ordenações por prioridade ou data, a lista fica corrida, para que a ordem escolhida prevaleça.
-- **Fases e etapas são cadastradas em "Configurar o plano"** (criar e renomear; reordenar e excluir na versão final). Na ação, a etapa é escolhida numa lista agrupada por fase. O campo opcional "Fases e etapas" pode ser desligado; nesse caso, a lista fica sem separadores.
+- **Fases e etapas como separadores**, como na gestão clássica de projetos (estrutura analítica): fase > etapa > ações. Cada separador mostra o nome, o número de ações, quantas foram concluídas, as atrasadas e a data em que o grupo termina, com uma pequena barra de progresso. Fases e etapas podem ser **recolhidas e expandidas** com animação suave, e há um botão para recolher todas as fases. O aninhamento aparece por recuo leve. Ações sem etapa ficam num grupo "Sem fase nem etapa". O agrupamento vale na ordem "Ordem do espaço"; nas ordenações por prioridade ou data, a lista fica corrida, para que a ordem escolhida prevaleça.
+- **Fases e etapas são cadastradas em "Configurar o espaço"** (criar e renomear; reordenar e excluir na versão final). Na ação, a etapa é escolhida numa lista agrupada por fase. O campo opcional "Fases e etapas" pode ser desligado; nesse caso, a lista fica sem separadores.
 - **Animação dos filtros:** ao filtrar ou reordenar, as ações que continuam deslizam até a nova posição e as que entram aparecem suavemente. Respeita a preferência do sistema por menos movimento.
 - **Linha compacta:** código e rótulo; situação e carimbo; responsáveis; conclusão prevista; as duas barras de prioridade.
 - **Cada linha é um cartão** com leve sombra e cantos arredondados, para separar visualmente as ações. A faixa colorida à esquerda segue a cor de prioridade (seção 7.3).
@@ -556,13 +556,13 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
 
 ### 8.4 Aba Visualização
 
-No alto da aba fica a **linha do tempo do plano** (decisão do responsável: fora da aba Ações, para deixá-la mais limpa): um eixo **fino**, do início do plano ao prazo final, com a parte já decorrida, a marca de hoje e três pontos: **conclusão prevista**, **data segura** (P80) e **prazo final**. Uma faixa clara destaca o intervalo entre a conclusão prevista e a data segura. **As datas ficam na própria linha**, junto de cada marca, acima ou abaixo do eixo, distribuídas automaticamente para não se sobreporem; no celular, em formato curto (dia/mês). Uma legenda de uma linha explica só os símbolos, com a chance de cumprir o prazo junto ao prazo final. A linha do tempo fica sobre um fundo levemente esverdeado, com cantos arredondados, para se separar do resto do conteúdo.
+No alto da aba fica a **linha do tempo do espaço** (decisão do responsável: fora da aba Ações, para deixá-la mais limpa): um eixo **fino**, do início do espaço ao prazo final, com a parte já decorrida, a marca de hoje e três pontos: **conclusão prevista**, **data segura** (P80) e **prazo final**. Uma faixa clara destaca o intervalo entre a conclusão prevista e a data segura. **As datas ficam na própria linha**, junto de cada marca, acima ou abaixo do eixo, distribuídas automaticamente para não se sobreporem; no celular, em formato curto (dia/mês). Uma legenda de uma linha explica só os símbolos, com a chance de cumprir o prazo junto ao prazo final. A linha do tempo fica sobre um fundo levemente esverdeado, com cantos arredondados, para se separar do resto do conteúdo.
 
 Três botões no topo levam a cada parte:
 
 - **Fluxo:** "Fluxo das ações". *Termo técnico: diagrama de rede (PERT/CPM).* É o diagrama atual, por etapas.
 - **Cronograma:** Gantt, com opção de comparar com um retrato (linha fina sob cada barra).
-- **Data final:** "Em que data o plano pode terminar", o gráfico da simulação de Monte Carlo.
+- **Data final:** "Em que data o trabalho pode terminar", o gráfico da simulação de Monte Carlo.
 
 ### 8.5 Notas
 
@@ -601,20 +601,20 @@ Três botões no topo levam a cada parte:
 
 ## 11. Migração dos dados atuais
 
-A versão 2 converte os dados atuais na primeira leitura de cada plano, antes de qualquer gravação. Antes, é feita uma cópia de segurança completa.
+A versão 2 converte os dados atuais na primeira leitura de cada plano da versão atual, antes de qualquer gravação. Antes, é feita uma cópia de segurança completa.
 
 | Atual | Versão 2 |
 |---|---|
 | `name` / `desc` | `rotulo` / `descricao` |
-| `stage` (texto) | vira uma etapa da estrutura do plano, numa fase única "Fase 1", a ser reorganizada pelo usuário |
+| `stage` (texto) | vira uma etapa da estrutura do espaço, numa fase única "Fase 1", a ser reorganizada pelo usuário |
 | `preds`, `owners`, `order` | `dependeDe`, `responsaveis`, `ordem` |
 | `o, m, p` | primeira estimativa, `contaDe: "liberacao"` |
 | `aF` (término real) | `concluidaEm` |
 | `cost`, `ac`, `pct`, `aS` | descartados |
 | `status` (importado da PI²) | descartado; a situação é calculada |
-| `baseline` do plano | retrato "Plano original", com as datas guardadas |
+| `baseline` do plano (versão atual) | retrato "Plano original", com as datas guardadas |
 | `holidays` (texto) | `datasExcluidas` com motivo vazio |
-| coleções `projects`, `tasks` e `people` | `planos`, `acoes` e `responsaveis`, no segundo projeto do Firebase (seção 4.9) |
+| coleções `projects`, `tasks` e `people` | `espacos`, `acoes` e `responsaveis`, no segundo projeto do Firebase (seção 4.9) |
 | coluna "Entrega" da planilha da PI² | acrescentada ao fim da `descricao`, como "Entrega esperada: …" (o campo `entrega` da ação não existe mais; seção 4.2) |
 
 ---
@@ -628,7 +628,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 0.1. ✔ Pasta `/v2/` no site, com página provisória; AGENTS.md ajustado (a regra do arquivo único passa a valer só para a versão atual; testes com `node --test`).
 0.2. ✔ Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
 0.3. ✔ Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
-0.4. Plano de exemplo, com dados fictícios, e cópia do plano da PI² para o teste de comparação (só leitura dos dados reais).
+0.4. Espaço de exemplo, com dados fictícios, e cópia do espaço da PI² para o teste de comparação (só leitura dos dados reais).
 0.5. Base visual: cores, temas claro e escuro, ícones em SVG e barra do topo.
 
 ### Fase 1: núcleo (substitui a versão atual)
@@ -636,8 +636,8 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.1. Calendário (dias úteis, datas excluídas com motivo) e caminho crítico, com "Não começa antes de". Teste de comparação com a PI².
 1.2. Situações (Não liberada, Liberada, Concluída), carimbo Atrasada e regra "nada termina no passado".
 1.3. Simulação beta-PERT sem travar a tela, semente imutável, versão do cálculo e as duas prioridades. Documentação para conferência por fora (seção 15).
-1.4. Abertura do sistema: quem não tem plano vê a tela de boas-vindas (criar plano, "Ver um plano de exemplo" e, com o banco vazio, restaurar a cópia de segurança); quem tem planos vai direto ao último plano aberto naquele aparelho; quem chega por um link de plano abre esse plano. As boas-vindas continuam acessíveis pelo menu do plano, e o plano de exemplo, pela Ajuda.
-1.5. Topo: menu do plano (lista, "Configurar este plano", "Novo plano"), menu do usuário e Ajuda (glossário e links "o que é?").
+1.4. Abertura do sistema: quem não tem espaço vê a tela de boas-vindas (criar espaço, "Ver um exemplo" e, com o banco vazio, restaurar a cópia de segurança); quem tem espaços vai direto ao último espaço aberto naquele aparelho; quem chega por um link de espaço abre esse espaço. As boas-vindas continuam acessíveis pelo menu do espaço, e o espaço de exemplo, pela Ajuda.
+1.5. Topo: menu do espaço (lista, "Configurar este espaço", "Novo espaço"), menu do usuário e Ajuda (glossário e links "o que é?").
 1.6. Lista de ações: cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e animações; no celular, painel "Filtros e ordem" e botão (+).
 1.7. Janela da ação: edição no lugar, seletores com busca (sem ciclos), reestimativa, conclusão e histórico de estimativas.
 1.8. Notas com editor visual (Markdown seguro).
@@ -645,25 +645,25 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.10. Modo Quadro.
 1.11. Modo "Editar em planilha", no computador.
 1.12. Aba Responsáveis, com a ligação ao usuário que faz funcionar "Minhas ações".
-1.13. Configurar o plano: dados, datas excluídas, fases e etapas, campos opcionais, documentos (identificação no SIPAC/Protocolo e link) e semente visível.
+1.13. Configurar o espaço: dados, datas excluídas, fases e etapas, campos opcionais, documentos (identificação no SIPAC/Protocolo e link) e semente visível.
 1.14. Firebase: área de dados separada, login, troca de senha e edição simultânea com aviso (seção 4.6).
-1.15. Exclusão lógica e lixeira, para planos, ações e responsáveis, com as regras de exclusão encadeada.
+1.15. Exclusão lógica e lixeira, para espaços, ações e responsáveis, com as regras de exclusão encadeada.
 1.16. Histórico de alterações (seção 16.4).
 1.17. Aba Visualização: linha do tempo, fluxo, cronograma com comparação de retrato e data final.
 1.18. Retratos manuais.
 1.19. Importação e exportação (planilha e Mermaid), cópia de segurança e restauração.
 1.20. Troca: cópia de segurança, migração dos dados (seção 11) e versão 2 na raiz. Se houver outros usuários nessa época, também aviso prévio e gravação congelada na versão atual durante a migração. Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas; AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.
-1.21. Piloto: plano da PI² atualizado com o andamento real e acompanhado na versão 2.
+1.21. Piloto: espaço da PI² atualizado com o andamento real e acompanhado na versão 2.
 1.22. Manual do usuário, quando o responsável liberar. Deve trazer as tabelas de decisão da especificação, como a das situações das entregas (seção 16.7); as que chegarem depois entram no manual junto com o passo que as implementar.
 
 ### Fase 2: organização e permissões (obrigatória antes do uso oficial)
 
-2.1. Papéis por plano (Administrador do plano, Usuário, Leitor) e plano aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3).
+2.1. Papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3).
 2.2. Visibilidade: pública, institucional ou restrita.
-2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (plano órfão).
-2.4. Tipos de plano e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1).
+2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (espaço órfão).
+2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1).
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
-2.6. Entregas dos planos formalizados: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7).
+2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7).
 2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
 2.8. Checklist.
 2.9. Comentários.
@@ -678,7 +678,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 4.1. PostgreSQL e programa do servidor, com as permissões.
 4.2. Login institucional (Identificação Única), com recadastro dos usuários.
-4.3. Envio de arquivos dos documentos do plano.
+4.3. Envio de arquivos dos documentos do espaço.
 4.4. Retratos automáticos, com periodicidade definida pelo Administrador do Sistema.
 4.5. ETL para o Data Lakehouse (Apache Spark ou Apache Hop).
 
@@ -689,11 +689,11 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 - Avaliar baixar o diagrama como imagem.
 - Editor visual do fluxo dentro do sistema, que torne desnecessárias a importação e a exportação por Mermaid (desejo do responsável).
 - Reavaliar os pontos da seção 14 com o sistema em uso.
-- Revisar o nome do sistema, já que "Planos de Ação" deixa de abranger todos os tipos de plano (decisão do responsável). Nome provisório adotado: **Sextante**, instrumento de navegação, em harmonia com o logotipo; continua sob avaliação. Antes de torná-lo definitivo: pesquisar marcas registradas no INPI ("Sextante" já é o nome de uma editora conhecida no Brasil, o que pode gerar confusão, embora de outro ramo). Outro candidato considerado: **Dira** ("bússola" em suaíli), sujeito às mesmas verificações e à de não coincidir com sigla de unidade da instituição.
+- Revisar o nome do sistema, já que "Planos de Ação" deixa de abranger todos os tipos de espaço (decisão do responsável). Nome provisório adotado: **Sextante**, instrumento de navegação, em harmonia com o logotipo; continua sob avaliação. Antes de torná-lo definitivo: pesquisar marcas registradas no INPI ("Sextante" já é o nome de uma editora conhecida no Brasil, o que pode gerar confusão, embora de outro ramo). Outro candidato considerado: **Dira** ("bússola" em suaíli), sujeito às mesmas verificações e à de não coincidir com sigla de unidade da instituição.
 
 ### Decisões pendentes, com o passo em que precisam estar tomadas
 
-- **Nome padrão da situação inicial** nos planos sem dependências, como "A fazer" (passo 2.7).
+- **Nome padrão da situação inicial** nos espaços sem dependências, como "A fazer" (passo 2.7).
 
 ## 13. Fora desta reescrita
 
@@ -703,7 +703,7 @@ Tudo o que foi combinado está na seção 12, inclusive o que fica para o futuro
 
 Decisões aceitas para seguir em frente, mas que o responsável pediu para **reavaliar depois**, com o sistema em uso. Quem mexer nessas regras deve ler esta seção antes.
 
-1. **Data de liberação de ações criadas depois (seção 5.1).** Problema: hoje toda ação começa a contar no dia em que a anterior termina. Uma ação criada no meio do plano, cujas anteriores já terminaram, nasceria atrasada. Solução adotada: campo opcional "Não começa antes de", preenchido com a data de criação. Alternativas consideradas: (a) contar sempre da data de criação, regra invisível e confusa; (b) permitir defasagem entre ações, como "começa 5 dias após a anterior" no MS Project, mais complexa (YAGNI). A reavaliar: se o campo é compreendido pelos usuários e se a data de criação é o padrão certo.
+1. **Data de liberação de ações criadas depois (seção 5.1).** Problema: hoje toda ação começa a contar no dia em que a anterior termina. Uma ação criada no meio do espaço, cujas anteriores já terminaram, nasceria atrasada. Solução adotada: campo opcional "Não começa antes de", preenchido com a data de criação. Alternativas consideradas: (a) contar sempre da data de criação, regra invisível e confusa; (b) permitir defasagem entre ações, como "começa 5 dias após a anterior" no MS Project, mais complexa (YAGNI). A reavaliar: se o campo é compreendido pelos usuários e se a data de criação é o padrão certo.
 2. **Estimativa livre antes da liberação (seção 5.3).** Enquanto a ação aguarda, a estimativa muda sem histórico; a "original" passa a ser a vigente na liberação. A reavaliar: se isso esconde o otimismo do planejamento inicial, o que prejudicaria a previsão por classe de referência. Alternativa: registrar também essas mudanças, sem contá-las como reprogramação.
 
 ## 15. Fundamentos matemáticos dos indicadores por ação
@@ -713,7 +713,7 @@ Esta seção registra as fórmulas, as hipóteses e as razões de cada escolha, 
 ### 15.1 Notação
 
 - A simulação gera *K* cenários (padrão: 10.000), com semente fixa.
-- Em cada cenário *k*: dᵢ⁽ᵏ⁾ é a duração sorteada da ação *i*, em dias úteis (distribuição beta-PERT; ações concluídas têm duração fixa, igual à real); T⁽ᵏ⁾ é a duração total do plano.
+- Em cada cenário *k*: dᵢ⁽ᵏ⁾ é a duração sorteada da ação *i*, em dias úteis (distribuição beta-PERT; ações concluídas têm duração fixa, igual à real); T⁽ᵏ⁾ é a duração total, do início à conclusão de todas as ações.
 - σᵢ e σ_T são os desvios-padrão de dᵢ e de T entre os cenários.
 - 𝟙ᵢ⁽ᵏ⁾ vale 1 se a ação *i* está no caminho crítico do cenário *k* (folga total zero), e 0 caso contrário.
 
@@ -721,11 +721,11 @@ Esta seção registra as fórmulas, as hipóteses e as razões de cada escolha, 
 
 **Fórmula:** CIᵢ = (1/K) · Σₖ 𝟙ᵢ⁽ᵏ⁾
 
-**Por que é a medida certa para "o que não pode atrasar":** em cada cenário, T é o máximo das somas de durações sobre todos os caminhos da rede. Quando o caminho crítico é único (o que ocorre com probabilidade 1 em distribuições contínuas), a derivada de T em relação a dᵢ é 1 se *i* está nesse caminho e 0 se não está: ∂T⁽ᵏ⁾/∂dᵢ = 𝟙ᵢ⁽ᵏ⁾. Logo, um atraso pequeno δ, imposto à ação *i*, aumenta a duração esperada do plano em aproximadamente E[∂T/∂dᵢ] · δ = CIᵢ · δ. Ou seja, CIᵢ é o **efeito médio, em dias do plano, de cada dia de atraso na ação**. Daí a legenda "com 70%, cada dia de atraso atrasa o plano em cerca de 0,7 dia".
+**Por que é a medida certa para "o que não pode atrasar":** em cada cenário, T é o máximo das somas de durações sobre todos os caminhos da rede. Quando o caminho crítico é único (o que ocorre com probabilidade 1 em distribuições contínuas), a derivada de T em relação a dᵢ é 1 se *i* está nesse caminho e 0 se não está: ∂T⁽ᵏ⁾/∂dᵢ = 𝟙ᵢ⁽ᵏ⁾. Logo, um atraso pequeno δ, imposto à ação *i*, aumenta a duração esperada do espaço em aproximadamente E[∂T/∂dᵢ] · δ = CIᵢ · δ. Ou seja, CIᵢ é o **efeito médio, em dias do espaço, de cada dia de atraso na ação**. Daí a legenda "com 70%, cada dia de atraso atrasa o espaço em cerca de 0,7 dia".
 
-**Limitação conhecida:** num plano muito sequencial, quase todas as ações têm CI perto de 100%, e o indicador diferencia pouco. Não é erro: nesse plano, qualquer atraso atrasa o plano. A ordem de execução entre ações igualmente críticas fica a critério da equipe, como diz a legenda.
+**Limitação conhecida:** numa rede muito sequencial, quase todas as ações têm CI perto de 100%, e o indicador diferencia pouco. Não é erro: nessa rede, qualquer atraso atrasa a conclusão. A ordem de execução entre ações igualmente críticas fica a critério da equipe, como diz a legenda.
 
-**Alternativa considerada e descartada: inclinação da regressão** de T sobre dᵢ, βᵢ = Cov(dᵢ, T) / Var(dᵢ), que também estima "dias do plano por dia da ação". Ela mede a resposta do plano à **variação natural** da ação; o CI mede a resposta a um **atraso imposto**, que é a pergunta do gestor. Além disso, βᵢ é instável quando Var(dᵢ) é pequena (divisão por um número próximo de zero) e indefinida para ações de duração fixa. Em redes com caminho dominante, βᵢ ≈ CIᵢ, e o CI é mais estável.
+**Alternativa considerada e descartada: inclinação da regressão** de T sobre dᵢ, βᵢ = Cov(dᵢ, T) / Var(dᵢ), que também estima "dias de conclusão por dia da ação". Ela mede a resposta da conclusão à **variação natural** da ação; o CI mede a resposta a um **atraso imposto**, que é a pergunta do gestor. Além disso, βᵢ é instável quando Var(dᵢ) é pequena (divisão por um número próximo de zero) e indefinida para ações de duração fixa. Em redes com caminho dominante, βᵢ ≈ CIᵢ, e o CI é mais estável.
 
 **Por que não usar um corte (por exemplo, "prioritária se CI ≥ 50%"):** cortes tratam como diferentes casos praticamente iguais (49% e 51%), o problema do paradoxo de sorites. O indicador é mostrado como barra contínua.
 
@@ -733,7 +733,7 @@ Esta seção registra as fórmulas, as hipóteses e as razões de cada escolha, 
 
 **Fórmula, em três passos:**
 
-1. Correlação de Pearson entre a duração da ação e a do plano, nos *K* cenários: rᵢ = Cov(dᵢ, T) / (σᵢ · σ_T).
+1. Correlação de Pearson entre a duração da ação e a duração total, nos *K* cenários: rᵢ = Cov(dᵢ, T) / (σᵢ · σ_T).
 2. Parcela bruta: qᵢ = max(rᵢ, 0)². Correlações negativas, que em redes só com dependências término→início vêm de ruído amostral, são tratadas como zero.
 3. Normalização: CVᵢ = qᵢ / Σⱼ qⱼ, somando sobre as ações não concluídas. Assim, Σᵢ CVᵢ = 100%.
 
@@ -766,23 +766,23 @@ Ações concluídas e ações de duração fixa (σᵢ = 0, em que rᵢ fica ind
 
 Decisões acordadas com o responsável em 19/10/2026. A fase em que cada uma entra (versão 2 ou depois) ainda será definida. Quando for, cada item migra para a seção correspondente desta especificação.
 
-### 16.1 Finalidades e tipos de plano
+### 16.1 Finalidades e tipos de espaço
 
-**Nomes na tela (decisão de 20/10/2026):** cada tipo é chamado pelo próprio nome, para não se confundir com o "Plano de Entregas" e o "Plano de Trabalho" do PGD. **Palavra geral: Espaço de Planejamento** (decisão de 20/10/2026), o conjunto que reúne um Plano de Ação, um Projeto ou um Quadro de equipe. Na fala do dia a dia, "espaço"; na tela, o nome completo sempre que couber, e "Espaço" nas telas estreitas. Exemplos: "Meus espaços"; "Novo espaço de planejamento: Plano de Ação, Projeto ou Quadro de equipe". O qualificativo "de Planejamento" afasta o sentido físico e as colisões com outros "espaços", como os do Google Chat. Foram descartados: Plano (colide com o PGD), Projeto (errado para o quadro), Painel (já significa *dashboard*), Rota (não combina com o quadro de equipe, de destinos difusos) e outros. Nesta especificação e no código, "plano" ainda designa esse conjunto, até a revisão dos nomes. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
+**Nomes na tela (decisão de 20/10/2026):** cada tipo é chamado pelo próprio nome, para não se confundir com o "Plano de Entregas" e o "Plano de Trabalho" do PGD. **Palavra geral: Espaço de Planejamento** (decisão de 20/10/2026), o conjunto que reúne um Plano de Ação, um Projeto ou um Quadro de equipe. Na fala do dia a dia, "espaço"; na tela, o nome completo sempre que couber, e "Espaço" nas telas estreitas. Exemplos: "Meus espaços"; "Novo espaço de planejamento: Plano de Ação, Projeto ou Quadro de equipe". O qualificativo "de Planejamento" afasta o sentido físico e as colisões com outros "espaços", como os do Google Chat. Foram descartados: Espaço (colide com o PGD), Projeto (errado para o quadro), Painel (já significa *dashboard*), Rota (não combina com o quadro de equipe, de destinos difusos) e outros. Nesta especificação, o conjunto é sempre chamado de "espaço"; no código e no banco, `espaco`. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
 
-1. **Plano de Ação:** só os estrategicamente formalizados, derivados do PEI/PDI. Mantém o sentido institucional exato. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCI-MG.
+1. **Plano de Ação:** só os estrategicamente formalizados, derivados do PEI/PDI. Mantém o sentido institucional exato. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano de Ação; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCI-MG.
 2. **Projeto:** os de propósito geral; mesmo motor do tipo 1, sem vínculo obrigatório ao catálogo.
 3. **Quadro de equipe:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível.
 
 Nos tipos 1 e 2, a criação oferece **modelos prontos de configuração**, como na escolha de opções no início de um jogo: "Cronograma estruturado" (dependências, estimativas e previsões ligadas; por exemplo, obras e eventos), "Cronograma aberto" (sem dependências, estimativas opcionais; por exemplo, projetos de TI) e "Personalizado". Escolhido o modelo, cada opção pode ser ajustada. No tipo 3, não há modelo: as colunas são criadas no dia a dia.
 
-Uma ação sem estimativa não entra nas previsões. Desligar as previsões é um campo opcional do plano.
+Uma ação sem estimativa não entra nas previsões. Desligar as previsões é um campo opcional do espaço.
 
 ### 16.2 Situações das ações
 
-- **Não liberada** (substitui "Aguardando"): calculada pelo sistema; só existe em planos com dependências. Símbolo: cadeado fechado.
-- **Liberada:** base das ações não bloqueadas. Símbolo: cadeado aberto. Nos planos sem dependências, o nome padrão na tela é outro, para não confundir (como "A fazer"), e o administrador do plano pode renomeá-lo, como no Planner.
-- **Situações personalizadas:** criadas pelo administrador do plano, como "Selecionada", "Em andamento", "Em teste" e "Em revisão". São subtipos de Liberada e viram colunas do quadro.
+- **Não liberada** (substitui "Aguardando"): calculada pelo sistema; só existe em espaços com dependências. Símbolo: cadeado fechado.
+- **Liberada:** base das ações não bloqueadas. Símbolo: cadeado aberto. Nos espaços sem dependências, o nome padrão na tela é outro, para não confundir (como "A fazer"), e o administrador do espaço pode renomeá-lo, como no Planner.
+- **Situações personalizadas:** criadas pelo administrador do espaço, como "Selecionada", "Em andamento", "Em teste" e "Em revisão". São subtipos de Liberada e viram colunas do quadro.
 - **Concluída:** obrigatória em todos os tipos. Símbolo: visto (✓) num círculo.
 
 O carimbo **Atrasada** continua independente das situações.
@@ -795,15 +795,15 @@ O carimbo **Atrasada** continua independente das situações.
 
 ### 16.3 Papéis e visibilidade
 
-- **Login institucional** (Identificação Única) quando houver o servidor da UFCI-MG. Todo usuário institucional pode criar planos e é administrador dos planos que cria.
-- **Papéis por plano:** Administrador do plano, Usuário do plano, Leitor. Sem papel no plano, a pessoa vê o plano só se a visibilidade permitir.
+- **Login institucional** (Identificação Única) quando houver o servidor da UFCI-MG. Todo usuário institucional pode criar espaços e é administrador dos espaços que cria.
+- **Papéis por espaço:** Administrador do espaço, Usuário do espaço, Leitor. Sem papel no espaço, a pessoa vê o espaço só se a visibilidade permitir.
 - **Responsáveis sem login** continuam existindo: pessoa, equipe ou unidade.
-- **Administrador do Sistema:** sem passe livre. Acessa as telas de administração e, nos planos, tem os mesmos papéis de qualquer usuário. Única exceção: nomear um novo administrador para um plano órfão, com registro de quem fez e quando.
+- **Administrador do Sistema:** sem passe livre. Acessa as telas de administração e, nos espaços, tem os mesmos papéis de qualquer usuário. Única exceção: nomear um novo administrador para um espaço órfão, com registro de quem fez e quando.
 - **Gestor da Estratégia:** mantém o catálogo do PEI/PDI.
-- **Todo plano tem pelo menos um administrador.** O último não pode ser removido.
-- **Encerrar e reabrir** (decisão de 20/10/2026, no lugar de "arquivar"): disponível para os administradores do plano. "Encerrar" diz o que aconteceu com o plano, que terminou; é o que justifica as exigências sobre as entregas (seção 16.7). Um plano encerrado fica só para leitura, sai da lista principal e continua acessível. Encerrar é diferente de excluir.
-- **Visibilidade, escolhida pelo administrador:** Público (qualquer pessoa com o link, sem login), Institucional (qualquer usuário com login) ou Restrito (só quem tem papel no plano).
-- **Plano aberto ou fechado,** chave do administrador. Aberto: usuários do plano atualizam todas as ações. Fechado: cada um atualiza só as ações em que é responsável. Atualizar inclui estimar, reestimar, alterar o escopo, concluir e escrever notas. Criar e excluir ações e configurar o plano são exclusivos dos administradores.
+- **Todo espaço tem pelo menos um administrador.** O último não pode ser removido.
+- **Encerrar e reabrir** (decisão de 20/10/2026, no lugar de "arquivar"): disponível para os administradores do espaço. "Encerrar" diz o que aconteceu com o espaço, que terminou; é o que justifica as exigências sobre as entregas (seção 16.7). Um espaço encerrado fica só para leitura, sai da lista principal e continua acessível. Encerrar é diferente de excluir.
+- **Visibilidade, escolhida pelo administrador:** Público (qualquer pessoa com o link, sem login), Institucional (qualquer usuário com login) ou Restrito (só quem tem papel no espaço).
+- **Espaço aberto ou fechado,** chave do administrador. Aberto: usuários do espaço atualizam todas as ações. Fechado: cada um atualiza só as ações em que é responsável. Atualizar inclui estimar, reestimar, alterar o escopo, concluir e escrever notas. Criar e excluir ações e configurar o espaço são exclusivos dos administradores.
 
 ### 16.4 Histórico de alterações
 
@@ -814,33 +814,33 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
 ### 16.5 Checklist e comentários
 
 - **Checklist:** lista simples de itens dentro da ação, como no Planner. Não ocupa espaço até alguém tocar em "Adicionar checklist". O cartão mostra o progresso, como "2/5".
-- **Comentários:** espaço de conversa na ação, com autor e data. Aparece sempre que o plano tem mais de um usuário com login (um administrador e um único responsável já formam duas pessoas).
+- **Comentários:** espaço de conversa na ação, com autor e data. Aparece sempre que o espaço tem mais de um usuário com login (um administrador e um único responsável já formam duas pessoas).
   - **Histórico próprio:** cada edição de um comentário guarda a versão anterior; a tela mostra a última, com a indicação "editado".
-  - **Apagar é só esconder:** o autor do comentário ou o administrador do plano pode "apagar", e o comentário some da tela de todos os usuários. Mas ele **nunca é apagado do banco**, com todas as versões: uma eventual injúria, calúnia ou difamação precisa poder ser recuperada pelas autoridades competentes, por pedido formal à equipe de TI, fora do sistema. No lugar, a conversa mostra "Comentário apagado pelo autor" ou "Comentário apagado pelo administrador do plano", com a data, para ninguém esconder nada em silêncio.
+  - **Apagar é só esconder:** o autor do comentário ou o administrador do espaço pode "apagar", e o comentário some da tela de todos os usuários. Mas ele **nunca é apagado do banco**, com todas as versões: uma eventual injúria, calúnia ou difamação precisa poder ser recuperada pelas autoridades competentes, por pedido formal à equipe de TI, fora do sistema. No lugar, a conversa mostra "Comentário apagado pelo autor" ou "Comentário apagado pelo administrador do espaço", com a data, para ninguém esconder nada em silêncio.
   - **Fora dos retratos:** os comentários já são o próprio histórico, por isso não são copiados nos retratos.
 
 ### 16.6 Relatórios e extração de dados
 
-- **No sistema, "Extração personalizada":** escolher os planos, os campos (com os nomes do dicionário de dados) e os filtros, e exportar em Excel (.xlsx), LibreOffice (.ods), CSV com ponto e vírgula, ou PDF pela impressão do navegador. Inclui exportar um plano com o histórico de alterações.
-- **No Data Lakehouse, não no sistema:** painéis entre planos (por programa, objetivo ou unidade) e análises livres, com ferramentas próprias de painel (por exemplo, Superset ou Metabase), alimentadas por ETL com Apache Spark ou Apache Hop a partir do PostgreSQL. Construir um "Power BI interno" no sistema foi descartado: seria um produto à parte.
+- **No sistema, "Extração personalizada":** escolher os espaços, os campos (com os nomes do dicionário de dados) e os filtros, e exportar em Excel (.xlsx), LibreOffice (.ods), CSV com ponto e vírgula, ou PDF pela impressão do navegador. Inclui exportar um espaço com o histórico de alterações.
+- **No Data Lakehouse, não no sistema:** painéis entre espaços (por programa, objetivo ou unidade) e análises livres, com ferramentas próprias de painel (por exemplo, Superset ou Metabase), alimentadas por ETL com Apache Spark ou Apache Hop a partir do PostgreSQL. Construir um "Power BI interno" no sistema foi descartado: seria um produto à parte.
 
-### 16.7 Entregas dos planos formalizados
+### 16.7 Entregas dos Planos de Ação
 
 Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
 
-- **Cadastro obrigatório:** todo plano vinculado a um Programa do PEI/PDI (tipo 1, seção 16.1) precisa ter as **entregas** que se quer alcançar. O plano pode ser criado sem entregas, como rascunho, com o aviso fixo "sem entregas cadastradas"; o vínculo ao Programa só se conclui depois de haver pelo menos uma entrega. Assim, ninguém precisa cadastrar uma entrega de mentira só para criar o plano (decisão de 20/10/2026).
-- **Só um sentido para "entrega":** as entregas são resultados do plano como um todo, os que importam para o PEI/PDI. O antigo campo `entrega` da ação foi retirado (seção 4.2), para não haver dois sentidos para a mesma palavra. Produtos intermediários continuam descritos nas próprias ações.
+- **Cadastro obrigatório:** todo Plano de Ação (tipo 1, seção 16.1) precisa ter as **entregas** que se quer alcançar. O espaço pode ser criado sem entregas, como rascunho, com o aviso fixo "sem entregas cadastradas"; o vínculo ao Programa só se conclui depois de haver pelo menos uma entrega. Assim, ninguém precisa cadastrar uma entrega de mentira só para criar o espaço (decisão de 20/10/2026).
+- **Só um sentido para "entrega":** as entregas são resultados do Plano de Ação como um todo, os que importam para o PEI/PDI. O antigo campo `entrega` da ação foi retirado (seção 4.2), para não haver dois sentidos para a mesma palavra. Produtos intermediários continuam descritos nas próprias ações.
 - **Tipo de meta, como no Programa de Gestão e Desempenho (PGD) da instituição:**
   - **Percentual:** taxas e proporções. Exemplo: "95% dos pedidos atendidos em até 24 horas".
   - **Quantitativa:** número absoluto. Exemplo: "10 Procedimentos-Padrão publicados".
   - **Entrega padrão:** sim ou não. Exemplo: "Relatório de Gestão 2025 homologado até 30/04/2026".
 - **Alcance parcial, sem cortes arbitrários:** nas metas percentuais e quantitativas, o alcance é contínuo: valor alcançado comparado à meta (por exemplo, 150 de 200, ou 75%), mostrado como barra (princípio dos números contínuos, seção 2). Quem precisa medir o parcial escolhe meta percentual ou quantitativa ao planejar.
-- **Situação da entrega: uma lista única**, válida a qualquer momento do plano, sem uma fase separada de encerramento (KISS; decisão de 20/10/2026):
+- **Situação da entrega: uma lista única**, válida a qualquer momento do espaço, sem uma fase separada de encerramento (KISS; decisão de 20/10/2026):
 
   | Situação | Algo foi feito? | O que se obteve | A busca da entrega… | Evidência | Justificativa |
   |---|---|---|---|---|---|
-  | **Não iniciada** | não | nada | continua, ou o plano foi encerrado | não | só ao encerrar o plano |
-  | **Em andamento** | sim | nada ou parte | continua | só ao encerrar o plano | não |
+  | **Não iniciada** | não | nada | continua, ou o espaço foi encerrado | não | só ao encerrar o espaço |
+  | **Em andamento** | sim | nada ou parte | continua | só ao encerrar o espaço | não |
   | **Alcançada** | sim | tudo | terminou | sim | não |
   | **Parcialmente alcançada** | sim | parte | terminou | sim | sim |
   | **Não alcançada** | sim | nada | terminou | não | sim |
@@ -848,13 +848,13 @@ Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
 
   A tabela serve também de **tabela de decisão** para a Ajuda e o manual: respondendo às três perguntas (algo foi feito? o que se obteve? a busca continua?), chega-se a uma única situação. Uma entrega cancelada continua visível e não conta como não alcançada. "Nada feito" é sempre "Não iniciada", inclusive no encerramento; "Não alcançada" pressupõe que algo foi feito.
 
-  "Em andamento" e "Parcialmente alcançada" podem ter o mesmo avanço; a diferença é se a busca continua. Uma entrega "Em andamento" no fim do plano é a porta para continuá-la no plano seguinte (caminho A, abaixo).
-- **Encerrar o plano** exige completar o registro das entregas que ficaram pelo caminho: justificativa para cada uma "Não iniciada" (nesse momento, elas se igualam às não alcançadas e às canceladas) e evidência para cada uma "Em andamento". Durante a execução, "Em andamento" não exige evidência, para não travar o trabalho nem estimular evidências de faz de conta (decisão de 20/10/2026).
+  "Em andamento" e "Parcialmente alcançada" podem ter o mesmo avanço; a diferença é se a busca continua. Uma entrega "Em andamento" no fim do espaço é a porta para continuá-la no espaço seguinte (caminho A, abaixo).
+- **Encerrar o espaço** exige completar o registro das entregas que ficaram pelo caminho: justificativa para cada uma "Não iniciada" (nesse momento, elas se igualam às não alcançadas e às canceladas) e evidência para cada uma "Em andamento". Durante a execução, "Em andamento" não exige evidência, para não travar o trabalho nem estimular evidências de faz de conta (decisão de 20/10/2026).
 - **Metas numéricas:** a situação também é escolhida pelo administrador; o valor alcançado aparece ao lado, como barra. Se os dois não combinarem (por exemplo, "Alcançada" com valor abaixo da meta), o sistema avisa antes de gravar.
-- **Entregas que atravessam planos (caminho A, decisão de 20/10/2026):** a entrega pertence a um plano, que responde pelo seu período. Ao criar o plano seguinte, é possível "continuar" uma entrega do anterior: ela é trazida para o novo plano com uma ligação "continua a entrega X". A cadeia de ligações mostra a trajetória completa ao painel do Programa e ao Data Lakehouse. Foi descartado o caminho B (entrega independente, ligada a vários planos), pela dificuldade de definir quem a administra, onde se registra o alcance e como conciliar visibilidades diferentes.
-- **Registro do alcance:** feito pelo administrador do plano, numa tela própria. Cada registro tem data, valor alcançado (ou sim/não), descrição e **pelo menos uma evidência**. Os registros se acumulam como histórico (um registro novo não apaga o anterior); o mais recente é o alcance atual.
+- **Entregas que atravessam espaços (caminho A, decisão de 20/10/2026):** a entrega pertence a um espaço, que responde pelo seu período. Ao criar o espaço seguinte, é possível "continuar" uma entrega do anterior: ela é trazida para o novo espaço com uma ligação "continua a entrega X". A cadeia de ligações mostra a trajetória completa ao painel do Programa e ao Data Lakehouse. Foi descartado o caminho B (entrega independente, ligada a vários espaços), pela dificuldade de definir quem a administra, onde se registra o alcance e como conciliar visibilidades diferentes.
+- **Registro do alcance:** feito pelo administrador do espaço, numa tela própria. Cada registro tem data, valor alcançado (ou sim/não), descrição e **pelo menos uma evidência**. Os registros se acumulam como histórico (um registro novo não apaga o anterior); o mais recente é o alcance atual.
 - **Evidência:** descrição obrigatória e, pelo menos, um entre link ou arquivo. O envio de arquivo, o ideal, vem com o servidor da UFCI-MG (passo 4.3); até lá, link e identificação no SIPAC/Protocolo.
 - **Quem registrou × quem realizou:** quem registrou é o usuário logado, gravado automaticamente. Quem realizou é uma lista livre de responsáveis (pessoas, equipes ou unidades, seção 4.5), sem limite de tamanho.
-- **Sem validação por terceiros:** o registro é uma declaração do administrador do plano. A confiabilidade vem da evidência, aberta a quem quiser conferir, e do histórico, que ninguém altera nem apaga (seção 16.4).
-- **Ligação com as ações:** opcional e discreta. Na janela da ação, um campo "Entrega do plano", escondido sob "Mais opções", como os atributos avançados dos cartões do Trello.
+- **Sem validação por terceiros:** o registro é uma declaração do administrador do espaço. A confiabilidade vem da evidência, aberta a quem quiser conferir, e do histórico, que ninguém altera nem apaga (seção 16.4).
+- **Ligação com as ações:** opcional e discreta. Na janela da ação, um campo "Entrega do Plano de Ação", escondido sob "Mais opções", como os atributos avançados dos cartões do Trello.
 - **Estrutura:** duas entidades novas, **Entrega** e **Registro de alcance**, que entram no dicionário de dados (seção 4), com tabela e teste, no passo 2.6. Esboço: Entrega (título, descrição, tipo de meta, meta, unidade, prazo, ordem, responsáveis, situação de cancelamento com justificativa, ligação "continua a entrega"); Registro de alcance (entrega, data, valor alcançado, descrição, evidências, quem realizou, registrado em, registrado por).

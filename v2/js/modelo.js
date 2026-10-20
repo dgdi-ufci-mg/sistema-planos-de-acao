@@ -7,7 +7,7 @@
  * Mudou um campo? Mude aqui e no dicionário, no mesmo commit.
  */
 export const CAMPOS = Object.freeze({
-  plano: [
+  espaco: [
     "id", "nome", "inicio", "prazoFinal", "datasExcluidas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
@@ -25,7 +25,7 @@ export const CAMPOS = Object.freeze({
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
   retrato: [
     "id", "nome", "origem", "criadoEm", "criadoPor",
-    "semente", "simulacoes", "versaoCalculo", "plano", "responsaveis", "resumo",
+    "semente", "simulacoes", "versaoCalculo", "espaco", "responsaveis", "resumo",
   ],
   /** Cada ação do retrato: todos os campos de `acao` mais estes valores calculados. */
   retratoAcaoCalculos: [

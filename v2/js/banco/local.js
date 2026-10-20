@@ -1,6 +1,6 @@
 /**
  * Banco em memória: guarda os dados só enquanto a página está aberta.
- * Usado no plano de exemplo, nos testes e, até o passo 1.14, em toda a versão 2.
+ * Usado no espaço de exemplo, nos testes e, até o passo 1.14, em toda a versão 2.
  *
  * Cada banco (este, o Firebase e, no futuro, o PostgreSQL) oferece as mesmas
  * operações, com os mesmos nomes e as mesmas garantias. Os testes de
@@ -21,75 +21,75 @@ const copia = (valor) => structuredClone(valor);
 /** Cria um banco em memória vazio. */
 export function criarBancoLocal() {
   /** @type {Map<string, object>} */
-  const planos = new Map();
+  const espacos = new Map();
   /** @type {Map<string, Map<string, object>>} */
-  const acoesPorPlano = new Map();
+  const acoesPorEspaco = new Map();
   /** @type {Map<string, object>} */
   const responsaveis = new Map();
   /** @type {Map<string, Set<Function>>} */
   const ouvintes = new Map();
 
-  const acoesDo = (planoId) => {
-    if (!acoesPorPlano.has(planoId)) acoesPorPlano.set(planoId, new Map());
-    return acoesPorPlano.get(planoId);
+  const acoesDo = (espacoId) => {
+    if (!acoesPorEspaco.has(espacoId)) acoesPorEspaco.set(espacoId, new Map());
+    return acoesPorEspaco.get(espacoId);
   };
 
-  const exigirPlano = (planoId) => {
-    if (!planos.has(planoId)) throw new ErroDeDados("nao-encontrado", `Plano ${planoId} não encontrado.`);
+  const exigirEspaco = (espacoId) => {
+    if (!espacos.has(espacoId)) throw new ErroDeDados("nao-encontrado", `Espaço ${espacoId} não encontrado.`);
   };
 
-  const fotografia = (planoId) => ({
-    plano: copia(planos.get(planoId)),
-    acoes: [...acoesDo(planoId).values()].map(copia),
+  const fotografia = (espacoId) => ({
+    espaco: copia(espacos.get(espacoId)),
+    acoes: [...acoesDo(espacoId).values()].map(copia),
   });
 
-  const avisar = (planoId) => {
-    for (const aoMudar of ouvintes.get(planoId) ?? []) aoMudar(fotografia(planoId));
+  const avisar = (espacoId) => {
+    for (const aoMudar of ouvintes.get(espacoId) ?? []) aoMudar(fotografia(espacoId));
   };
 
   return {
-    // --- planos ---
-    async criarPlano(id, dados) {
-      if (planos.has(id)) throw new ErroDeDados("id-ocupado", `Já existe um plano com o id ${id}.`);
-      planos.set(id, copia({ ...dados, id }));
+    // --- espaços ---
+    async criarEspaco(id, dados) {
+      if (espacos.has(id)) throw new ErroDeDados("id-ocupado", `Já existe um espaço com o id ${id}.`);
+      espacos.set(id, copia({ ...dados, id }));
       return id;
     },
-    async lerPlano(id) {
-      return planos.has(id) ? copia(planos.get(id)) : null;
+    async lerEspaco(id) {
+      return espacos.has(id) ? copia(espacos.get(id)) : null;
     },
-    async listarPlanos() {
-      return [...planos.values()].map(copia);
+    async listarEspacos() {
+      return [...espacos.values()].map(copia);
     },
-    async alterarPlano(id, campos) {
-      exigirPlano(id);
-      planos.set(id, { ...planos.get(id), ...copia(campos) });
+    async alterarEspaco(id, campos) {
+      exigirEspaco(id);
+      espacos.set(id, { ...espacos.get(id), ...copia(campos) });
       avisar(id);
     },
 
     // --- ações ---
-    /** Cria a ação só se o código estiver livre no plano (especificação, seção 4.6). */
-    async criarAcao(planoId, acao) {
-      exigirPlano(planoId);
-      const acoes = acoesDo(planoId);
+    /** Cria a ação só se o código estiver livre no espaço (especificação, seção 4.6). */
+    async criarAcao(espacoId, acao) {
+      exigirEspaco(espacoId);
+      const acoes = acoesDo(espacoId);
       if (acoes.has(acao.codigo)) {
         throw new ErroDeDados("codigo-ocupado", `Já existe uma ação com o código ${acao.codigo}. Escolha outro.`);
       }
       acoes.set(acao.codigo, copia(acao));
-      avisar(planoId);
+      avisar(espacoId);
     },
-    async lerAcao(planoId, codigo) {
-      const acao = acoesDo(planoId).get(codigo);
+    async lerAcao(espacoId, codigo) {
+      const acao = acoesDo(espacoId).get(codigo);
       return acao ? copia(acao) : null;
     },
-    async listarAcoes(planoId) {
-      return [...acoesDo(planoId).values()].map(copia);
+    async listarAcoes(espacoId) {
+      return [...acoesDo(espacoId).values()].map(copia);
     },
     /** Grava só os campos informados; os demais ficam como estão (seção 4.6). */
-    async alterarAcao(planoId, codigo, campos) {
-      const acoes = acoesDo(planoId);
+    async alterarAcao(espacoId, codigo, campos) {
+      const acoes = acoesDo(espacoId);
       if (!acoes.has(codigo)) throw new ErroDeDados("nao-encontrado", `Ação ${codigo} não encontrada.`);
       acoes.set(codigo, { ...acoes.get(codigo), ...copia(campos) });
-      avisar(planoId);
+      avisar(espacoId);
     },
 
     // --- responsáveis ---
@@ -108,15 +108,15 @@ export function criarBancoLocal() {
 
     // --- tempo real ---
     /**
-     * Avisa `aoMudar` agora e a cada mudança no plano ou nas ações dele.
+     * Avisa `aoMudar` agora e a cada mudança no espaço ou nas ações dele.
      * Devolve a função que para de avisar.
      */
-    acompanharPlano(planoId, aoMudar) {
-      exigirPlano(planoId);
-      if (!ouvintes.has(planoId)) ouvintes.set(planoId, new Set());
-      ouvintes.get(planoId).add(aoMudar);
-      aoMudar(fotografia(planoId));
-      return () => ouvintes.get(planoId).delete(aoMudar);
+    acompanharEspaco(espacoId, aoMudar) {
+      exigirEspaco(espacoId);
+      if (!ouvintes.has(espacoId)) ouvintes.set(espacoId, new Set());
+      ouvintes.get(espacoId).add(aoMudar);
+      aoMudar(fotografia(espacoId));
+      return () => ouvintes.get(espacoId).delete(aoMudar);
     },
   };
 }
