@@ -91,6 +91,8 @@ describe("Janela da ação: operações do Store", async () => {
     await assert.rejects(store.reestimar(id, "AA", { o: 5, m: 3, p: 6 }), { codigo: "estimativa-fora-de-ordem" });
     await assert.rejects(store.reestimar(id, "AA", { o: 0, m: 0, p: 0 }), { codigo: "estimativa-zerada" });
     await assert.rejects(store.reestimar(id, "AA", { o: -1, m: 1, p: 2 }), { codigo: "estimativa-invalida" });
+    await assert.rejects(store.reestimar(id, "AA", { o: 1, m: 2.5, p: 4 }), { codigo: "estimativa-fracionada" });
+    await assert.rejects(store.corrigirEstimativa(id, "AA", { o: 0.5, m: 1, p: 2 }), { codigo: "estimativa-fracionada" });
   });
 
   it("corrige a estimativa sem criar histórico e cria a primeira quando não há", async () => {

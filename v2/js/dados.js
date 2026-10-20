@@ -37,10 +37,13 @@ export function hojeLocal() {
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
 }
 
-/** Três pontos em dias úteis: números, 0 ≤ otimista ≤ mais provável ≤ pessimista, pessimista > 0. */
+/** Três pontos em dias úteis inteiros: 0 ≤ otimista ≤ mais provável ≤ pessimista, pessimista > 0. */
 function validarEstimativa({ o, m, p }) {
   if (![o, m, p].every((x) => typeof x === "number" && Number.isFinite(x) && x >= 0)) {
     throw new ErroDeDados("estimativa-invalida", "Informe os três prazos em dias úteis, com números a partir de zero.");
+  }
+  if (![o, m, p].every(Number.isInteger)) {
+    throw new ErroDeDados("estimativa-fracionada", "Use números inteiros de dias úteis.");
   }
   if (!(o <= m && m <= p)) {
     throw new ErroDeDados("estimativa-fora-de-ordem", "O otimista não pode passar do mais provável, nem este do pessimista.");

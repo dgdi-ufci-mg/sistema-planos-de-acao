@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 20/10/2026 (versão 53 da página)
+**Última atualização deste documento:** 20/10/2026 (versão 53.1 da página)
 
 ---
 
@@ -473,6 +473,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 51 | Versão 2: responsáveis no cartão como no GitHub, pessoa num círculo com as iniciais e um tom tirado do nome, unidade num quadrado com a sigla, pessoas antes das unidades e "+N" acima de três pessoas (`v2/js/responsaveis.js`). Dicionário de dados da versão 2 (especificação, seção 4.5): novo campo `tipo` do responsável, `pessoa` ou `unidade`, obrigatório; só pessoa pode ter login. Sem mudança na versão atual |
 | 52 | Versão 2: cada pessoa tem um tom só seu dentro do espaço, de uma paleta de 15, guardado no novo campo `tons` do espaço (dicionário, seção 4.1 da especificação) e mantido pelo sistema: menor tom livre para quem chega, tom liberado quando a pessoa deixa de ser responsável, repetição só acima de 15 pessoas (`ajustarTons` em `v2/js/responsaveis.js`, chamado pelo `Store` ao gravar responsáveis de uma ação). Sem mudança na versão atual |
 | 53 | Versão 2, passo 1.7: janela da ação com edição no lugar, dependências e responsáveis item a item com busca (sem ciclos), reestimativa, registro e desfazer da conclusão e histórico de estimativas (`v2/js/telas/janela-acao.js`, `v2/js/acao.js`, `v2/js/telas/pessoas.js`). Novas operações no `Store` e no banco, com testes de contrato de gravações simultâneas; corrigida no banco em memória uma leitura e gravação em dois tempos. A tela do espaço passou a acompanhar o banco e a recalcular a cada gravação. Sem mudança na versão atual |
+| 53.1 | Versão 2: os três pontos das estimativas passam a ser dias úteis inteiros (o `Store` recusa fração; dicionário de dados atualizado; na migração, frações arredondadas para cima). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

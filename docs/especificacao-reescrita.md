@@ -236,9 +236,9 @@ Saem da versão atual: custo, custo gasto, % concluído, início real e término
 |---|---|---|---|---|
 | `em` | data | sim | Dia em que a estimativa foi feita | `2026-10-19` |
 | `por` | usuário | não | Quem registrou | |
-| `o` | dias úteis | sim | Otimista | `3` |
-| `m` | dias úteis | sim | Mais provável. Entre `o` e `p` | `5` |
-| `p` | dias úteis | sim | Pessimista | `10` |
+| `o` | dias úteis inteiros | sim | Otimista. A partir de 0 | `3` |
+| `m` | dias úteis inteiros | sim | Mais provável. Entre `o` e `p` | `5` |
+| `p` | dias úteis inteiros | sim | Pessimista. Maior que 0 | `10` |
 | `contaDe` | texto | sim | `liberacao`: conta da liberação (primeira estimativa); `data`: conta do dia `em` (reestimativa) | `data` |
 | `motivo` | texto | não | Motivo da reestimativa | `Atraso do fornecedor` |
 
@@ -406,6 +406,7 @@ Entram no dicionário, com tabela marcada e teste, no passo em que forem constru
 ### 5.2 Estimativa de cada ação
 
 - Fórmula PERT: (O + 4M + P) / 6, a média da distribuição beta-PERT.
+- **Os três pontos são dias úteis inteiros** (decisão do responsável, 20/10/2026): o calendário conta em dias inteiros, e a fração sugeriria uma precisão que a estimativa não tem; a incerteza se expressa pela distância entre otimista e pessimista. O otimista pode ser 0 ("pode terminar no dia em que for liberada"). O prazo PERT resultante pode ter fração, que o calendário arredonda ao virar data.
 - **Uma só distribuição em todo o sistema: beta-PERT.** A escolha entre triangular e beta é retirada. Motivos: coerência entre as datas do cronograma e a simulação, simplicidade para o usuário leigo e estabilidade das datas e carimbos. O otimismo nas estimativas será tratado pela previsão por classe de referência, não por troca de fórmula.
 
 ### 5.3 Reestimativa
@@ -614,7 +615,7 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano da versã
 | `name` / `desc` | `rotulo` / `descricao` |
 | `stage` (texto) | vira uma etapa da estrutura do espaço, numa fase única "Fase 1", a ser reorganizada pelo usuário |
 | `preds`, `owners`, `order` | `dependeDe`, `responsaveis`, `ordem` |
-| `o, m, p` | primeira estimativa, `contaDe: "liberacao"` |
+| `o, m, p` | primeira estimativa, `contaDe: "liberacao"`; frações arredondadas para cima |
 | `aF` (término real) | `concluidaEm` |
 | `cost`, `ac`, `pct`, `aS` | descartados |
 | `status` (importado da PI²) | descartado; a situação é calculada |

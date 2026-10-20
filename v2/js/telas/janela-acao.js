@@ -170,9 +170,9 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
   function tresPontosHtml(e) {
     const v = (k) => (e?.[k] ?? "");
     return `<div class="tres-pontos">
-      <label class="campo"><span>Otimista</span><input name="o" type="number" min="0" step="0.5" inputmode="decimal" value="${v("o")}"></label>
-      <label class="campo"><span>Mais provável</span><input name="m" type="number" min="0" step="0.5" inputmode="decimal" value="${v("m")}"></label>
-      <label class="campo"><span>Pessimista</span><input name="p" type="number" min="0" step="0.5" inputmode="decimal" value="${v("p")}"></label>
+      <label class="campo"><span>Otimista</span><input name="o" type="number" min="0" step="1" inputmode="numeric" value="${v("o")}"></label>
+      <label class="campo"><span>Mais provável</span><input name="m" type="number" min="0" step="1" inputmode="numeric" value="${v("m")}"></label>
+      <label class="campo"><span>Pessimista</span><input name="p" type="number" min="0" step="1" inputmode="numeric" value="${v("p")}"></label>
     </div>
     <p class="tec" data-pert>${e ? `Prazo previsto (PERT): ${diasUteis(duracaoPert(e))}` : ""}</p>`;
   }
@@ -371,7 +371,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     const pert = form?.querySelector("[data-pert]");
     if (pert && ["o", "m", "p"].includes(e.target.name)) {
       const [o, m, p] = ["o", "m", "p"].map((k) => Number(form.querySelector(`[name="${k}"]`).value));
-      pert.textContent = [o, m, p].every(Number.isFinite) && o <= m && m <= p && p > 0 ? `Prazo previsto (PERT): ${diasUteis(duracaoPert({ o, m, p }))}` : "";
+      pert.textContent = [o, m, p].every(Number.isInteger) && o >= 0 && o <= m && m <= p && p > 0 ? `Prazo previsto (PERT): ${diasUteis(duracaoPert({ o, m, p }))}` : "";
     }
   });
   corpo.addEventListener("focusin", (e) => { if (e.target.dataset.buscar) desenharSugestoes(); });
