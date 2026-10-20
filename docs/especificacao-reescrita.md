@@ -121,7 +121,7 @@ erDiagram
   ACAO }o--o{ RESPONSAVEL : "responsaveis"
   ACAO ||--|{ ESTIMATIVA : "estimativas"
   PLANO ||--o{ RETRATO : "retratos"
-  RETRATO ||--|{ RETRATO_ACAO : "acoes"
+  RETRATO ||--o{ RETRATO_ACAO : "acoes"
   PLANO ||--o{ DATA_EXCLUIDA : "datasExcluidas"
   PLANO ||--o{ DOCUMENTO : "documentos"
 ```
@@ -244,6 +244,10 @@ A primeira estimativa nunca é alterada. Corrigir um erro de digitação logo ap
 
 Chave: id. Pertence a um plano. Só leitura depois de criado.
 
+**O retrato é uma cópia integral do plano naquele momento** (decisão de 20/10/2026): o plano com todos os campos, todas as ações ativas com todos os campos (inclusive notas e o histórico completo de estimativas), os responsáveis citados e os resultados calculados. Assim ele se sustenta sozinho, mesmo que tudo mude ou seja excluído depois, e permite refazer o cálculo exatamente. Só ficam de fora os **comentários** e o **histórico de alterações**, que já são permanentes por conta própria (seções 16.4 e 16.5).
+
+O retrato é guardado em duas partes: o cabeçalho, abaixo, e um registro por ação (4.4.1). Assim, um plano grande com notas longas não esbarra no limite de tamanho de um documento do Firebase (cerca de 1 MB).
+
 <!-- dicionario: retrato -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
@@ -255,26 +259,26 @@ Chave: id. Pertence a um plano. Só leitura depois de criado.
 | `semente` | inteiro | sim | Semente usada no cálculo | `20261014` |
 | `simulacoes` | inteiro | sim | Número de simulações usado | `10000` |
 | `versaoCalculo` | inteiro | sim | Versão do método de cálculo (seção 5.7) | `1` |
+| `plano` | plano (4.1) | sim | Cópia integral do plano, com todos os campos de 4.1 | |
+| `responsaveis` | lista de responsável (4.5) | sim | Cópia integral dos responsáveis citados nas ações, para os nomes continuarem legíveis | |
 | `resumo` | resumo do retrato (4.4.2) | sim | Resultado do plano naquele momento | |
-| `acoes` | lista de ação do retrato (4.4.1) | sim | Situação de cada ação naquele momento | |
 
 Os retratos **automáticos não podem ser excluídos** à mão, para o histórico usado no Data Lakehouse não ter buracos. O retrato automático depende de um programa no servidor; chega com o servidor da UFCI-MG (passo 4.4). No Firebase gratuito, só há retratos manuais.
 
-#### 4.4.1 Ação do retrato: cada item de `acoes`
+Se um dia for preciso apagar algum texto de um retrato por exigência legal, isso será tratado caso a caso pela equipe de TI, fora do sistema (decisão de 20/10/2026: situação extremamente rara, que não justifica uma função própria).
 
-<!-- dicionario: retratoAcao -->
+#### 4.4.1 Ação do retrato: um registro por ação
+
+Cada ação do retrato tem **todos os campos da ação (4.2)**, copiados como estavam, e mais estes valores calculados naquele momento:
+
+<!-- dicionario: retratoAcaoCalculos -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
-| `codigo` | texto | sim | Código da ação | `LEV` |
-| `rotulo` | texto | sim | Rótulo naquele momento, para o retrato continuar legível se a ação for excluída | |
-| `o` | dias úteis | sim | Otimista da estimativa vigente | |
-| `m` | dias úteis | sim | Mais provável da estimativa vigente | |
-| `p` | dias úteis | sim | Pessimista da estimativa vigente | |
-| `dependeDe` | lista de código | sim | Dependências naquele momento | |
 | `situacao` | texto | sim | `naoLiberada`, `liberada` ou `concluida` | `liberada` |
-| `atrasada` | sim/não | sim | Carimbo Atrasada naquele momento | `false` |
-| `liberacaoPrevista` | data | sim | Data prevista de liberação | |
-| `conclusaoPrevista` | data | sim | Data prevista de conclusão | |
+| `atrasada` | sim/não | sim | Carimbo Atrasada | `false` |
+| `liberacaoPrevista` | data | sim | Data prevista de liberação | `2026-10-05` |
+| `conclusaoPrevista` | data | sim | Data prevista de conclusão | `2026-10-27` |
+| `folga` | dias úteis | sim | Folga total no cálculo determinístico | `4` |
 | `prioridadeExecucao` | número de 0 a 1 | sim | Índice de criticidade (seção 7.1) | `0.72` |
 | `prioridadeRevisao` | número de 0 a 1 | sim | Contribuição para a variância do prazo (seção 7.2) | `0.18` |
 
@@ -366,7 +370,7 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Dependência | lista `dependeDe` dentro da ação | tabela `acao_dependencia` |
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
-| Retrato | `planos/{id}/retratos/{id}` | tabelas `retrato`, `retrato_acao` |
+| Retrato | cabeçalho em `planos/{id}/retratos/{id}`; ações em `planos/{id}/retratos/{id}/acoes/{codigo}` | tabelas `retrato`, `retrato_acao` |
 | Responsável | `responsaveis/{id}` | tabela `responsavel` |
 
 Os nomes do Firebase passam a ser em português, porque a versão 2 usa um projeto novo (seção 3.3); a migração (seção 11) converte os nomes da versão atual (`projects`, `tasks`, `people`). No PostgreSQL, as listas viram tabelas de ligação e as regras da seção 4.6 viram restrições do banco (seção 3.4).
@@ -811,6 +815,9 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
 
 - **Checklist:** lista simples de itens dentro da ação, como no Planner. Não ocupa espaço até alguém tocar em "Adicionar checklist". O cartão mostra o progresso, como "2/5".
 - **Comentários:** espaço de conversa na ação, com autor e data. Aparece sempre que o plano tem mais de um usuário com login (um administrador e um único responsável já formam duas pessoas).
+  - **Histórico próprio:** cada edição de um comentário guarda a versão anterior; a tela mostra a última, com a indicação "editado".
+  - **Apagar é só esconder:** o autor do comentário ou o administrador do plano pode "apagar", e o comentário some da tela de todos os usuários. Mas ele **nunca é apagado do banco**, com todas as versões: uma eventual injúria, calúnia ou difamação precisa poder ser recuperada pelas autoridades competentes, por pedido formal à equipe de TI, fora do sistema. No lugar, a conversa mostra "Comentário apagado pelo autor" ou "Comentário apagado pelo administrador do plano", com a data, para ninguém esconder nada em silêncio.
+  - **Fora dos retratos:** os comentários já são o próprio histórico, por isso não são copiados nos retratos.
 
 ### 16.6 Relatórios e extração de dados
 
@@ -827,10 +834,14 @@ Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
   - **Percentual:** taxas e proporções. Exemplo: "95% dos pedidos atendidos em até 24 horas".
   - **Quantitativa:** número absoluto. Exemplo: "10 Procedimentos-Padrão publicados".
   - **Entrega padrão:** sim ou não. Exemplo: "Relatório de Gestão 2025 homologado até 30/04/2026".
-- **Alcance parcial, sem cortes arbitrários:** nas metas percentuais e quantitativas, o alcance é contínuo: valor alcançado comparado à meta (por exemplo, 150 de 200, ou 75%), mostrado como barra (princípio dos números contínuos, seção 2). Na entrega padrão, o alcance é sim ou não por definição; o que foi feito até ali é descrito no registro e demonstrado pela evidência. Quem precisa medir o parcial escolhe meta percentual ou quantitativa ao planejar.
+- **Alcance parcial, sem cortes arbitrários:** nas metas percentuais e quantitativas, o alcance é contínuo: valor alcançado comparado à meta (por exemplo, 150 de 200, ou 75%), mostrado como barra (princípio dos números contínuos, seção 2). Quem precisa medir o parcial escolhe meta percentual ou quantitativa ao planejar.
+- **Situações da entrega padrão**, cada uma descrevendo um fato: **Não iniciada** (nada foi feito; não exige evidência), **Em andamento** (houve avanço; exige evidência) e **Alcançada** (exige evidência).
+- **Evidência quando há avanço:** em qualquer tipo de meta, a evidência é exigida sempre que se declara algum avanço; valor zero ou "Não iniciada" dispensa evidência.
+- **Cancelada:** qualquer entrega pode ser cancelada, por exemplo por mudança de estratégia, com justificativa obrigatória. Ela continua visível, com o selo "Cancelada", e não conta como não alcançada.
+- **Entregas que atravessam planos (caminho A, decisão de 20/10/2026):** a entrega pertence a um plano, que responde pelo seu período. Ao criar o plano seguinte, é possível "continuar" uma entrega do anterior: ela é trazida para o novo plano com uma ligação "continua a entrega X". A cadeia de ligações mostra a trajetória completa ao painel do Programa e ao Data Lakehouse. Foi descartado o caminho B (entrega independente, ligada a vários planos), pela dificuldade de definir quem a administra, onde se registra o alcance e como conciliar visibilidades diferentes.
 - **Registro do alcance:** feito pelo administrador do plano, numa tela própria. Cada registro tem data, valor alcançado (ou sim/não), descrição e **pelo menos uma evidência**. Os registros se acumulam como histórico (um registro novo não apaga o anterior); o mais recente é o alcance atual.
 - **Evidência:** descrição obrigatória e, pelo menos, um entre link ou arquivo. O envio de arquivo, o ideal, vem com o servidor da UFCI-MG (passo 4.3); até lá, link e identificação no SIPAC/Protocolo.
 - **Quem registrou × quem realizou:** quem registrou é o usuário logado, gravado automaticamente. Quem realizou é uma lista livre de responsáveis (pessoas, equipes ou unidades, seção 4.5), sem limite de tamanho.
 - **Sem validação por terceiros:** o registro é uma declaração do administrador do plano. A confiabilidade vem da evidência, aberta a quem quiser conferir, e do histórico, que ninguém altera nem apaga (seção 16.4).
 - **Ligação com as ações:** opcional e discreta. Na janela da ação, um campo "Entrega do plano", escondido sob "Mais opções", como os atributos avançados dos cartões do Trello.
-- **Estrutura:** duas entidades novas, **Entrega** e **Registro de alcance**, que entram no dicionário de dados (seção 4), com tabela e teste, no passo 2.6. Esboço: Entrega (título, descrição, tipo de meta, meta, unidade, prazo, ordem, responsáveis); Registro de alcance (entrega, data, valor alcançado, descrição, evidências, quem realizou, registrado em, registrado por).
+- **Estrutura:** duas entidades novas, **Entrega** e **Registro de alcance**, que entram no dicionário de dados (seção 4), com tabela e teste, no passo 2.6. Esboço: Entrega (título, descrição, tipo de meta, meta, unidade, prazo, ordem, responsáveis, situação de cancelamento com justificativa, ligação "continua a entrega"); Registro de alcance (entrega, data, valor alcançado, descrição, evidências, quem realizou, registrado em, registrado por).

@@ -315,6 +315,8 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 | Decisão | Motivo |
 |---|---|
+| Versão 2: retrato é cópia integral do plano (exceto comentários e histórico de alterações), guardado em cabeçalho e um registro por ação | Retrato autossuficiente e recalculável; a divisão evita o limite de tamanho de documento do Firebase |
+| Versão 2: comentários com histórico próprio; "apagar" só esconde da tela, nunca do banco | Possíveis injúrias, calúnias ou difamações precisam poder ser recuperadas pelas autoridades |
 | Versão 2: nome provisório "Sextante", definido num único lugar do código (`js/identidade.js`) | O sistema deixa de tratar só de planos de ação; o nome segue em avaliação e precisa ser fácil de trocar |
 | Versão 2: semente e número de simulações definidos na criação do plano, visíveis e imutáveis; retratos guardam semente, simulações e versão do cálculo | Permite conferir os resultados por fora (planilha, Python, R) sem permitir trocar a semente para obter um número mais favorável |
 | Versão 2: retratos com origem manual ou automática; automáticos não podem ser excluídos | Histórico contínuo para o Data Lakehouse; o automático depende do servidor da UFCI-MG |
@@ -445,6 +447,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 38 | Especificação da reescrita: entregas obrigatórias nos planos formalizados e registro do alcance com evidência (seção 16.7, passo 2.6 da ordem de trabalho). Sem mudança no sistema |
 | 39 | Especificação da reescrita: campo `entrega` da ação retirado (só as entregas do plano usam o termo); entregas com tipos de meta do PGD, alcance contínuo, histórico de registros, evidência obrigatória e sem validação por terceiros (seção 16.7). Versão 2: `v2/js/modelo.js` e dicionário sem o campo. Sem mudança na versão atual |
 | 39.1 | Especificação da reescrita: entregas exigidas para concluir o vínculo ao Programa, e não para criar o plano (seção 16.7). Sem mudança no sistema |
+| 40 | Especificação da reescrita e versão 2: retrato como cópia integral do plano (dicionário e `v2/js/modelo.js`); comentários com histórico e apagamento só da tela; entregas com situações Não iniciada, Em andamento, Alcançada e Cancelada, e continuidade entre planos (caminho A). Sem mudança na versão atual |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

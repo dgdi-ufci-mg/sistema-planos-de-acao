@@ -25,11 +25,12 @@ export const CAMPOS = Object.freeze({
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
   retrato: [
     "id", "nome", "origem", "criadoEm", "criadoPor",
-    "semente", "simulacoes", "versaoCalculo", "resumo", "acoes",
+    "semente", "simulacoes", "versaoCalculo", "plano", "responsaveis", "resumo",
   ],
-  retratoAcao: [
-    "codigo", "rotulo", "o", "m", "p", "dependeDe", "situacao", "atrasada",
-    "liberacaoPrevista", "conclusaoPrevista", "prioridadeExecucao", "prioridadeRevisao",
+  /** Cada ação do retrato: todos os campos de `acao` mais estes valores calculados. */
+  retratoAcaoCalculos: [
+    "situacao", "atrasada", "liberacaoPrevista", "conclusaoPrevista",
+    "folga", "prioridadeExecucao", "prioridadeRevisao",
   ],
   retratoResumo: ["conclusaoPrevista", "dataSegura", "p95", "chancePrazo"],
   responsavel: [
