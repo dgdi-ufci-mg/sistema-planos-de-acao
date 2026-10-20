@@ -489,3 +489,30 @@ h3.editavel { padding: 2px 6px; }
 .nova-acao .aviso-erro { color: var(--crit-ink); }
 .nova-acao .aviso-ok { color: var(--ok-ink); }
 .item.recem-criada { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+/* ---------- modo Quadro (passo 1.10) ---------- */
+.segmentos { display: inline-flex; border: 1px solid var(--line); border-radius: var(--raio); overflow: hidden; background: var(--surface); }
+.segmentos button { border: 0; background: none; padding: 5px 12px; cursor: pointer; font-size: .88rem; }
+.segmentos button + button { border-left: 1px solid var(--line); }
+.segmentos button[aria-pressed="true"] { background: var(--ink); color: var(--bg); font-weight: 600; }
+.quadro { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.coluna { background: var(--sunk); border: 1px solid var(--grid); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; transition: border-color .15s, background-color .15s; }
+.coluna header { display: flex; align-items: center; gap: 6px; font-family: var(--f-titulo); font-size: 1.05rem; }
+.coluna header .n { margin-left: auto; font-family: var(--f-dados); font-size: .8rem; color: var(--muted); }
+.coluna > .tec { margin: 0; }
+.coluna.alvo { border-color: var(--accent); background: var(--accent-soft); }
+.coluna-cartoes { display: flex; flex-direction: column; gap: 8px; }
+.coluna-cartoes > .vazio { margin: 4px 2px; }
+.cartao-quadro .linha { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 10px 12px 10px 16px; }
+.cartao-quadro .carimbo { align-self: flex-start; }
+.cartao-base { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cartao-base .data { font-family: var(--f-dados); font-size: .82rem; }
+.cartao-base .data.atrasada { color: var(--crit-ink); }
+.cartao-quadro[draggable="true"] { cursor: grab; }
+.cartao-quadro.arrastando { opacity: .45; }
+@media (max-width: 820px) {
+  /* celular: colunas lado a lado, deslizando para o lado, uma por vez */
+  .quadro { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; margin: 0 -16px; padding: 0 16px 6px; scrollbar-width: none; }
+  .quadro::-webkit-scrollbar { display: none; }
+  .coluna { flex: 0 0 86%; scroll-snap-align: center; }
+}

@@ -24,17 +24,18 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
 
 /**
  * @param {{store: object, espacoId: string, numero: number, hoje: string, usuario?: string|null,
- *   dados: object, aoFechar: () => void}} opcoes  dados: ver dadosDaJanela em espaco.js
+ *   dados: object, aoFechar: () => void, abrirCom?: string|null}} opcoes  dados: ver dadosDaJanela em espaco.js;
+ *   abrirCom: formulário já aberto, como "concluir"
  * @returns {{atualizar: (dados: object) => void, fechar: () => void}}
  */
-export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar }) {
+export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null }) {
   let d = dados;
   /** Nome de outra ação: o código (se o espaço usa códigos) e o rótulo. */
   const nomeHtml = (a) => `${d.usaCodigos && a.codigo ? `<span class="mono">${esc(a.codigo)}</span> ` : ""}${esc(a.rotulo)}`;
   const nomeTexto = (a) => `${d.usaCodigos && a.codigo ? `${a.codigo} ` : ""}${a.rotulo}`;
   const acaoAtual = () => d.acoes.find((a) => a.numero === numero);
   /** Campo em edição ("rotulo", "etapa", "descricao", "naoAntesDe", "estimativa") ou formulário aberto ("reestimar", "concluir"). */
-  let editando = null;
+  let editando = abrirCom; // "concluir" quando a janela é aberta ao arrastar para Concluídas
   let fechada = false;
 
   const inicial = acaoAtual();

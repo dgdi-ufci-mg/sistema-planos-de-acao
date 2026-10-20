@@ -45,7 +45,7 @@ const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").ma
  * @returns {() => void} para de acompanhar (ao trocar de espaço)
  */
 export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
-  const ui = { situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false };
+  const ui = { modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false };
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
   let janela = null;
   let comAcoes = null;
@@ -74,7 +74,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     usaCodigos,
   });
 
-  const agrupado = () => usaFases && ui.ordem === "espaco";
+  const agrupado = () => usaFases && ui.ordem === "espaco" && ui.modo === "lista";
   const ativos = () => (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0);
   const visiveis = () => ordenar(filtrar(linhas, {
     situacao: ui.situacao, responsavel: ui.responsavel, minhas: ui.minhas ? meus : undefined,
@@ -108,6 +108,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     legenda = alvo.querySelector("[data-legenda]");
     if (!comAcoes) return;
     ferramentas.addEventListener("change", aoMudarControle);
+    ligarArraste();
     lista.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
     });
@@ -124,6 +125,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   /* ---------- ferramentas: filtros de situação, controles e Nova ação ---------- */
   function controlesHtml() {
     return `
+      <div class="segmentos" role="group" aria-label="Exibir como">
+        <button type="button" data-modo="lista" aria-pressed="${ui.modo === "lista"}">Lista</button>
+        <button type="button" data-modo="quadro" aria-pressed="${ui.modo === "quadro"}">Quadro</button>
+      </div>
       ${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
       <select data-ctl="responsavel" aria-label="Responsável">
         <option value="">Todos os responsáveis</option>
@@ -140,7 +145,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     const n = contar(linhas);
     ferramentas.innerHTML = `
       <div class="chips" role="group" aria-label="Filtrar por situação">
-        ${BOTOES_DE_FILTRO.map(([v, t, icone, classe]) => `<button class="chip" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
+        ${BOTOES_DE_FILTRO.filter(([v]) => ui.modo === "lista" || v === "todas" || v === "atrasada").map(([v, t, icone, classe]) => `<button class="chip" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
           ${icone ? `<span class="${classe}">${ICONES[icone]}</span>` : ""}${t} <span class="n">${n[v]}</span></button>`).join("")}
       </div>
       <div class="controles so-computador">
@@ -199,7 +204,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.numero, el.getBoundingClientRect());
     const ls = visiveis();
     let corpo;
-    if (!ls.length) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
+    if (ui.modo === "quadro") corpo = quadroHtml(ls);
+    else if (!ls.length) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
     else if (agrupado()) {
       const g = agrupar(ls, espaco.estrutura);
       corpo = g.fases.map(({ fase, etapas, linhas: daFase }) => grupoHtml("fase", fase.id, fase.nome, daFase,
@@ -225,12 +231,96 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     }
   }
 
+  /* ---------- quadro (seção 8.3): colunas por situação; "Atrasada" é carimbo, não coluna ---------- */
+  const COLUNAS = [
+    ["naoLiberada", "Não liberadas", "icone-nao-liberada", "Liberadas sozinhas quando as anteriores terminam e a data mínima chega."],
+    ["liberada", "Liberadas", "icone-liberada", "Arraste para Concluídas ao terminar."],
+    ["concluida", "Concluídas", "icone-concluida", "Arraste de volta para Liberadas para desfazer a conclusão."],
+  ];
+  function cartaoHtml(l) {
+    const a = l.acao;
+    const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus });
+    const arrastavel = l.situacao !== "naoLiberada";
+    return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
+      <div class="linha" role="button" tabindex="0" data-abrir-acao>
+        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
+        ${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}
+        <div class="cartao-base"><div class="donos">${donos}</div><span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span></div>
+        ${l.execucao == null ? "" : medidor(l.execucao, "Prioridade de execução", "var(--calor)", `${Math.round(l.execucao * 100)}%`)}
+      </div>
+    </article>`;
+  }
+  function quadroHtml(ls) {
+    return `<div class="quadro">${COLUNAS.map(([situacao, titulo, classe, dica]) => {
+      const daColuna = ls.filter((l) => l.situacao === situacao);
+      return `<section class="coluna" data-coluna="${situacao}" aria-label="${titulo}">
+        <header><span class="${classe}">${ICONES[SITUACOES[situacao].icone]}</span><b>${titulo}</b><span class="n">${daColuna.length}</span></header>
+        <p class="tec so-computador">${dica}</p>
+        <div class="coluna-cartoes">${daColuna.map(cartaoHtml).join("") || `<p class="vazio">Nenhuma ação.</p>`}</div>
+      </section>`;
+    }).join("")}</div>`;
+  }
+
+  /* arrastar no quadro (computador): Liberadas → Concluídas registra a conclusão; Concluídas → Liberadas desfaz */
+  let arrastada = null;
+  const situacaoDe = (numero) => linhas.find((l) => l.acao.numero === numero)?.situacao;
+  const destinoValido = (coluna, numero) => {
+    const s = situacaoDe(numero);
+    return (s === "liberada" && coluna === "concluida") || (s === "concluida" && coluna === "liberada");
+  };
+  function ligarArraste() {
+    lista.addEventListener("dragstart", (e) => {
+      const cartao = e.target.closest?.(".cartao-quadro");
+      if (!cartao) return;
+      arrastada = Number(cartao.dataset.numero);
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", String(arrastada));
+      cartao.classList.add("arrastando");
+    });
+    lista.addEventListener("dragend", (e) => {
+      e.target.closest?.(".cartao-quadro")?.classList.remove("arrastando");
+      for (const c of lista.querySelectorAll(".coluna.alvo")) c.classList.remove("alvo");
+      arrastada = null;
+    });
+    lista.addEventListener("dragover", (e) => {
+      const coluna = e.target.closest?.(".coluna");
+      if (!coluna || arrastada == null || !destinoValido(coluna.dataset.coluna, arrastada)) return;
+      e.preventDefault();
+      coluna.classList.add("alvo");
+    });
+    lista.addEventListener("dragleave", (e) => {
+      const coluna = e.target.closest?.(".coluna");
+      if (coluna && !coluna.contains(e.relatedTarget)) coluna.classList.remove("alvo");
+    });
+    lista.addEventListener("drop", async (e) => {
+      const coluna = e.target.closest?.(".coluna");
+      if (!coluna || arrastada == null) return;
+      e.preventDefault();
+      const numero = arrastada;
+      coluna.classList.remove("alvo");
+      if (coluna.dataset.coluna === "concluida") abrirJanela(numero, "concluir");
+      else {
+        try {
+          await store.desfazerConclusao(espacoId, numero);
+          avisar("Conclusão desfeita. A ação voltou a ser liberada.");
+        } catch (falha) {
+          avisar(falha.message);
+        }
+      }
+    });
+  }
+
   /* ---------- mudanças ---------- */
   function mudar(campo, valor) {
     ui[campo] = valor;
     desenharFerramentas();
     desenharLista({ animar: true });
     if (painelOpcoes?.isConnected) preencherOpcoes();
+  }
+
+  function mudarModo(modo) {
+    if (modo === "quadro" && ui.situacao !== "atrasada") ui.situacao = "todas"; // no quadro, as colunas já separam as situações
+    mudar("modo", modo);
   }
 
   function alternarGrupo(id) {
@@ -268,6 +358,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     preencherOpcoes();
     painelOpcoes.addEventListener("change", aoMudarControle);
     painelOpcoes.addEventListener("click", (e) => {
+      const modo = e.target.closest("[data-modo]");
+      if (modo) mudarModo(modo.dataset.modo);
       if (e.target.closest("[data-recolher-tudo]")) recolherOuExpandirTudo();
       if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; mudar("ordem", "espaco"); }
     });
@@ -281,6 +373,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   /* ---------- eventos ---------- */
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;
+    const modo = t.closest("[data-modo]");
+    if (modo) return mudarModo(modo.dataset.modo);
     const filtro = t.closest("[data-filtro]");
     if (filtro) return mudar("situacao", filtro.dataset.filtro);
     const grupo = t.closest("[data-alternar-grupo]");
@@ -306,9 +400,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     });
   }
 
-  function abrirJanela(numero) {
+  function abrirJanela(numero, abrirCom = null) {
     janela = abrirAcao({
-      store, espacoId, numero, hoje, usuario, dados: dadosDaJanela(),
+      store, espacoId, numero, hoje, usuario, dados: dadosDaJanela(), abrirCom,
       aoFechar: () => {
         janela = null;
         lista?.querySelector(`[data-numero="${numero}"] [data-abrir-acao]`)?.focus();
