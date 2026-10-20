@@ -1,7 +1,7 @@
 /** Testes das regras da janela da ação (js/acao.js) e das operações do Store usadas por ela. */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { estimativaLivre, dependentes, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias } from "../js/acao.js";
+import { estimativaLivre, dependentes, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo, problemaDoCodigo, sugerirCodigo } from "../js/acao.js";
 import { criarBancoLocal } from "../js/banco/local.js";
 import { criarStore } from "../js/dados.js";
 
@@ -47,6 +47,28 @@ describe("Janela da ação: regras", () => {
     const acoes = [{ ...A, concluidaEm: "2026-10-01" }, { ...D }, { codigo: "E", dependeDe: ["A", "D"], naoAntesDe: "2026-11-01" }];
     assert.deepEqual(pendencias(acoes[2], acoes, "2026-10-20"), { anteriores: ["D"], dataMinima: "2026-11-01" });
     assert.deepEqual(pendencias(acoes[2], acoes, "2026-11-05"), { anteriores: ["D"], dataMinima: null });
+  });
+});
+
+describe("Código de uma ação nova", () => {
+  it("normaliza o que foi digitado: maiúsculas, sem acentos, espaços ou sinais", () => {
+    assert.equal(normalizarCodigo(" pé-1 "), "PE1");
+  });
+
+  it("aponta código fora do padrão ou ocupado", () => {
+    assert.equal(problemaDoCodigo("LEV", []), "");
+    assert.match(problemaDoCodigo("L", []), /2 a 8/);
+    assert.match(problemaDoCodigo("ABCDEFGHI", []), /2 a 8/);
+    assert.match(problemaDoCodigo("LEV", ["LEV"]), /Já existe/);
+  });
+
+  it("sugere as iniciais das palavras que contam e, se ocupado, acrescenta um número", () => {
+    assert.equal(sugerirCodigo("Publicar o edital de seleção", []), "PES");
+    assert.equal(sugerirCodigo("Publicar o edital de seleção", ["PES"]), "PE2");
+    assert.equal(sugerirCodigo("Publicar o edital de seleção", ["PES", "PE2"]), "PE3");
+    assert.equal(sugerirCodigo("Homologar", []), "HOM");
+    assert.equal(sugerirCodigo("", []), "ACA");
+    assert.equal(problemaDoCodigo(sugerirCodigo("Ação número 1", []), []), "");
   });
 });
 
@@ -104,6 +126,15 @@ describe("Janela da ação: operações do Store", async () => {
     await store.criarAcao(id, { codigo: "NN", rotulo: "Nova" });
     await store.corrigirEstimativa(id, "NN", { o: 1, m: 1, p: 2 });
     assert.equal((await store.lerAcao(id, "NN")).estimativas.length, 1);
+  });
+
+  it("ação nova: recusa estimativa inválida, anterior inexistente e código ocupado", async () => {
+    const { store, id } = await novo();
+    await assert.rejects(store.criarAcao(id, { codigo: "NN", rotulo: "x", estimativas: [est(3, 2, 1, "2026-10-20")] }), { codigo: "estimativa-fora-de-ordem" });
+    await assert.rejects(store.criarAcao(id, { codigo: "NN", rotulo: "x", dependeDe: ["ZZ"] }), { codigo: "nao-encontrado" });
+    await assert.rejects(store.criarAcao(id, { codigo: "AA", rotulo: "x" }), { codigo: "codigo-ocupado" });
+    await store.criarAcao(id, { codigo: "NN", rotulo: "x", dependeDe: ["CC"], estimativas: [est(1, 2, 4, "2026-10-20")] });
+    assert.equal((await store.lerAcao(id, "NN")).ordem, 4);
   });
 
   it("registra e desfaz a conclusão, sem aceitar data futura", async () => {

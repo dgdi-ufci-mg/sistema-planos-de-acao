@@ -14,6 +14,7 @@ import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lis
 import { abrirPainel, avisar } from "./painel.js";
 import { donosHtml } from "./pessoas.js";
 import { abrirAcao } from "./janela-acao.js";
+import { abrirNovaAcao } from "./nova-acao.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -33,7 +34,6 @@ const ORDENS = [
   ["revisao", "Prioridade de revisão"],
   ["conclusao", "Conclusão prevista"],
 ];
-const AVISO_NOVA = "O cadastro de ações chega no passo 1.9.";
 const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
@@ -98,7 +98,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
         <div class="legenda" data-legenda hidden>${legendaHtml()}</div>
         <div class="lista" data-lista></div>
         <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`
-      : `<p class="cartao">Este espaço ainda não tem ações. O cadastro de ações chega no passo 1.9.</p>`}`;
+      : `<section class="cartao"><p>Este espaço ainda não tem ações.</p>
+          <div class="botoes"><button class="botao principal" type="button" data-nova>${ICONES.mais}Nova ação</button></div></section>`}`;
     cabeca = alvo.querySelector("[data-cabeca]");
     ferramentas = alvo.querySelector("[data-ferramentas]");
     lista = alvo.querySelector("[data-lista]");
@@ -285,10 +286,23 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     if (t.closest("[data-recolher-tudo]")) return recolherOuExpandirTudo();
     if (t.closest("[data-alternar-legenda]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
     if (t.closest("[data-opcoes]")) return abrirOpcoes();
-    if (t.closest("[data-nova]")) return avisar(AVISO_NOVA);
+    if (t.closest("[data-nova]")) return abrirNova();
     const item = t.closest("[data-abrir-acao]");
     if (item) return abrirJanela(item.closest("[data-codigo]").dataset.codigo);
   };
+
+  function abrirNova() {
+    abrirNovaAcao({
+      store, espacoId, hoje, usuario, dados: dadosDaJanela(),
+      aoCriar: (codigo) => requestAnimationFrame(() => {
+        const item = lista?.querySelector(`[data-codigo="${CSS.escape(codigo)}"]`);
+        if (!item) return;
+        item.scrollIntoView({ block: "center", behavior: reduzirMovimento() ? "auto" : "smooth" });
+        item.classList.add("recem-criada");
+        setTimeout(() => item.classList.remove("recem-criada"), 2000);
+      }),
+    });
+  }
 
   function abrirJanela(codigo) {
     janela = abrirAcao({

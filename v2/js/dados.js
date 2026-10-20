@@ -131,7 +131,10 @@ export function criarStore(banco, opcoes = {}) {
         throw new ErroDeDados("codigo-invalido", "O código deve ter de 2 a 8 letras ou números.");
       }
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o rótulo da ação.");
+      for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
+      const inexistente = (outros.dependeDe ?? []).find((c) => !acoes.some((a) => a.codigo === c));
+      if (inexistente) throw new ErroDeDados("nao-encontrado", `Ação ${inexistente} não encontrada.`);
       const ordem = Math.max(0, ...acoes.map((a) => a.ordem ?? 0)) + 1;
       await banco.criarAcao(espacoId, {
         dependeDe: [], responsaveis: [], estimativas: [],

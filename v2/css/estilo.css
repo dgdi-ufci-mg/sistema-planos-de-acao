@@ -479,3 +479,13 @@ h3.editavel { padding: 2px 6px; }
   border-radius: var(--raio); background: var(--surface); outline: none;
 }
 .editor-notas:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
+/* ---------- nova ação (passo 1.9) ---------- */
+.nova-acao { display: flex; flex-direction: column; gap: 14px; }
+.nova-acao .campo input, .nova-acao .campo select, .nova-acao .campo textarea {
+  font-weight: 400; font-size: 1rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); width: 100%;
+}
+.nova-acao .campo .etiquetas:empty { display: none; }
+.nova-acao .aviso-erro { color: var(--crit-ink); }
+.nova-acao .aviso-ok { color: var(--ok-ink); }
+.item.recem-criada { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }

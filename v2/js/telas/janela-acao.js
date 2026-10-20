@@ -11,6 +11,7 @@ import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pen
 import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { seloHtml } from "./pessoas.js";
+import { seletorHtml, ligarSeletores } from "./seletor.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -30,8 +31,6 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
   let d = dados;
   /** Campo em edição ("rotulo", "etapa", "descricao", "naoAntesDe", "estimativa") ou formulário aberto ("reestimar", "concluir"). */
   let editando = null;
-  /** Seletor com sugestões abertas e a sugestão destacada. */
-  const busca = { dependeDe: { texto: "", indice: 0 }, responsaveis: { texto: "", indice: 0 } };
   let fechada = false;
 
   const corpo = abrirPainel(`Ação ${codigo}`, "", {
@@ -133,7 +132,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     corpo.closest(".painel").style.setProperty("--calor", l.situacao === "concluida" ? "var(--ok)"
       : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
     restaurarValores(valores);
-    desenharSugestoes();
+    seletores.desenhar();
   }
 
   function barra(valor, cor, texto) {
@@ -276,17 +275,8 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
   }
 
   /* ---------- seletores com busca ---------- */
-  function seletorHtml(nome, dica) {
-    return `<div class="seletor-busca" data-seletor="${nome}">
-      <input type="text" autocomplete="off" placeholder="${dica}" aria-label="${dica}" data-buscar="${nome}"
-        role="combobox" aria-expanded="false" aria-controls="sugestoes-${nome}" aria-autocomplete="list">
-      <ul class="sugestoes" id="sugestoes-${nome}" role="listbox" hidden></ul>
-    </div>`;
-  }
-
-  function opcoesDe(nome) {
+  function opcoesDe(nome, texto) {
     const acao = d.acoes.find((a) => a.codigo === codigo);
-    const texto = busca[nome].texto;
     if (nome === "dependeDe") {
       return buscar(anterioresPossiveis(d.acoes, codigo), texto, (a) => [a.codigo, a.rotulo]).slice(0, MAX_SUGESTOES)
         .map((a) => ({ html: `<span class="mono">${esc(a.codigo)}</span> ${esc(a.rotulo)}`, escolher: () => store.acrescentarDependencia(espacoId, codigo, a.codigo) }));
@@ -312,48 +302,17 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     return achados;
   }
 
-  function desenharSugestoes() {
-    for (const nome of Object.keys(busca)) {
-      const caixa = corpo.querySelector(`[data-seletor="${nome}"]`);
-      if (!caixa) continue;
-      const entrada = caixa.querySelector("input");
-      const ul = caixa.querySelector("ul");
-      const aberta = document.activeElement === entrada;
-      const opcoes = aberta ? opcoesDe(nome) : [];
-      busca[nome].indice = Math.min(busca[nome].indice, Math.max(0, opcoes.length - 1));
-      ul.innerHTML = opcoes.length ? opcoes.map((o, i) => `<li role="option" id="sug-${nome}-${i}" data-sugestao="${i}" aria-selected="${i === busca[nome].indice}">${o.html}</li>`).join("")
-        : `<li class="vazio">${nome === "dependeDe" ? "Nenhuma ação disponível. Ficam de fora a própria ação, as que já são anteriores e as que dependem dela." : "Digite um nome para buscar ou cadastrar."}</li>`;
-      ul.hidden = !aberta;
-      entrada.setAttribute("aria-expanded", String(aberta));
-      entrada.setAttribute("aria-activedescendant", opcoes.length ? `sug-${nome}-${busca[nome].indice}` : "");
-      caixa._opcoes = opcoes;
-    }
-  }
-
-  async function escolher(nome, indice) {
-    const opcao = corpo.querySelector(`[data-seletor="${nome}"]`)?._opcoes?.[indice];
-    if (!opcao) return;
-    busca[nome] = { texto: "", indice: 0 };
-    const entrada = corpo.querySelector(`[data-buscar="${nome}"]`);
-    entrada.value = "";
-    await executar(opcao.escolher);
-    corpo.querySelector(`[data-buscar="${nome}"]`)?.focus();
-  }
-
   /* ---------- valores digitados: mantidos quando a janela é redesenhada por mudança de outra pessoa ---------- */
   function guardarValores() {
     const v = {};
-    for (const el of corpo.querySelectorAll("form [name], [data-buscar]")) v[el.name || el.dataset.buscar] = el.value;
+    for (const el of corpo.querySelectorAll("form [name]")) v[el.name] = el.value;
     v.foco = document.activeElement && corpo.contains(document.activeElement) ? (document.activeElement.name || document.activeElement.dataset.buscar) : null;
     const ed = editorNotas();
     if (ed) v.notas = ed.innerHTML;
     return v;
   }
   function restaurarValores(v) {
-    for (const el of corpo.querySelectorAll("form [name], [data-buscar]")) {
-      const chave = el.name || el.dataset.buscar;
-      if (chave in v) el.value = v[chave];
-    }
+    for (const el of corpo.querySelectorAll("form [name]")) if (el.name in v) el.value = v[el.name];
     if (v.foco) corpo.querySelector(`[name="${v.foco}"], [data-buscar="${v.foco}"]`)?.focus();
     const ed = editorNotas();
     if (ed && v.notas != null) ed.innerHTML = v.notas;
@@ -427,8 +386,6 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     if (t.closest("[data-desfazer-conclusao]")) {
       return executar(() => store.desfazerConclusao(espacoId, codigo), "Conclusão desfeita. A ação voltou a ser liberada.");
     }
-    const sug = t.closest("[data-sugestao]");
-    if (sug) return escolher(sug.closest("[data-seletor]").dataset.seletor, Number(sug.dataset.sugestao));
     const fmt = t.closest("[data-formatar]");
     if (fmt) return formatar(fmt.dataset.formatar);
     if (t.closest("[data-aplicar-link]")) return aplicarLink();
@@ -440,12 +397,10 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     e.preventDefault();
     document.execCommand("insertText", false, e.clipboardData.getData("text/plain"));
   });
-  /* a sugestão é escolhida no clique; o mousedown não pode tirar o foco da busca antes disso */
-  corpo.addEventListener("mousedown", (e) => { if (e.target.closest("[data-sugestao], [data-formatar]")) e.preventDefault(); });
+  /* os botões de formatação não podem tirar o foco do editor das notas */
+  corpo.addEventListener("mousedown", (e) => { if (e.target.closest("[data-formatar]")) e.preventDefault(); });
   corpo.addEventListener("submit", (e) => { e.preventDefault(); salvar(e.target); });
   corpo.addEventListener("input", (e) => {
-    const nome = e.target.dataset.buscar;
-    if (nome) { busca[nome] = { texto: e.target.value, indice: 0 }; desenharSugestoes(); return; }
     const form = e.target.closest("form");
     const pert = form?.querySelector("[data-pert]");
     if (pert && ["o", "m", "p"].includes(e.target.name)) {
@@ -453,27 +408,8 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
       pert.textContent = [o, m, p].every(Number.isInteger) && o >= 0 && o <= m && m <= p && p > 0 ? `Prazo previsto (PERT): ${diasUteis(duracaoPert({ o, m, p }))}` : "";
     }
   });
-  corpo.addEventListener("focusin", (e) => { if (e.target.dataset.buscar) desenharSugestoes(); });
-  corpo.addEventListener("focusout", (e) => { if (e.target.dataset.buscar) setTimeout(() => !fechada && desenharSugestoes(), 0); });
   corpo.addEventListener("keydown", (e) => {
-    const nome = e.target.dataset.buscar;
-    if (nome) {
-      const n = corpo.querySelector(`[data-seletor="${nome}"]`)._opcoes?.length ?? 0;
-      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-        e.preventDefault();
-        busca[nome].indice = (busca[nome].indice + (e.key === "ArrowDown" ? 1 : -1) + n) % Math.max(n, 1);
-        desenharSugestoes();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        escolher(nome, busca[nome].indice);
-      } else if (e.key === "Escape" && e.target.value) {
-        e.preventDefault();
-        e.target.value = "";
-        busca[nome] = { texto: "", indice: 0 };
-        desenharSugestoes();
-      }
-      return;
-    }
+    if (e.target.dataset.buscar) return; // o seletor cuida das teclas
     if (e.target.matches("[data-endereco-link]")) {
       if (e.key === "Enter") { e.preventDefault(); aplicarLink(); }
       if (e.key === "Escape") { e.preventDefault(); corpo.querySelector("[data-barra-link]").hidden = true; editorNotas()?.focus(); }
@@ -483,6 +419,14 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     if (e.key === "Escape" && editando) { e.preventDefault(); cancelar(); return; }
     if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-editar]")) { e.preventDefault(); editar(e.target.dataset.editar); }
   });
+
+  const seletores = ligarSeletores(corpo, {
+    dependeDe: {
+      opcoes: (texto) => opcoesDe("dependeDe", texto),
+      vazio: "Nenhuma ação disponível. Ficam de fora a própria ação, as que já são anteriores e as que dependem dela.",
+    },
+    responsaveis: { opcoes: (texto) => opcoesDe("responsaveis", texto), vazio: "Digite um nome para buscar ou cadastrar." },
+  }, { aoErro: (e) => avisar(e.message) });
 
   desenhar();
   return {

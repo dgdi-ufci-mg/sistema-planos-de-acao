@@ -72,3 +72,33 @@ export function pendencias(acao, acoes, hoje) {
     dataMinima: acao.naoAntesDe && acao.naoAntesDe > hoje ? acao.naoAntesDe : null,
   };
 }
+
+/* ---------- código de uma ação nova (seção 8.3) ---------- */
+const PALAVRAS_VAZIAS = new Set(["a", "o", "as", "os", "de", "da", "do", "das", "dos", "e", "em", "no", "na", "nos", "nas", "para", "com", "por", "um", "uma", "ao", "aos"]);
+
+/** O que a pessoa digitou no código, em maiúsculas e sem acentos, espaços ou sinais. */
+export const normalizarCodigo = (texto) => normalizar(texto).toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** Problema do código, ou "" se ele serve: de 2 a 8 letras ou números e livre no espaço. */
+export function problemaDoCodigo(codigo, existentes) {
+  if (!/^[A-Z0-9]{2,8}$/.test(codigo)) return "Use de 2 a 8 letras ou números, sem espaços.";
+  if (existentes.includes(codigo)) return `Já existe uma ação com o código ${codigo}.`;
+  return "";
+}
+
+/**
+ * Código sugerido a partir do rótulo: as iniciais das três primeiras palavras que contam
+ * ("Publicar o edital de seleção" → PES); se estiver ocupado, as duas primeiras letras e um número (PE2).
+ */
+export function sugerirCodigo(rotulo, existentes) {
+  const palavras = normalizar(rotulo).split(/[^a-z0-9]+/).filter((p) => p && !PALAVRAS_VAZIAS.has(p));
+  let base = palavras.slice(0, 3).map((p) => p[0]).join("");
+  if (palavras.length && base.length < 3) base = (base + palavras[0].slice(1)).slice(0, 3);
+  base = (base || "ACA").toUpperCase().padEnd(3, "X");
+  if (!problemaDoCodigo(base, existentes)) return base;
+  for (let i = 2; i < 1000; i++) {
+    const codigo = base.slice(0, 2) + i;
+    if (!problemaDoCodigo(codigo, existentes)) return codigo;
+  }
+  return null;
+}
