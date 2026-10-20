@@ -654,7 +654,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.19. Importação e exportação (planilha e Mermaid), cópia de segurança e restauração.
 1.20. Troca: cópia de segurança, migração dos dados (seção 11) e versão 2 na raiz. Se houver outros usuários nessa época, também aviso prévio e gravação congelada na versão atual durante a migração. Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas; AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.
 1.21. Piloto: plano da PI² atualizado com o andamento real e acompanhado na versão 2.
-1.22. Manual do usuário, quando o responsável liberar.
+1.22. Manual do usuário, quando o responsável liberar. Deve trazer as tabelas de decisão da especificação, como a das situações das entregas (seção 16.7); as que chegarem depois entram no manual junto com o passo que as implementar.
 
 ### Fase 2: organização e permissões (obrigatória antes do uso oficial)
 
@@ -840,14 +840,25 @@ Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
   | Situação | Significado | Evidência | Justificativa |
   |---|---|---|---|
   | **Não iniciada** | Nada foi feito | não | só ao arquivar o plano com a entrega nesta situação |
-  | **Em andamento** | Houve avanço, e a entrega continua sendo buscada | sim | não |
+  | **Em andamento** | Houve avanço, e a entrega continua sendo buscada | só ao arquivar o plano com ela | não |
   | **Alcançada** | Entrega obtida | sim | não |
   | **Parcialmente alcançada** | A busca terminou com parte do resultado | sim | sim |
   | **Não alcançada** | A busca terminou sem resultado | não | sim |
   | **Cancelada** | Decidiu-se não buscar mais, por exemplo por mudança de estratégia. Continua visível e não conta como não alcançada | não | sim |
 
+  **Tabela de decisão** (para a Ajuda e o manual: qual situação escolher):
+
+  | A busca da entrega… | O que se obteve até agora | Situação |
+  |---|---|---|
+  | continua | nada | Não iniciada |
+  | continua | parte | Em andamento |
+  | continua ou terminou | tudo | Alcançada |
+  | terminou | parte | Parcialmente alcançada |
+  | terminou | nada | Não alcançada |
+  | foi interrompida por decisão | qualquer coisa | Cancelada |
+
   "Em andamento" e "Parcialmente alcançada" têm avanço parcial; a diferença é se a busca continua. O mesmo vale para "Não iniciada" e "Não alcançada". Uma entrega "Em andamento" no fim do plano é a porta para continuá-la no plano seguinte (caminho A, abaixo).
-- **Arquivar o plano com entregas "Não iniciadas"** exige justificativa para cada uma: nesse momento, elas se igualam às não alcançadas e às canceladas.
+- **Arquivar o plano** exige completar o registro das entregas que ficaram pelo caminho: justificativa para cada uma "Não iniciada" (nesse momento, elas se igualam às não alcançadas e às canceladas) e evidência para cada uma "Em andamento". Durante a execução, "Em andamento" não exige evidência, para não travar o trabalho nem estimular evidências de faz de conta (decisão de 20/10/2026).
 - **Metas numéricas:** a situação também é escolhida pelo administrador; o valor alcançado aparece ao lado, como barra. Se os dois não combinarem (por exemplo, "Alcançada" com valor abaixo da meta), o sistema avisa antes de gravar.
 - **Entregas que atravessam planos (caminho A, decisão de 20/10/2026):** a entrega pertence a um plano, que responde pelo seu período. Ao criar o plano seguinte, é possível "continuar" uma entrega do anterior: ela é trazida para o novo plano com uma ligação "continua a entrega X". A cadeia de ligações mostra a trajetória completa ao painel do Programa e ao Data Lakehouse. Foi descartado o caminho B (entrega independente, ligada a vários planos), pela dificuldade de definir quem a administra, onde se registra o alcance e como conciliar visibilidades diferentes.
 - **Registro do alcance:** feito pelo administrador do plano, numa tela própria. Cada registro tem data, valor alcançado (ou sim/não), descrição e **pelo menos uma evidência**. Os registros se acumulam como histórico (um registro novo não apaga o anterior); o mais recente é o alcance atual.

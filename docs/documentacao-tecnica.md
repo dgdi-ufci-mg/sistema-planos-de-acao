@@ -449,6 +449,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 39.1 | Especificação da reescrita: entregas exigidas para concluir o vínculo ao Programa, e não para criar o plano (seção 16.7). Sem mudança no sistema |
 | 40 | Especificação da reescrita e versão 2: retrato como cópia integral do plano (dicionário e `v2/js/modelo.js`); comentários com histórico e apagamento só da tela; entregas com situações Não iniciada, Em andamento, Alcançada e Cancelada, e continuidade entre planos (caminho A). Sem mudança na versão atual |
 | 40.1 | Especificação da reescrita: situação da entrega numa lista única de seis valores, válida a qualquer momento; justificativa para "Não iniciada" ao arquivar o plano (seção 16.7). Sem mudança no sistema |
+| 40.2 | Especificação da reescrita: "Em andamento" exige evidência só ao arquivar o plano; tabela de decisão das situações das entregas, a incluir na Ajuda e no manual (seção 16.7 e passo 1.22). Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes
