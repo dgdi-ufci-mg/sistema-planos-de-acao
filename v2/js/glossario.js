@@ -1,0 +1,36 @@
+/**
+ * Glossário da Ajuda (AGENTS.md: todo termo técnico novo entra aqui).
+ * Cada item: chave, título, explicação simples, termo técnico (opcional) e ícone (opcional).
+ */
+export const GLOSSARIO = [
+  { chave: "espaco", titulo: "Espaço de planejamento",
+    texto: "O conjunto que reúne um Plano de Ação, um Projeto ou um Quadro de equipe, com as suas ações, responsáveis e datas. No dia a dia, só \"espaço\"." },
+  { chave: "concluida", icone: "concluida", titulo: "Concluída",
+    texto: "A ação tem data de conclusão registrada. Ela entra nos cálculos com a duração real." },
+  { chave: "liberada", icone: "liberada", titulo: "Liberada",
+    texto: "Todas as ações anteriores foram concluídas e a data mínima, se houver, já chegou. A ação pode ser executada." },
+  { chave: "naoLiberada", icone: "naoLiberada", titulo: "Não liberada",
+    texto: "Alguma ação anterior ainda não foi concluída, ou a data mínima (\"Não começa antes de\") ainda não chegou." },
+  { chave: "atrasada", icone: "atrasada", titulo: "Atrasada",
+    texto: "A data prevista de conclusão, pela estimativa mais recente, já passou. Uma reestimativa tira o carimbo e fica registrada no histórico." },
+  { chave: "exec", titulo: "Prioridade de execução",
+    texto: "Quanto um atraso nesta ação atrasa a conclusão prevista. Por exemplo, com 70%, cada dia de atraso nesta ação atrasa a conclusão em cerca de 0,7 dia. Considera só o prazo final; outros motivos de prioridade ficam a critério da equipe.",
+    tecnico: "índice de criticidade" },
+  { chave: "rev", titulo: "Prioridade de revisão do planejamento",
+    texto: "Quanto da incerteza do prazo final vem desta ação. Por exemplo, 18% quer dizer que esta ação responde por 18% da incerteza; as parcelas de todas as ações somam 100%. Quanto maior, mais vale revisar as estimativas, dividir a ação ou reduzir riscos.",
+    tecnico: "contribuição para a variância do prazo" },
+  { chave: "prazo", titulo: "Prazo de uma ação",
+    texto: "É contado em dias úteis, da liberação até a conclusão, incluindo o tempo até alguém começar. A data de início real não é registrada." },
+  { chave: "naoAntesDe", titulo: "Não começa antes de",
+    texto: "Data mínima para a ação ser liberada, mesmo que as anteriores já tenham terminado. Serve, por exemplo, para ações que dependem de uma data externa, como o início do semestre." },
+  { chave: "reest", titulo: "Reestimativa",
+    texto: "Nova estimativa do tempo que falta, a partir de hoje, em três pontos. A estimativa original nunca é apagada. Enquanto a ação não está liberada, a estimativa pode ser ajustada livremente, porque ainda é planejamento." },
+  { chave: "regra", titulo: "Prazo vencido sem reestimativa",
+    texto: "Se uma ação liberada passou da data prevista e ninguém a reestimou, o cálculo considera que ela termina a partir de hoje. Isso evita previsões otimistas demais, sem alterar o que foi registrado." },
+  { chave: "pert", titulo: "Estimativa PERT",
+    texto: "Prazo previsto = (otimista + 4 × mais provável + pessimista) ÷ 6. É a média da distribuição usada na simulação.",
+    tecnico: "média da distribuição beta-PERT" },
+  { chave: "dataSegura", titulo: "Data segura",
+    texto: "Data em que o trabalho termina em 80% dos cenários simulados. A conclusão prevista é a data de 50%.",
+    tecnico: "percentil 80 (P80) da simulação de Monte Carlo" },
+];

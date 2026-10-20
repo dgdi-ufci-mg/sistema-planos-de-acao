@@ -1,6 +1,6 @@
 /**
  * Partida da versão 2: identidade, barra do topo e abertura do sistema
- * (especificação, passo 1.4):
+ * (especificação, passos 1.4 e 1.5):
  * - quem chega por um link de espaço (#/espaco/<id>) abre esse espaço;
  * - senão, abre o último espaço aberto neste aparelho, se ele ainda existir;
  * - senão, vê as boas-vindas.
@@ -12,6 +12,9 @@ import { criarStore } from "./dados.js";
 import { carregarExemplo } from "./exemplo.js";
 import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
+import { mostrarTopo } from "./telas/topo.js";
+import { mostrarAjuda } from "./telas/ajuda.js";
+import { avisar } from "./telas/painel.js";
 
 document.title = NOME;
 document.querySelector("[data-nome]").textContent = NOME;
@@ -43,25 +46,58 @@ const hoje = (() => {
 })();
 const store = criarStore(criarBancoLocal());
 const principal = document.querySelector("#principal");
+const menus = document.querySelector(".menus");
+
+async function atualizarTopo(abertoId = null) {
+  mostrarTopo(menus, {
+    espacos: await store.listarEspacos(),
+    abertoId,
+    aoAbrir: abrirEspaco,
+    aoConfigurar: () => avisar("A configuração do espaço chega no passo 1.13."),
+    aoNovo: () => boasVindas({ comFormulario: true }),
+    aoBoasVindas: () => boasVindas(),
+    aoAjuda: () => ajuda(),
+    aoEntrar: () => avisar("A entrada com e-mail e senha chega no passo 1.14."),
+  });
+}
+
+/** Ajuda; com `foco`, destaca um termo do glossário (links "o que é?"). */
+function ajuda(foco) {
+  mostrarAjuda({ foco, aoVerExemplo: verExemplo });
+}
+
+async function verExemplo() {
+  await abrirEspaco(await carregarExemplo(store));
+}
 
 async function abrirEspaco(id) {
   const espaco = await store.lerEspaco(id);
   if (!espaco) return false;
   lembrar(id);
   if (location.hash !== `#/espaco/${id}`) history.replaceState(null, "", `#/espaco/${id}`);
-  mostrarEspaco(principal, espaco, await store.listarAcoes(id), { hoje, aoVoltar: boasVindas });
+  mostrarEspaco(principal, espaco, await store.listarAcoes(id), { hoje });
+  await atualizarTopo(id);
   window.scrollTo(0, 0);
   return true;
 }
 
-function boasVindas() {
+function boasVindas({ comFormulario = false } = {}) {
   esquecer();
   history.replaceState(null, "", location.pathname + location.search);
   mostrarBoasVindas(principal, {
     aoCriar: async (dados) => abrirEspaco(await store.criarEspaco(dados)),
-    aoVerExemplo: async () => abrirEspaco(await carregarExemplo(store)),
+    aoVerExemplo: verExemplo,
+    comFormulario,
   });
+  atualizarTopo();
+  window.scrollTo(0, 0);
 }
+
+/* links "o que é?" em qualquer tela: <a data-termo="chave">o que é?</a> */
+document.addEventListener("click", (e) => {
+  const link = e.target.closest("[data-termo]");
+  if (link) { e.preventDefault(); ajuda(link.dataset.termo); }
+});
 
 async function partida() {
   const doLink = location.hash.match(/^#\/espaco\/([\w-]+)$/)?.[1];

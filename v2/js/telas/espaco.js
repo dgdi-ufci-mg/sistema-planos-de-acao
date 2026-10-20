@@ -14,9 +14,9 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
  * @param {HTMLElement} alvo
  * @param {object} espaco
  * @param {object[]} acoes
- * @param {{hoje: string, aoVoltar: () => void}} opcoes
+ * @param {{hoje: string}} opcoes
  */
-export function mostrarEspaco(alvo, espaco, acoes, { hoje, aoVoltar }) {
+export function mostrarEspaco(alvo, espaco, acoes, { hoje }) {
   const cal = criarCalendario(espaco, hoje);
   let resumo = "";
   if (acoes.length) {
@@ -35,7 +35,7 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, aoVoltar }) {
       </ul>
       <dl class="numeros">
         <div><dt>Conclusão prevista</dt><dd>${dataBr(cal.dataDeConclusao(s.p50, 0))}</dd></div>
-        <div><dt>Data segura <small>(80% de chance)</small></dt><dd>${dataBr(cal.dataDeConclusao(s.p80, 0))}</dd></div>
+        <div><dt>Data segura <small>(80% de chance)</small> <a href="#" class="oque" data-termo="dataSegura">o que é?</a></dt><dd>${dataBr(cal.dataDeConclusao(s.p80, 0))}</dd></div>
         <div><dt>Prazo final</dt><dd>${dataBr(espaco.prazoFinal)}</dd></div>
         <div><dt>Chance de cumprir o prazo</dt><dd>${s.chancePrazo == null ? "—" : Math.round(s.chancePrazo * 100) + "%"}</dd></div>
       </dl>
@@ -49,7 +49,5 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, aoVoltar }) {
       <p class="tec">Início em ${dataBr(espaco.inicio)}${espaco.prazoFinal ? ` · prazo final em ${dataBr(espaco.prazoFinal)}` : ""}</p>
       ${resumo}
       <p class="aviso">Resumo provisório, para conferir o cálculo. A lista de ações chega no passo 1.6.</p>
-      <div class="botoes"><button class="botao" type="button" data-acao="voltar">Voltar às boas-vindas</button></div>
     </section>`;
-  alvo.querySelector('[data-acao="voltar"]').addEventListener("click", aoVoltar);
 }

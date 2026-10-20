@@ -13,9 +13,10 @@ const hojeIso = () => {
 
 /**
  * @param {HTMLElement} alvo
- * @param {{aoCriar: (dados: object) => Promise<void>, aoVerExemplo: () => Promise<void>}} acoes
+ * @param {{aoCriar: (dados: object) => Promise<void>, aoVerExemplo: () => Promise<void>, comFormulario?: boolean}} acoes
+ *   comFormulario: já abre o formulário de criação ("Novo espaço", no menu do espaço).
  */
-export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo }) {
+export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false }) {
   alvo.innerHTML = `
     <section class="cartao boas-vindas">
       <h1>Bem-vindo ao ${NOME}</h1>
@@ -48,10 +49,11 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo }) {
   const erro = alvo.querySelector("[data-erro]");
   const mostrarErro = (texto) => { erro.textContent = texto; erro.hidden = !texto; };
 
-  alvo.querySelector('[data-acao="criar"]').addEventListener("click", () => {
+  const abrirFormulario = () => {
     formulario.hidden = false;
     formulario.querySelector('[name="nome"]').focus();
-  });
+  };
+  alvo.querySelector('[data-acao="criar"]').addEventListener("click", abrirFormulario);
   alvo.querySelector('[data-acao="cancelar"]').addEventListener("click", () => {
     formulario.hidden = true;
     mostrarErro("");
@@ -70,4 +72,5 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo }) {
       mostrarErro(e.message);
     }
   });
+  if (comFormulario) abrirFormulario();
 }

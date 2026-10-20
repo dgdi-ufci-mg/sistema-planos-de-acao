@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 17/10/2026 (versão 26.1 da página)
+**Última atualização deste documento:** 20/10/2026 (versão 49 da página)
 
 ---
 
@@ -461,6 +461,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 47 | Versão 2, passo 1.3: simulação de Monte Carlo com beta-PERT, prioridades de execução e de revisão, versão do cálculo (`v2/js/simulacao.js`); roteiro de reprodução por fora (seção 15.6 da especificação); referência da PI²: chance de 89,5% de cumprir o prazo (74% na versão atual, com a triangular); 73 testes. Sem mudança na versão atual |
 | 47.1 | Especificação da reescrita: dois novos pontos para reavaliação (seção 14): a distribuição beta-PERT, que pode deixar a previsão otimista, e a hipótese de durações independentes entre ações. Sem mudança no sistema |
 | 48 | Versão 2, passo 1.4: abertura do sistema (boas-vindas, criar espaço, ver exemplo, link de espaço, último espaço do aparelho) e resumo provisório calculado do espaço (`v2/js/telas/abertura.js`, `v2/js/telas/espaco.js`); a vitrine do passo 0.5 saiu. Sem mudança na versão atual |
+| 49 | Versão 2, passo 1.5: barra do topo com menu do espaço (lista, configurar, novo espaço, boas-vindas) e menu do usuário (Ajuda e manual, Entrar), Ajuda em painel lateral com glossário e links "o que é?" (`v2/js/telas/topo.js`, `v2/js/telas/ajuda.js`, `v2/js/telas/painel.js`, `v2/js/glossario.js`). Sem mudança na versão atual |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes
