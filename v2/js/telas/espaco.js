@@ -15,6 +15,7 @@ import { abrirPainel, avisar } from "./painel.js";
 import { donosHtml } from "./pessoas.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao } from "./nova-acao.js";
+import { criarPlanilha } from "./editar-planilha.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -48,6 +49,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   const ui = { modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false };
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
   let janela = null;
+  const planilha = criarPlanilha({ store, espacoId, hoje, usuario });
   let comAcoes = null;
   let ferramentas, lista, legenda, cabeca;
 
@@ -128,7 +130,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
       <div class="segmentos" role="group" aria-label="Exibir como">
         <button type="button" data-modo="lista" aria-pressed="${ui.modo === "lista"}">Lista</button>
         <button type="button" data-modo="quadro" aria-pressed="${ui.modo === "quadro"}">Quadro</button>
+        <button type="button" class="so-computador" data-modo="planilha" aria-pressed="${ui.modo === "planilha"}">Editar em planilha</button>
       </div>
+      ${ui.modo === "planilha" ? "" : `
       ${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
       <select data-ctl="responsavel" aria-label="Responsável">
         <option value="">Todos os responsáveis</option>
@@ -136,7 +140,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
       </select>
       <select data-ctl="ordem" aria-label="Ordenar">
         ${ORDENS.map(([v, t]) => `<option value="${v}"${ui.ordem === v ? " selected" : ""}>${t}</option>`).join("")}
-      </select>`;
+      </select>`}`;
   }
   const botaoRecolherHtml = () => agrupado()
     ? `<button class="botao discreto" type="button" data-recolher-tudo>${ui.recolhidos.size ? "Expandir tudo" : "Recolher fases"}</button>` : "";
@@ -144,18 +148,18 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   function desenharFerramentas() {
     const n = contar(linhas);
     ferramentas.innerHTML = `
-      <div class="chips" role="group" aria-label="Filtrar por situação">
+      <div class="chips" role="group" aria-label="Filtrar por situação"${ui.modo === "planilha" ? " hidden" : ""}>
         ${BOTOES_DE_FILTRO.filter(([v]) => ui.modo === "lista" || v === "todas" || v === "atrasada").map(([v, t, icone, classe]) => `<button class="chip" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
           ${icone ? `<span class="${classe}">${ICONES[icone]}</span>` : ""}${t} <span class="n">${n[v]}</span></button>`).join("")}
       </div>
       <div class="controles so-computador">
         ${controlesHtml()}
         ${botaoRecolherHtml()}
-        <button class="botao discreto" type="button" data-alternar-legenda aria-pressed="${ui.legenda}">Legenda</button>
+        ${ui.modo === "planilha" ? "" : `<button class="botao discreto" type="button" data-alternar-legenda aria-pressed="${ui.legenda}">Legenda</button>`}
         <button class="botao principal" type="button" data-nova>${ICONES.mais}Nova ação</button>
       </div>
       <button class="botao so-celular" type="button" data-opcoes>${ICONES.filtros}Filtros e ordem${ativos() ? ` <span class="contador">${ativos()}</span>` : ""}</button>`;
-    legenda.hidden = !ui.legenda;
+    legenda.hidden = !ui.legenda || ui.modo === "planilha";
   }
 
   /* ---------- lista ---------- */
@@ -204,6 +208,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.numero, el.getBoundingClientRect());
     const ls = visiveis();
     let corpo;
+    if (ui.modo === "planilha") { planilha.desenhar(lista, dadosDaJanela()); return; }
     if (ui.modo === "quadro") corpo = quadroHtml(ls);
     else if (!ls.length) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
     else if (agrupado()) {

@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 20/10/2026 (versão 57 da página)
+**Última atualização deste documento:** 20/10/2026 (versão 58 da página)
 
 ---
 
@@ -478,6 +478,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 55 | Versão 2, passo 1.9: nova ação numa janela central, com código opcional sugerido a partir do rótulo e aviso enquanto se digita, dependências e responsáveis com busca e "Não começa antes de" com a data de hoje (`v2/js/telas/nova-acao.js`, `v2/js/telas/seletor.js`). Sem mudança na versão atual |
 | 56 | Versão 2: as ações passam a ser identificadas por um número fixo em sequência (`numero`, reservado pelo banco num contador do espaço, `proximoNumero`), invisível no uso normal; o código mnemônico (`codigo`) vira opcional, ligado pelo novo campo opcional `codigos` do espaço (desligado por padrão), e pode ser alterado. Dependências passam a guardar números e aparecem pelo nome. Dicionário de dados, mapeamento para Firebase e PostgreSQL e migração atualizados (especificação, seções 4.1, 4.2, 4.6, 4.9 e 11). Sem mudança na versão atual |
 | 57 | Versão 2, passo 1.10: modo Quadro, com colunas Não liberadas, Liberadas e Concluídas, arrastar para concluir ou desfazer a conclusão no computador e colunas deslizantes no celular (`v2/js/telas/espaco.js`). Sem mudança na versão atual |
+| 58 | Versão 2, passo 1.11: modo "Editar em planilha", no computador, com gravação por célula, Enter para descer, colagem de blocos (criando ações novas) e células bloqueadas com o motivo (`v2/js/telas/editar-planilha.js`, `v2/js/planilha.js`). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
