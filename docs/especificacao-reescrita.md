@@ -126,6 +126,8 @@ erDiagram
   PLANO ||--o{ DOCUMENTO : "documentos"
 ```
 
+**Como ler o diagrama:** notação "pé de galinha" (*Termo técnico: crow's foot, de James Martin*), padrão em modelagem de dados. Em cada ponta da linha: `||` exatamente um; `|o` zero ou um; `|{` um ou muitos; `o{` zero ou muitos (o "pé" indica "muitos"). Exemplo: entre PLANO e ACAO, cada ação pertence a exatamente um plano, e um plano tem zero ou muitas ações.
+
 - Um **plano** tem ações, retratos, datas excluídas, documentos e uma estrutura de fases e etapas.
 - Uma **ação** pertence a um plano e, opcionalmente, a uma etapa; depende de outras ações do mesmo plano; tem responsáveis e um histórico de estimativas.
 - **Responsáveis** são globais: os mesmos para todos os planos.
@@ -193,7 +195,6 @@ Saem da versão atual: `dist` (escolha de distribuição), `statusDate` (a data 
 |---|---|---|---|---|
 | `fasesEtapas` | sim/não | não | Usa fases e etapas. Desligado: lista sem separadores | `true` |
 | `descricao` | sim/não | não | Usa o campo descrição das ações | `true` |
-| `entrega` | sim/não | não | Usa o campo entrega das ações | `false` |
 | `notas` | sim/não | não | Usa as notas das ações | `true` |
 
 Desligar um campo o esconde do formulário, da tabela e das exportações; os dados já gravados são mantidos.
@@ -210,7 +211,6 @@ Chave: o par (plano, `codigo`). O código é único dentro do plano.
 | `etapa` | id | não | Etapa a que a ação pertence (e, por ela, a fase). Vazio: sem fase nem etapa | `e1` |
 | `rotulo` | texto | sim | Nome curto, usado no cronograma e no diagrama | `Levantar requisitos` |
 | `descricao` | texto | não | Descrição completa | |
-| `entrega` | texto | não | Entrega esperada (coluna "Entrega" da planilha da PI²) | `Documento de requisitos` |
 | `dependeDe` | lista de código | sim | Códigos das ações anteriores, do mesmo plano. Lista vazia: sem anteriores | `["LEV","REQ"]` |
 | `responsaveis` | lista de id | sim | Ids dos responsáveis (4.5). Lista vazia: sem responsável | |
 | `estimativas` | lista de estimativa (4.3) | sim | Da primeira à mais recente. A vigente é a última | |
@@ -223,7 +223,7 @@ Chave: o par (plano, `codigo`). O código é único dentro do plano.
 | `excluidaEm` | momento | não | Exclusão lógica (seção 4.7). Vazio: ação ativa | |
 | `excluidaPor` | usuário | não | Quem excluiu | |
 
-Saem da versão atual: custo, custo gasto, % concluído, início real e término real separado.
+Saem da versão atual: custo, custo gasto, % concluído, início real e término real separado. O campo `entrega` da ação, previsto antes, foi retirado em 20/10/2026 para não se confundir com as **entregas do plano** (seção 16.7); o que a coluna "Entrega" da planilha da PI² dizia passa para a descrição.
 
 ### 4.3 Estimativa: cada item de `estimativas`
 
@@ -534,12 +534,12 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
 - **Linha compacta:** código e rótulo; situação e carimbo; responsáveis; conclusão prevista; as duas barras de prioridade.
 - **Cada linha é um cartão** com leve sombra e cantos arredondados, para separar visualmente as ações. A faixa colorida à esquerda segue a cor de prioridade (seção 7.3).
 - **Detalhe numa janela sobreposta**, ao tocar na linha, com o fundo escurecido, como no Todoist. Assim nenhum campo da lista fica escondido. A janela abre com uma animação curta. No celular, ela sobe da parte de baixo da tela e ocupa quase toda a altura.
-- **Conteúdo da janela:** no topo, código, etapa e rótulo; um resumo com situação, conclusão prevista, responsáveis e as duas barras. Abaixo: descrição, entrega, dependências e notas; botões de reestimar e de registrar a conclusão; alerta da regra interna, quando houver; histórico de estimativas, com o resumo das reprogramações.
+- **Conteúdo da janela:** no topo, código, etapa e rótulo; um resumo com situação, conclusão prevista, responsáveis e as duas barras. Abaixo: descrição, dependências e notas; botões de reestimar e de registrar a conclusão; alerta da regra interna, quando houver; histórico de estimativas, com o resumo das reprogramações.
 - **Fica fora da janela** o quadro de estimativa vigente com folga, data de liberação e fórmula: carga cognitiva sem uso prático. A estimativa vigente aparece como último item do histórico, e a fórmula fica na Ajuda.
 - **No celular:** cada linha vira um cartão.
 - Filtros: situação, responsável, "Minhas ações".
-- **Edição no lugar, na janela:** cada campo (rótulo, etapa, descrição, entrega, dependências, responsáveis e notas) é editado ao ser clicado, com Salvar e Cancelar. A estimativa também, enquanto a ação aguarda (seção 5.3).
-- **Nova ação numa janela central**, como no Todoist, com: rótulo; **código opcional** (se vazio, o sistema sugere um a partir do rótulo; se preenchido, precisa ter de 2 a 8 letras ou números e não pode repetir um código existente, com aviso enquanto se digita); etapa; descrição; entrega; dependências; responsáveis; três pontos de estimativa.
+- **Edição no lugar, na janela:** cada campo (rótulo, etapa, descrição, dependências, responsáveis e notas) é editado ao ser clicado, com Salvar e Cancelar. A estimativa também, enquanto a ação aguarda (seção 5.3).
+- **Nova ação numa janela central**, como no Todoist, com: rótulo; **código opcional** (se vazio, o sistema sugere um a partir do rótulo; se preenchido, precisa ter de 2 a 8 letras ou números e não pode repetir um código existente, com aviso enquanto se digita); etapa; descrição; dependências; responsáveis; três pontos de estimativa.
 - **Seletores com busca** para dependências e responsáveis: ao digitar, aparecem as opções que contêm o texto (código ou nome da ação; nome, sigla ou setor da pessoa). Setas e Enter escolhem; cada escolha vira uma etiqueta com ×. Nas dependências, ficam de fora a própria ação e as que dependem dela, o que impede ciclos. Nos responsáveis, a última opção é "Cadastrar … como responsável".
 - **Modo "Editar em planilha"**, ao lado da lista: uma grade com todas as ações e uma coluna por campo, para edição rápida por usuários experientes. Cada célula é salva ao sair dela; Enter desce para a linha de baixo; é possível colar um bloco copiado do Google Planilhas ou do Excel, inclusive criando linhas novas. Dependências e responsáveis são digitados como códigos e siglas separados por vírgula, com validação (código inexistente, ciclo, sigla desconhecida). Células que não podem ser editadas ali ficam cinza, com o motivo ao passar o mouse; por exemplo, a estimativa de uma ação liberada, que só muda por reestimativa.
 - **Modo "Quadro"** (estilo Kanban, como o Trello), ao lado de Lista e Editar em planilha: os mesmos cartões em três colunas, **Não liberadas**, **Liberadas** e **Concluídas**, cada uma com a contagem. "Atrasada" não é coluna: é o carimbo (ícone de relógio) no cartão, e o filtro "Atrasadas" continua disponível. O cartão mostra código, rótulo, etapa, responsáveis, conclusão prevista e a barra de prioridade de execução, com a faixa de cor à esquerda; tocar nele abre a janela da ação.
@@ -611,7 +611,7 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano, antes de
 | `baseline` do plano | retrato "Plano original", com as datas guardadas |
 | `holidays` (texto) | `datasExcluidas` com motivo vazio |
 | coleções `projects`, `tasks` e `people` | `planos`, `acoes` e `responsaveis`, no segundo projeto do Firebase (seção 4.9) |
-| coluna "Entrega" da planilha | `entrega` (importação passa a reconhecê-la) |
+| coluna "Entrega" da planilha da PI² | acrescentada ao fim da `descricao`, como "Entrega esperada: …" (o campo `entrega` da ação não existe mais; seção 4.2) |
 
 ---
 
@@ -819,10 +819,18 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
 
 ### 16.7 Entregas dos planos formalizados
 
-Pedido do responsável em 19/10/2026.
+Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
 
-- **Cadastro obrigatório:** todo plano vinculado a um Programa do PEI/PDI (tipo 1, seção 16.1) precisa ter as **entregas** que se quer alcançar cadastradas. O plano não é criado sem pelo menos uma entrega.
-- **Registro do alcance:** uma tela própria registra, para cada entrega, se foi alcançada, quando, por quem e com qual **evidência**: o documento que demonstra o resultado (identificação no SIPAC/Protocolo e link, como os documentos do plano; envio do arquivo no servidor da UFCI-MG, passo 4.3).
-- **Diferença em relação ao campo `entrega` da ação:** aquele descreve o produto de uma ação; estas são os resultados do plano como um todo, os que importam para o PEI/PDI.
-- **Em aberto, a definir no passo 2.6:** se as ações se ligam às entregas; se a entrega tem meta numérica (por exemplo, "capacitar 200 servidores") ou só "alcançada ou não"; se há alcance parcial; quem pode registrar o alcance e se alguém valida o registro.
-
+- **Cadastro obrigatório:** todo plano vinculado a um Programa do PEI/PDI (tipo 1, seção 16.1) precisa ter as **entregas** que se quer alcançar. Momento exato da exigência em discussão (criação do plano ou vínculo formal).
+- **Só um sentido para "entrega":** as entregas são resultados do plano como um todo, os que importam para o PEI/PDI. O antigo campo `entrega` da ação foi retirado (seção 4.2), para não haver dois sentidos para a mesma palavra. Produtos intermediários continuam descritos nas próprias ações.
+- **Tipo de meta, como no Programa de Gestão e Desempenho (PGD) da instituição:**
+  - **Percentual:** taxas e proporções. Exemplo: "95% dos pedidos atendidos em até 24 horas".
+  - **Quantitativa:** número absoluto. Exemplo: "10 Procedimentos-Padrão publicados".
+  - **Entrega padrão:** sim ou não. Exemplo: "Relatório de Gestão 2025 homologado até 30/04/2026".
+- **Alcance parcial, sem cortes arbitrários:** nas metas percentuais e quantitativas, o alcance é contínuo: valor alcançado comparado à meta (por exemplo, 150 de 200, ou 75%), mostrado como barra (princípio dos números contínuos, seção 2). Na entrega padrão, o alcance é sim ou não por definição; o que foi feito até ali é descrito no registro e demonstrado pela evidência. Quem precisa medir o parcial escolhe meta percentual ou quantitativa ao planejar.
+- **Registro do alcance:** feito pelo administrador do plano, numa tela própria. Cada registro tem data, valor alcançado (ou sim/não), descrição e **pelo menos uma evidência**. Os registros se acumulam como histórico (um registro novo não apaga o anterior); o mais recente é o alcance atual.
+- **Evidência:** descrição obrigatória e, pelo menos, um entre link ou arquivo. O envio de arquivo, o ideal, vem com o servidor da UFCI-MG (passo 4.3); até lá, link e identificação no SIPAC/Protocolo.
+- **Quem registrou × quem realizou:** quem registrou é o usuário logado, gravado automaticamente. Quem realizou é uma lista livre de responsáveis (pessoas, equipes ou unidades, seção 4.5), sem limite de tamanho.
+- **Sem validação por terceiros:** o registro é uma declaração do administrador do plano. A confiabilidade vem da evidência, aberta a quem quiser conferir, e do histórico, que ninguém altera nem apaga (seção 16.4).
+- **Ligação com as ações:** opcional e discreta. Na janela da ação, um campo "Entrega do plano", escondido sob "Mais opções", como os atributos avançados dos cartões do Trello.
+- **Estrutura:** duas entidades novas, **Entrega** e **Registro de alcance**, que entram no dicionário de dados (seção 4), com tabela e teste, no passo 2.6. Esboço: Entrega (título, descrição, tipo de meta, meta, unidade, prazo, ordem, responsáveis); Registro de alcance (entrega, data, valor alcançado, descrição, evidências, quem realizou, registrado em, registrado por).

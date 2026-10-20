@@ -16,9 +16,9 @@ export const CAMPOS = Object.freeze({
   documento: ["nome", "data", "identificacao", "link"],
   fase: ["id", "nome", "etapas"],
   etapa: ["id", "nome"],
-  camposOpcionais: ["fasesEtapas", "descricao", "entrega", "notas"],
+  camposOpcionais: ["fasesEtapas", "descricao", "notas"],
   acao: [
-    "codigo", "ordem", "etapa", "rotulo", "descricao", "entrega",
+    "codigo", "ordem", "etapa", "rotulo", "descricao",
     "dependeDe", "responsaveis", "estimativas", "concluidaEm", "naoAntesDe", "notas",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
