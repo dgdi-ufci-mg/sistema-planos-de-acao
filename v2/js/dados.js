@@ -32,6 +32,14 @@ const FIXOS_DA_ACAO = ["codigo", "criadaEm"];
  * @param {ReturnType<import("./banco/local.js").criarBancoLocal>} banco
  * @param {OpcoesDoStore} [opcoes]
  */
+/** Responsável: tipo "pessoa" ou "unidade"; só pessoa pode ter login (seção 4.5). */
+function validarTipo({ tipo, usuario }) {
+  if (tipo !== "pessoa" && tipo !== "unidade") {
+    throw new ErroDeDados("tipo-invalido", 'Informe se o responsável é "pessoa" ou "unidade".');
+  }
+  if (tipo === "unidade" && usuario) throw new ErroDeDados("unidade-com-login", "Só uma pessoa pode ter login.");
+}
+
 export function criarStore(banco, opcoes = {}) {
   const agora = opcoes.agora ?? (() => new Date().toISOString());
   const usuario = opcoes.usuario ?? null;
@@ -106,6 +114,7 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(dados, "responsavel");
       const { nome, sigla = "", ...outros } = dados;
       if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do responsável.");
+      validarTipo(dados);
       return banco.criarResponsavel(novoId(), {
         ...outros, nome: nome.trim(), sigla: sigla.trim(),
         criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario,
@@ -115,6 +124,10 @@ export function criarStore(banco, opcoes = {}) {
     async alterarResponsavel(id, campos) {
       recusarDesconhecidos(campos, "responsavel");
       recusarFixos(campos, ["id", "criadoEm"]);
+      if ("tipo" in campos || campos.usuario) {
+        const atual = (await banco.listarResponsaveis()).find((r) => r.id === id);
+        validarTipo({ ...atual, ...campos });
+      }
       await banco.alterarResponsavel(id, { ...campos, alteradoEm: agora(), alteradoPor: usuario });
     },
 

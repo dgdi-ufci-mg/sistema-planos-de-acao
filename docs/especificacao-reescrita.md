@@ -303,20 +303,21 @@ Chave: id. Lista global, com cadastro livre, compartilhada por todos os espaços
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
 | `id` | id | sim | Identificador do responsável. Imutável | |
+| `tipo` | texto | sim | `pessoa` ou `unidade` (unidade organizacional, equipe ou grupo de unidades). Define o desenho na tela: pessoa num círculo com as iniciais; unidade num quadrado arredondado com a sigla | `pessoa` |
 | `nome` | texto | sim | Nome da pessoa, equipe ou unidade | `Ana Souza` |
-| `sigla` | texto | não | Sigla curta, usada em espaços pequenos como o diagrama | `ANA` |
+| `sigla` | texto | não | Sigla curta, usada em espaços pequenos como o diagrama; numa unidade, é o que aparece no quadrado | `DTI` |
 | `setor` | texto | não | Setor ou unidade | `DGDI` |
-| `usuario` | usuário | não | E-mail de login ligado a este responsável. Vazio: responsável sem login | `ana@ufci.edu.br` |
+| `usuario` | usuário | não | E-mail de login ligado a este responsável. Vazio: responsável sem login. Só uma pessoa pode ter login | `ana@ufci.edu.br` |
 | `criadoEm` | momento | sim | Cadastro do responsável. Imutável | |
 | `alteradoEm` | momento | sim | Última gravação | |
 | `alteradoPor` | usuário | não | Autor da última gravação | |
 | `excluidoEm` | momento | não | Exclusão lógica (seção 4.7) | |
 | `excluidoPor` | usuário | não | Quem excluiu | |
 
-Um responsável pode ser de dois tipos, sem campo próprio para distingui-los:
+O campo `tipo` (decisão do responsável, 20/10/2026) separa **pessoas** de **unidades**. Entre as pessoas, há dois casos, sem campo próprio para distingui-los:
 
 - **Membro da equipe com acesso ao sistema:** tem `usuario`. Para esses, funcionam o filtro "Minhas ações" e, na Fase 2, os papéis por espaço.
-- **Responsável diverso:** pessoa de fora do sistema, unidade organizacional, equipe ou grupo de unidades. Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
+- **Responsável diverso:** pessoa de fora do sistema, ou qualquer unidade organizacional, equipe ou grupo de unidades (`tipo: unidade`). Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
 
 ### 4.6 Edição simultânea
 
@@ -538,6 +539,7 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
 - **Fases e etapas como separadores**, como na gestão clássica de projetos (estrutura analítica): fase > etapa > ações. Cada separador mostra o nome e, **só quando está recolhido**, o número de ações, quantas foram concluídas, as atrasadas e a data em que o grupo termina, com uma pequena barra de progresso (decisão do responsável, 20/10/2026: aberto, os cartões já mostram tudo, e o resumo poluía a tela). O resumo aparece e some com um esmaecimento curto. **No celular**, para não tumultuar, o grupo recolhido mostra só a barrinha de progresso e, se houver ação atrasada, o relógio vermelho, na linha do nome (decisão do responsável, 20/10/2026). Fases e etapas podem ser **recolhidas e expandidas** com animação suave, e há um botão para recolher todas as fases. O aninhamento aparece por recuo leve. Ações sem etapa ficam num grupo "Sem fase nem etapa". O agrupamento vale na ordem "Ordem do espaço"; nas ordenações por prioridade ou data, a lista fica corrida, para que a ordem escolhida prevaleça.
 - **Fases e etapas são cadastradas em "Configurar o espaço"** (criar e renomear; reordenar e excluir na versão final). Na ação, a etapa é escolhida numa lista agrupada por fase. O campo opcional "Fases e etapas" pode ser desligado; nesse caso, a lista fica sem separadores.
 - **Animação dos filtros:** ao filtrar ou reordenar, as ações que continuam deslizam até a nova posição e as que entram aparecem suavemente. Respeita a preferência do sistema por menos movimento.
+- **Responsáveis no cartão** (decisão do responsável, 20/10/2026): **pessoa** num círculo com as duas iniciais do nome (primeiro e último), num tom suave fixo, tirado do nome, de uma pequena paleta; **unidade** num quadrado de cantos arredondados com a sigla, em tom neutro. É o padrão do GitHub para usuários e organizações. Primeiro as pessoas, depois as unidades, na mesma linha; com mais de três pessoas, os círculos se sobrepõem e terminam em "+N". O nome completo aparece ao passar o mouse ou tocar, e por extenso na janela da ação. Quem entrou com login vê o próprio círculo com um anel verde. A foto da pessoa substitui as iniciais quando houver login institucional (Fase 4).
 - **Linha compacta:** código e rótulo; situação e carimbo; responsáveis; conclusão prevista; as duas barras de prioridade. **Sem cabeçalho de tabela** (decisão do responsável, 20/10/2026: com cartões, o cabeçalho confundia e poluía a tela): a data e as barras levam um rótulo pequeno no próprio cartão ("Conclusão prevista" ou "Concluída em", "Prioridade de execução", "Prioridade de revisão"), e os links "o que é?" das prioridades ficam na legenda. Nas ações concluídas, as barras não aparecem.
 - **Cada linha é um cartão** com leve sombra e cantos arredondados, para separar visualmente as ações. A faixa colorida à esquerda segue a cor de prioridade (seção 7.3).
 - **Detalhe numa janela sobreposta**, ao tocar na linha, com o fundo escurecido, como no Todoist. Assim nenhum campo da lista fica escondido. A janela abre com uma animação curta. No celular, ela sobe da parte de baixo da tela e ocupa quase toda a altura.
@@ -617,6 +619,7 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano da versã
 | `status` (importado da PI²) | descartado; a situação é calculada |
 | `baseline` do plano (versão atual) | retrato "Plano original", com as datas guardadas |
 | `holidays` (texto) | `datasExcluidas` com motivo vazio |
+| responsáveis (`people`) | `tipo: pessoa`; quem for unidade é corrigido na aba Responsáveis |
 | coleções `projects`, `tasks` e `people` | `espacos`, `acoes` e `responsaveis`, no segundo projeto do Firebase (seção 4.9) |
 | coluna "Entrega" da planilha da PI² | acrescentada ao fim da `descricao`, como "Entrega esperada: …" (o campo `entrega` da ação não existe mais; seção 4.2) |
 

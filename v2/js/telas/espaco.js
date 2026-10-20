@@ -11,7 +11,11 @@ import { simular } from "../simulacao.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
+import { iniciais, tomDe, separar } from "../responsaveis.js";
 import { abrirPainel, avisar } from "./painel.js";
+
+/** Até quantas pessoas aparecem no cartão; as demais viram "+N". */
+const PESSOAS_NO_CARTAO = 3;
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -120,11 +124,21 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
   const corDe = (l) => (l.situacao === "concluida" ? "var(--ok)" : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
   const etapaDe = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
 
+  /** Pessoas em círculos com as iniciais (sobrepostos, até três e "+N"); depois, unidades em quadrados com a sigla. */
+  function donosHtml(lista) {
+    const { pessoas: ps, unidades } = separar(lista);
+    const visiveis = ps.length > PESSOAS_NO_CARTAO ? ps.slice(0, PESSOAS_NO_CARTAO - 1) : ps;
+    const resto = ps.slice(visiveis.length);
+    return `${ps.length ? `<span class="pessoas">${visiveis.map((p) =>
+      `<span class="avatar${meus?.includes(p.id) ? " eu" : ""}" style="--tom:var(--tom-${tomDe(p.nome)});--tom-texto:var(--tom-${tomDe(p.nome)}-texto)" title="${esc(p.nome)}" role="img" aria-label="${esc(p.nome)}">${esc(iniciais(p.nome))}</span>`).join("")}${resto.length
+      ? `<span class="avatar mais" title="${esc(resto.map((p) => p.nome).join(", "))}" role="img" aria-label="Mais ${resto.length}: ${esc(resto.map((p) => p.nome).join(", "))}">+${resto.length}</span>` : ""}</span>` : ""}${unidades.map((u) =>
+      `<span class="unidade" title="${esc(u.nome)}" role="img" aria-label="${esc(u.nome)}">${esc(u.sigla || iniciais(u.nome))}</span>`).join("")}`;
+  }
+
   function linhaHtml(l) {
     const a = l.acao;
     const s = SITUACOES[l.situacao];
-    const donos = a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean)
-      .map((p) => `<span class="dono${meus?.includes(p.id) ? " eu" : ""}" title="${esc(p.nome)}">${esc(p.sigla || p.nome)}</span>`).join("");
+    const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean));
     const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
     const nota = l.situacao !== "concluida" && l.reprogramacoes
       ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";

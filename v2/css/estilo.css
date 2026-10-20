@@ -23,6 +23,10 @@
   --barra-controle: rgba(22, 63, 58, .06);
   --barra-controle-foco: rgba(22, 63, 58, .12);
   --texto-sobre-destaque: #FFFFFF;
+  /* tons das pessoas (círculos dos responsáveis): fundo e texto */
+  --tom-1: #D6EEE9; --tom-1-texto: #00594F; --tom-2: #FBEAC8; --tom-2-texto: #7A5410;
+  --tom-3: #FDE1CC; --tom-3-texto: #9A4210; --tom-4: #F8DADB; --tom-4-texto: #8E1C21;
+  --tom-5: #DCE6F2; --tom-5-texto: #2B4A6F; --tom-6: #E1EEDC; --tom-6-texto: #3B6E3A;
   --f-titulo: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
   --f-texto: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-dados: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -48,6 +52,9 @@
     --barra-controle: rgba(255, 255, 255, .07);
     --barra-controle-foco: rgba(255, 255, 255, .14);
     --texto-sobre-destaque: #062B26;
+      --tom-1: #103B35; --tom-1-texto: #7FE0CD; --tom-2: #3A2B12; --tom-2-texto: #FFD58F;
+    --tom-3: #3E2412; --tom-3-texto: #FFB27A; --tom-4: #3D1618; --tom-4-texto: #FF9A9D;
+    --tom-5: #1B2A3D; --tom-5-texto: #A9C6EA; --tom-6: #1B3320; --tom-6-texto: #A9D6A9;
     color-scheme: dark;
   }
 }
@@ -69,6 +76,9 @@
   --barra-controle: rgba(255, 255, 255, .07);
   --barra-controle-foco: rgba(255, 255, 255, .14);
   --texto-sobre-destaque: #062B26;
+  --tom-1: #103B35; --tom-1-texto: #7FE0CD; --tom-2: #3A2B12; --tom-2-texto: #FFD58F;
+  --tom-3: #3E2412; --tom-3-texto: #FFB27A; --tom-4: #3D1618; --tom-4-texto: #FF9A9D;
+  --tom-5: #1B2A3D; --tom-5-texto: #A9C6EA; --tom-6: #1B3320; --tom-6-texto: #A9D6A9;
   color-scheme: dark;
 }
 
@@ -273,9 +283,20 @@ body::before {
   color: var(--crit-ink); background: var(--crit-soft); border: 1px solid var(--crit); border-radius: 3px; padding: 0 5px;
 }
 .carimbo .icone { width: 1em; height: 1em; }
-.donos { display: flex; flex-wrap: wrap; gap: 4px; }
-.dono { font-size: .76rem; font-weight: 600; border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; background: var(--sunk); white-space: nowrap; }
-.dono.eu { border-color: var(--accent); color: var(--accent-ink); }
+.donos { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.pessoas { display: inline-flex; align-items: center; }
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none;
+  background: var(--tom, var(--sunk)); color: var(--tom-texto, var(--muted)); font-size: .7rem; font-weight: 700; letter-spacing: .02em;
+  box-shadow: 0 0 0 2px var(--surface); cursor: default;
+}
+.avatar + .avatar { margin-left: -6px; }
+.avatar.mais { background: var(--sunk); color: var(--muted); border: 1px solid var(--line); }
+.avatar.eu { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); position: relative; }
+.unidade {
+  height: 24px; display: inline-flex; align-items: center; padding: 0 7px; border-radius: 6px; white-space: nowrap; cursor: default;
+  background: var(--sunk); border: 1px solid var(--line); color: var(--muted); font-size: .72rem; font-weight: 700; letter-spacing: .03em;
+}
 .conc .data { font-family: var(--f-dados); font-size: .88rem; font-variant-numeric: tabular-nums; display: block; }
 .conc .data.atrasada { color: var(--crit-ink); font-weight: 500; }
 .conc small { display: block; font-size: .74rem; color: var(--warn-ink); }

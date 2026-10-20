@@ -42,13 +42,13 @@ function calendarioDoExemplo(hoje) {
 }
 
 const RESPONSAVEIS = [
-  { sigla: "ANA", nome: "Ana Souza", setor: "DGDI", usuario: "ana.souza@ufci.edu.br" },
-  { sigla: "BRL", nome: "Bruno Lima", setor: "DTI", usuario: "bruno.lima@ufci.edu.br" },
-  { sigla: "CAM", nome: "Carla Mendes", setor: "DGDI", usuario: "carla.mendes@ufci.edu.br" },
-  { sigla: "DRO", nome: "Diego Rocha", setor: "DTI", usuario: "diego.rocha@ufci.edu.br" },
-  { sigla: "DTI", nome: "Diretoria de Tecnologia da Informação" },
-  { sigla: "PF", nome: "Procuradoria Federal junto à UFCI-MG" },
-  { sigla: "PROGRAD", nome: "Pró-Reitoria de Graduação" },
+  { tipo: "pessoa", sigla: "ANA", nome: "Ana Souza", setor: "DGDI", usuario: "ana.souza@ufci.edu.br" },
+  { tipo: "pessoa", sigla: "BRL", nome: "Bruno Lima", setor: "DTI", usuario: "bruno.lima@ufci.edu.br" },
+  { tipo: "pessoa", sigla: "CAM", nome: "Carla Mendes", setor: "DGDI", usuario: "carla.mendes@ufci.edu.br" },
+  { tipo: "pessoa", sigla: "DRO", nome: "Diego Rocha", setor: "DTI", usuario: "diego.rocha@ufci.edu.br" },
+  { tipo: "unidade", sigla: "DTI", nome: "Diretoria de Tecnologia da Informação" },
+  { tipo: "unidade", sigla: "PF", nome: "Procuradoria Federal junto à UFCI-MG" },
+  { tipo: "unidade", sigla: "PROGRAD", nome: "Pró-Reitoria de Graduação" },
 ];
 
 const ESTRUTURA = [

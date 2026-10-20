@@ -91,11 +91,23 @@ describe("Store: ações", () => {
 describe("Store: responsáveis", () => {
   it("cria e lista responsáveis, com carimbos", async () => {
     const store = storeDeTeste();
-    await store.criarResponsavel({ nome: "Ana Souza", sigla: "ANA", setor: "DGDI" });
+    await store.criarResponsavel({ tipo: "pessoa", nome: "Ana Souza", sigla: "ANA", setor: "DGDI" });
     const [ana] = await store.listarResponsaveis();
     assert.deepEqual([ana.nome, ana.sigla, ana.setor], ["Ana Souza", "ANA", "DGDI"]);
     assert.ok(ana.criadoEm);
     assert.equal(ana.alteradoPor, "ana@ufci.edu.br");
+  });
+
+  it("exige o tipo (pessoa ou unidade) e só aceita login de pessoa", async () => {
+    const store = storeDeTeste();
+    await assert.rejects(store.criarResponsavel({ nome: "Ana" }), { codigo: "tipo-invalido" });
+    await assert.rejects(store.criarResponsavel({ tipo: "grupo", nome: "Ana" }), { codigo: "tipo-invalido" });
+    await assert.rejects(store.criarResponsavel({ tipo: "unidade", nome: "DTI", usuario: "dti@ufci.edu.br" }), { codigo: "unidade-com-login" });
+    const dti = await store.criarResponsavel({ tipo: "unidade", nome: "Diretoria de TI", sigla: "DTI" });
+    await assert.rejects(store.alterarResponsavel(dti, { usuario: "dti@ufci.edu.br" }), { codigo: "unidade-com-login" });
+    const ana = await store.criarResponsavel({ tipo: "pessoa", nome: "Ana", usuario: "ana@ufci.edu.br" });
+    await assert.rejects(store.alterarResponsavel(ana, { tipo: "unidade" }), { codigo: "unidade-com-login" });
+    await store.alterarResponsavel(dti, { tipo: "pessoa" });
   });
 });
 
@@ -108,6 +120,6 @@ describe("Store: só grava campos do dicionário de dados", () => {
     await assert.rejects(store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x", pct: 50 }), { codigo: "campo-desconhecido" });
     await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x" });
     await assert.rejects(store.alterarAcao(espacoId, "LEV", { name: "y" }), { codigo: "campo-desconhecido" });
-    await assert.rejects(store.criarResponsavel({ nome: "Ana", email: "a@b" }), { codigo: "campo-desconhecido" });
+    await assert.rejects(store.criarResponsavel({ tipo: "pessoa", nome: "Ana", email: "a@b" }), { codigo: "campo-desconhecido" });
   });
 });

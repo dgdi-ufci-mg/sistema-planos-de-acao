@@ -34,7 +34,7 @@ export const CAMPOS = Object.freeze({
   ],
   retratoResumo: ["conclusaoPrevista", "dataSegura", "p95", "chancePrazo"],
   responsavel: [
-    "id", "nome", "sigla", "setor", "usuario",
+    "id", "tipo", "nome", "sigla", "setor", "usuario",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
 });
