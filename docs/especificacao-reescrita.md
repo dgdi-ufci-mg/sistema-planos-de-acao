@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.4.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -50,6 +50,7 @@ js/markdown.js        formatação segura das notas
 js/telas/*.js         uma tela por arquivo: acoes, visualizacao, responsaveis, configurar, ajuda
 js/identidade.js      nome do sistema e textos de identificação, num lugar só (seção 3.1)
 js/exemplo.js         espaço de exemplo, com dados fictícios
+js/icones.js          ícones em SVG, no lugar de emojis
 js/app.js             estado, navegação, partida
 testes/*.test.js      testes automáticos (node --test, rodado dentro de v2/)
 testes/contrato-banco.js  garantias que todo banco cumpre (seção 3.4)
@@ -631,7 +632,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 0.2. ✔ Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
 0.3. ✔ Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
 0.4. ✔ Espaço de exemplo, com dados fictícios e datas relativas a hoje (`js/exemplo.js`), e cópia do espaço da PI² para o teste de comparação (`testes/dados/pi2-fase1.json`, lida dos dados reais só por leitura, sem responsáveis nem descrições, com conferência por SHA-256). A PI² não é exemplo público: dados reais mudam, e o exemplo precisa ser estável e didático (decisão de 20/10/2026). Este primeiro exemplo serve de base ao tipo Projeto; os exemplos de Plano de Ação e de Quadro de equipe entram nos passos 2.6 e 3.1.
-0.5. Base visual: cores, temas claro e escuro, ícones em SVG e barra do topo.
+0.5. ✔ Base visual: cores, temas claro e escuro (`css/estilo.css`), ícones em SVG (`js/icones.js`) e barra do topo, mostrados numa página provisória. Esconder logotipo e nome no celular na vertical fica para o passo 1.5, quando houver o menu do espaço para ocupar o lugar.
 
 ### Fase 1: núcleo (substitui a versão atual)
 

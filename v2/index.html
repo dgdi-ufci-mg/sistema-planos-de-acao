@@ -2,29 +2,51 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>Versão 2, em construção</title>
-<style>
-:root{--bg:#F6F4EF;--surface:#FFFFFF;--ink:#163F3A;--muted:#5E6B68;--line:#E2DDD3;--accent:#00796B}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121615;--surface:#1A201F;--ink:#E6ECEA;--muted:#9AA7A4;--line:#2C3533;--accent:#4DB6AC}}
-:root[data-theme="dark"]{--bg:#121615;--surface:#1A201F;--ink:#E6ECEA;--muted:#9AA7A4;--line:#2C3533;--accent:#4DB6AC}
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{max-width:520px;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px 24px;text-align:center}
-img{width:56px;height:56px}
-h1{margin:12px 0 4px;font-size:1.6rem}
-p{margin:8px 0;color:var(--muted)}
-a{color:var(--accent);font-weight:600}
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
-<main>
-  <img src="../logo.png" alt="">
-  <h1 data-nome></h1>
-  <p>Versão 2 do sistema, em construção. Esta página será substituída passo a passo, conforme a especificação.</p>
-  <p>O sistema em uso continua no endereço de sempre: <a href="../">abrir o sistema em uso</a>.</p>
+<header class="topo">
+  <div class="topo-linha">
+    <div class="marca">
+      <img src="../logo.png" alt="">
+      <div class="marca-texto"><b data-nome></b><small data-instituicao></small></div>
+    </div>
+  </div>
+</header>
+
+<main class="conteudo">
+  <p class="aviso"><b>Em construção.</b> Esta página mostra a base visual da versão 2: cores, temas claro e escuro, ícones e a barra do topo. O sistema em uso continua no endereço de sempre: <a href="../">abrir o sistema em uso</a>.</p>
+
+  <section class="cartao vitrine">
+    <h2>Símbolos das situações</h2>
+    <ul class="situacoes" id="situacoes"></ul>
+  </section>
+
+  <section class="cartao vitrine">
+    <h2>Cores</h2>
+    <div class="amostras" id="amostras"></div>
+  </section>
+
+  <section class="cartao vitrine">
+    <h2>Botões</h2>
+    <p><button class="botao principal" type="button" data-icone="mais">Novo</button> <button class="botao" type="button" data-icone="abrir">Abrir</button> <button class="botao" type="button" data-icone="fechar">Fechar</button></p>
+    <p class="tec">Termo técnico: exemplo do formato usado para termos técnicos.</p>
+  </section>
+
+  <section class="cartao vitrine">
+    <h2>Barra do topo</h2>
+    <p>No topo da página, a barra fica levemente mais escura que o fundo. Ao rolar, ela vira vidro transparente, que desfoca o que passa por baixo. A volta ao topo é o inverso exato da descida.</p>
+    <p>Role esta página para ver a mudança. O texto abaixo só serve para haver o que rolar.</p>
+    <p class="tec" id="enchimento"></p>
+  </section>
 </main>
+
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
