@@ -62,28 +62,58 @@ export function ordenarPorDependencia(acoes) {
 }
 
 /**
- * Caminho crítico pelas estimativas vigentes.
+ * Caminho crítico, situações e carimbo Atrasada.
+ *
+ * Regras (especificação, seções 5 e 6):
+ * - Ação concluída: entra com a duração real, da liberação à data de conclusão (5.4).
+ * - Estimativa vigente que conta da liberação: conclusão = liberação + PERT.
+ *   Reestimativa (conta do dia em que foi feita): conclusão = dia da reestimativa + PERT (5.3).
+ * - Com `hoje`: ação liberada e não concluída cuja conclusão prevista já passou é
+ *   considerada concluída a partir de hoje, sem alterar o que o usuário registrou (5.5).
+ * - Com `hoje`: situação Concluída, Liberada ou Não liberada, e carimbo Atrasada (6).
+ *
  * @param {object[]} acoes ações do espaço (dicionário de dados, 4.2)
  * @param {ReturnType<import("./calendario.js").criarCalendario>} calendario
- * @returns {{fim: number, porAcao: Map<string, {liberacao: number, conclusao: number,
- *   liberacaoTardia: number, conclusaoTardia: number, folga: number, critica: boolean}>, avisos: object[]}}
+ * @param {{hoje?: string}} [opcoes] sem `hoje`, só o cálculo pelas estimativas e conclusões
  */
-export function caminhoCritico(acoes, calendario) {
+export function caminhoCritico(acoes, calendario, { hoje } = {}) {
   const { ordem, anteriores, seguintes, avisos } = ordenarPorDependencia(acoes);
   const porCodigo = new Map(acoes.map((a) => [a.codigo, a]));
+  const indiceDeHoje = hoje ? calendario.diasUteisAntes(hoje) : null;
   const porAcao = new Map();
   let fim = 0;
 
   for (const codigo of ordem) {
     const acao = porCodigo.get(codigo);
+    const antes = anteriores.get(codigo);
     let liberacao = 0;
-    for (const d of anteriores.get(codigo)) liberacao = Math.max(liberacao, porAcao.get(d).conclusao);
+    for (const d of antes) liberacao = Math.max(liberacao, porAcao.get(d).conclusao);
     if (acao.naoAntesDe) liberacao = Math.max(liberacao, calendario.diasUteisAntes(acao.naoAntesDe));
-    const vigente = estimativaVigente(acao);
-    if (!vigente) avisos.push({ codigo: "sem-estimativa", acao: codigo });
-    const conclusao = liberacao + (vigente ? duracaoPert(vigente) : 0);
-    porAcao.set(codigo, { liberacao, conclusao });
-    fim = Math.max(fim, conclusao);
+
+    const r = { liberacao, regraDoPassado: false };
+    if (acao.concluidaEm) {
+      r.conclusao = calendario.diasUteisAte(acao.concluidaEm);
+      r.liberacao = Math.min(liberacao, r.conclusao); // registro anterior à liberação calculada: vale o registro
+    } else {
+      const vigente = estimativaVigente(acao);
+      if (!vigente) avisos.push({ codigo: "sem-estimativa", acao: codigo });
+      const duracao = vigente ? duracaoPert(vigente) : 0;
+      const contaDe = vigente?.contaDe === "data" ? calendario.diasUteisAntes(vigente.em) : liberacao;
+      r.conclusao = Math.max(liberacao, contaDe + duracao);
+    }
+
+    if (hoje) {
+      const anterioresConcluidas = antes.every((d) => porCodigo.get(d).concluidaEm);
+      const dataMinimaChegou = !acao.naoAntesDe || acao.naoAntesDe <= hoje;
+      r.situacao = acao.concluidaEm ? "concluida" : anterioresConcluidas && dataMinimaChegou ? "liberada" : "naoLiberada";
+      r.atrasada = r.situacao === "liberada" && calendario.dataDeConclusao(r.conclusao, r.liberacao) < hoje;
+      if (r.atrasada) {
+        r.conclusao = indiceDeHoje + 1; // prazo vencido sem reestimativa: termina, no mínimo, hoje
+        r.regraDoPassado = true;
+      }
+    }
+    porAcao.set(codigo, r);
+    fim = Math.max(fim, r.conclusao);
   }
 
   for (const codigo of [...ordem].reverse()) {
@@ -93,7 +123,7 @@ export function caminhoCritico(acoes, calendario) {
     r.conclusaoTardia = conclusaoTardia;
     r.liberacaoTardia = conclusaoTardia - (r.conclusao - r.liberacao);
     r.folga = r.liberacaoTardia - r.liberacao;
-    r.critica = r.folga < 1e-6;
+    r.critica = r.folga < 1e-6 && !porCodigo.get(codigo).concluidaEm;
   }
   return { fim, porAcao, avisos };
 }

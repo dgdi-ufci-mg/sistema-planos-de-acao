@@ -57,3 +57,65 @@ describe("Caminho crítico", () => {
     assert.equal(r.fim, 0);
   });
 });
+
+describe("Situações, carimbo Atrasada e regras do mundo real", () => {
+  // calendário a partir de segunda, 05/10/2026; índices: 05/10=0, 06=1, 07=2, 08=3, 09=4, 12=5, 13=6 ...
+  const hoje = "2026-10-14"; // índice 7
+  const est = (o, m, p, extra = {}) => ({ o, m, p, contaDe: "liberacao", ...extra });
+
+  it("concluída entra com a duração real e libera as seguintes", () => {
+    const r = caminhoCritico([
+      { codigo: "A", dependeDe: [], estimativas: [est(2, 2, 2)], concluidaEm: "2026-10-08" }, // terminou no índice 3 (4 dias)
+      { codigo: "B", dependeDe: ["A"], estimativas: [est(3, 3, 3)] },
+    ], cal, { hoje });
+    assert.equal(r.porAcao.get("A").conclusao, 4);
+    assert.equal(r.porAcao.get("A").situacao, "concluida");
+    assert.equal(r.porAcao.get("A").critica, false);
+    assert.equal(r.porAcao.get("B").liberacao, 4);
+    assert.equal(r.porAcao.get("B").situacao, "liberada");
+  });
+
+  it("não liberada enquanto alguma anterior não termina ou a data mínima não chega", () => {
+    const r = caminhoCritico([
+      { codigo: "A", dependeDe: [], estimativas: [est(20, 20, 20)] },
+      { codigo: "B", dependeDe: ["A"], estimativas: [est(1, 1, 1)] },
+      { codigo: "C", dependeDe: [], estimativas: [est(1, 1, 1)], naoAntesDe: "2026-10-30" },
+    ], cal, { hoje });
+    assert.equal(r.porAcao.get("B").situacao, "naoLiberada");
+    assert.equal(r.porAcao.get("C").situacao, "naoLiberada");
+    assert.equal(r.porAcao.get("A").situacao, "liberada");
+  });
+
+  it("prazo vencido sem reestimativa: carimbo Atrasada e conclusão a partir de hoje", () => {
+    const r = caminhoCritico([{ codigo: "A", dependeDe: [], estimativas: [est(3, 3, 3)] }], cal, { hoje });
+    const a = r.porAcao.get("A");
+    assert.equal(a.atrasada, true);
+    assert.equal(a.regraDoPassado, true);
+    assert.equal(cal.dataDeConclusao(a.conclusao, a.liberacao), hoje);
+  });
+
+  it("reestimativa conta do dia em que foi feita e tira o carimbo", () => {
+    const r = caminhoCritico([{ codigo: "A", dependeDe: [],
+      estimativas: [est(3, 3, 3), est(4, 4, 4, { contaDe: "data", em: "2026-10-13" })] }], cal, { hoje });
+    const a = r.porAcao.get("A");
+    assert.equal(a.conclusao, 6 + 4); // 13/10 é o índice 6
+    assert.equal(a.atrasada, false);
+    assert.equal(a.regraDoPassado, false);
+  });
+
+  it("conclusão prevista para hoje não é atraso", () => {
+    const r = caminhoCritico([{ codigo: "A", dependeDe: [], estimativas: [est(7.5, 7.5, 7.5)] }], cal, { hoje });
+    assert.equal(cal.dataDeConclusao(r.porAcao.get("A").conclusao, 0), hoje);
+    assert.equal(r.porAcao.get("A").atrasada, false);
+  });
+
+  it("não liberada nunca recebe o carimbo, porque as anteriores não ficam no passado", () => {
+    const r = caminhoCritico([
+      { codigo: "A", dependeDe: [], estimativas: [est(2, 2, 2)] },
+      { codigo: "B", dependeDe: ["A"], estimativas: [est(1, 1, 1)] },
+    ], cal, { hoje });
+    assert.equal(r.porAcao.get("A").atrasada, true);
+    assert.equal(r.porAcao.get("B").atrasada, false);
+    assert.ok(r.porAcao.get("B").liberacao >= 8); // depois de hoje
+  });
+});

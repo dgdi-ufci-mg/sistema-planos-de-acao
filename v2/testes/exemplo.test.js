@@ -94,3 +94,18 @@ describe("Cópia da PI² para testes", () => {
     assert.equal(temCiclo(dados.tasks, (t) => t.id, (t) => t.preds), false);
   });
 });
+
+describe("Espaço de exemplo: forma esperada", async () => {
+  const { criarCalendario } = await import("../js/calendario.js");
+  const { caminhoCritico } = await import("../js/calculo.js");
+  const store = criarStore(criarBancoLocal());
+  const id = await carregarExemplo(store, new Date("2026-10-20T12:00:00Z"));
+  const espaco = await store.lerEspaco(id);
+  const r = caminhoCritico(await store.listarAcoes(id), criarCalendario(espaco), { hoje: "2026-10-20" });
+  const contar = (s) => [...r.porAcao.values()].filter((x) => x.situacao === s).length;
+
+  it("tem ações concluídas, liberadas (uma atrasada) e não liberadas", () => {
+    assert.deepEqual([contar("concluida"), contar("liberada"), contar("naoLiberada")], [2, 4, 6]);
+    assert.equal([...r.porAcao.values()].filter((x) => x.atrasada).length, 1);
+  });
+});
