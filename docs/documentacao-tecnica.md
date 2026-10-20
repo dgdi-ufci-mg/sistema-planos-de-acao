@@ -458,6 +458,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 44 | Versão 2, passo 0.5: base visual em `v2/css/estilo.css` (cores nos três blocos de tema, barra do topo com os dois estados e transição simétrica) e ícones em SVG em `v2/js/icones.js`; página provisória com a vitrine. Sem mudança na versão atual |
 | 45 | Versão 2, passo 1.1: calendário de dias úteis (`v2/js/calendario.js`) e caminho crítico com "Não começa antes de" (`v2/js/calculo.js`); teste de comparação que executa o cálculo da versão atual e confirma as mesmas datas para as 29 ações da PI²; 55 testes. Sem mudança na versão atual |
 | 46 | Versão 2, passo 1.2: situações, carimbo Atrasada, regra "nada termina no passado", ações concluídas com duração real e reestimativas contadas do dia em que foram feitas; 62 testes. Sem mudança na versão atual |
+| 47 | Versão 2, passo 1.3: simulação de Monte Carlo com beta-PERT, prioridades de execução e de revisão, versão do cálculo (`v2/js/simulacao.js`); roteiro de reprodução por fora (seção 15.6 da especificação); referência da PI²: chance de 89,5% de cumprir o prazo (74% na versão atual, com a triangular); 73 testes. Sem mudança na versão atual |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

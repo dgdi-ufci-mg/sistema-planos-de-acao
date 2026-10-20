@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 e 1.2.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5 e 1.1 a 1.3.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -68,7 +68,7 @@ package.json          só marca os arquivos como módulos para o Node; sem depen
 ### 3.2 Testes
 
 - **Testes de unidade** das funções de calendário, cálculo, simulação e Markdown, com `node --test`, sem dependências.
-- **Teste de comparação:** o espaço da PI² precisa produzir, na versão 2, as mesmas datas do caminho crítico da versão atual, já que essa regra não muda. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência.
+- **Teste de comparação:** o espaço da PI² precisa produzir, na versão 2, as mesmas datas do caminho crítico da versão atual, já que essa regra não muda. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência. **Referência (versão do cálculo 1, semente 20261014, 10.000 simulações, só estimativas):** P50 em 30/03/2027, P80 em 08/04/2027, P95 em 22/04/2027 e chance de 89,5% de cumprir o prazo de 14/04/2027. Na versão atual, com a triangular e 3.000 simulações, a chance era de 74%: a triangular, com os mesmos três pontos, espalha mais as durações do que a beta-PERT, que concentra os sorteios perto do mais provável. Um teste automático confere esses valores; se mudarem, é preciso aumentar a versão do cálculo.
 - **Teste do dicionário de dados:** compara os campos usados pelo código (tipos JSDoc do modelo) com os da seção 4 e falha se divergirem. Roda com os demais, em toda mudança.
 - **Teste visual:** capturas de tela das três abas, nos temas claro e escuro e na largura de celular.
 
@@ -638,7 +638,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 1.1. ✔ Calendário (dias úteis, datas excluídas com motivo; `js/calendario.js`) e caminho crítico, com "Não começa antes de" (`js/calculo.js`). Teste de comparação com a PI²: o cálculo da versão atual é executado no teste, a partir do `index.html` da raiz, e as 29 ações dão as mesmas datas, folgas e ações críticas (conclusão em 22/03/2027, 115 dias úteis). Ações concluídas, reestimativas e a regra "nada termina no passado" entram no passo 1.2.
 1.2. ✔ Situações (Não liberada, Liberada, Concluída), carimbo Atrasada e regra "nada termina no passado", mais ações concluídas com a duração real e reestimativas contadas do dia em que foram feitas (`js/calculo.js`, com a data de hoje como parâmetro). A regra do passado vale exatamente para as ações com carimbo Atrasada: prazo vencido sem reestimativa. Conclusão prevista para hoje não é atraso.
-1.3. Simulação beta-PERT sem travar a tela, semente imutável, versão do cálculo e as duas prioridades. Documentação para conferência por fora (seção 15).
+1.3. ✔ Simulação beta-PERT, semente imutável, versão do cálculo e as duas prioridades (`js/simulacao.js`). Documentação para conferência por fora (seção 15.6). Referência da PI² registrada na seção 3.2. Desempenho: 29 ações e 10.000 simulações levam cerca de 0,2 s num computador; se, nos testes no celular, a tela travar, a simulação passa a rodar em segundo plano (*Termo técnico: Web Worker*) no passo 1.6, junto com a tela que a usa.
 1.4. Abertura do sistema: quem não tem espaço vê a tela de boas-vindas (criar espaço, "Ver um exemplo" e, com o banco vazio, restaurar a cópia de segurança); quem tem espaços vai direto ao último espaço aberto naquele aparelho; quem chega por um link de espaço abre esse espaço. As boas-vindas continuam acessíveis pelo menu do espaço, e o espaço de exemplo, pela Ajuda.
 1.5. Topo: menu do espaço (lista, "Configurar este espaço", "Novo espaço"), menu do usuário e Ajuda (glossário e links "o que é?").
 1.6. Lista de ações: cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e animações; no celular, painel "Filtros e ordem" e botão (+).
@@ -754,6 +754,20 @@ Ações concluídas e ações de duração fixa (σᵢ = 0, em que rᵢ fica ind
 - **Crucialidade (correlação de Pearson ou de Spearman):** é o passo 1 do cálculo acima. Sozinha, também não tem leitura direta, e seus valores não somam nada interpretável. O defeito apontado antes, a instabilidade em ações de prazo pouco incerto, pesa pouco aqui, porque essas ações ficam com parcelas quase nulas de qualquer forma.
 - **Contribuição para a variância:** mesma ordem, leitura direta ("18% da incerteza") e é a medida padrão das ferramentas comerciais de análise de risco de cronograma, reconhecível por gestores e auditores.
 - **Conferência por dois índices (SSI e crucialidade de Spearman),** recomendada para analistas: fica fora da tela, para não mostrar dois números parecidos a leigos. Ideia futura: calcular a crucialidade de Spearman internamente e só mostrar um aviso quando a ordem divergir muito, o que costuma indicar caminhos paralelos competindo.
+
+### 15.6 Como reproduzir a simulação por fora
+
+Com a semente, o número de simulações e a versão do cálculo de um retrato, qualquer pessoa ou IA pode refazer a simulação, em Python, R ou outra linguagem, e obter **exatamente** os mesmos números, desde que siga estes passos (versão do cálculo 1; código em `v2/js/simulacao.js`):
+
+1. **Gerador:** mulberry32, iniciado com a semente (inteiro de 32 bits sem sinal). Cada chamada soma 0x6D2B79F5 ao estado e devolve um número em [0, 1), pelas operações de 32 bits do código.
+2. **Normal padrão:** Box-Muller, com dois sorteios (u, v), repetidos enquanto valem 0: √(−2 ln u) · cos(2πv).
+3. **Gama(forma, 1):** método de Marsaglia e Tsang; para forma < 1, Gama(1 + forma) · U^(1/forma), com um sorteio U depois.
+4. **Beta-PERT:** se P ≤ O, a duração é M, sem sorteio. Senão, α = 1 + 4(M − O)/(P − O), β = 1 + 4(P − M)/(P − O), X = Gama(α), Y = Gama(β), nessa ordem, e a duração é O + (P − O) · X/(X + Y).
+5. **Ordem dos sorteios:** cenário por cenário; dentro de cada cenário, ação por ação na ordem de cálculo, que é a ordem topológica (algoritmo de Kahn, com fila) partindo das ações ordenadas por `ordem` e, nos empates, por código. Ações concluídas não sorteiam.
+6. **Em cada cenário:** as regras do cálculo determinístico (seções 5.1 a 5.5), com a duração sorteada no lugar do PERT. Uma ação liberada cuja conclusão sorteada caia em dia anterior a hoje passa a terminar hoje.
+7. **Resultados:** quantis pela posição mais próxima para cima (o valor de posição ⌈q·K⌉ na lista ordenada); chance de cumprir o prazo = fração dos cenários com conclusão até o prazo final, inclusive; prioridades pelas fórmulas das seções 15.2 e 15.3, com folga menor que 10⁻⁶ dia considerada zero.
+
+Com outro gerador, os resultados são estatisticamente equivalentes, com diferença da ordem de meio ponto percentual na chance de cumprir o prazo.
 
 ### 15.5 Referências
 
