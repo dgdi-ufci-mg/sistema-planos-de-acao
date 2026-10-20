@@ -351,7 +351,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 - **Edição simultânea (versão 1).** Três falhas, de risco baixo enquanto poucas pessoas editam: (a) responsáveis e "depende de" são regravados como lista inteira, e dois acréscimos simultâneos podem perder um deles; (b) o código de uma ação nova é conferido só na tela de quem cria, e duas criações simultâneas com o mesmo código apagam a primeira em silêncio; (c) duas mudanças no mesmo campo valem pela última, sem aviso. A correção está na seção 4.6 da [`especificacao-reescrita.md`](especificacao-reescrita.md) e entra na versão 2.
 
-**Pontos para reavaliação (decisões da versão 2):** data de liberação de ações criadas depois ("Não começa antes de") e estimativa livre antes da liberação. Detalhes e alternativas em [`especificacao-reescrita.md`](especificacao-reescrita.md), seção 14. Reavaliar com o sistema em uso.
+**Pontos para reavaliação (decisões da versão 2):** data de liberação de ações criadas depois ("Não começa antes de"), estimativa livre antes da liberação, distribuição beta-PERT e durações independentes entre ações. Detalhes e alternativas em [`especificacao-reescrita.md`](especificacao-reescrita.md), seção 14. Reavaliar com o sistema em uso.
 
 **Melhorias:**
 
@@ -459,6 +459,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 45 | Versão 2, passo 1.1: calendário de dias úteis (`v2/js/calendario.js`) e caminho crítico com "Não começa antes de" (`v2/js/calculo.js`); teste de comparação que executa o cálculo da versão atual e confirma as mesmas datas para as 29 ações da PI²; 55 testes. Sem mudança na versão atual |
 | 46 | Versão 2, passo 1.2: situações, carimbo Atrasada, regra "nada termina no passado", ações concluídas com duração real e reestimativas contadas do dia em que foram feitas; 62 testes. Sem mudança na versão atual |
 | 47 | Versão 2, passo 1.3: simulação de Monte Carlo com beta-PERT, prioridades de execução e de revisão, versão do cálculo (`v2/js/simulacao.js`); roteiro de reprodução por fora (seção 15.6 da especificação); referência da PI²: chance de 89,5% de cumprir o prazo (74% na versão atual, com a triangular); 73 testes. Sem mudança na versão atual |
+| 47.1 | Especificação da reescrita: dois novos pontos para reavaliação (seção 14): a distribuição beta-PERT, que pode deixar a previsão otimista, e a hipótese de durações independentes entre ações. Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes
