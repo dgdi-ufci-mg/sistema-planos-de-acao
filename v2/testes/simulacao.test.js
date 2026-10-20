@@ -33,7 +33,7 @@ describe("Sorteios", () => {
 
 describe("Simulação", () => {
   it("mesma semente, mesmo resultado; outra semente, resultado parecido", () => {
-    const acoes = [{ codigo: "A", dependeDe: [], estimativas: [est(2, 5, 14)] }];
+    const acoes = [{ numero: "A", dependeDe: [], estimativas: [est(2, 5, 14)] }];
     const r1 = simular(acoes, cal, opcoes), r2 = simular(acoes, cal, opcoes);
     assert.deepEqual([...r1.fins], [...r2.fins]);
     const r3 = simular(acoes, cal, { ...opcoes, semente: 1 });
@@ -42,14 +42,14 @@ describe("Simulação", () => {
   });
 
   it("devolve a versão do cálculo, a semente e o número de simulações", () => {
-    const r = simular([{ codigo: "A", dependeDe: [], estimativas: [est(1, 2, 3)] }], cal, opcoes);
+    const r = simular([{ numero: "A", dependeDe: [], estimativas: [est(1, 2, 3)] }], cal, opcoes);
     assert.deepEqual([r.versaoCalculo, r.semente, r.simulacoes], [VERSAO_CALCULO, 20261014, 4000]);
   });
 
   it("sequência sem incerteza: todas críticas, nenhuma incerteza a repartir", () => {
     const r = simular([
-      { codigo: "A", dependeDe: [], estimativas: [est(3, 3, 3)] },
-      { codigo: "B", dependeDe: ["A"], estimativas: [est(2, 2, 2)] },
+      { numero: "A", dependeDe: [], estimativas: [est(3, 3, 3)] },
+      { numero: "B", dependeDe: ["A"], estimativas: [est(2, 2, 2)] },
     ], cal, opcoes);
     assert.equal(r.p50, 5);
     assert.deepEqual([...r.porAcao.values()].map((x) => x.prioridadeExecucao), [1, 1]);
@@ -58,8 +58,8 @@ describe("Simulação", () => {
 
   it("caminhos em paralelo: a mais incerta pesa mais, e as parcelas somam 100%", () => {
     const r = simular([
-      { codigo: "INC", dependeDe: [], estimativas: [est(5, 10, 30)] }, // muito incerta
-      { codigo: "EST", dependeDe: [], estimativas: [est(10, 11, 12)] }, // quase certa
+      { numero: "INC", dependeDe: [], estimativas: [est(5, 10, 30)] }, // muito incerta
+      { numero: "EST", dependeDe: [], estimativas: [est(10, 11, 12)] }, // quase certa
     ], cal, opcoes);
     const inc = r.porAcao.get("INC"), estv = r.porAcao.get("EST");
     assert.ok(Math.abs(inc.prioridadeExecucao + estv.prioridadeExecucao - 1) < 1e-9);
@@ -70,21 +70,21 @@ describe("Simulação", () => {
 
   it("ação concluída não tem prioridade nem incerteza", () => {
     const r = simular([
-      { codigo: "A", dependeDe: [], estimativas: [est(1, 2, 3)], concluidaEm: "2026-10-06" },
-      { codigo: "B", dependeDe: ["A"], estimativas: [est(1, 2, 6)] },
+      { numero: "A", dependeDe: [], estimativas: [est(1, 2, 3)], concluidaEm: "2026-10-06" },
+      { numero: "B", dependeDe: ["A"], estimativas: [est(1, 2, 6)] },
     ], cal, { ...opcoes, hoje: "2026-10-07" });
     assert.deepEqual(r.porAcao.get("A"), { prioridadeExecucao: 0, prioridadeRevisao: 0 });
     assert.equal(r.porAcao.get("B").prioridadeExecucao, 1);
   });
 
   it("nada termina no passado: nenhum cenário termina antes de hoje", () => {
-    const r = simular([{ codigo: "A", dependeDe: [], estimativas: [est(1, 2, 3)] }], cal, { ...opcoes, hoje: "2026-10-20" });
+    const r = simular([{ numero: "A", dependeDe: [], estimativas: [est(1, 2, 3)] }], cal, { ...opcoes, hoje: "2026-10-20" });
     const idxHoje = cal.diasUteisAntes("2026-10-20");
     assert.ok([...r.fins].every((f) => f >= idxHoje + 1));
   });
 
   it("chance de cumprir o prazo: 100% com folga, 0% sem tempo", () => {
-    const acoes = [{ codigo: "A", dependeDe: [], estimativas: [est(5, 10, 15)] }];
+    const acoes = [{ numero: "A", dependeDe: [], estimativas: [est(5, 10, 15)] }];
     assert.equal(simular(acoes, cal, { ...opcoes, prazoFinal: "2026-12-31" }).chancePrazo, 1);
     assert.equal(simular(acoes, cal, { ...opcoes, prazoFinal: "2026-10-07" }).chancePrazo, 0);
     assert.equal(simular(acoes, cal, opcoes).chancePrazo, null);
@@ -98,7 +98,7 @@ describe("Referência da PI² com a beta-PERT (seção 3.2)", () => {
   const pi2 = JSON.parse(readFileSync(new URL("./dados/pi2-fase1.json", import.meta.url), "utf8"));
   const datas = pi2.holidays.split(/,\s*/).map((s) => { const [d, m, a] = s.split("/"); return { data: `${a}-${m}-${d}` }; });
   const calPi2 = criarCalendario({ inicio: pi2.start, datasExcluidas: datas });
-  const acoes = pi2.tasks.map((t) => ({ codigo: t.id, ordem: t.order, dependeDe: t.preds,
+  const acoes = pi2.tasks.map((t) => ({ numero: t.id, ordem: t.order, dependeDe: t.preds,
     estimativas: [{ o: t.o, m: t.m, p: t.p, contaDe: "liberacao" }] }));
   const r = simular(acoes, calPi2, { hoje: pi2.start, semente: 20261014, simulacoes: 10000, prazoFinal: pi2.target });
 

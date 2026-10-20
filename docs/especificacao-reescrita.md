@@ -150,6 +150,7 @@ erDiagram
 | `semente` | inteiro | sim | Semente da simulação. Padrão 20261014. Definida na criação e **imutável** (seção 5.7) | `20261014` |
 | `estrutura` | lista de fase (4.1.3) | não | Fases e etapas, na ordem de exibição (seção 8.3) | |
 | `camposOpcionais` | campos opcionais (4.1.4) | não | Quais campos opcionais o espaço usa. Ausente: todos ligados | |
+| `proximoNumero` | inteiro | não | Número que a próxima ação criada no espaço vai receber (seção 4.2). Mantido pelo sistema, não editável; só cresce, para nenhum número ser reaproveitado. Ausente: 1 | `13` |
 | `tons` | mapa de id de responsável → inteiro de 1 a 15 | não | Tom do círculo de cada **pessoa** responsável por alguma ação do espaço (seção 8.3). Mantido pelo sistema, não editável: quem chega recebe o menor tom livre; quem deixa de ser responsável por todas as ações sai, e o tom fica livre; acima de 15 pessoas, repete o tom menos usado. Gravado sem carimbo de alteração | `{"3f2b…": 1, "9c1a…": 2}` |
 | `criadoEm` | momento | sim | Criação do espaço. Imutável | `2026-10-19T13:45:00.000Z` |
 | `alteradoEm` | momento | sim | Última gravação no espaço | |
@@ -200,22 +201,30 @@ Saem da versão atual: `dist` (escolha de distribuição), `statusDate` (a data 
 | `fasesEtapas` | sim/não | não | Usa fases e etapas. Desligado: lista sem separadores | `true` |
 | `descricao` | sim/não | não | Usa o campo descrição das ações | `true` |
 | `notas` | sim/não | não | Usa as notas das ações | `true` |
+| `codigos` | sim/não | não | Usa os códigos mnemônicos das ações, como `LEV` (seção 4.2). **Ausente: desligado**, ao contrário dos demais | `false` |
 
 Desligar um campo o esconde do formulário, da tabela e das exportações; os dados já gravados são mantidos.
 
 ### 4.2 Ação
 
-Chave: o par (espaço, `codigo`). O código é único dentro do espaço.
+Chave: o par (espaço, `numero`).
+
+**Como as ações são identificadas** (decisão do responsável, 20/10/2026). Ferramentas de equipe de uso amplo (Asana, Monday, Notion, Todoist) não mostram código: a dependência é escolhida pelo nome e aparece pelo nome. Códigos poluem a tela e aumentam a carga para o público leigo. Por isso:
+
+- **Número fixo em sequência** (`numero`), como no Jira e no GitHub: 1, 2, 3…, dado pelo sistema ao criar a ação, imutável e nunca reaproveitado (nem depois de exclusões). Não é a posição na lista: inserir uma ação no meio não renumera nada. É ele que liga as dependências. Fica **invisível no uso normal** e aparece só onde é útil: no modo "Editar em planilha" e na importação por planilha, para digitar "depende de 3; 5" num espaço sem códigos.
+- **Código mnemônico** (`codigo`), como `LEV`: opcional, ligado em "Configurar o espaço" (campo opcional `codigos`, desligado por padrão). Serve a equipes técnicas e às conversas em reunião ("o LIC atrasou"). Como não liga dependências, pode ser alterado; não pode repetir no espaço.
+- Descartado o **número da posição** (MS Project, Smartsheet): inserir uma linha no meio renumera as seguintes, e o que estava escrito em atas passa a apontar para a ação errada.
 
 <!-- dicionario: acao -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
-| `codigo` | texto | sim | Identificador da ação no espaço: de 2 a 8 letras ou números. Imutável, porque é a referência das dependências | `LEV` |
+| `numero` | inteiro | sim | Identificador da ação no espaço: 1, 2, 3…, na ordem de criação. Imutável e nunca reaproveitado; é a referência das dependências | `7` |
+| `codigo` | texto | não | Código mnemônico, de 2 a 8 letras maiúsculas ou números, único no espaço. Só aparece com o campo opcional `codigos` ligado | `LEV` |
 | `ordem` | inteiro | sim | Posição na "Ordem do espaço" | `3` |
 | `etapa` | id | não | Etapa a que a ação pertence (e, por ela, a fase). Vazio: sem fase nem etapa | `e1` |
 | `rotulo` | texto | sim | Nome curto, usado no cronograma e no diagrama | `Levantar requisitos` |
 | `descricao` | texto | não | Descrição completa | |
-| `dependeDe` | lista de código | sim | Códigos das ações anteriores, do mesmo espaço. Lista vazia: sem anteriores | `["LEV","REQ"]` |
+| `dependeDe` | lista de inteiro | sim | Números das ações anteriores, do mesmo espaço. Lista vazia: sem anteriores | `[1, 4]` |
 | `responsaveis` | lista de id | sim | Ids dos responsáveis (4.5). Lista vazia: sem responsável | |
 | `estimativas` | lista de estimativa (4.3) | sim | Da primeira à mais recente. A vigente é a última | |
 | `concluidaEm` | data | não | Data de conclusão. Vazio: não concluída | `2026-09-22` |
@@ -329,7 +338,7 @@ Várias pessoas podem editar o mesmo espaço ao mesmo tempo. Nenhuma gravação 
 | Duas pessoas mudam campos diferentes | Cada gravação leva só o campo alterado, nunca a ação inteira |
 | Responsáveis e "depende de" | Acrescentar e retirar itens um a um, nunca regravar a lista inteira. Assim, se duas pessoas acrescentam responsáveis ao mesmo tempo, os dois ficam |
 | Reestimativa | Entra no fim do histórico, sem regravar as anteriores. A correção de digitação da seção 4.3, que substitui a mais recente, só grava se ninguém tiver acrescentado outra estimativa nesse meio-tempo |
-| Ação nova | Criada só se o código estiver livre no banco, e não só na tela de quem cria. Se outra pessoa criou o mesmo código antes, aparece "Já existe uma ação com o código X. Escolha outro." |
+| Ação nova | O número é reservado no banco (contador do espaço, gravado numa transação), e não na tela de quem cria: duas pessoas criando ao mesmo tempo recebem números diferentes. O código mnemônico, quando usado, é conferido contra o banco; se outra pessoa usou o mesmo código antes, aparece "Já existe uma ação com o código X. Escolha outro." |
 | Mesmo campo, mesma ação, quase juntas | Vale a última gravação, mas sem surpresa: se a ação aberta na janela for alterada por outra pessoa, a janela mostra "Fulano alterou esta ação agora" e atualiza os campos que não estão sendo editados. O campo em edição fica como está, e a pessoa decide se grava |
 | Importação, restauração e regravação de ações inteiras | Só em operações explícitas, com confirmação, e nunca durante a edição comum |
 
@@ -371,7 +380,7 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Espaço | `espacos/{id}` | tabela `espaco` |
 | Data excluída, documento | listas dentro do espaço | tabelas `espaco_data_excluida`, `espaco_documento` |
 | Fase, etapa | lista `estrutura` dentro do espaço | tabelas `fase`, `etapa` |
-| Ação | `espacos/{id}/acoes/{codigo}` | tabela `acao`, chave (`espaco_id`, `codigo`) |
+| Ação | `espacos/{id}/acoes/{numero}` | tabela `acao`, chave (`espaco_id`, `numero`) |
 | Dependência | lista `dependeDe` dentro da ação | tabela `acao_dependencia` |
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
@@ -545,12 +554,12 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
 - **Linha compacta:** código e rótulo; situação e carimbo; responsáveis; conclusão prevista; as duas barras de prioridade. **Sem cabeçalho de tabela** (decisão do responsável, 20/10/2026: com cartões, o cabeçalho confundia e poluía a tela): a data e as barras levam um rótulo pequeno no próprio cartão ("Conclusão prevista" ou "Concluída em", "Prioridade de execução", "Prioridade de revisão"), e os links "o que é?" das prioridades ficam na legenda. Nas ações concluídas, as barras não aparecem.
 - **Cada linha é um cartão** com leve sombra e cantos arredondados, para separar visualmente as ações. A faixa colorida à esquerda segue a cor de prioridade (seção 7.3).
 - **Detalhe numa janela sobreposta**, ao tocar na linha, com o fundo escurecido, como no Todoist. Assim nenhum campo da lista fica escondido. A janela abre com uma animação curta. No celular, ela sobe da parte de baixo da tela e ocupa quase toda a altura.
-- **Conteúdo da janela:** no topo, código, etapa e rótulo; um resumo com situação, conclusão prevista, responsáveis e as duas barras. Abaixo: descrição, dependências e notas; botões de reestimar e de registrar a conclusão; alerta da regra interna, quando houver; histórico de estimativas, com o resumo das reprogramações.
+- **Conteúdo da janela:** no topo, etapa e rótulo (e o código, com o campo `codigos` ligado); um resumo com situação, conclusão prevista, responsáveis e as duas barras. Abaixo: descrição, dependências e notas; botões de reestimar e de registrar a conclusão; alerta da regra interna, quando houver; histórico de estimativas, com o resumo das reprogramações.
 - **Fica fora da janela** o quadro de estimativa vigente com folga, data de liberação e fórmula: carga cognitiva sem uso prático. A estimativa vigente aparece como último item do histórico, e a fórmula fica na Ajuda.
 - **No celular:** cada linha vira um cartão.
 - Filtros: situação, responsável, "Minhas ações".
 - **Edição no lugar, na janela:** cada campo (rótulo, etapa, descrição, "Não começa antes de" e notas) é editado ao ser clicado, com Salvar e Cancelar. Dependências e responsáveis são etiquetas com ×, acrescentadas e retiradas na hora, item a item (seção 4.6). A estimativa também, enquanto a ação aguarda (seção 5.3).
-- **Nova ação numa janela central**, como no Todoist, com: rótulo; **código opcional** (se vazio, o sistema sugere um a partir do rótulo; se preenchido, precisa ter de 2 a 8 letras ou números e não pode repetir um código existente, com aviso enquanto se digita); etapa; descrição; dependências; responsáveis; três pontos de estimativa.
+- **Nova ação numa janela central**, como no Todoist, com: rótulo; **código opcional**, só com o campo `codigos` ligado (se vazio, o sistema sugere um a partir do rótulo; se preenchido, precisa ter de 2 a 8 letras ou números e não pode repetir um código existente, com aviso enquanto se digita); etapa; descrição; dependências; responsáveis; três pontos de estimativa.
 - **Seletores com busca** para dependências e responsáveis: ao digitar, aparecem as opções que contêm o texto (código ou nome da ação; nome, sigla ou setor da pessoa). Setas e Enter escolhem; cada escolha vira uma etiqueta com ×. Nas dependências, ficam de fora a própria ação e as que dependem dela, o que impede ciclos. Nos responsáveis, as últimas opções são "Cadastrar … como pessoa" e "Cadastrar … como unidade" (o tipo é obrigatório, seção 4.5).
 - **Modo "Editar em planilha"**, ao lado da lista: uma grade com todas as ações e uma coluna por campo, para edição rápida por usuários experientes. Cada célula é salva ao sair dela; Enter desce para a linha de baixo; é possível colar um bloco copiado do Google Planilhas ou do Excel, inclusive criando linhas novas. Dependências e responsáveis são digitados como códigos e siglas separados por vírgula, com validação (código inexistente, ciclo, sigla desconhecida). Células que não podem ser editadas ali ficam cinza, com o motivo ao passar o mouse; por exemplo, a estimativa de uma ação liberada, que só muda por reestimativa.
 - **Modo "Quadro"** (estilo Kanban, como o Trello), ao lado de Lista e Editar em planilha: os mesmos cartões em três colunas, **Não liberadas**, **Liberadas** e **Concluídas**, cada uma com a contagem. "Atrasada" não é coluna: é o carimbo (ícone de relógio) no cartão, e o filtro "Atrasadas" continua disponível. O cartão mostra código, rótulo, etapa, responsáveis, conclusão prevista e a barra de prioridade de execução, com a faixa de cor à esquerda; tocar nele abre a janela da ação.
@@ -558,7 +567,7 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
   - **No celular:** as colunas ficam lado a lado, deslizando para o lado, uma por vez; a escolha entre Lista e Quadro fica no painel "Filtros e ordem". Concluir é feito pela janela da ação.
   - No Quadro, a lista não é separada por fases e etapas; a etapa aparece em cada cartão.
 - **Edição nas linhas da lista:** feita pelo modo planilha. Na lista, tocar na linha abre a janela; tornar os campos da linha editáveis causaria edições acidentais, principalmente no celular.
-- **O código não muda** depois de criado, porque é a referência usada nas dependências.
+- **O número da ação não muda** depois de criado, porque é a referência usada nas dependências (seção 4.2). O código mnemônico, quando usado, pode ser alterado.
 - **Protótipo antes da implementação:** esta aba será prototipada com dados fictícios e publicada como página de teste privada, para avaliação do responsável no computador e no celular.
 
 ### 8.4 Aba Visualização
@@ -614,7 +623,8 @@ A versão 2 converte os dados atuais na primeira leitura de cada plano da versã
 |---|---|
 | `name` / `desc` | `rotulo` / `descricao` |
 | `stage` (texto) | vira uma etapa da estrutura do espaço, numa fase única "Fase 1", a ser reorganizada pelo usuário |
-| `preds`, `owners`, `order` | `dependeDe`, `responsaveis`, `ordem` |
+| `id` da tarefa (o código, como `LEV`) | `codigo`, com o campo opcional `codigos` ligado no espaço migrado; `numero` dado na ordem das tarefas (1, 2, 3…) |
+| `preds`, `owners`, `order` | `dependeDe` (convertido de códigos para números), `responsaveis`, `ordem` |
 | `o, m, p` | primeira estimativa, `contaDe: "liberacao"`; frações arredondadas para cima |
 | `aF` (término real) | `concluidaEm` |
 | `cost`, `ac`, `pct`, `aS` | descartados |
@@ -649,7 +659,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.6. ✔ Lista de ações: cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e animações; no celular, painel "Filtros e ordem" e botão (+). Feito no passo 1.6: regras da lista em `js/lista.js` (o que cada linha mostra, contagem, filtros, ordenação com empate pela ordem do espaço, agrupamento e resumo de fase e etapa), com testes; tela em `js/telas/espaco.js`. Fase ou etapa recolhida também some para o teclado e o leitor de tela. "Minhas ações" só aparece para quem entrou com login, ligado a um responsável (passos 1.12 e 1.14). Tocar numa ação e "Nova ação" avisam em que passo chegam (1.7 e 1.9). Os modos Quadro e "Editar em planilha" entram nos passos 1.10 e 1.11. A conclusão prevista, a data segura e a chance de cumprir o prazo ficam numa linha provisória acima da lista, até a linha do tempo da aba Visualização (passo 1.17). Desempenho: a simulação do exemplo levou 88 ms no celular do responsável; abaixo de 100 ms a tela não chega a parecer travada, e a simulação continua na tela, sem rodar em segundo plano.
 1.7. ✔ Janela da ação: edição no lugar, seletores com busca (sem ciclos), reestimativa, conclusão e histórico de estimativas. Feito no passo 1.7: janela no centro da tela no computador e subindo de baixo no celular (`js/telas/janela-acao.js`), com a faixa de cor da prioridade no alto; regras em `js/acao.js` (estimativa livre, anteriores possíveis sem ciclo, busca sem acentos, resumo das estimativas, o que falta para liberar), com testes. Rótulo, etapa, descrição, "Não começa antes de" e a estimativa livre são editados no lugar, com Salvar e Cancelar (Esc cancela). Dependências e responsáveis mudam item a item, na hora, sem Salvar, como etiquetas com ×; a busca de responsáveis oferece "Cadastrar … como pessoa" e "como unidade". Reestimar e Registrar conclusão abrem um formulário na própria janela; a ação concluída mostra "Desfazer conclusão". O `Store` ganhou operações item a item (`acrescentarResponsavelNaAcao`, `acrescentarDependencia` e as de retirar), `reestimar`, `corrigirEstimativa`, `concluir` e `desfazerConclusao`; o banco ganhou `acrescentarNaLista`, `retirarDaLista`, `acrescentarEstimativa` e `trocarUltimaEstimativa`, com testes de contrato de gravações simultâneas (seção 4.6). O teste encontrou uma falha no banco em memória, que lia e gravava em dois tempos; corrigida. A tela do espaço passou a acompanhar o banco: cada gravação recalcula a lista e a janela aberta, mantendo filtros, grupos e o que está sendo digitado. O aviso "Fulano alterou esta ação agora" entra com o Firebase (passo 1.14); as notas aparecem como texto até o editor do passo 1.8.
 1.8. ✔ Notas com editor visual (Markdown seguro). Feito no passo 1.8: conversor próprio em `js/notas.js` (Markdown para HTML e o conteúdo do editor de volta para Markdown), com testes de segurança (HTML digitado vira texto; links só http, https e mailto); na janela da ação, a nota aparece formatada e, ao clicar, vira um editor com os botões N (negrito), I (itálico), Link e Lista e os atalhos Ctrl+B, Ctrl+I e Ctrl+K; texto colado entra sem formatação; dentro do editor, clicar num link não o abre.
-1.9. ✔ Nova ação: janela central, código opcional. Feito no passo 1.9: janela em `js/telas/nova-acao.js`, aberta por "Nova ação", pelo botão (+) do celular e pela tela do espaço sem ações; regras do código em `js/acao.js` (normalização, problema e sugestão a partir do rótulo, como "Publicar o edital de seleção" → PES, ou PE2 se PES estiver ocupado), com testes; o `Store` passou a recusar, na criação, estimativa inválida e anterior inexistente. A estimativa é obrigatória. "Não começa antes de" já vem com a data de hoje quando o espaço já começou, para a ação não nascer atrasada (como no protótipo); pode ser apagada. A ação criada vai para o fim da ordem do espaço e fica destacada na lista. O seletor com busca virou peça comum (`js/telas/seletor.js`), usado aqui e na janela da ação; depois de cada escolha, a lista de sugestões se recolhe até a pessoa voltar a digitar.
+1.9. ✔ Nova ação: janela central, código opcional. Feito no passo 1.9: janela em `js/telas/nova-acao.js`, aberta por "Nova ação", pelo botão (+) do celular e pela tela do espaço sem ações; regras do código em `js/acao.js` (normalização, problema e sugestão a partir do rótulo, como "Publicar o edital de seleção" → PES, ou PE2 se PES estiver ocupado), com testes; o `Store` passou a recusar, na criação, estimativa inválida e anterior inexistente. A estimativa é obrigatória. "Não começa antes de" já vem com a data de hoje quando o espaço já começou, para a ação não nascer atrasada (como no protótipo); pode ser apagada. A ação criada vai para o fim da ordem do espaço e fica destacada na lista. O seletor com busca virou peça comum (`js/telas/seletor.js`), usado aqui e na janela da ação; depois de cada escolha, a lista de sugestões se recolhe até a pessoa voltar a digitar. **Revisto em 20/10/2026, depois do passo 1.9:** as ações passaram a ser identificadas por um número fixo em sequência, invisível no uso normal, e o código mnemônico virou campo opcional do espaço, desligado por padrão (seção 4.2). Dependências aparecem pelo nome (com a etapa na busca, para distinguir nomes parecidos); o banco ganhou `reservarNumero` (contador `proximoNumero` do espaço, com teste de contrato de criações simultâneas); o código, quando usado, pode ser alterado na janela da ação. O exemplo guarda os códigos, mas com o campo desligado. Ligar e desligar os códigos fica em "Configurar o espaço" (passo 1.13).
 1.10. Modo Quadro.
 1.11. Modo "Editar em planilha", no computador.
 1.12. Aba Responsáveis, com a ligação ao usuário que faz funcionar "Minhas ações".

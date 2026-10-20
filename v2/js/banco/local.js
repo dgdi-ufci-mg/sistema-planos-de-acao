@@ -48,11 +48,11 @@ export function criarBancoLocal() {
   };
 
   /** Lê, calcula e grava a ação de uma vez, sem espera no meio. */
-  const mudarAcao = (espacoId, codigo, mudanca) => {
+  const mudarAcao = (espacoId, numero, mudanca) => {
     const acoes = acoesDo(espacoId);
-    if (!acoes.has(codigo)) throw new ErroDeDados("nao-encontrado", `Ação ${codigo} não encontrada.`);
-    const atual = acoes.get(codigo);
-    acoes.set(codigo, { ...atual, ...copia(mudanca(copia(atual))) });
+    if (!acoes.has(numero)) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
+    const atual = acoes.get(numero);
+    acoes.set(numero, { ...atual, ...copia(mudanca(copia(atual))) });
     avisar(espacoId);
   };
 
@@ -76,26 +76,38 @@ export function criarBancoLocal() {
     },
 
     // --- ações ---
-    /** Cria a ação só se o código estiver livre no espaço (especificação, seção 4.6). */
+    /**
+     * Reserva o próximo número de ação do espaço: 1, 2, 3… Cada número sai uma vez só,
+     * mesmo com duas pessoas criando ações ao mesmo tempo, e nunca é reaproveitado
+     * (seção 4.2; no Firebase: transação sobre o contador do espaço).
+     */
+    async reservarNumero(espacoId) {
+      exigirEspaco(espacoId);
+      const espaco = espacos.get(espacoId);
+      const numero = espaco.proximoNumero ?? 1;
+      espacos.set(espacoId, { ...espaco, proximoNumero: numero + 1 });
+      return numero;
+    },
+    /** Cria a ação só se o número estiver livre no espaço (seção 4.6). */
     async criarAcao(espacoId, acao) {
       exigirEspaco(espacoId);
       const acoes = acoesDo(espacoId);
-      if (acoes.has(acao.codigo)) {
-        throw new ErroDeDados("codigo-ocupado", `Já existe uma ação com o código ${acao.codigo}. Escolha outro.`);
+      if (acoes.has(acao.numero)) {
+        throw new ErroDeDados("numero-ocupado", `Já existe uma ação com o número ${acao.numero}.`);
       }
-      acoes.set(acao.codigo, copia(acao));
+      acoes.set(acao.numero, copia(acao));
       avisar(espacoId);
     },
-    async lerAcao(espacoId, codigo) {
-      const acao = acoesDo(espacoId).get(codigo);
+    async lerAcao(espacoId, numero) {
+      const acao = acoesDo(espacoId).get(numero);
       return acao ? copia(acao) : null;
     },
     async listarAcoes(espacoId) {
       return [...acoesDo(espacoId).values()].map(copia);
     },
     /** Grava só os campos informados; os demais ficam como estão (seção 4.6). */
-    async alterarAcao(espacoId, codigo, campos) {
-      mudarAcao(espacoId, codigo, () => campos);
+    async alterarAcao(espacoId, numero, campos) {
+      mudarAcao(espacoId, numero, () => campos);
     },
 
     /**
@@ -104,27 +116,27 @@ export function criarBancoLocal() {
      * `extra`: outros campos gravados junto, como a data e o autor da alteração.
      * Lê e grava de uma vez, sem espera no meio (no Firebase: arrayUnion).
      */
-    async acrescentarNaLista(espacoId, codigo, campo, itens, extra = {}) {
-      mudarAcao(espacoId, codigo, (a) => {
+    async acrescentarNaLista(espacoId, numero, campo, itens, extra = {}) {
+      mudarAcao(espacoId, numero, (a) => {
         const lista = a[campo] ?? [];
         return { ...extra, [campo]: [...lista, ...itens.filter((i) => !lista.includes(i))] };
       });
     },
     /** Retira itens de uma lista da ação, sem regravar os demais (seção 4.6; no Firebase: arrayRemove). */
-    async retirarDaLista(espacoId, codigo, campo, itens, extra = {}) {
-      mudarAcao(espacoId, codigo, (a) => ({ ...extra, [campo]: (a[campo] ?? []).filter((i) => !itens.includes(i)) }));
+    async retirarDaLista(espacoId, numero, campo, itens, extra = {}) {
+      mudarAcao(espacoId, numero, (a) => ({ ...extra, [campo]: (a[campo] ?? []).filter((i) => !itens.includes(i)) }));
     },
     /** Acrescenta uma estimativa no fim do histórico, sem regravar as anteriores (seção 4.6). */
-    async acrescentarEstimativa(espacoId, codigo, estimativa, extra = {}) {
-      mudarAcao(espacoId, codigo, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }));
+    async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}) {
+      mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }));
     },
     /**
      * Troca a estimativa mais recente (correção, seção 4.3), só se a ação ainda tiver
      * `quantas` estimativas: se alguém acrescentou outra nesse meio-tempo, recusa
      * (no Firebase: transação).
      */
-    async trocarUltimaEstimativa(espacoId, codigo, estimativa, quantas, extra = {}) {
-      mudarAcao(espacoId, codigo, (a) => {
+    async trocarUltimaEstimativa(espacoId, numero, estimativa, quantas, extra = {}) {
+      mudarAcao(espacoId, numero, (a) => {
         const lista = a.estimativas ?? [];
         if (!quantas || lista.length !== quantas) {
           throw new ErroDeDados("estimativa-mudou", "Alguém registrou outra estimativa nesta ação agora. Confira o histórico antes de corrigir.");

@@ -26,27 +26,28 @@ export const estimativaVigente = (acao) => acao.estimativas?.at(-1) ?? null;
 
 /**
  * Ordem em que as ações podem ser calculadas: cada uma depois das suas anteriores.
- * Dependências de códigos inexistentes são ignoradas e devolvidas como aviso.
- * @param {{codigo: string, ordem?: number, dependeDe?: string[]}[]} acoes
+ * Dependências de ações inexistentes são ignoradas e devolvidas como aviso.
+ * As ações são identificadas pelo número (seção 4.2).
+ * @param {{numero: number, ordem?: number, dependeDe?: number[]}[]} acoes
  */
 export function ordenarPorDependencia(acoes) {
-  const lista = [...acoes].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || a.codigo.localeCompare(b.codigo));
-  const existe = new Set(lista.map((a) => a.codigo));
+  const lista = [...acoes].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || (a.numero > b.numero) - (a.numero < b.numero));
+  const existe = new Set(lista.map((a) => a.numero));
   const avisos = [];
   const anteriores = new Map();
   for (const a of lista) {
     const validas = [];
     for (const d of new Set(a.dependeDe ?? [])) {
-      if (d === a.codigo) continue;
+      if (d === a.numero) continue;
       if (existe.has(d)) validas.push(d);
-      else avisos.push({ codigo: "dependencia-inexistente", acao: a.codigo, dependeDe: d });
+      else avisos.push({ codigo: "dependencia-inexistente", acao: a.numero, dependeDe: d });
     }
-    anteriores.set(a.codigo, validas);
+    anteriores.set(a.numero, validas);
   }
-  const seguintes = new Map(lista.map((a) => [a.codigo, []]));
+  const seguintes = new Map(lista.map((a) => [a.numero, []]));
   for (const [c, ds] of anteriores) for (const d of ds) seguintes.get(d).push(c);
   const faltam = new Map([...anteriores].map(([c, ds]) => [c, ds.length]));
-  const fila = lista.filter((a) => faltam.get(a.codigo) === 0).map((a) => a.codigo);
+  const fila = lista.filter((a) => faltam.get(a.numero) === 0).map((a) => a.numero);
   const ordem = [];
   while (fila.length) {
     const c = fila.shift();
@@ -54,7 +55,7 @@ export function ordenarPorDependencia(acoes) {
     for (const s of seguintes.get(c)) if (faltam.set(s, faltam.get(s) - 1).get(s) === 0) fila.push(s);
   }
   if (ordem.length < lista.length) {
-    const emCiclo = lista.map((a) => a.codigo).filter((c) => !ordem.includes(c));
+    const emCiclo = lista.map((a) => a.numero).filter((c) => !ordem.includes(c));
     throw new ErroDeCalculo("ciclo",
       `As ações ${emCiclo.join(", ")} dependem umas das outras em círculo, e assim nenhuma pode começar.`, emCiclo);
   }
@@ -78,14 +79,14 @@ export function ordenarPorDependencia(acoes) {
  */
 export function caminhoCritico(acoes, calendario, { hoje } = {}) {
   const { ordem, anteriores, seguintes, avisos } = ordenarPorDependencia(acoes);
-  const porCodigo = new Map(acoes.map((a) => [a.codigo, a]));
+  const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   const indiceDeHoje = hoje ? calendario.diasUteisAntes(hoje) : null;
   const porAcao = new Map();
   let fim = 0;
 
-  for (const codigo of ordem) {
-    const acao = porCodigo.get(codigo);
-    const antes = anteriores.get(codigo);
+  for (const numero of ordem) {
+    const acao = porNumero.get(numero);
+    const antes = anteriores.get(numero);
     let liberacao = 0;
     for (const d of antes) liberacao = Math.max(liberacao, porAcao.get(d).conclusao);
     if (acao.naoAntesDe) liberacao = Math.max(liberacao, calendario.diasUteisAntes(acao.naoAntesDe));
@@ -96,14 +97,14 @@ export function caminhoCritico(acoes, calendario, { hoje } = {}) {
       r.liberacao = Math.min(liberacao, r.conclusao); // registro anterior à liberação calculada: vale o registro
     } else {
       const vigente = estimativaVigente(acao);
-      if (!vigente) avisos.push({ codigo: "sem-estimativa", acao: codigo });
+      if (!vigente) avisos.push({ codigo: "sem-estimativa", acao: numero });
       const duracao = vigente ? duracaoPert(vigente) : 0;
       const contaDe = vigente?.contaDe === "data" ? calendario.diasUteisAntes(vigente.em) : liberacao;
       r.conclusao = Math.max(liberacao, contaDe + duracao);
     }
 
     if (hoje) {
-      const anterioresConcluidas = antes.every((d) => porCodigo.get(d).concluidaEm);
+      const anterioresConcluidas = antes.every((d) => porNumero.get(d).concluidaEm);
       const dataMinimaChegou = !acao.naoAntesDe || acao.naoAntesDe <= hoje;
       r.situacao = acao.concluidaEm ? "concluida" : anterioresConcluidas && dataMinimaChegou ? "liberada" : "naoLiberada";
       r.atrasada = r.situacao === "liberada" && calendario.dataDeConclusao(r.conclusao, r.liberacao) < hoje;
@@ -112,18 +113,18 @@ export function caminhoCritico(acoes, calendario, { hoje } = {}) {
         r.regraDoPassado = true;
       }
     }
-    porAcao.set(codigo, r);
+    porAcao.set(numero, r);
     fim = Math.max(fim, r.conclusao);
   }
 
-  for (const codigo of [...ordem].reverse()) {
-    const r = porAcao.get(codigo);
+  for (const numero of [...ordem].reverse()) {
+    const r = porAcao.get(numero);
     let conclusaoTardia = fim;
-    for (const s of seguintes.get(codigo)) conclusaoTardia = Math.min(conclusaoTardia, porAcao.get(s).liberacaoTardia);
+    for (const s of seguintes.get(numero)) conclusaoTardia = Math.min(conclusaoTardia, porAcao.get(s).liberacaoTardia);
     r.conclusaoTardia = conclusaoTardia;
     r.liberacaoTardia = conclusaoTardia - (r.conclusao - r.liberacao);
     r.folga = r.liberacaoTardia - r.liberacao;
-    r.critica = r.folga < 1e-6 && !porCodigo.get(codigo).concluidaEm;
+    r.critica = r.folga < 1e-6 && !porNumero.get(numero).concluidaEm;
   }
   return { fim, porAcao, avisos };
 }

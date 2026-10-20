@@ -7,7 +7,7 @@
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { duracaoPert } from "../calculo.js";
-import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias } from "../acao.js";
+import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo } from "../acao.js";
 import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { seloHtml } from "./pessoas.js";
@@ -19,21 +19,26 @@ const SITUACOES = {
   naoLiberada: ["Não liberada", "naoLiberada", "icone-nao-liberada"],
 };
 const MAX_SUGESTOES = 8;
-const numero = (x) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
-const diasUteis = (n) => `${numero(n)} ${plural(Math.abs(n), "dia útil", "dias úteis")}`;
+const decimal = (x) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias úteis")}`;
 
 /**
- * @param {{store: object, espacoId: string, codigo: string, hoje: string, usuario?: string|null,
+ * @param {{store: object, espacoId: string, numero: number, hoje: string, usuario?: string|null,
  *   dados: object, aoFechar: () => void}} opcoes  dados: ver dadosDaJanela em espaco.js
  * @returns {{atualizar: (dados: object) => void, fechar: () => void}}
  */
-export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
+export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar }) {
   let d = dados;
+  /** Nome de outra ação: o código (se o espaço usa códigos) e o rótulo. */
+  const nomeHtml = (a) => `${d.usaCodigos && a.codigo ? `<span class="mono">${esc(a.codigo)}</span> ` : ""}${esc(a.rotulo)}`;
+  const nomeTexto = (a) => `${d.usaCodigos && a.codigo ? `${a.codigo} ` : ""}${a.rotulo}`;
+  const acaoAtual = () => d.acoes.find((a) => a.numero === numero);
   /** Campo em edição ("rotulo", "etapa", "descricao", "naoAntesDe", "estimativa") ou formulário aberto ("reestimar", "concluir"). */
   let editando = null;
   let fechada = false;
 
-  const corpo = abrirPainel(`Ação ${codigo}`, "", {
+  const inicial = acaoAtual();
+  const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `Ação ${inicial.codigo}` : "Ação", "", {
     janela: true,
     aoFechar: () => { fechada = true; aoFechar(); },
   });
@@ -50,10 +55,10 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
 
   /* ---------- desenho ---------- */
   function desenhar() {
-    const acao = d.acoes.find((a) => a.codigo === codigo);
+    const acao = acaoAtual();
     if (!acao) { fecharPainel(); return; }
-    const l = d.linhaDe.get(codigo);
-    const c = d.caminho.porAcao.get(codigo);
+    const l = d.linhaDe.get(numero);
+    const c = d.caminho.porAcao.get(numero);
     const campos = d.espaco.camposOpcionais ?? {};
     const contexto = { tons: d.espaco.tons, meus: d.meus };
     const [sitTexto, sitIcone, sitClasse] = SITUACOES[l.situacao];
@@ -84,7 +89,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
 
       ${c.regraDoPassado ? `<p class="alerta">${ICONES.atrasada}<span><b>Prazo vencido sem reestimativa:</b> o cálculo considera conclusão a partir de hoje. Reestime a ação para informar quanto falta. <a href="#" class="oque" data-termo="regra">o que é?</a></span></p>` : ""}
       ${pend && (pend.anteriores.length || pend.dataMinima) ? `<p class="nota-janela">Será liberada ${[
-        pend.anteriores.length ? `quando ${plural(pend.anteriores.length, "for concluída a ação", "forem concluídas as ações")} ${pend.anteriores.map(esc).join(", ")}` : "",
+        pend.anteriores.length ? `quando ${plural(pend.anteriores.length, "for concluída a ação", "forem concluídas as ações")} ${pend.anteriores.map((n) => `“${esc(nomeTexto(d.acoes.find((a) => a.numero === n)))}”`).join(", ")}` : "",
         pend.dataMinima ? `a partir de ${dataBr(pend.dataMinima)}` : "",
       ].filter(Boolean).join(", e ")}.</p>` : ""}
 
@@ -93,6 +98,9 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
       ${editando === "concluir" ? conclusaoHtml(acao) : ""}
 
       <div class="janela-campos">
+        ${d.usaCodigos ? campoHtml("codigo", "Código", acao.codigo ? `<span class="mono">${esc(acao.codigo)}</span>` : "",
+          `<input name="codigo" maxlength="12" autocomplete="off" autocapitalize="characters" value="${esc(acao.codigo ?? "")}" aria-label="Código">`,
+          "De 2 a 8 letras ou números, sem repetir no espaço. Deixe vazio para ficar sem código.") : ""}
         ${d.usaFases ? campoHtml("etapa", "Etapa", etapa ? `${esc(etapa.fase)} · ${esc(etapa.nome)}` : "",
           `<select name="etapa" aria-label="Etapa"><option value="">Sem fase nem etapa</option>${(d.espaco.estrutura ?? []).map((f) =>
             `<optgroup label="${esc(f.nome)}">${f.etapas.map((e) => `<option value="${esc(e.id)}"${e.id === acao.etapa ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</optgroup>`).join("")}</select>`) : ""}
@@ -101,11 +109,11 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
 
         <div class="campo-acao">
           <span class="campo-nome">Depende de</span>
-          <div class="etiquetas">${(acao.dependeDe ?? []).map((cod) => {
-            const a = d.acoes.find((x) => x.codigo === cod);
-            return `<span class="etiqueta"><span class="mono">${esc(cod)}</span>${a ? esc(a.rotulo) : "(não existe mais)"}<button type="button" class="tirar" data-tirar-dependencia="${esc(cod)}" aria-label="Retirar ${esc(cod)}">${ICONES.fechar}</button></span>`;
+          <div class="etiquetas">${(acao.dependeDe ?? []).map((n) => {
+            const a = d.acoes.find((x) => x.numero === n);
+            return `<span class="etiqueta">${a ? nomeHtml(a) : "(ação excluída)"}<button type="button" class="tirar" data-tirar-dependencia="${n}" aria-label="Retirar ${esc(a ? nomeTexto(a) : "")}">${ICONES.fechar}</button></span>`;
           }).join("") || `<span class="vazio">Nenhuma: pode começar no início do espaço.</span>`}</div>
-          ${seletorHtml("dependeDe", "Acrescentar ação anterior: digite o código ou o nome")}
+          ${seletorHtml("dependeDe", d.usaCodigos ? "Acrescentar ação anterior: digite o nome ou o código" : "Acrescentar ação anterior: digite o nome")}
         </div>
 
         <div class="campo-acao">
@@ -129,6 +137,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
       </div>
 
       ${historicoHtml(acao, resumoEst)}`;
+    corpo.closest(".painel").querySelector("header h2").textContent = d.usaCodigos && acao.codigo ? `Ação ${acao.codigo}` : "Ação";
     corpo.closest(".painel").style.setProperty("--calor", l.situacao === "concluida" ? "var(--ok)"
       : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
     restaurarValores(valores);
@@ -235,7 +244,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
 
   function vigenteHtml(acao) {
     const e = acao.estimativas?.at(-1);
-    return e ? `<span class="mono">${numero(e.o)} · ${numero(e.m)} · ${numero(e.p)}</span> <span class="tec">otimista · mais provável · pessimista, em dias úteis</span>` : "";
+    return e ? `<span class="mono">${decimal(e.o)} · ${decimal(e.m)} · ${decimal(e.p)}</span> <span class="tec">otimista · mais provável · pessimista, em dias úteis</span>` : "";
   }
 
   function reestimativaHtml() {
@@ -251,7 +260,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
 
   function conclusaoHtml(acao) {
     return `<form class="editor cartao-form" data-salvar="concluir">
-      <h4>Registrar conclusão de ${esc(acao.codigo)}</h4>
+      <h4>Registrar conclusão</h4>
       <label class="campo"><span>Data de conclusão</span><input name="data" type="date" value="${hoje}" max="${hoje}" min="${esc(d.espaco.inicio ?? "")}"></label>
       <p class="erro" data-erro hidden></p>
       <div class="botoes"><button class="botao principal" type="submit">Registrar</button><button class="botao" type="button" data-cancelar>Cancelar</button></div>
@@ -268,7 +277,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
       <p class="tec">Original: ${diasUteis(resumo.original)} · ${resumo.reprogramacoes} ${plural(resumo.reprogramacoes, "reprogramação", "reprogramações")}${resumo.reprogramacoes || andou ? ` · o término ${andou > 0 ? `atrasou ${diasUteis(andou)}` : andou < 0 ? `adiantou ${diasUteis(-andou)}` : "não mudou"}` : ""}</p>
       <ol>${lista.map((e, i) => `<li${i === lista.length - 1 ? ' class="vigente"' : ""}>
         <span class="mono">${dataBr(e.em)}</span>${e.por ? ` · ${esc(nomeDe(e.por))}` : ""}${i === lista.length - 1 ? ` <span class="selo-vigente">vigente</span>` : ""}
-        <span>${numero(e.o)} · ${numero(e.m)} · ${numero(e.p)} → <b>${diasUteis(duracaoPert(e))}</b> ${e.contaDe === "data" ? `a partir de ${dataBr(e.em)}` : "da liberação"}</span>
+        <span>${decimal(e.o)} · ${decimal(e.m)} · ${decimal(e.p)} → <b>${diasUteis(duracaoPert(e))}</b> ${e.contaDe === "data" ? `a partir de ${dataBr(e.em)}` : "da liberação"}</span>
         ${e.motivo ? `<span class="tec">Motivo: ${esc(e.motivo)}</span>` : ""}
       </li>`).join("")}</ol>
     </section>`;
@@ -276,16 +285,20 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
 
   /* ---------- seletores com busca ---------- */
   function opcoesDe(nome, texto) {
-    const acao = d.acoes.find((a) => a.codigo === codigo);
+    const acao = acaoAtual();
     if (nome === "dependeDe") {
-      return buscar(anterioresPossiveis(d.acoes, codigo), texto, (a) => [a.codigo, a.rotulo]).slice(0, MAX_SUGESTOES)
-        .map((a) => ({ html: `<span class="mono">${esc(a.codigo)}</span> ${esc(a.rotulo)}`, escolher: () => store.acrescentarDependencia(espacoId, codigo, a.codigo) }));
+      const etapaDe = new Map((d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
+      return buscar(anterioresPossiveis(d.acoes, numero), texto, (a) => [a.rotulo, d.usaCodigos ? a.codigo : ""]).slice(0, MAX_SUGESTOES)
+        .map((a) => ({
+          html: `${nomeHtml(a)}${etapaDe.get(a.etapa) ? ` <span class="tec">${esc(etapaDe.get(a.etapa))}</span>` : ""}`,
+          escolher: () => store.acrescentarDependencia(espacoId, numero, a.numero),
+        }));
     }
     const contexto = { tons: d.espaco.tons, meus: d.meus };
     const disponiveis = d.responsaveis.filter((r) => !acao.responsaveis.includes(r.id));
     const achados = buscar(disponiveis, texto, (r) => [r.nome, r.sigla, r.setor]).slice(0, MAX_SUGESTOES)
       .map((r) => ({ html: `${seloHtml(r, contexto)} ${esc(r.nome)}${r.setor ? ` <span class="tec">${esc(r.setor)}</span>` : ""}`,
-        escolher: () => store.acrescentarResponsavelNaAcao(espacoId, codigo, r.id) }));
+        escolher: () => store.acrescentarResponsavelNaAcao(espacoId, numero, r.id) }));
     const nomeNovo = texto.trim();
     const jaExiste = d.responsaveis.some((r) => r.nome.toLowerCase() === nomeNovo.toLowerCase());
     if (nomeNovo && !jaExiste) {
@@ -294,7 +307,7 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
           html: `${ICONES.mais} Cadastrar “${esc(nomeNovo)}” como ${comoTexto}`,
           escolher: async () => {
             const id = await store.criarResponsavel({ tipo, nome: nomeNovo, ...(tipo === "unidade" ? { sigla: nomeNovo.length <= 10 ? nomeNovo.toUpperCase() : "" } : {}) });
-            await store.acrescentarResponsavelNaAcao(espacoId, codigo, id);
+            await store.acrescentarResponsavelNaAcao(espacoId, numero, id);
           },
         });
       }
@@ -325,17 +338,21 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     const erro = form.querySelector("[data-erro]");
     const tres = () => ({ o: Number(f.o === "" ? NaN : f.o), m: Number(f.m === "" ? NaN : f.m), p: Number(f.p === "" ? NaN : f.p) });
     const operacoes = {
+      codigo: () => {
+        const novo = normalizarCodigo(f.codigo);
+        return store.alterarAcao(espacoId, numero, { codigo: novo || null });
+      },
       rotulo: () => {
         if (!f.rotulo.trim()) throw new Error("Informe o rótulo da ação.");
-        return store.alterarAcao(espacoId, codigo, { rotulo: f.rotulo.trim() });
+        return store.alterarAcao(espacoId, numero, { rotulo: f.rotulo.trim() });
       },
-      etapa: () => store.alterarAcao(espacoId, codigo, { etapa: f.etapa || null }),
-      descricao: () => store.alterarAcao(espacoId, codigo, { descricao: f.descricao.trim() }),
-      naoAntesDe: () => store.alterarAcao(espacoId, codigo, { naoAntesDe: f.naoAntesDe || null }),
-      estimativa: () => store.corrigirEstimativa(espacoId, codigo, tres()),
-      reestimar: () => store.reestimar(espacoId, codigo, { ...tres(), motivo: f.motivo }),
-      concluir: () => store.concluir(espacoId, codigo, f.data),
-      notas: () => store.alterarAcao(espacoId, codigo, { notas: htmlParaMarkdown(form.querySelector("[data-editor-notas]")) }),
+      etapa: () => store.alterarAcao(espacoId, numero, { etapa: f.etapa || null }),
+      descricao: () => store.alterarAcao(espacoId, numero, { descricao: f.descricao.trim() }),
+      naoAntesDe: () => store.alterarAcao(espacoId, numero, { naoAntesDe: f.naoAntesDe || null }),
+      estimativa: () => store.corrigirEstimativa(espacoId, numero, tres()),
+      reestimar: () => store.reestimar(espacoId, numero, { ...tres(), motivo: f.motivo }),
+      concluir: () => store.concluir(espacoId, numero, f.data),
+      notas: () => store.alterarAcao(espacoId, numero, { notas: htmlParaMarkdown(form.querySelector("[data-editor-notas]")) }),
     };
     const mensagens = { reestimar: "Reestimativa registrada.", concluir: "Conclusão registrada. As ações seguintes foram recalculadas." };
     try {
@@ -380,11 +397,11 @@ export function abrirAcao({ store, espacoId, codigo, hoje, dados, aoFechar }) {
     if (form) return editar(form.dataset.abrirForm);
     if (t.closest("[data-cancelar]")) return cancelar();
     const dep = t.closest("[data-tirar-dependencia]");
-    if (dep) return executar(() => store.retirarDependencia(espacoId, codigo, dep.dataset.tirarDependencia));
+    if (dep) return executar(() => store.retirarDependencia(espacoId, numero, Number(dep.dataset.tirarDependencia)));
     const resp = t.closest("[data-tirar-responsavel]");
-    if (resp) return executar(() => store.retirarResponsavelDaAcao(espacoId, codigo, resp.dataset.tirarResponsavel));
+    if (resp) return executar(() => store.retirarResponsavelDaAcao(espacoId, numero, resp.dataset.tirarResponsavel));
     if (t.closest("[data-desfazer-conclusao]")) {
-      return executar(() => store.desfazerConclusao(espacoId, codigo), "Conclusão desfeita. A ação voltou a ser liberada.");
+      return executar(() => store.desfazerConclusao(espacoId, numero), "Conclusão desfeita. A ação voltou a ser liberada.");
     }
     const fmt = t.closest("[data-formatar]");
     if (fmt) return formatar(fmt.dataset.formatar);

@@ -42,9 +42,9 @@ describe("Espaço de exemplo", async () => {
   });
 
   it("toda dependência aponta para uma ação do espaço, sem ciclos", () => {
-    const codigos = new Set(acoes.map((a) => a.codigo));
-    for (const a of acoes) for (const d of a.dependeDe) assert.ok(codigos.has(d), `${a.codigo} depende de ${d}, que não existe`);
-    assert.equal(temCiclo(acoes, (a) => a.codigo, (a) => a.dependeDe), false);
+    const numeros = new Set(acoes.map((a) => a.numero));
+    for (const a of acoes) for (const d of a.dependeDe) assert.ok(numeros.has(d), `${a.codigo} depende de ${d}, que não existe`);
+    assert.equal(temCiclo(acoes, (a) => a.numero, (a) => a.dependeDe), false);
   });
 
   it("toda etapa e todo responsável citados existem", () => {

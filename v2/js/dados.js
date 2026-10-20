@@ -16,12 +16,18 @@ export { ErroDeDados };
 export const SIMULACOES_PADRAO = 10000;
 export const SEMENTE_PADRAO = 20261014;
 
-/** Código da ação: de 2 a 8 letras ou números (especificação, seção 8.3). */
-const CODIGO_VALIDO = /^[A-Za-z0-9]{2,8}$/;
+/** Código mnemônico da ação, opcional: de 2 a 8 letras maiúsculas ou números (seções 4.2 e 8.3). */
+const CODIGO_VALIDO = /^[A-Z0-9]{2,8}$/;
 
 /** Campos que não mudam depois de criados. */
-const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons"]; // tons: o Store cuida deles
-const FIXOS_DA_ACAO = ["codigo", "criadaEm"];
+const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero"]; // tons e proximoNumero: o sistema cuida deles
+const FIXOS_DA_ACAO = ["numero", "criadaEm"];
+
+/** Código mnemônico: de 2 a 8 letras maiúsculas ou números, sem repetir no espaço. */
+function validarCodigo(codigo, outrasAcoes) {
+  if (!CODIGO_VALIDO.test(codigo)) throw new ErroDeDados("codigo-invalido", "O código deve ter de 2 a 8 letras maiúsculas ou números.");
+  if (outrasAcoes.some((a) => a.codigo === codigo)) throw new ErroDeDados("codigo-ocupado", `Já existe uma ação com o código ${codigo}. Escolha outro.`);
+}
 
 /**
  * @typedef {object} OpcoesDoStore
@@ -69,9 +75,9 @@ export function criarStore(banco, opcoes = {}) {
   const novoId = opcoes.novoId ?? (() => globalThis.crypto.randomUUID());
   const hoje = opcoes.hoje ?? hojeLocal;
   const carimbo = () => ({ alteradaEm: agora(), alteradaPor: usuario });
-  const exigirAcao = async (espacoId, codigo) => {
-    const acao = await banco.lerAcao(espacoId, codigo);
-    if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${codigo} não encontrada.`);
+  const exigirAcao = async (espacoId, numero) => {
+    const acao = await banco.lerAcao(espacoId, numero);
+    if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
     return acao;
   };
 
@@ -123,97 +129,104 @@ export function criarStore(banco, opcoes = {}) {
     },
 
     // --- ações ---
-    /** Cria uma ação no fim da ordem do espaço. O código precisa estar livre. */
+    /**
+     * Cria uma ação no fim da ordem do espaço e devolve o número dela (identificador,
+     * reservado pelo banco). O código mnemônico é opcional e, se houver, não pode repetir.
+     */
     async criarAcao(espacoId, dados) {
       recusarDesconhecidos(dados, "acao");
-      const { codigo, rotulo, ...outros } = dados;
-      if (!CODIGO_VALIDO.test(codigo ?? "")) {
-        throw new ErroDeDados("codigo-invalido", "O código deve ter de 2 a 8 letras ou números.");
-      }
+      recusarFixos(dados, FIXOS_DA_ACAO);
+      const { rotulo, codigo, ...outros } = dados;
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o rótulo da ação.");
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
-      const inexistente = (outros.dependeDe ?? []).find((c) => !acoes.some((a) => a.codigo === c));
+      if (codigo) validarCodigo(codigo, acoes);
+      const inexistente = (outros.dependeDe ?? []).find((n) => !acoes.some((a) => a.numero === n));
       if (inexistente) throw new ErroDeDados("nao-encontrado", `Ação ${inexistente} não encontrada.`);
       const ordem = Math.max(0, ...acoes.map((a) => a.ordem ?? 0)) + 1;
+      const numero = await banco.reservarNumero(espacoId);
       await banco.criarAcao(espacoId, {
         dependeDe: [], responsaveis: [], estimativas: [],
         ...outros,
-        codigo, rotulo: rotulo.trim(), ordem,
+        ...(codigo ? { codigo } : {}),
+        numero, rotulo: rotulo.trim(), ordem,
         criadaEm: agora(), alteradaEm: agora(), alteradaPor: usuario,
       });
       if (outros.responsaveis?.length) await arrumarTons(espacoId);
+      return numero;
     },
-    lerAcao: (espacoId, codigo) => banco.lerAcao(espacoId, codigo),
+    lerAcao: (espacoId, numero) => banco.lerAcao(espacoId, numero),
     /** Ações do espaço, na ordem do espaço. */
     async listarAcoes(espacoId) {
       const acoes = await banco.listarAcoes(espacoId);
       return acoes.sort((a, b) => a.ordem - b.ordem);
     },
     /** Grava só os campos informados, com data e autor da alteração. */
-    async alterarAcao(espacoId, codigo, campos) {
+    async alterarAcao(espacoId, numero, campos) {
       recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
-      await banco.alterarAcao(espacoId, codigo, { ...campos, alteradaEm: agora(), alteradaPor: usuario });
+      if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
+      await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario });
       if ("responsaveis" in campos) await arrumarTons(espacoId);
     },
 
     // --- listas da ação: item a item (seção 4.6) ---
-    async acrescentarResponsavelNaAcao(espacoId, codigo, responsavelId) {
-      await banco.acrescentarNaLista(espacoId, codigo, "responsaveis", [responsavelId], carimbo());
+    async acrescentarResponsavelNaAcao(espacoId, numero, responsavelId) {
+      await banco.acrescentarNaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo());
       await arrumarTons(espacoId);
     },
-    async retirarResponsavelDaAcao(espacoId, codigo, responsavelId) {
-      await banco.retirarDaLista(espacoId, codigo, "responsaveis", [responsavelId], carimbo());
+    async retirarResponsavelDaAcao(espacoId, numero, responsavelId) {
+      await banco.retirarDaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo());
       await arrumarTons(espacoId);
     },
     /** Acrescenta uma ação anterior. Recusa a própria ação, código inexistente e ciclo. */
-    async acrescentarDependencia(espacoId, codigo, anterior) {
+    async acrescentarDependencia(espacoId, numero, anterior) {
       const acoes = await banco.listarAcoes(espacoId);
-      if (anterior === codigo) throw new ErroDeDados("ciclo", "Uma ação não pode depender dela mesma.");
-      if (!acoes.some((a) => a.codigo === anterior)) throw new ErroDeDados("nao-encontrado", `Ação ${anterior} não encontrada.`);
-      const hipotese = acoes.map((a) => (a.codigo === codigo ? { ...a, dependeDe: [...(a.dependeDe ?? []), anterior] } : a));
+      if (anterior === numero) throw new ErroDeDados("ciclo", "Uma ação não pode depender dela mesma.");
+      if (!acoes.some((a) => a.numero === anterior)) throw new ErroDeDados("nao-encontrado", `Ação ${anterior} não encontrada.`);
+      const hipotese = acoes.map((a) => (a.numero === numero ? { ...a, dependeDe: [...(a.dependeDe ?? []), anterior] } : a));
       try {
         ordenarPorDependencia(hipotese);
       } catch {
-        throw new ErroDeDados("ciclo", `${anterior} já depende de ${codigo}, direta ou indiretamente. A dependência criaria um ciclo.`);
+        const nome = (n) => `“${acoes.find((a) => a.numero === n)?.rotulo ?? n}”`;
+        throw new ErroDeDados("ciclo", `${nome(anterior)} já depende de ${nome(numero)}, direta ou indiretamente. A dependência criaria um ciclo.`);
       }
-      await banco.acrescentarNaLista(espacoId, codigo, "dependeDe", [anterior], carimbo());
+      await banco.acrescentarNaLista(espacoId, numero, "dependeDe", [anterior], carimbo());
     },
-    async retirarDependencia(espacoId, codigo, anterior) {
-      await banco.retirarDaLista(espacoId, codigo, "dependeDe", [anterior], carimbo());
+    async retirarDependencia(espacoId, numero, anterior) {
+      await banco.retirarDaLista(espacoId, numero, "dependeDe", [anterior], carimbo());
     },
 
     // --- estimativas e conclusão (seções 4.3, 5.3 e 5.4) ---
     /** Reestimativa: tempo que falta, a partir de hoje; entra no fim do histórico. */
-    async reestimar(espacoId, codigo, { o, m, p, motivo = "" }) {
+    async reestimar(espacoId, numero, { o, m, p, motivo = "" }) {
       validarEstimativa({ o, m, p });
-      await exigirAcao(espacoId, codigo);
+      await exigirAcao(espacoId, numero);
       const estimativa = { em: hoje(), por: usuario, o, m, p, contaDe: "data", ...(motivo.trim() ? { motivo: motivo.trim() } : {}) };
-      await banco.acrescentarEstimativa(espacoId, codigo, estimativa, carimbo());
+      await banco.acrescentarEstimativa(espacoId, numero, estimativa, carimbo());
     },
     /**
      * Ajusta a estimativa sem criar histórico: ainda é planejamento, ou é correção de digitação.
      * Quem chama decide se pode (estimativaLivre, em js/acao.js). Sem estimativa, cria a primeira.
      */
-    async corrigirEstimativa(espacoId, codigo, { o, m, p }) {
+    async corrigirEstimativa(espacoId, numero, { o, m, p }) {
       validarEstimativa({ o, m, p });
-      const { estimativas = [] } = await exigirAcao(espacoId, codigo);
+      const { estimativas = [] } = await exigirAcao(espacoId, numero);
       const ultima = estimativas.at(-1);
       const estimativa = { ...ultima, em: hoje(), por: usuario, o, m, p, contaDe: ultima?.contaDe ?? "liberacao" };
-      if (!ultima) await banco.acrescentarEstimativa(espacoId, codigo, estimativa, carimbo());
-      else await banco.trocarUltimaEstimativa(espacoId, codigo, estimativa, estimativas.length, carimbo());
+      if (!ultima) await banco.acrescentarEstimativa(espacoId, numero, estimativa, carimbo());
+      else await banco.trocarUltimaEstimativa(espacoId, numero, estimativa, estimativas.length, carimbo());
     },
     /** Registra a conclusão. A data não pode ser futura. */
-    async concluir(espacoId, codigo, data) {
+    async concluir(espacoId, numero, data) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data de conclusão.");
       if (data > hoje()) throw new ErroDeDados("data-futura", "A data de conclusão não pode ser depois de hoje.");
-      await exigirAcao(espacoId, codigo);
-      await banco.alterarAcao(espacoId, codigo, { concluidaEm: data, ...carimbo() });
+      await exigirAcao(espacoId, numero);
+      await banco.alterarAcao(espacoId, numero, { concluidaEm: data, ...carimbo() });
     },
-    async desfazerConclusao(espacoId, codigo) {
-      await exigirAcao(espacoId, codigo);
-      await banco.alterarAcao(espacoId, codigo, { concluidaEm: null, ...carimbo() });
+    async desfazerConclusao(espacoId, numero) {
+      await exigirAcao(espacoId, numero);
+      await banco.alterarAcao(espacoId, numero, { concluidaEm: null, ...carimbo() });
     },
 
     // --- responsáveis ---

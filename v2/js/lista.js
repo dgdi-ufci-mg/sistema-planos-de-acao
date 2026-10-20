@@ -20,8 +20,8 @@ export const ORDENS = ["espaco", "execucao", "revisao", "conclusao"];
  */
 export function montarLinhas(acoes, caminho, simulacao, calendario, hoje) {
   return acoes.map((acao) => {
-    const c = caminho.porAcao.get(acao.codigo);
-    const s = simulacao.porAcao.get(acao.codigo);
+    const c = caminho.porAcao.get(acao.numero);
+    const s = simulacao.porAcao.get(acao.numero);
     const concluida = c.situacao === "concluida";
     return {
       acao,

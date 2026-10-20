@@ -15,23 +15,23 @@ export function estimativaLivre(acao, situacao, hoje) {
   return lista.length === 1 && lista[0].em === hoje;
 }
 
-/** Códigos das ações que dependem de `codigo`, direta ou indiretamente. */
-export function dependentes(acoes, codigo) {
-  const seguintes = new Map(acoes.map((a) => [a.codigo, []]));
-  for (const a of acoes) for (const d of a.dependeDe ?? []) seguintes.get(d)?.push(a.codigo);
+/** Números das ações que dependem da ação `numero`, direta ou indiretamente. */
+export function dependentes(acoes, numero) {
+  const seguintes = new Map(acoes.map((a) => [a.numero, []]));
+  for (const a of acoes) for (const d of a.dependeDe ?? []) seguintes.get(d)?.push(a.numero);
   const achados = new Set();
   const visitar = (c) => {
     for (const s of seguintes.get(c) ?? []) if (!achados.has(s)) { achados.add(s); visitar(s); }
   };
-  visitar(codigo);
+  visitar(numero);
   return achados;
 }
 
-/** Ações que podem virar anteriores de `codigo`: nem ela, nem as que já são, nem as que dependem dela (sem ciclos). */
-export function anterioresPossiveis(acoes, codigo) {
-  const acao = acoes.find((a) => a.codigo === codigo);
-  const fora = new Set([codigo, ...(acao?.dependeDe ?? []), ...dependentes(acoes, codigo)]);
-  return acoes.filter((a) => !fora.has(a.codigo));
+/** Ações que podem virar anteriores da ação `numero`: nem ela, nem as que já são, nem as que dependem dela (sem ciclos). */
+export function anterioresPossiveis(acoes, numero) {
+  const acao = acoes.find((a) => a.numero === numero);
+  const fora = new Set([numero, ...(acao?.dependeDe ?? []), ...dependentes(acoes, numero)]);
+  return acoes.filter((a) => !fora.has(a.numero));
 }
 
 /** Texto sem acentos e em minúsculas, para a busca. */
@@ -63,17 +63,17 @@ export function resumoDasEstimativas(acao, calculada) {
 
 /**
  * O que falta para uma ação não liberada ser liberada: anteriores não concluídas e data mínima por vir.
- * @returns {{anteriores: string[], dataMinima: string|null}}
+ * @returns {{anteriores: number[], dataMinima: string|null}}
  */
 export function pendencias(acao, acoes, hoje) {
-  const porCodigo = new Map(acoes.map((a) => [a.codigo, a]));
+  const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   return {
-    anteriores: (acao.dependeDe ?? []).filter((c) => porCodigo.has(c) && !porCodigo.get(c).concluidaEm),
+    anteriores: (acao.dependeDe ?? []).filter((c) => porNumero.has(c) && !porNumero.get(c).concluidaEm),
     dataMinima: acao.naoAntesDe && acao.naoAntesDe > hoje ? acao.naoAntesDe : null,
   };
 }
 
-/* ---------- código de uma ação nova (seção 8.3) ---------- */
+/* ---------- código mnemônico, opcional (seções 4.2 e 8.3) ---------- */
 const PALAVRAS_VAZIAS = new Set(["a", "o", "as", "os", "de", "da", "do", "das", "dos", "e", "em", "no", "na", "nos", "nas", "para", "com", "por", "um", "uma", "ao", "aos"]);
 
 /** O que a pessoa digitou no código, em maiúsculas e sem acentos, espaços ou sinais. */

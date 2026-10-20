@@ -66,13 +66,13 @@ describe("Tons das pessoas no espaço (Store)", async () => {
     const acoes = await store.listarAcoes(id);
     const dro = pessoa("DRO");
     for (const a of acoes.filter((x) => x.responsaveis.includes(dro))) {
-      await store.alterarAcao(id, a.codigo, { responsaveis: a.responsaveis.filter((r) => r !== dro) });
+      await store.alterarAcao(id, a.numero, { responsaveis: a.responsaveis.filter((r) => r !== dro) });
     }
     const sem = (await store.lerEspaco(id)).tons;
     assert.equal(sem[dro], undefined);
     for (const [r, t] of Object.entries(sem)) assert.equal(t, antes[r]);
     const eva = await store.criarResponsavel({ tipo: "pessoa", nome: "Eva Prado" });
-    await store.alterarAcao(id, acoes[0].codigo, { responsaveis: [...acoes[0].responsaveis, eva] });
+    await store.alterarAcao(id, acoes[0].numero, { responsaveis: [...acoes[0].responsaveis, eva] });
     assert.equal((await store.lerEspaco(id)).tons[eva], antes[dro]);
   });
 

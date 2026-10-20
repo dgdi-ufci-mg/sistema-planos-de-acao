@@ -6,10 +6,10 @@ import { criarBancoLocal } from "../js/banco/local.js";
 import { criarStore } from "../js/dados.js";
 
 const est = (o, m, p, em, contaDe = "liberacao") => ({ o, m, p, em, contaDe });
-const A = { codigo: "A", dependeDe: [] };
-const B = { codigo: "B", dependeDe: ["A"] };
-const C = { codigo: "C", dependeDe: ["B"] };
-const D = { codigo: "D", dependeDe: [] };
+const A = { numero: 1, dependeDe: [] };
+const B = { numero: 2, dependeDe: [1] };
+const C = { numero: 3, dependeDe: [2] };
+const D = { numero: 4, dependeDe: [] };
 
 describe("Janela da ação: regras", () => {
   it("estimativa livre: não liberada sempre; liberada só no dia da única estimativa; concluída nunca", () => {
@@ -24,9 +24,9 @@ describe("Janela da ação: regras", () => {
 
   it("anteriores possíveis: fora a própria ação, as que já são anteriores e as que dependem dela", () => {
     const acoes = [A, B, C, D];
-    assert.deepEqual([...dependentes(acoes, "A")].sort(), ["B", "C"]);
-    assert.deepEqual(anterioresPossiveis(acoes, "A").map((a) => a.codigo), ["D"]);
-    assert.deepEqual(anterioresPossiveis(acoes, "C").map((a) => a.codigo), ["A", "D"]);
+    assert.deepEqual([...dependentes(acoes, 1)].sort(), [2, 3]);
+    assert.deepEqual(anterioresPossiveis(acoes, 1).map((a) => a.numero), [4]);
+    assert.deepEqual(anterioresPossiveis(acoes, 3).map((a) => a.numero), [1, 4]);
   });
 
   it("busca sem diferenciar acentos e maiúsculas, em vários textos", () => {
@@ -44,9 +44,9 @@ describe("Janela da ação: regras", () => {
   });
 
   it("pendências da ação não liberada: anteriores não concluídas e data mínima futura", () => {
-    const acoes = [{ ...A, concluidaEm: "2026-10-01" }, { ...D }, { codigo: "E", dependeDe: ["A", "D"], naoAntesDe: "2026-11-01" }];
-    assert.deepEqual(pendencias(acoes[2], acoes, "2026-10-20"), { anteriores: ["D"], dataMinima: "2026-11-01" });
-    assert.deepEqual(pendencias(acoes[2], acoes, "2026-11-05"), { anteriores: ["D"], dataMinima: null });
+    const acoes = [{ ...A, concluidaEm: "2026-10-01" }, { ...D }, { numero: 5, dependeDe: [1, 4], naoAntesDe: "2026-11-01" }];
+    assert.deepEqual(pendencias(acoes[2], acoes, "2026-10-20"), { anteriores: [4], dataMinima: "2026-11-01" });
+    assert.deepEqual(pendencias(acoes[2], acoes, "2026-11-05"), { anteriores: [4], dataMinima: null });
   });
 });
 
@@ -76,74 +76,87 @@ describe("Janela da ação: operações do Store", async () => {
   const novo = async () => {
     const store = criarStore(criarBancoLocal(), { usuario: "ana@ufci.edu.br", hoje: () => "2026-10-20" });
     const id = await store.criarEspaco({ nome: "P", inicio: "2026-10-01" });
-    for (const [codigo, dependeDe] of [["AA", []], ["BB", ["AA"]], ["CC", ["BB"]]]) {
-      await store.criarAcao(id, { codigo, rotulo: codigo, dependeDe, estimativas: [est(1, 2, 3, "2026-10-01")] });
+    // ações 1 ← 2 ← 3 (a 2 depende da 1, a 3 depende da 2); a 1 tem o código AA
+    for (const [rotulo, dependeDe, extra] of [["Um", [], { codigo: "AA" }], ["Dois", [1]], ["Três", [2]]]) {
+      await store.criarAcao(id, { rotulo, dependeDe, estimativas: [est(1, 2, 3, "2026-10-01")], ...extra });
     }
     return { store, id };
   };
 
   it("acrescenta e retira dependências, recusando ciclo, a própria ação e código inexistente", async () => {
     const { store, id } = await novo();
-    await assert.rejects(store.acrescentarDependencia(id, "AA", "CC"), { codigo: "ciclo" });
-    await assert.rejects(store.acrescentarDependencia(id, "AA", "AA"), { codigo: "ciclo" });
-    await assert.rejects(store.acrescentarDependencia(id, "AA", "ZZ"), { codigo: "nao-encontrado" });
-    await store.acrescentarDependencia(id, "CC", "AA");
-    assert.deepEqual((await store.lerAcao(id, "CC")).dependeDe, ["BB", "AA"]);
-    await store.retirarDependencia(id, "CC", "BB");
-    const c = await store.lerAcao(id, "CC");
-    assert.deepEqual(c.dependeDe, ["AA"]);
+    await assert.rejects(store.acrescentarDependencia(id, 1, 3), { codigo: "ciclo" });
+    await assert.rejects(store.acrescentarDependencia(id, 1, 1), { codigo: "ciclo" });
+    await assert.rejects(store.acrescentarDependencia(id, 1, 99), { codigo: "nao-encontrado" });
+    await store.acrescentarDependencia(id, 3, 1);
+    assert.deepEqual((await store.lerAcao(id, 3)).dependeDe, [2, 1]);
+    await store.retirarDependencia(id, 3, 2);
+    const c = await store.lerAcao(id, 3);
+    assert.deepEqual(c.dependeDe, [1]);
     assert.equal(c.alteradaPor, "ana@ufci.edu.br");
   });
 
   it("acrescenta e retira responsáveis, mantendo os tons do espaço", async () => {
     const { store, id } = await novo();
     const ana = await store.criarResponsavel({ tipo: "pessoa", nome: "Ana Souza" });
-    await store.acrescentarResponsavelNaAcao(id, "AA", ana);
-    assert.deepEqual((await store.lerAcao(id, "AA")).responsaveis, [ana]);
+    await store.acrescentarResponsavelNaAcao(id, 1, ana);
+    assert.deepEqual((await store.lerAcao(id, 1)).responsaveis, [ana]);
     assert.equal((await store.lerEspaco(id)).tons[ana], 1);
-    await store.retirarResponsavelDaAcao(id, "AA", ana);
+    await store.retirarResponsavelDaAcao(id, 1, ana);
     assert.deepEqual((await store.lerEspaco(id)).tons, {});
   });
 
   it("reestima a partir de hoje, no fim do histórico, e valida os três pontos", async () => {
     const { store, id } = await novo();
-    await store.reestimar(id, "AA", { o: 2, m: 3, p: 5, motivo: " Atraso do fornecedor " });
-    const ultima = (await store.lerAcao(id, "AA")).estimativas.at(-1);
+    await store.reestimar(id, 1, { o: 2, m: 3, p: 5, motivo: " Atraso do fornecedor " });
+    const ultima = (await store.lerAcao(id, 1)).estimativas.at(-1);
     assert.deepEqual(ultima, { em: "2026-10-20", por: "ana@ufci.edu.br", o: 2, m: 3, p: 5, contaDe: "data", motivo: "Atraso do fornecedor" });
-    await assert.rejects(store.reestimar(id, "AA", { o: 5, m: 3, p: 6 }), { codigo: "estimativa-fora-de-ordem" });
-    await assert.rejects(store.reestimar(id, "AA", { o: 0, m: 0, p: 0 }), { codigo: "estimativa-zerada" });
-    await assert.rejects(store.reestimar(id, "AA", { o: -1, m: 1, p: 2 }), { codigo: "estimativa-invalida" });
-    await assert.rejects(store.reestimar(id, "AA", { o: 1, m: 2.5, p: 4 }), { codigo: "estimativa-fracionada" });
-    await assert.rejects(store.corrigirEstimativa(id, "AA", { o: 0.5, m: 1, p: 2 }), { codigo: "estimativa-fracionada" });
+    await assert.rejects(store.reestimar(id, 1, { o: 5, m: 3, p: 6 }), { codigo: "estimativa-fora-de-ordem" });
+    await assert.rejects(store.reestimar(id, 1, { o: 0, m: 0, p: 0 }), { codigo: "estimativa-zerada" });
+    await assert.rejects(store.reestimar(id, 1, { o: -1, m: 1, p: 2 }), { codigo: "estimativa-invalida" });
+    await assert.rejects(store.reestimar(id, 1, { o: 1, m: 2.5, p: 4 }), { codigo: "estimativa-fracionada" });
+    await assert.rejects(store.corrigirEstimativa(id, 1, { o: 0.5, m: 1, p: 2 }), { codigo: "estimativa-fracionada" });
   });
 
   it("corrige a estimativa sem criar histórico e cria a primeira quando não há", async () => {
     const { store, id } = await novo();
-    await store.corrigirEstimativa(id, "AA", { o: 4, m: 5, p: 9 });
-    const lista = (await store.lerAcao(id, "AA")).estimativas;
+    await store.corrigirEstimativa(id, 1, { o: 4, m: 5, p: 9 });
+    const lista = (await store.lerAcao(id, 1)).estimativas;
     assert.equal(lista.length, 1);
     assert.deepEqual([lista[0].o, lista[0].m, lista[0].p, lista[0].contaDe], [4, 5, 9, "liberacao"]);
-    await store.criarAcao(id, { codigo: "NN", rotulo: "Nova" });
-    await store.corrigirEstimativa(id, "NN", { o: 1, m: 1, p: 2 });
-    assert.equal((await store.lerAcao(id, "NN")).estimativas.length, 1);
+    const nova = await store.criarAcao(id, { rotulo: "Nova" });
+    await store.corrigirEstimativa(id, nova, { o: 1, m: 1, p: 2 });
+    assert.equal((await store.lerAcao(id, nova)).estimativas.length, 1);
   });
 
-  it("ação nova: recusa estimativa inválida, anterior inexistente e código ocupado", async () => {
+  it("ação nova: número seguinte, sem código obrigatório; recusa estimativa inválida, anterior inexistente e código ocupado", async () => {
     const { store, id } = await novo();
-    await assert.rejects(store.criarAcao(id, { codigo: "NN", rotulo: "x", estimativas: [est(3, 2, 1, "2026-10-20")] }), { codigo: "estimativa-fora-de-ordem" });
-    await assert.rejects(store.criarAcao(id, { codigo: "NN", rotulo: "x", dependeDe: ["ZZ"] }), { codigo: "nao-encontrado" });
+    await assert.rejects(store.criarAcao(id, { rotulo: "x", estimativas: [est(3, 2, 1, "2026-10-20")] }), { codigo: "estimativa-fora-de-ordem" });
+    await assert.rejects(store.criarAcao(id, { rotulo: "x", dependeDe: [99] }), { codigo: "nao-encontrado" });
     await assert.rejects(store.criarAcao(id, { codigo: "AA", rotulo: "x" }), { codigo: "codigo-ocupado" });
-    await store.criarAcao(id, { codigo: "NN", rotulo: "x", dependeDe: ["CC"], estimativas: [est(1, 2, 4, "2026-10-20")] });
-    assert.equal((await store.lerAcao(id, "NN")).ordem, 4);
+    await assert.rejects(store.criarAcao(id, { numero: 50, rotulo: "x" }), { codigo: "campo-fixo" });
+    const n = await store.criarAcao(id, { rotulo: "x", dependeDe: [3], estimativas: [est(1, 2, 4, "2026-10-20")] });
+    const acao = await store.lerAcao(id, n);
+    assert.deepEqual([acao.numero, acao.ordem, acao.codigo], [4, 4, undefined]);
+  });
+
+  it("código mnemônico: opcional, pode mudar, mas não repetir nem fugir do padrão", async () => {
+    const { store, id } = await novo();
+    await store.alterarAcao(id, 2, { codigo: "BB" });
+    await assert.rejects(store.alterarAcao(id, 3, { codigo: "BB" }), { codigo: "codigo-ocupado" });
+    await assert.rejects(store.alterarAcao(id, 3, { codigo: "b-1" }), { codigo: "codigo-invalido" });
+    await store.alterarAcao(id, 2, { codigo: "BX" });
+    await store.alterarAcao(id, 3, { codigo: "BB" });
+    assert.equal((await store.lerAcao(id, 3)).codigo, "BB");
   });
 
   it("registra e desfaz a conclusão, sem aceitar data futura", async () => {
     const { store, id } = await novo();
-    await assert.rejects(store.concluir(id, "AA", "2026-10-21"), { codigo: "data-futura" });
-    await assert.rejects(store.concluir(id, "AA", ""), { codigo: "data-invalida" });
-    await store.concluir(id, "AA", "2026-10-19");
-    assert.equal((await store.lerAcao(id, "AA")).concluidaEm, "2026-10-19");
-    await store.desfazerConclusao(id, "AA");
-    assert.equal((await store.lerAcao(id, "AA")).concluidaEm, null);
+    await assert.rejects(store.concluir(id, 1, "2026-10-21"), { codigo: "data-futura" });
+    await assert.rejects(store.concluir(id, 1, ""), { codigo: "data-invalida" });
+    await store.concluir(id, 1, "2026-10-19");
+    assert.equal((await store.lerAcao(id, 1)).concluidaEm, "2026-10-19");
+    await store.desfazerConclusao(id, 1);
+    assert.equal((await store.lerAcao(id, 1)).concluidaEm, null);
   });
 });

@@ -131,7 +131,7 @@ export async function carregarExemplo(store, hoje = new Date()) {
     prazoFinal: dia(PRAZO_FINAL),
     datasExcluidas,
     estrutura: ESTRUTURA,
-    camposOpcionais: { fasesEtapas: true, descricao: true, notas: true },
+    camposOpcionais: { fasesEtapas: true, descricao: true, notas: true, codigos: false },
   });
 
   const idPorSigla = {};
@@ -141,13 +141,15 @@ export async function carregarExemplo(store, hoje = new Date()) {
     usuarioPorSigla[r.sigla] = r.usuario ?? null;
   }
 
+  /* os códigos ficam guardados (aparecem se alguém ligar "Códigos das ações"); as dependências usam os números */
+  const numeroPorCodigo = {};
   for (const a of ACOES) {
-    await store.criarAcao(espacoId, {
+    numeroPorCodigo[a.codigo] = await store.criarAcao(espacoId, {
       codigo: a.codigo,
       rotulo: a.rotulo,
       etapa: a.etapa,
       descricao: a.descricao,
-      dependeDe: a.dependeDe,
+      dependeDe: a.dependeDe.map((c) => numeroPorCodigo[c]),
       responsaveis: a.resp.map((s) => idPorSigla[s]),
       estimativas: a.est.map(([o, m, p, em, contaDe, sigla, motivo]) => ({
         em: dia(em), por: usuarioPorSigla[sigla], o, m, p, contaDe, ...(motivo ? { motivo } : {}),

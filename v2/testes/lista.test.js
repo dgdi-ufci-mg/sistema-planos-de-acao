@@ -19,7 +19,7 @@ describe("Lista de ações", async () => {
   const caminho = caminhoCritico(acoes, cal, { hoje });
   const sim = simular(acoes, cal, { hoje, semente: espaco.semente, simulacoes: 2000, prazoFinal: espaco.prazoFinal });
   const linhas = montarLinhas(acoes, caminho, sim, cal, hoje);
-  const codigos = (ls) => ls.map((l) => l.acao.codigo);
+  const numeros = (ls) => ls.map((l) => l.acao.numero);
 
   it("conta as situações e o carimbo como no resumo do exemplo", () => {
     assert.deepEqual(contar(linhas), { todas: 12, liberada: 4, atrasada: 1, naoLiberada: 6, concluida: 2 });
@@ -47,19 +47,19 @@ describe("Lista de ações", async () => {
 
   it("\"Minhas ações\" mostra as ações de qualquer responsável ligado ao usuário", () => {
     const ids = [acoes[0].responsaveis[0]];
-    assert.deepEqual(codigos(filtrar(linhas, { minhas: ids })), codigos(filtrar(linhas, { responsavel: ids[0] })));
+    assert.deepEqual(numeros(filtrar(linhas, { minhas: ids })), numeros(filtrar(linhas, { responsavel: ids[0] })));
     assert.equal(filtrar(linhas, { minhas: [] }).length, 0);
   });
 
   it("ordena por prioridade (concluídas no fim) e por conclusão prevista, sem mexer na lista original", () => {
-    const antes = codigos(linhas);
+    const antes = numeros(linhas);
     const porExecucao = ordenar(linhas, "execucao");
     for (let i = 1; i < porExecucao.length; i++) assert.ok((porExecucao[i - 1].execucao ?? -1) >= (porExecucao[i].execucao ?? -1));
     assert.equal(porExecucao.at(-1).situacao, "concluida");
     const porData = ordenar(linhas, "conclusao");
     for (let i = 1; i < porData.length; i++) assert.ok(porData[i - 1].conclusao <= porData[i].conclusao);
-    assert.deepEqual(codigos(ordenar(linhas, "espaco")), antes);
-    assert.deepEqual(codigos(linhas), antes);
+    assert.deepEqual(numeros(ordenar(linhas, "espaco")), antes);
+    assert.deepEqual(numeros(linhas), antes);
   });
 
   it("agrupa por fase e etapa, sem grupos vazios, e manda o resto para \"Sem fase nem etapa\"", () => {

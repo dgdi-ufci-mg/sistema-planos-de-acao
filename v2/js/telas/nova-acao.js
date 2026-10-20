@@ -1,6 +1,6 @@
 /**
  * Nova ação (especificação, seção 8.3; passo 1.9): janela central, como no Todoist, com
- * rótulo, código opcional (sugerido a partir do rótulo, com aviso enquanto se digita),
+ * rótulo, código (só se o espaço usa códigos; sugerido a partir do rótulo, com aviso enquanto se digita),
  * etapa, descrição, dependências, responsáveis, "Não começa antes de" e três pontos de estimativa.
  */
 import { ICONES } from "../icones.js";
@@ -12,17 +12,19 @@ import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 
 const MAX_SUGESTOES = 8;
-const numero = (x) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+const decimal = (x) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 
 /**
  * @param {{store: object, espacoId: string, hoje: string, usuario?: string|null, dados: object,
- *   aoCriar: (codigo: string) => void}} opcoes  dados: ver dadosDaJanela em espaco.js
+ *   aoCriar: (numero: number) => void}} opcoes  dados: ver dadosDaJanela em espaco.js
  */
 export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, aoCriar }) {
   const d = dados;
   const escolhidos = { dependeDe: [], responsaveis: [...(d.meus ?? [])] };
   let responsaveis = [...d.responsaveis];
-  const existentes = () => d.acoes.map((a) => a.codigo);
+  const existentes = () => d.acoes.map((a) => a.codigo).filter(Boolean);
+  const etapaDe = new Map((d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
+  const nomeHtml = (a) => `${d.usaCodigos && a.codigo ? `<span class="mono">${esc(a.codigo)}</span> ` : ""}${esc(a.rotulo)}`;
   const campos = d.espaco.camposOpcionais ?? {};
   /* sem anteriores, uma ação nova seria liberada no início do espaço e já nasceria atrasada */
   const dataMinimaPadrao = d.espaco.inicio && hoje > d.espaco.inicio ? hoje : "";
@@ -31,14 +33,14 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, ao
     <form class="nova-acao" novalidate>
       <label class="campo"><span>Rótulo <small>(nome curto da ação)</small></span>
         <input name="rotulo" maxlength="120" required placeholder="Por exemplo: Publicar o edital de seleção"></label>
-      <label class="campo"><span>Código <small>(opcional)</small></span>
+      ${d.usaCodigos ? `<label class="campo"><span>Código <small>(opcional)</small></span>
         <input name="codigo" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="automático">
-        <small data-aviso-codigo>Se ficar vazio, o sistema cria um.</small></label>
+        <small data-aviso-codigo>Se ficar vazio, o sistema cria um.</small></label>` : ""}
       ${d.usaFases ? `<label class="campo"><span>Etapa</span><select name="etapa"><option value="">Sem fase nem etapa</option>${(d.espaco.estrutura ?? []).map((f) =>
         `<optgroup label="${esc(f.nome)}">${f.etapas.map((e) => `<option value="${esc(e.id)}">${esc(e.nome)}</option>`).join("")}</optgroup>`).join("")}</select></label>` : ""}
       ${campos.descricao !== false ? `<label class="campo"><span>Descrição <small>(opcional)</small></span><textarea name="descricao" rows="2"></textarea></label>` : ""}
       <div class="campo"><span>Depende de</span><div class="etiquetas" data-etiquetas="dependeDe"></div>
-        ${seletorHtml("dependeDe", "Digite o código ou o nome da ação anterior")}</div>
+        ${seletorHtml("dependeDe", d.usaCodigos ? "Digite o nome ou o código da ação anterior" : "Digite o nome da ação anterior")}</div>
       <div class="campo"><span>Responsáveis</span><div class="etiquetas" data-etiquetas="responsaveis"></div>
         ${seletorHtml("responsaveis", "Digite o nome, a sigla ou o setor")}</div>
       <label class="campo"><span>Não começa antes de <small>(opcional)</small></span>
@@ -62,9 +64,9 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, ao
   /* ---------- etiquetas e seletores ---------- */
   const contexto = () => ({ tons: d.espaco.tons, meus: d.meus });
   function desenharEtiquetas() {
-    corpo.querySelector('[data-etiquetas="dependeDe"]').innerHTML = escolhidos.dependeDe.map((cod) => {
-      const a = d.acoes.find((x) => x.codigo === cod);
-      return `<span class="etiqueta"><span class="mono">${esc(cod)}</span>${esc(a?.rotulo ?? "")}<button type="button" class="tirar" data-tirar="dependeDe" data-valor="${esc(cod)}" aria-label="Retirar ${esc(cod)}">${ICONES.fechar}</button></span>`;
+    corpo.querySelector('[data-etiquetas="dependeDe"]').innerHTML = escolhidos.dependeDe.map((n) => {
+      const a = d.acoes.find((x) => x.numero === n);
+      return `<span class="etiqueta">${nomeHtml(a)}<button type="button" class="tirar" data-tirar="dependeDe" data-valor="${n}" aria-label="Retirar ${esc(a.rotulo)}">${ICONES.fechar}</button></span>`;
     }).join("");
     corpo.querySelector('[data-etiquetas="responsaveis"]').innerHTML = escolhidos.responsaveis.map((id) => {
       const r = responsaveis.find((x) => x.id === id);
@@ -75,9 +77,12 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, ao
 
   const seletores = ligarSeletores(corpo, {
     dependeDe: {
-      opcoes: (texto) => buscar(d.acoes.filter((a) => !escolhidos.dependeDe.includes(a.codigo)), texto, (a) => [a.codigo, a.rotulo])
+      opcoes: (texto) => buscar(d.acoes.filter((a) => !escolhidos.dependeDe.includes(a.numero)), texto, (a) => [a.rotulo, d.usaCodigos ? a.codigo : ""])
         .slice(0, MAX_SUGESTOES)
-        .map((a) => ({ html: `<span class="mono">${esc(a.codigo)}</span> ${esc(a.rotulo)}`, escolher: () => acrescentar("dependeDe", a.codigo) })),
+        .map((a) => ({
+          html: `${nomeHtml(a)}${etapaDe.get(a.etapa) ? ` <span class="tec">${esc(etapaDe.get(a.etapa))}</span>` : ""}`,
+          escolher: () => acrescentar("dependeDe", a.numero),
+        })),
       vazio: "Nenhuma ação encontrada.",
     },
     responsaveis: {
@@ -106,6 +111,7 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, ao
 
   /* ---------- código: aviso enquanto se digita ---------- */
   function avisarCodigo() {
+    if (!d.usaCodigos) return "";
     const aviso = form.querySelector("[data-aviso-codigo]");
     const digitado = form.codigo.value.trim();
     if (!digitado) {
@@ -124,7 +130,7 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, ao
   function atualizarPert() {
     const [o, m, p] = ["o", "m", "p"].map((k) => (form[k].value === "" ? NaN : Number(form[k].value)));
     form.querySelector("[data-pert]").textContent = [o, m, p].every(Number.isInteger) && o >= 0 && o <= m && m <= p && p > 0
-      ? `Prazo previsto (PERT): ${numero(duracaoPert({ o, m, p }))} ${plural(duracaoPert({ o, m, p }), "dia útil", "dias úteis")}` : "";
+      ? `Prazo previsto (PERT): ${decimal(duracaoPert({ o, m, p }))} ${plural(duracaoPert({ o, m, p }), "dia útil", "dias úteis")}` : "";
   }
 
   form.addEventListener("input", (e) => {
@@ -134,7 +140,8 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, ao
   corpo.addEventListener("click", (e) => {
     const tirar = e.target.closest("[data-tirar]");
     if (!tirar) return;
-    escolhidos[tirar.dataset.tirar] = escolhidos[tirar.dataset.tirar].filter((v) => v !== tirar.dataset.valor);
+    const valor = tirar.dataset.tirar === "dependeDe" ? Number(tirar.dataset.valor) : tirar.dataset.valor;
+    escolhidos[tirar.dataset.tirar] = escolhidos[tirar.dataset.tirar].filter((v) => v !== valor);
     desenharEtiquetas();
   });
 
@@ -145,10 +152,12 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, ao
     if (!rotulo) { mostrarErro("Informe o rótulo da ação."); form.rotulo.focus(); return; }
     if (avisarCodigo()) { mostrarErro(form.querySelector("[data-aviso-codigo]").textContent); form.codigo.focus(); return; }
     if (["o", "m", "p"].some((k) => f[k] === "")) { mostrarErro("Informe os três prazos da estimativa."); form.o.focus(); return; }
-    const codigo = normalizarCodigo(f.codigo) || sugerirCodigo(rotulo, existentes());
+    const codigo = d.usaCodigos ? normalizarCodigo(f.codigo) || sugerirCodigo(rotulo, existentes()) : null;
+    let numero;
     try {
-      await store.criarAcao(espacoId, {
-        codigo, rotulo,
+      numero = await store.criarAcao(espacoId, {
+        rotulo,
+        ...(codigo ? { codigo } : {}),
         ...(f.etapa ? { etapa: f.etapa } : {}),
         ...(f.descricao?.trim() ? { descricao: f.descricao.trim() } : {}),
         dependeDe: escolhidos.dependeDe,
@@ -161,8 +170,8 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, ao
       return;
     }
     fecharPainel();
-    avisar(`Ação ${codigo} criada.`);
-    aoCriar(codigo);
+    avisar(codigo ? `Ação ${codigo} criada.` : "Ação criada.");
+    aoCriar(numero);
   });
 
   desenharEtiquetas();

@@ -29,7 +29,7 @@ describe("Comparação com a versão atual: PI²", () => {
   const atual = computeDet({ start: pi2.start, holidays: pi2.holidays, target: pi2.target, statusDate: "" }, pi2.tasks);
   const cal = criarCalendario({ inicio: pi2.start, datasExcluidas: parseHol(pi2.holidays).map((data) => ({ data })) });
   const acoes = pi2.tasks.map((t) => ({
-    codigo: t.id, ordem: t.order, dependeDe: t.preds, estimativas: [{ o: t.o, m: t.m, p: t.p }],
+    numero: t.id, ordem: t.order, dependeDe: t.preds, estimativas: [{ o: t.o, m: t.m, p: t.p }],
   }));
   const nova = caminhoCritico(acoes, cal);
 

@@ -45,23 +45,24 @@ describe("Store: ações", () => {
     return { store, espacoId };
   }
 
-  it("cria ações na ordem do espaço, com listas vazias e carimbos", async () => {
+  it("cria ações numeradas, na ordem do espaço, com listas vazias e carimbos", async () => {
     const { store, espacoId } = await comEspaco();
-    await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "Levantar requisitos" });
-    await store.criarAcao(espacoId, { codigo: "REQ", rotulo: "Validar requisitos" });
+    assert.equal(await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "Levantar requisitos" }), 1);
+    assert.equal(await store.criarAcao(espacoId, { rotulo: "Validar requisitos" }), 2);
     const [lev, req] = await store.listarAcoes(espacoId);
-    assert.deepEqual([lev.codigo, lev.ordem, req.codigo, req.ordem], ["LEV", 1, "REQ", 2]);
+    assert.deepEqual([lev.numero, lev.codigo, lev.ordem, req.numero, req.codigo, req.ordem], [1, "LEV", 1, 2, undefined, 2]);
     assert.deepEqual(lev.dependeDe, []);
     assert.equal(lev.alteradaPor, "ana@ufci.edu.br");
     assert.ok(lev.criadaEm);
   });
 
-  it("valida o código: de 2 a 8 letras ou números", async () => {
+  it("valida o código, quando houver: de 2 a 8 letras maiúsculas ou números", async () => {
     const { store, espacoId } = await comEspaco();
-    for (const codigo of ["", "A", "ABCDEFGHI", "AB-1", "AÇÃO"]) {
+    for (const codigo of ["A", "ABCDEFGHI", "AB-1", "AÇÃO", "ab12"]) {
       await assert.rejects(store.criarAcao(espacoId, { codigo, rotulo: "x" }), { codigo: "codigo-invalido" });
     }
-    await store.criarAcao(espacoId, { codigo: "Ab12", rotulo: "x" });
+    await store.criarAcao(espacoId, { codigo: "AB12", rotulo: "x" });
+    await store.criarAcao(espacoId, { codigo: "", rotulo: "sem código" });
   });
 
   it("recusa código repetido", async () => {
@@ -70,19 +71,20 @@ describe("Store: ações", () => {
     await assert.rejects(store.criarAcao(espacoId, { codigo: "LEV", rotulo: "y" }), { codigo: "codigo-ocupado" });
   });
 
-  it("não deixa mudar o código nem a data de criação", async () => {
+  it("não deixa mudar o número nem a data de criação", async () => {
     const { store, espacoId } = await comEspaco();
-    await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x" });
-    await assert.rejects(store.alterarAcao(espacoId, "LEV", { codigo: "NOVO" }), { codigo: "campo-fixo" });
-    await assert.rejects(store.alterarAcao(espacoId, "LEV", { criadaEm: "2020-01-01" }), { codigo: "campo-fixo" });
+    const n = await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x" });
+    await assert.rejects(store.alterarAcao(espacoId, n, { numero: 9 }), { codigo: "campo-fixo" });
+    await assert.rejects(store.alterarAcao(espacoId, n, { criadaEm: "2020-01-01" }), { codigo: "campo-fixo" });
+    await assert.rejects(store.alterarEspaco(espacoId, { proximoNumero: 1 }), { codigo: "campo-fixo" });
   });
 
   it("alterar renova a data e o autor da alteração", async () => {
     const { store, espacoId } = await comEspaco();
-    await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x" });
-    const antes = (await store.lerAcao(espacoId, "LEV")).alteradaEm;
-    await store.alterarAcao(espacoId, "LEV", { rotulo: "y" });
-    const depois = await store.lerAcao(espacoId, "LEV");
+    const n = await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x" });
+    const antes = (await store.lerAcao(espacoId, n)).alteradaEm;
+    await store.alterarAcao(espacoId, n, { rotulo: "y" });
+    const depois = await store.lerAcao(espacoId, n);
     assert.equal(depois.rotulo, "y");
     assert.notEqual(depois.alteradaEm, antes);
   });
@@ -118,8 +120,8 @@ describe("Store: só grava campos do dicionário de dados", () => {
     const espacoId = await store.criarEspaco({ nome: "P" });
     await assert.rejects(store.alterarEspaco(espacoId, { nearCrit: 10 }), { codigo: "campo-desconhecido" });
     await assert.rejects(store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x", pct: 50 }), { codigo: "campo-desconhecido" });
-    await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x" });
-    await assert.rejects(store.alterarAcao(espacoId, "LEV", { name: "y" }), { codigo: "campo-desconhecido" });
+    const n = await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x" });
+    await assert.rejects(store.alterarAcao(espacoId, n, { name: "y" }), { codigo: "campo-desconhecido" });
     await assert.rejects(store.criarResponsavel({ tipo: "pessoa", nome: "Ana", email: "a@b" }), { codigo: "campo-desconhecido" });
   });
 });

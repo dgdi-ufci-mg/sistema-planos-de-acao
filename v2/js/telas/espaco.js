@@ -46,7 +46,7 @@ const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").ma
  */
 export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   const ui = { situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false };
-  let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, etapaDe, caminho;
+  let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
   let janela = null;
   let comAcoes = null;
   let ferramentas, lista, legenda, cabeca;
@@ -63,13 +63,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     pessoas = new Map(responsaveis.map((r) => [r.id, r]));
     meus = usuario ? responsaveis.filter((r) => r.usuario === usuario).map((r) => r.id) : null;
     usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
+    usaCodigos = espaco.camposOpcionais?.codigos === true; // desligado por padrão (seção 4.2)
     etapaDe = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
   }
 
   /** Dados prontos para a janela da ação. */
   const dadosDaJanela = () => ({
     espaco, acoes, responsaveis, cal, caminho, pessoas, meus, usaFases,
-    linhaDe: new Map(linhas.map((l) => [l.acao.codigo, l])),
+    linhaDe: new Map(linhas.map((l) => [l.acao.numero, l])),
+    usaCodigos,
   });
 
   const agrupado = () => usaFases && ui.ordem === "espaco";
@@ -165,9 +167,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
     const nota = l.situacao !== "concluida" && l.reprogramacoes
       ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";
-    return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-codigo="${esc(a.codigo)}" style="--calor:${corDe(l)}">
+    return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
-        <div class="acao-nome"><span class="codigo">${esc(a.codigo)}</span><span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
+        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
         <div class="sit"><span class="${s.classe}">${ICONES[s.icone]}</span><span>${s.texto}</span>${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</div>
         <div class="donos">${donos}</div>
         <div class="conc"><span class="mlab">${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</span><span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>${nota ? `<small>${nota}</small>` : ""}</div>
@@ -194,7 +196,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
 
   function desenharLista({ animar = false } = {}) {
     const antes = new Map();
-    if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.codigo, el.getBoundingClientRect());
+    if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.numero, el.getBoundingClientRect());
     const ls = visiveis();
     let corpo;
     if (!ls.length) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
@@ -214,7 +216,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   /* as ações que continuam deslizam até a nova posição; as que entram surgem suavemente */
   function animarMudanca(antes) {
     for (const el of lista.querySelectorAll(".item")) {
-      const r0 = antes.get(el.dataset.codigo);
+      const r0 = antes.get(el.dataset.numero);
       const r1 = el.getBoundingClientRect();
       const inicio = r0 ? [{ transform: `translateY(${r0.top - r1.top}px)` }, { transform: "none" }]
         : [{ opacity: 0, transform: "scale(.98)" }, { opacity: 1, transform: "none" }];
@@ -288,14 +290,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     if (t.closest("[data-opcoes]")) return abrirOpcoes();
     if (t.closest("[data-nova]")) return abrirNova();
     const item = t.closest("[data-abrir-acao]");
-    if (item) return abrirJanela(item.closest("[data-codigo]").dataset.codigo);
+    if (item) return abrirJanela(Number(item.closest("[data-numero]").dataset.numero));
   };
 
   function abrirNova() {
     abrirNovaAcao({
       store, espacoId, hoje, usuario, dados: dadosDaJanela(),
-      aoCriar: (codigo) => requestAnimationFrame(() => {
-        const item = lista?.querySelector(`[data-codigo="${CSS.escape(codigo)}"]`);
+      aoCriar: (numero) => requestAnimationFrame(() => {
+        const item = lista?.querySelector(`[data-numero="${numero}"]`);
         if (!item) return;
         item.scrollIntoView({ block: "center", behavior: reduzirMovimento() ? "auto" : "smooth" });
         item.classList.add("recem-criada");
@@ -304,12 +306,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     });
   }
 
-  function abrirJanela(codigo) {
+  function abrirJanela(numero) {
     janela = abrirAcao({
-      store, espacoId, codigo, hoje, usuario, dados: dadosDaJanela(),
+      store, espacoId, numero, hoje, usuario, dados: dadosDaJanela(),
       aoFechar: () => {
         janela = null;
-        lista?.querySelector(`[data-codigo="${CSS.escape(codigo)}"] [data-abrir-acao]`)?.focus();
+        lista?.querySelector(`[data-numero="${numero}"] [data-abrir-acao]`)?.focus();
       },
     });
   }

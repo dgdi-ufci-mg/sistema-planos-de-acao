@@ -77,7 +77,7 @@ export function simular(acoes, calendario, { hoje, semente, simulacoes, prazoFin
   const { ordem, anteriores, seguintes } = ordenarPorDependencia(acoes);
   const n = ordem.length;
   const indice = new Map(ordem.map((c, i) => [c, i]));
-  const porCodigo = new Map(acoes.map((a) => [a.codigo, a]));
+  const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   const idxHoje = calendario.diasUteisAntes(hoje);
 
   // dados fixos de cada ação, por posição na ordem de cálculo
@@ -89,7 +89,7 @@ export function simular(acoes, calendario, { hoje, semente, simulacoes, prazoFin
   const estimativa = new Array(n).fill(null);
   const liberada = new Uint8Array(n);
   ordem.forEach((c, i) => {
-    const a = porCodigo.get(c);
+    const a = porNumero.get(c);
     if (a.concluidaEm) conclusaoReal[i] = calendario.diasUteisAte(a.concluidaEm);
     if (a.naoAntesDe) minimo[i] = calendario.diasUteisAntes(a.naoAntesDe);
     const v = estimativaVigente(a);
@@ -97,7 +97,7 @@ export function simular(acoes, calendario, { hoje, semente, simulacoes, prazoFin
     if (v?.contaDe === "data") contaDoDia[i] = calendario.diasUteisAntes(v.em);
   });
   ordem.forEach((c, i) => {
-    const a = porCodigo.get(c);
+    const a = porNumero.get(c);
     liberada[i] = !a.concluidaEm && ants[i].every((j) => !Number.isNaN(conclusaoReal[j]))
       && (!a.naoAntesDe || a.naoAntesDe <= hoje) ? 1 : 0;
   });
