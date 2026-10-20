@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.3.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.4.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -49,9 +49,11 @@ js/acesso.js          login, menu do usuário
 js/markdown.js        formatação segura das notas
 js/telas/*.js         uma tela por arquivo: acoes, visualizacao, responsaveis, configurar, ajuda
 js/identidade.js      nome do sistema e textos de identificação, num lugar só (seção 3.1)
+js/exemplo.js         espaço de exemplo, com dados fictícios
 js/app.js             estado, navegação, partida
 testes/*.test.js      testes automáticos (node --test, rodado dentro de v2/)
 testes/contrato-banco.js  garantias que todo banco cumpre (seção 3.4)
+testes/dados/         dados usados nos testes, como a cópia da PI²
 package.json          só marca os arquivos como módulos para o Node; sem dependências
 ```
 
@@ -628,7 +630,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 0.1. ✔ Pasta `/v2/` no site, com página provisória; AGENTS.md ajustado (a regra do arquivo único passa a valer só para a versão atual; testes com `node --test`).
 0.2. ✔ Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
 0.3. ✔ Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
-0.4. Espaço de exemplo, com dados fictícios, e cópia do espaço da PI² para o teste de comparação (só leitura dos dados reais).
+0.4. ✔ Espaço de exemplo, com dados fictícios e datas relativas a hoje (`js/exemplo.js`), e cópia do espaço da PI² para o teste de comparação (`testes/dados/pi2-fase1.json`, lida dos dados reais só por leitura, sem responsáveis nem descrições, com conferência por SHA-256). A PI² não é exemplo público: dados reais mudam, e o exemplo precisa ser estável e didático (decisão de 20/10/2026). Este primeiro exemplo serve de base ao tipo Projeto; os exemplos de Plano de Ação e de Quadro de equipe entram nos passos 2.6 e 3.1.
 0.5. Base visual: cores, temas claro e escuro, ícones em SVG e barra do topo.
 
 ### Fase 1: núcleo (substitui a versão atual)
@@ -663,7 +665,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (espaço órfão).
 2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1).
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
-2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7).
+2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
 2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
 2.8. Checklist.
 2.9. Comentários.
@@ -672,7 +674,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 ### Fase 3: quadro de equipe
 
-3.1. Tipo "Quadro de equipe": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist.
+3.1. Tipo "Quadro de equipe": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de equipe.
 
 ### Fase 4: servidor da UFCI-MG
 
