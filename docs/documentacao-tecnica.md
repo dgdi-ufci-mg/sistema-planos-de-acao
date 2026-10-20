@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 20/10/2026 (versão 50.1 da página)
+**Última atualização deste documento:** 20/10/2026 (versão 50.2 da página)
 
 ---
 
@@ -468,6 +468,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 49.3 | Histórico de versões da página: a linha 26.1 voltou para depois da 26 (as linhas 27 a 49.2 tinham entrado antes dela). Sem mudança no sistema |
 | 50 | Versão 2, passo 1.6: lista de ações com cartões, fases e etapas recolhíveis, filtros de situação e de responsável, ordenação, legenda e animações; no celular, painel "Filtros e ordem" e botão (+) (`v2/js/lista.js`, `v2/js/telas/espaco.js`, `v2/js/formato.js`). O resumo provisório do passo 1.4 virou uma linha acima da lista. Sem mudança na versão atual |
 | 50.1 | Versão 2: sai o cabeçalho de tabela da lista de ações; a data e as barras ganham um rótulo pequeno no cartão, os links "o que é?" das prioridades vão para a legenda, e as ações concluídas deixam de mostrar barras. Sem mudança na versão atual |
+| 50.2 | Versão 2: o resumo de cada fase e etapa (ações, concluídas, atrasadas, término e barra de progresso) só aparece com o grupo recolhido. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
