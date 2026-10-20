@@ -147,7 +147,8 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
     return `<section class="grupo ${nivel}${fechado ? " fechado" : ""}" data-grupo="${esc(id)}">
       <button class="grupo-cabeca" type="button" aria-expanded="${!fechado}" data-alternar-grupo="${esc(id)}">
         <span class="grupo-seta">${ICONES.seguir}</span><span class="grupo-titulo">${esc(titulo)}</span>
-        <span class="grupo-info"><span class="grupo-resumo">${r.total} ${plural(r.total, "ação", "ações")} · ${r.concluidas} ${plural(r.concluidas, "concluída", "concluídas")}${r.atrasadas ? ` · <span class="icone-atrasada">${ICONES.atrasada}</span> ${r.atrasadas}` : ""} · ${r.concluidas === r.total ? "concluído em" : "termina em"} <span class="mono">${dataBr(r.termina)}</span></span>
+        <span class="grupo-info"><span class="grupo-resumo">${r.total} ${plural(r.total, "ação", "ações")} · ${r.concluidas} ${plural(r.concluidas, "concluída", "concluídas")}${r.atrasadas ? ` · <span class="grupo-atrasadas">${r.atrasadas} ${plural(r.atrasadas, "atrasada", "atrasadas")}</span>` : ""} · ${r.concluidas === r.total ? "concluído em" : "termina em"} <span class="mono">${dataBr(r.termina)}</span></span>
+        ${r.atrasadas ? `<span class="icone-atrasada grupo-alerta so-celular" title="${r.atrasadas} ${plural(r.atrasadas, "ação atrasada", "ações atrasadas")}">${ICONES.atrasada}</span>` : ""}
         <span class="grupo-progresso" title="Ações concluídas"><i style="width:${Math.round((100 * r.concluidas) / r.total)}%"></i></span></span>
       </button>
       <div class="grupo-corpo"><div class="grupo-dentro">${miolo}</div></div>
