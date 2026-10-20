@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 20/10/2026 (versão 49.2 da página)
+**Última atualização deste documento:** 20/10/2026 (versão 49.3 da página)
 
 ---
 
@@ -432,6 +432,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 24.26 | Especificação da reescrita: transição da barra simétrica (substitui a volta rápida da 24.25, que ficou desigual). Sem mudança no sistema |
 | 25 | Especificação da reescrita: Ajuda e manual saem da barra e passam para o menu do usuário; sem login, o menu traz Ajuda e Entrar. Sem mudança no sistema |
 | 26 | Especificação da reescrita: seletor de plano e "Configurar o plano" fundidos num menu do plano, com "Novo plano"; a engrenagem sai da barra. Sem mudança no sistema |
+| 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 | 27 | Especificação da reescrita: regras de edição simultânea (seção 4.6), que fecham três falhas da versão 1: listas regravadas inteiras, código de ação nova conferido só na tela e sobrescrita silenciosa. Sem mudança no sistema |
 | 28 | Especificação da reescrita: preparação para a troca de banco (seção 3.4): `Store` com operações do sistema, um arquivo por banco em `js/banco/`, testes como contrato e cópia de segurança como ponte; seção 4.6 sem termos do Firestore. Sem mudança no sistema |
 | 29 | Regra do dicionário de dados: toda mudança na estrutura do banco é registrada na seção 5 (e, na versão 2, na seção 4 da especificação) no mesmo commit; teste automático do dicionário previsto para a versão 2. Sem mudança no sistema |
@@ -464,7 +465,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 49 | Versão 2, passo 1.5: barra do topo com menu do espaço (lista, configurar, novo espaço, boas-vindas) e menu do usuário (Ajuda e manual, Entrar), Ajuda em painel lateral com glossário e links "o que é?" (`v2/js/telas/topo.js`, `v2/js/telas/ajuda.js`, `v2/js/telas/painel.js`, `v2/js/glossario.js`). Sem mudança na versão atual |
 | 49.1 | Versão 2: a barra do topo, parada no alto da página, passa a ter a cor do fundo, sem linha na base; ao rolar, continua o vidro com linha fina e sombra. Sem mudança na versão atual |
 | 49.2 | Versão 2: o painel da Ajuda entra e sai deslizando pela direita, com o fundo escurecendo aos poucos (0,25 s); sem animação com "Reduzir movimento". Sem mudança na versão atual |
-| 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
+| 49.3 | Histórico de versões da página: a linha 26.1 voltou para depois da 26 (as linhas 27 a 49.2 tinham entrado antes dela). Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
