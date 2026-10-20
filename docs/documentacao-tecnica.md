@@ -456,6 +456,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 42 | Versão 2: "plano" (o conjunto) passa a se chamar "espaço" em todo o código (`espaco`, `criarEspaco`, coleção `espacos`), no dicionário de dados e em toda a especificação; "Plano de Ação" fica só para o tipo formalizado. Legendas de prioridade passam a falar em "conclusão". Sem mudança na versão atual |
 | 43 | Versão 2, passo 0.4: espaço de exemplo fictício (`v2/js/exemplo.js`) e cópia da PI² para testes, lida só por leitura e conferida por SHA-256 (`v2/testes/dados/pi2-fase1.json`); 39 testes. Exemplos de Plano de Ação e de Quadro de equipe previstos nos passos 2.6 e 3.1. Sem mudança na versão atual |
 | 44 | Versão 2, passo 0.5: base visual em `v2/css/estilo.css` (cores nos três blocos de tema, barra do topo com os dois estados e transição simétrica) e ícones em SVG em `v2/js/icones.js`; página provisória com a vitrine. Sem mudança na versão atual |
+| 45 | Versão 2, passo 1.1: calendário de dias úteis (`v2/js/calendario.js`) e caminho crítico com "Não começa antes de" (`v2/js/calculo.js`); teste de comparação que executa o cálculo da versão atual e confirma as mesmas datas para as 29 ações da PI²; 55 testes. Sem mudança na versão atual |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes

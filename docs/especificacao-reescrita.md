@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5 e 1.1.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -636,7 +636,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 ### Fase 1: núcleo (substitui a versão atual)
 
-1.1. Calendário (dias úteis, datas excluídas com motivo) e caminho crítico, com "Não começa antes de". Teste de comparação com a PI².
+1.1. ✔ Calendário (dias úteis, datas excluídas com motivo; `js/calendario.js`) e caminho crítico, com "Não começa antes de" (`js/calculo.js`). Teste de comparação com a PI²: o cálculo da versão atual é executado no teste, a partir do `index.html` da raiz, e as 29 ações dão as mesmas datas, folgas e ações críticas (conclusão em 22/03/2027, 115 dias úteis). Ações concluídas, reestimativas e a regra "nada termina no passado" entram no passo 1.2.
 1.2. Situações (Não liberada, Liberada, Concluída), carimbo Atrasada e regra "nada termina no passado".
 1.3. Simulação beta-PERT sem travar a tela, semente imutável, versão do cálculo e as duas prioridades. Documentação para conferência por fora (seção 15).
 1.4. Abertura do sistema: quem não tem espaço vê a tela de boas-vindas (criar espaço, "Ver um exemplo" e, com o banco vazio, restaurar a cópia de segurança); quem tem espaços vai direto ao último espaço aberto naquele aparelho; quem chega por um link de espaço abre esse espaço. As boas-vindas continuam acessíveis pelo menu do espaço, e o espaço de exemplo, pela Ajuda.
