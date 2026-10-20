@@ -16,9 +16,9 @@
   --laranja: #F47216; --dourado-claro: #FBCA78; --neutral: #B7B0A7;
   --sombra: 0 10px 30px rgba(22, 63, 58, .16);
   --relevo: 0 1px 2px rgba(22, 63, 58, .06), 0 2px 6px rgba(22, 63, 58, .06);
-  /* barra do topo: vidro ao rolar; levemente mais escura que o fundo no topo da página */
+  /* barra do topo: vidro ao rolar; da cor do fundo no topo da página */
   --barra: color-mix(in srgb, var(--bg) 22%, transparent);
-  --barra-topo: color-mix(in srgb, var(--bg) 82%, #000 18%);
+  --barra-topo: var(--bg);
   --barra-borda: rgba(22, 63, 58, .10);
   --barra-controle: rgba(22, 63, 58, .06);
   --barra-controle-foco: rgba(22, 63, 58, .12);
@@ -43,7 +43,7 @@
     --sombra: 0 10px 30px rgba(0, 0, 0, .5);
     --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
     --barra: color-mix(in srgb, var(--bg) 30%, transparent);
-    --barra-topo: color-mix(in srgb, var(--bg) 70%, #000 30%);
+    --barra-topo: var(--bg);
     --barra-borda: rgba(255, 255, 255, .08);
     --barra-controle: rgba(255, 255, 255, .07);
     --barra-controle-foco: rgba(255, 255, 255, .14);
@@ -64,7 +64,7 @@
   --sombra: 0 10px 30px rgba(0, 0, 0, .5);
   --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
   --barra: color-mix(in srgb, var(--bg) 30%, transparent);
-  --barra-topo: color-mix(in srgb, var(--bg) 70%, #000 30%);
+  --barra-topo: var(--bg);
   --barra-borda: rgba(255, 255, 255, .08);
   --barra-controle: rgba(255, 255, 255, .07);
   --barra-controle-foco: rgba(255, 255, 255, .14);
