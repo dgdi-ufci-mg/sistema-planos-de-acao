@@ -315,6 +315,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 
 | Decisão | Motivo |
 |---|---|
+| Versão 2: "Espaço de Planejamento" como palavra geral para Plano de Ação, Projeto e Quadro de equipe; "espaço" na fala e nas telas estreitas | "Plano" colidiria com o Plano de Entregas e o Plano de Trabalho do PGD; o qualificativo evita o sentido físico e outros "espaços" |
 | Versão 2: retrato é cópia integral do plano (exceto comentários e histórico de alterações), guardado em cabeçalho e um registro por ação | Retrato autossuficiente e recalculável; a divisão evita o limite de tamanho de documento do Firebase |
 | Versão 2: comentários com histórico próprio; "apagar" só esconde da tela, nunca do banco | Possíveis injúrias, calúnias ou difamações precisam poder ser recuperadas pelas autoridades |
 | Versão 2: nome provisório "Sextante", definido num único lugar do código (`js/identidade.js`) | O sistema deixa de tratar só de planos de ação; o nome segue em avaliação e precisa ser fácil de trocar |
@@ -451,6 +452,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 40.1 | Especificação da reescrita: situação da entrega numa lista única de seis valores, válida a qualquer momento; justificativa para "Não iniciada" ao arquivar o plano (seção 16.7). Sem mudança no sistema |
 | 40.2 | Especificação da reescrita: "Em andamento" exige evidência só ao arquivar o plano; tabela de decisão das situações das entregas, a incluir na Ajuda e no manual (seção 16.7 e passo 1.22). Sem mudança no sistema |
 | 41 | Especificação da reescrita: tabela única das situações das entregas, com "Algo foi feito?" e função de tabela de decisão; "encerrar e reabrir" no lugar de "arquivar"; tipos com nomes próprios (Plano de Ação, Projeto, Quadro de equipe), palavra geral em escolha. Sem mudança no sistema |
+| 41.1 | Especificação da reescrita: palavra geral "Espaço de Planejamento" (seção 16.1). Sem mudança no sistema |
 | 26.1 | Ideia futura registrada: aplicativo para celular (instalável pelo navegador e, se necessário, nas lojas), com acesso restrito à instituição pelo login. Sem mudança no sistema |
 
 ### Notas de implementação recentes
