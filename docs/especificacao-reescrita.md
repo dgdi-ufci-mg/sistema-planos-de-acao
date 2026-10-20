@@ -835,9 +835,20 @@ Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
   - **Quantitativa:** número absoluto. Exemplo: "10 Procedimentos-Padrão publicados".
   - **Entrega padrão:** sim ou não. Exemplo: "Relatório de Gestão 2025 homologado até 30/04/2026".
 - **Alcance parcial, sem cortes arbitrários:** nas metas percentuais e quantitativas, o alcance é contínuo: valor alcançado comparado à meta (por exemplo, 150 de 200, ou 75%), mostrado como barra (princípio dos números contínuos, seção 2). Quem precisa medir o parcial escolhe meta percentual ou quantitativa ao planejar.
-- **Situações da entrega padrão**, cada uma descrevendo um fato: **Não iniciada** (nada foi feito; não exige evidência), **Em andamento** (houve avanço; exige evidência) e **Alcançada** (exige evidência).
-- **Evidência quando há avanço:** em qualquer tipo de meta, a evidência é exigida sempre que se declara algum avanço; valor zero ou "Não iniciada" dispensa evidência.
-- **Cancelada:** qualquer entrega pode ser cancelada, por exemplo por mudança de estratégia, com justificativa obrigatória. Ela continua visível, com o selo "Cancelada", e não conta como não alcançada.
+- **Situação da entrega: uma lista única**, válida a qualquer momento do plano, sem uma fase separada de encerramento (KISS; decisão de 20/10/2026):
+
+  | Situação | Significado | Evidência | Justificativa |
+  |---|---|---|---|
+  | **Não iniciada** | Nada foi feito | não | só ao arquivar o plano com a entrega nesta situação |
+  | **Em andamento** | Houve avanço, e a entrega continua sendo buscada | sim | não |
+  | **Alcançada** | Entrega obtida | sim | não |
+  | **Parcialmente alcançada** | A busca terminou com parte do resultado | sim | sim |
+  | **Não alcançada** | A busca terminou sem resultado | não | sim |
+  | **Cancelada** | Decidiu-se não buscar mais, por exemplo por mudança de estratégia. Continua visível e não conta como não alcançada | não | sim |
+
+  "Em andamento" e "Parcialmente alcançada" têm avanço parcial; a diferença é se a busca continua. O mesmo vale para "Não iniciada" e "Não alcançada". Uma entrega "Em andamento" no fim do plano é a porta para continuá-la no plano seguinte (caminho A, abaixo).
+- **Arquivar o plano com entregas "Não iniciadas"** exige justificativa para cada uma: nesse momento, elas se igualam às não alcançadas e às canceladas.
+- **Metas numéricas:** a situação também é escolhida pelo administrador; o valor alcançado aparece ao lado, como barra. Se os dois não combinarem (por exemplo, "Alcançada" com valor abaixo da meta), o sistema avisa antes de gravar.
 - **Entregas que atravessam planos (caminho A, decisão de 20/10/2026):** a entrega pertence a um plano, que responde pelo seu período. Ao criar o plano seguinte, é possível "continuar" uma entrega do anterior: ela é trazida para o novo plano com uma ligação "continua a entrega X". A cadeia de ligações mostra a trajetória completa ao painel do Programa e ao Data Lakehouse. Foi descartado o caminho B (entrega independente, ligada a vários planos), pela dificuldade de definir quem a administra, onde se registra o alcance e como conciliar visibilidades diferentes.
 - **Registro do alcance:** feito pelo administrador do plano, numa tela própria. Cada registro tem data, valor alcançado (ou sim/não), descrição e **pelo menos uma evidência**. Os registros se acumulam como histórico (um registro novo não apaga o anterior); o mais recente é o alcance atual.
 - **Evidência:** descrição obrigatória e, pelo menos, um entre link ou arquivo. O envio de arquivo, o ideal, vem com o servidor da UFCI-MG (passo 4.3); até lá, link e identificação no SIPAC/Protocolo.
