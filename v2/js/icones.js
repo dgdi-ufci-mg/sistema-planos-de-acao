@@ -24,6 +24,10 @@ export const ICONES = Object.freeze({
   pessoa: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
   /** Marcado: item escolhido numa lista. */
   marcado: svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>'),
+  /** Filtros: três linhas de tamanhos diferentes. */
+  filtros: svg('<path d="M4 6h16M7 12h10M10 18h4"/>'),
+  /** Seguir: seta para a direita, no fim de um item que abre algo. */
+  seguir: svg('<path d="m9 6 6 6-6 6"/>'),
   /** Fechar: xis. */
   fechar: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
 });

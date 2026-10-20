@@ -5,8 +5,7 @@
  * com "Ajuda e manual" e "Entrar".
  */
 import { ICONES } from "../icones.js";
-
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+import { esc } from "../formato.js";
 
 /**
  * @param {HTMLElement} alvo

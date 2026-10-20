@@ -1,17 +1,21 @@
 /**
  * Peças comuns de tela: painel lateral, que desliza da direita, e aviso curto.
+ * O painel "de baixo" sobe da parte de baixo da tela no celular (como "Filtros e ordem").
  */
 let fecharAtual = null;
 
-/** Abre um painel com título e conteúdo; Esc, o botão Fechar ou o fundo escurecido fecham. */
-export function abrirPainel(titulo, conteudoHtml) {
+/**
+ * Abre um painel com título e conteúdo; Esc, o botão Fechar ou o fundo escurecido fecham.
+ * @param {{deBaixo?: boolean, botao?: string}} [opcoes]  botao: texto do botão de fechar
+ */
+export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, botao = "Fechar" } = {}) {
   fecharPainel();
   const camada = document.createElement("div");
-  camada.className = "camada";
+  camada.className = deBaixo ? "camada de-baixo" : "camada";
   camada.innerHTML = `
     <div class="fundo-escuro" data-fechar></div>
     <aside class="painel" role="dialog" aria-modal="true" aria-label="${titulo}">
-      <header><h2>${titulo}</h2><button class="botao" type="button" data-fechar>Fechar</button></header>
+      <header><h2>${titulo}</h2><button class="botao" type="button" data-fechar>${botao}</button></header>
       <div class="painel-corpo">${conteudoHtml}</div>
     </aside>`;
   document.body.append(camada);

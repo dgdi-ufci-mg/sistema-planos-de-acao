@@ -1,6 +1,6 @@
 /**
  * Partida da versão 2: identidade, barra do topo e abertura do sistema
- * (especificação, passos 1.4 e 1.5):
+ * (especificação, passos 1.4 a 1.6):
  * - quem chega por um link de espaço (#/espaco/<id>) abre esse espaço;
  * - senão, abre o último espaço aberto neste aparelho, se ele ainda existir;
  * - senão, vê as boas-vindas.
@@ -75,7 +75,7 @@ async function abrirEspaco(id) {
   if (!espaco) return false;
   lembrar(id);
   if (location.hash !== `#/espaco/${id}`) history.replaceState(null, "", `#/espaco/${id}`);
-  mostrarEspaco(principal, espaco, await store.listarAcoes(id), { hoje });
+  mostrarEspaco(principal, espaco, await store.listarAcoes(id), { hoje, responsaveis: await store.listarResponsaveis() });
   await atualizarTopo(id);
   window.scrollTo(0, 0);
   return true;

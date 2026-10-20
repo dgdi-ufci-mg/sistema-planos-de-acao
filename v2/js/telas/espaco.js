@@ -1,53 +1,279 @@
 /**
- * Espaço aberto: por enquanto (passo 1.4), um resumo calculado, para conferir o
- * cálculo na tela. A lista de ações substitui este resumo no passo 1.6.
+ * Espaço aberto: lista de ações (especificação, seção 8.3; passo 1.6).
+ * Cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e
+ * animações; no celular, painel "Filtros e ordem" e botão (+).
+ * A conclusão prevista, a data segura e a chance ficam numa linha provisória no alto,
+ * até a linha do tempo da aba Visualização (passo 1.17).
  */
 import { criarCalendario } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
 import { simular } from "../simulacao.js";
 import { ICONES } from "../icones.js";
+import { esc, dataBr, plural } from "../formato.js";
+import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
+import { abrirPainel, avisar } from "./painel.js";
 
-const dataBr = (iso) => (iso ? iso.split("-").reverse().join("/") : "—");
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const SITUACOES = {
+  concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
+  liberada: { texto: "Liberada", icone: "liberada", classe: "icone-liberada" },
+  naoLiberada: { texto: "Não liberada", icone: "naoLiberada", classe: "icone-nao-liberada" },
+};
+const BOTOES_DE_FILTRO = [
+  ["todas", "Todas"],
+  ["liberada", "Liberadas", "liberada", "icone-liberada"],
+  ["atrasada", "Atrasadas", "atrasada", "icone-atrasada"],
+  ["naoLiberada", "Não liberadas", "naoLiberada", "icone-nao-liberada"],
+  ["concluida", "Concluídas", "concluida", "icone-concluida"],
+];
+const ORDENS = [
+  ["espaco", "Ordem do espaço"],
+  ["execucao", "Prioridade de execução"],
+  ["revisao", "Prioridade de revisão"],
+  ["conclusao", "Conclusão prevista"],
+];
+const AVISO_JANELA = "A janela da ação chega no passo 1.7.";
+const AVISO_NOVA = "O cadastro de ações chega no passo 1.9.";
+const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
  * @param {HTMLElement} alvo
  * @param {object} espaco
- * @param {object[]} acoes
- * @param {{hoje: string}} opcoes
+ * @param {object[]} acoes  na ordem do espaço
+ * @param {{hoje: string, responsaveis: object[], usuario?: string|null}} opcoes
+ *   usuario: e-mail de quem entrou; sem ele, "Minhas ações" não aparece
  */
-export function mostrarEspaco(alvo, espaco, acoes, { hoje }) {
+export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario = null }) {
   const cal = criarCalendario(espaco, hoje);
-  let resumo = "";
-  if (acoes.length) {
-    const r = caminhoCritico(acoes, cal, { hoje });
-    const inicio = performance.now();
-    const s = simular(acoes, cal, { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal });
-    const tempo = Math.round(performance.now() - inicio);
-    const contar = (situacao) => [...r.porAcao.values()].filter((x) => x.situacao === situacao).length;
-    const atrasadas = [...r.porAcao.values()].filter((x) => x.atrasada).length;
-    resumo = `
-      <ul class="situacoes">
-        <li><span class="icone-concluida">${ICONES.concluida}</span>${contar("concluida")} concluídas</li>
-        <li><span class="icone-liberada">${ICONES.liberada}</span>${contar("liberada")} liberadas</li>
-        <li><span class="icone-nao-liberada">${ICONES.naoLiberada}</span>${contar("naoLiberada")} não liberadas</li>
-        <li><span class="icone-atrasada">${ICONES.atrasada}</span>${atrasadas} atrasada${atrasadas === 1 ? "" : "s"}</li>
-      </ul>
-      <dl class="numeros">
-        <div><dt>Conclusão prevista</dt><dd>${dataBr(cal.dataDeConclusao(s.p50, 0))}</dd></div>
-        <div><dt>Data segura <small>(80% de chance)</small> <a href="#" class="oque" data-termo="dataSegura">o que é?</a></dt><dd>${dataBr(cal.dataDeConclusao(s.p80, 0))}</dd></div>
-        <div><dt>Prazo final</dt><dd>${dataBr(espaco.prazoFinal)}</dd></div>
-        <div><dt>Chance de cumprir o prazo</dt><dd>${s.chancePrazo == null ? "—" : Math.round(s.chancePrazo * 100) + "%"}</dd></div>
-      </dl>
-      <p class="tec">Simulação de ${espaco.simulacoes.toLocaleString("pt-BR")} cenários calculada em ${tempo} ms neste aparelho.</p>`;
-  } else {
-    resumo = `<p>Este espaço ainda não tem ações. O cadastro de ações chega nos próximos passos.</p>`;
-  }
+  const caminho = caminhoCritico(acoes, cal, { hoje });
+  const sim = simular(acoes, cal, { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal });
+  const linhas = montarLinhas(acoes, caminho, sim, cal, hoje);
+  const pessoas = new Map(responsaveis.map((r) => [r.id, r]));
+  const meus = usuario ? responsaveis.filter((r) => r.usuario === usuario).map((r) => r.id) : null;
+  const usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
+  const ui = { situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false };
+
+  const agrupado = () => usaFases && ui.ordem === "espaco";
+  const ativos = () => (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0);
+  const visiveis = () => ordenar(filtrar(linhas, {
+    situacao: ui.situacao, responsavel: ui.responsavel, minhas: ui.minhas ? meus : undefined,
+  }), ui.ordem);
+
   alvo.innerHTML = `
-    <section class="cartao">
+    <section class="cabeca-espaco">
       <h1>${esc(espaco.nome)}</h1>
       <p class="tec">Início em ${dataBr(espaco.inicio)}${espaco.prazoFinal ? ` · prazo final em ${dataBr(espaco.prazoFinal)}` : ""}</p>
-      ${resumo}
-      <p class="aviso">Resumo provisório, para conferir o cálculo. A lista de ações chega no passo 1.6.</p>
+      ${acoes.length ? `<p class="resumo-espaco">
+        <span>Conclusão prevista <b class="mono">${dataBr(cal.dataDeConclusao(sim.p50, 0))}</b></span>
+        <span>Data segura <b class="mono">${dataBr(cal.dataDeConclusao(sim.p80, 0))}</b> <a href="#" class="oque" data-termo="dataSegura">o que é?</a></span>
+        ${sim.chancePrazo == null ? "" : `<span>Chance de cumprir o prazo <b class="mono">${Math.round(sim.chancePrazo * 100)}%</b></span>`}
+      </p>` : ""}
+    </section>
+    ${acoes.length ? `
+      <div class="ferramentas" data-ferramentas></div>
+      <div class="legenda" data-legenda hidden>${legendaHtml()}</div>
+      <div class="lista" data-lista></div>
+      <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`
+    : `<p class="cartao">Este espaço ainda não tem ações. O cadastro de ações chega no passo 1.9.</p>`}`;
+  if (!acoes.length) return;
+
+  const ferramentas = alvo.querySelector("[data-ferramentas]");
+  const lista = alvo.querySelector("[data-lista]");
+  const legenda = alvo.querySelector("[data-legenda]");
+
+  /* ---------- ferramentas: filtros de situação, controles e Nova ação ---------- */
+  function controlesHtml() {
+    return `
+      ${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
+      <select data-ctl="responsavel" aria-label="Responsável">
+        <option value="">Todos os responsáveis</option>
+        ${responsaveis.map((r) => `<option value="${esc(r.id)}"${ui.responsavel === r.id ? " selected" : ""}>${esc(r.sigla ? `${r.sigla} · ${r.nome}` : r.nome)}</option>`).join("")}
+      </select>
+      <select data-ctl="ordem" aria-label="Ordenar">
+        ${ORDENS.map(([v, t]) => `<option value="${v}"${ui.ordem === v ? " selected" : ""}>${t}</option>`).join("")}
+      </select>`;
+  }
+  const botaoRecolherHtml = () => agrupado()
+    ? `<button class="botao discreto" type="button" data-recolher-tudo>${ui.recolhidos.size ? "Expandir tudo" : "Recolher fases"}</button>` : "";
+
+  function desenharFerramentas() {
+    const n = contar(linhas);
+    ferramentas.innerHTML = `
+      <div class="chips" role="group" aria-label="Filtrar por situação">
+        ${BOTOES_DE_FILTRO.map(([v, t, icone, classe]) => `<button class="chip" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
+          ${icone ? `<span class="${classe}">${ICONES[icone]}</span>` : ""}${t} <span class="n">${n[v]}</span></button>`).join("")}
+      </div>
+      <div class="controles so-computador">
+        ${controlesHtml()}
+        ${botaoRecolherHtml()}
+        <button class="botao discreto" type="button" data-alternar-legenda aria-pressed="${ui.legenda}">Legenda</button>
+        <button class="botao principal" type="button" data-nova>${ICONES.mais}Nova ação</button>
+      </div>
+      <button class="botao so-celular" type="button" data-opcoes>${ICONES.filtros}Filtros e ordem${ativos() ? ` <span class="contador">${ativos()}</span>` : ""}</button>`;
+    legenda.hidden = !ui.legenda;
+  }
+
+  /* ---------- lista ---------- */
+  function medidor(valor, titulo, cor, texto) {
+    if (valor == null) return `<span class="medidor vazio">—</span>`;
+    return `<span class="medidor" title="${titulo}"><span class="barra-medidor"><i style="width:${Math.max(2, Math.round(valor * 100))}%;background:${cor}"></i></span><span class="num">${texto}</span></span>`;
+  }
+  const corDe = (l) => (l.situacao === "concluida" ? "var(--ok)" : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
+  const etapaDe = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
+
+  function linhaHtml(l) {
+    const a = l.acao;
+    const s = SITUACOES[l.situacao];
+    const donos = a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean)
+      .map((p) => `<span class="dono${meus?.includes(p.id) ? " eu" : ""}" title="${esc(p.nome)}">${esc(p.sigla || p.nome)}</span>`).join("");
+    const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
+    const nota = l.situacao === "concluida" ? "concluída"
+      : l.reprogramacoes ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";
+    return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-codigo="${esc(a.codigo)}" style="--calor:${corDe(l)}">
+      <div class="linha" role="button" tabindex="0" data-abrir-acao>
+        <div class="acao-nome"><span class="codigo">${esc(a.codigo)}</span><span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
+        <div class="sit"><span class="${s.classe}">${ICONES[s.icone]}</span><span>${s.texto}</span>${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</div>
+        <div class="donos">${donos}</div>
+        <div class="conc"><span class="mlab">Conclusão prevista</span><span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>${nota ? `<small>${nota}</small>` : ""}</div>
+        <div class="ex"><span class="mlab">Prioridade de execução</span>${medidor(l.execucao, "Prioridade de execução", "var(--calor)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>
+        <div class="rv"><span class="mlab">Prioridade de revisão</span>${medidor(l.revisao, `Responde por ${revisao} da incerteza do prazo final`, "var(--accent)", revisao)}</div>
+        <span class="seta">${ICONES.seguir}</span>
+      </div>
+    </div>`;
+  }
+
+  function grupoHtml(nivel, id, titulo, ls, miolo) {
+    const r = resumir(ls);
+    const fechado = ui.recolhidos.has(id);
+    return `<section class="grupo ${nivel}${fechado ? " fechado" : ""}" data-grupo="${esc(id)}">
+      <button class="grupo-cabeca" type="button" aria-expanded="${!fechado}" data-alternar-grupo="${esc(id)}">
+        <span class="grupo-seta">${ICONES.seguir}</span><span class="grupo-titulo">${esc(titulo)}</span>
+        <span class="grupo-info"><span class="grupo-resumo">${r.total} ${plural(r.total, "ação", "ações")} · ${r.concluidas} ${plural(r.concluidas, "concluída", "concluídas")}${r.atrasadas ? ` · <span class="icone-atrasada">${ICONES.atrasada}</span> ${r.atrasadas}` : ""} · ${r.concluidas === r.total ? "concluído em" : "termina em"} <span class="mono">${dataBr(r.termina)}</span></span>
+        <span class="grupo-progresso" title="Ações concluídas"><i style="width:${Math.round((100 * r.concluidas) / r.total)}%"></i></span></span>
+      </button>
+      <div class="grupo-corpo"><div class="grupo-dentro">${miolo}</div></div>
     </section>`;
+  }
+
+  const cabecalhoHtml = `<div class="cabecalho so-computador">
+    <span>Ação</span><span>Situação</span><span>Responsáveis</span><span>Conclusão prevista</span>
+    <span>Prioridade de execução <a href="#" class="oque" data-termo="exec">o que é?</a></span>
+    <span>Prioridade de revisão <a href="#" class="oque" data-termo="rev">o que é?</a></span><span></span></div>`;
+
+  function desenharLista({ animar = false } = {}) {
+    const antes = new Map();
+    if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.codigo, el.getBoundingClientRect());
+    const ls = visiveis();
+    let corpo;
+    if (!ls.length) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
+    else if (agrupado()) {
+      const g = agrupar(ls, espaco.estrutura);
+      corpo = g.fases.map(({ fase, etapas, linhas: daFase }) => grupoHtml("fase", fase.id, fase.nome, daFase,
+        etapas.map(({ etapa, linhas: daEtapa }) => grupoHtml("etapa", etapa.id, etapa.nome, daEtapa, daEtapa.map(linhaHtml).join(""))).join(""))).join("")
+        + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
+    } else {
+      corpo = ls.map(linhaHtml).join("")
+        + (usaFases ? `<p class="tec">Em "Ordem do espaço", as ações aparecem separadas por fases e etapas.</p>` : "");
+    }
+    lista.innerHTML = cabecalhoHtml + corpo;
+    if (animar && !reduzirMovimento()) animarMudanca(antes);
+  }
+
+  /* as ações que continuam deslizam até a nova posição; as que entram surgem suavemente */
+  function animarMudanca(antes) {
+    for (const el of lista.querySelectorAll(".item")) {
+      const r0 = antes.get(el.dataset.codigo);
+      const r1 = el.getBoundingClientRect();
+      const inicio = r0 ? [{ transform: `translateY(${r0.top - r1.top}px)` }, { transform: "none" }]
+        : [{ opacity: 0, transform: "scale(.98)" }, { opacity: 1, transform: "none" }];
+      if (r0 && Math.abs(r0.top - r1.top) < 1) continue;
+      el.animate(inicio, { duration: r0 ? 320 : 260, easing: "cubic-bezier(.2,.7,.2,1)" });
+    }
+  }
+
+  /* ---------- mudanças ---------- */
+  function mudar(campo, valor) {
+    ui[campo] = valor;
+    desenharFerramentas();
+    desenharLista({ animar: true });
+    if (painelOpcoes?.isConnected) preencherOpcoes();
+  }
+
+  function alternarGrupo(id) {
+    const fechar = !ui.recolhidos.has(id);
+    if (fechar) ui.recolhidos.add(id); else ui.recolhidos.delete(id);
+    const secao = lista.querySelector(`[data-grupo="${CSS.escape(id)}"]`);
+    secao.classList.toggle("fechado", fechar);
+    secao.querySelector(":scope > .grupo-cabeca").setAttribute("aria-expanded", String(!fechar));
+    desenharFerramentas();
+  }
+
+  function recolherOuExpandirTudo() {
+    if (ui.recolhidos.size) ui.recolhidos.clear();
+    else for (const s of lista.querySelectorAll(".grupo.fase")) ui.recolhidos.add(s.dataset.grupo);
+    for (const s of lista.querySelectorAll(".grupo")) {
+      const fechado = ui.recolhidos.has(s.dataset.grupo);
+      s.classList.toggle("fechado", fechado);
+      s.querySelector(":scope > .grupo-cabeca").setAttribute("aria-expanded", String(!fechado));
+    }
+    desenharFerramentas();
+    if (painelOpcoes?.isConnected) preencherOpcoes();
+  }
+
+  /* ---------- celular: painel "Filtros e ordem" ---------- */
+  let painelOpcoes = null;
+  function preencherOpcoes() {
+    painelOpcoes.innerHTML = `
+      <section class="opcoes">${controlesHtml()}</section>
+      ${agrupado() ? `<section>${botaoRecolherHtml()}</section>` : ""}
+      <section><h3>Legenda</h3>${legendaHtml()}</section>
+      ${ativos() ? `<section><button class="botao discreto" type="button" data-limpar>Limpar filtros e ordem</button></section>` : ""}`;
+  }
+  function abrirOpcoes() {
+    painelOpcoes = abrirPainel("Filtros e ordem", "", { deBaixo: true, botao: "Pronto" });
+    preencherOpcoes();
+    painelOpcoes.addEventListener("change", aoMudarControle);
+    painelOpcoes.addEventListener("click", (e) => {
+      if (e.target.closest("[data-recolher-tudo]")) recolherOuExpandirTudo();
+      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; mudar("ordem", "espaco"); }
+    });
+  }
+
+  function aoMudarControle(e) {
+    const ctl = e.target.dataset.ctl;
+    if (ctl) mudar(ctl, e.target.type === "checkbox" ? e.target.checked : e.target.value);
+  }
+
+  /* ---------- eventos ---------- */
+  ferramentas.addEventListener("change", aoMudarControle);
+  alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
+    const t = e.target;
+    const filtro = t.closest("[data-filtro]");
+    if (filtro) return mudar("situacao", filtro.dataset.filtro);
+    const grupo = t.closest("[data-alternar-grupo]");
+    if (grupo) return alternarGrupo(grupo.dataset.alternarGrupo);
+    if (t.closest("[data-recolher-tudo]")) return recolherOuExpandirTudo();
+    if (t.closest("[data-alternar-legenda]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
+    if (t.closest("[data-opcoes]")) return abrirOpcoes();
+    if (t.closest("[data-nova]")) return avisar(AVISO_NOVA);
+    if (t.closest("[data-abrir-acao]")) return avisar(AVISO_JANELA);
+  };
+  lista.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
+  });
+
+  desenharFerramentas();
+  desenharLista();
+}
+
+function legendaHtml() {
+  return `<div class="legenda-itens">
+    <span>Cor à esquerda: menos prioritária <span class="gradiente" aria-hidden="true"></span> mais prioritária</span>
+    <span><span class="amostra-ok" aria-hidden="true"></span> concluída</span>
+    <span class="simbolos">
+      <span><span class="icone-concluida">${ICONES.concluida}</span>Concluída</span>
+      <span><span class="icone-liberada">${ICONES.liberada}</span>Liberada</span>
+      <span><span class="icone-nao-liberada">${ICONES.naoLiberada}</span>Não liberada</span>
+      <span><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>
+    </span>
+  </div>`;
 }
