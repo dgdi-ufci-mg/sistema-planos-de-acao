@@ -8,7 +8,7 @@
  */
 import { NOME, INSTITUICAO } from "./identidade.js";
 import { criarBancoLocal } from "./banco/local.js";
-import { criarStore } from "./dados.js";
+import { criarStore, hojeLocal } from "./dados.js";
 import { carregarExemplo } from "./exemplo.js";
 import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
@@ -40,10 +40,7 @@ const lembrar = (id) => { try { localStorage.setItem(CHAVE_ULTIMO, id); } catch 
 const esquecer = () => { try { localStorage.removeItem(CHAVE_ULTIMO); } catch { /* sem armazenamento */ } };
 const ultimo = () => { try { return localStorage.getItem(CHAVE_ULTIMO); } catch { return null; } };
 
-const hoje = (() => {
-  const d = new Date();
-  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
-})();
+const hoje = hojeLocal();
 const store = criarStore(criarBancoLocal());
 const principal = document.querySelector("#principal");
 const menus = document.querySelector(".menus");
@@ -70,18 +67,24 @@ async function verExemplo() {
   await abrirEspaco(await carregarExemplo(store));
 }
 
+/** Para de acompanhar o espaço que estava aberto. */
+let pararEspaco = () => {};
+
 async function abrirEspaco(id) {
   const espaco = await store.lerEspaco(id);
   if (!espaco) return false;
   lembrar(id);
   if (location.hash !== `#/espaco/${id}`) history.replaceState(null, "", `#/espaco/${id}`);
-  mostrarEspaco(principal, espaco, await store.listarAcoes(id), { hoje, responsaveis: await store.listarResponsaveis() });
+  pararEspaco();
+  pararEspaco = mostrarEspaco(principal, { store, espacoId: id, hoje });
   await atualizarTopo(id);
   window.scrollTo(0, 0);
   return true;
 }
 
 function boasVindas({ comFormulario = false } = {}) {
+  pararEspaco();
+  pararEspaco = () => {};
   esquecer();
   history.replaceState(null, "", location.pathname + location.search);
   mostrarBoasVindas(principal, {

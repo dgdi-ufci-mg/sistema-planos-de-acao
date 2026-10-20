@@ -11,11 +11,9 @@ import { simular } from "../simulacao.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
-import { iniciais, tomDe, separar } from "../responsaveis.js";
 import { abrirPainel, avisar } from "./painel.js";
-
-/** Até quantas pessoas aparecem no cartão; as demais viram "+N". */
-const PESSOAS_NO_CARTAO = 3;
+import { donosHtml } from "./pessoas.js";
+import { abrirAcao } from "./janela-acao.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -35,26 +33,44 @@ const ORDENS = [
   ["revisao", "Prioridade de revisão"],
   ["conclusao", "Conclusão prevista"],
 ];
-const AVISO_JANELA = "A janela da ação chega no passo 1.7.";
 const AVISO_NOVA = "O cadastro de ações chega no passo 1.9.";
 const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
+ * Mostra o espaço e acompanha as mudanças no banco: a cada gravação (de quem quer que seja),
+ * recalcula e redesenha a lista e a janela aberta, mantendo filtros, ordem e grupos recolhidos.
  * @param {HTMLElement} alvo
- * @param {object} espaco
- * @param {object[]} acoes  na ordem do espaço
- * @param {{hoje: string, responsaveis: object[], usuario?: string|null}} opcoes
+ * @param {{store: object, espacoId: string, hoje: string, usuario?: string|null}} opcoes
  *   usuario: e-mail de quem entrou; sem ele, "Minhas ações" não aparece
+ * @returns {() => void} para de acompanhar (ao trocar de espaço)
  */
-export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario = null }) {
-  const cal = criarCalendario(espaco, hoje);
-  const caminho = caminhoCritico(acoes, cal, { hoje });
-  const sim = simular(acoes, cal, { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal });
-  const linhas = montarLinhas(acoes, caminho, sim, cal, hoje);
-  const pessoas = new Map(responsaveis.map((r) => [r.id, r]));
-  const meus = usuario ? responsaveis.filter((r) => r.usuario === usuario).map((r) => r.id) : null;
-  const usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
+export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   const ui = { situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false };
+  let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, etapaDe, caminho;
+  let janela = null;
+  let comAcoes = null;
+  let ferramentas, lista, legenda, cabeca;
+
+  /** Recalcula tudo o que depende dos dados. */
+  function derivar(dados, todos) {
+    espaco = dados.espaco;
+    acoes = [...dados.acoes].sort((a, b) => a.ordem - b.ordem);
+    responsaveis = todos;
+    cal = criarCalendario(espaco, hoje);
+    caminho = caminhoCritico(acoes, cal, { hoje });
+    sim = simular(acoes, cal, { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal });
+    linhas = montarLinhas(acoes, caminho, sim, cal, hoje);
+    pessoas = new Map(responsaveis.map((r) => [r.id, r]));
+    meus = usuario ? responsaveis.filter((r) => r.usuario === usuario).map((r) => r.id) : null;
+    usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
+    etapaDe = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
+  }
+
+  /** Dados prontos para a janela da ação. */
+  const dadosDaJanela = () => ({
+    espaco, acoes, responsaveis, cal, caminho, pessoas, meus, usaFases,
+    linhaDe: new Map(linhas.map((l) => [l.acao.codigo, l])),
+  });
 
   const agrupado = () => usaFases && ui.ordem === "espaco";
   const ativos = () => (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0);
@@ -62,27 +78,45 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
     situacao: ui.situacao, responsavel: ui.responsavel, minhas: ui.minhas ? meus : undefined,
   }), ui.ordem);
 
-  alvo.innerHTML = `
-    <section class="cabeca-espaco">
-      <h1>${esc(espaco.nome)}</h1>
+  function cabecaHtml() {
+    return `<h1>${esc(espaco.nome)}</h1>
       <p class="tec">Início em ${dataBr(espaco.inicio)}${espaco.prazoFinal ? ` · prazo final em ${dataBr(espaco.prazoFinal)}` : ""}</p>
       ${acoes.length ? `<p class="resumo-espaco">
         <span>Conclusão prevista <b class="mono">${dataBr(cal.dataDeConclusao(sim.p50, 0))}</b></span>
         <span>Data segura <b class="mono">${dataBr(cal.dataDeConclusao(sim.p80, 0))}</b> <a href="#" class="oque" data-termo="dataSegura">o que é?</a></span>
         ${sim.chancePrazo == null ? "" : `<span>Chance de cumprir o prazo <b class="mono">${Math.round(sim.chancePrazo * 100)}%</b></span>`}
-      </p>` : ""}
-    </section>
-    ${acoes.length ? `
-      <div class="ferramentas" data-ferramentas></div>
-      <div class="legenda" data-legenda hidden>${legendaHtml()}</div>
-      <div class="lista" data-lista></div>
-      <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`
-    : `<p class="cartao">Este espaço ainda não tem ações. O cadastro de ações chega no passo 1.9.</p>`}`;
-  if (!acoes.length) return;
+      </p>` : ""}`;
+  }
 
-  const ferramentas = alvo.querySelector("[data-ferramentas]");
-  const lista = alvo.querySelector("[data-lista]");
-  const legenda = alvo.querySelector("[data-legenda]");
+  /** Monta a estrutura da tela; refeita só quando o espaço passa a ter ou deixa de ter ações. */
+  function montar() {
+    comAcoes = acoes.length > 0;
+    alvo.innerHTML = `
+      <section class="cabeca-espaco" data-cabeca></section>
+      ${comAcoes ? `
+        <div class="ferramentas" data-ferramentas></div>
+        <div class="legenda" data-legenda hidden>${legendaHtml()}</div>
+        <div class="lista" data-lista></div>
+        <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`
+      : `<p class="cartao">Este espaço ainda não tem ações. O cadastro de ações chega no passo 1.9.</p>`}`;
+    cabeca = alvo.querySelector("[data-cabeca]");
+    ferramentas = alvo.querySelector("[data-ferramentas]");
+    lista = alvo.querySelector("[data-lista]");
+    legenda = alvo.querySelector("[data-legenda]");
+    if (!comAcoes) return;
+    ferramentas.addEventListener("change", aoMudarControle);
+    lista.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
+    });
+  }
+
+  function desenhar() {
+    if (comAcoes !== acoes.length > 0) montar();
+    cabeca.innerHTML = cabecaHtml();
+    if (!comAcoes) return;
+    desenharFerramentas();
+    desenharLista();
+  }
 
   /* ---------- ferramentas: filtros de situação, controles e Nova ação ---------- */
   function controlesHtml() {
@@ -122,24 +156,11 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
     return `<span class="medidor" title="${titulo}"><span class="barra-medidor"><i style="width:${Math.max(2, Math.round(valor * 100))}%;background:${cor}"></i></span><span class="num">${texto}</span></span>`;
   }
   const corDe = (l) => (l.situacao === "concluida" ? "var(--ok)" : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
-  const etapaDe = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
-
-  /** Pessoas em círculos com as iniciais (sobrepostos, até três e "+N"); depois, unidades em quadrados com a sigla. */
-  const tomDa = (p) => espaco.tons?.[p.id] ?? tomDe(p.nome);
-  function donosHtml(lista) {
-    const { pessoas: ps, unidades } = separar(lista);
-    const visiveis = ps.length > PESSOAS_NO_CARTAO ? ps.slice(0, PESSOAS_NO_CARTAO - 1) : ps;
-    const resto = ps.slice(visiveis.length);
-    return `${ps.length ? `<span class="pessoas">${visiveis.map((p) =>
-      `<span class="avatar${meus?.includes(p.id) ? " eu" : ""}" style="--tom:var(--tom-${tomDa(p)});--tom-texto:var(--tom-${tomDa(p)}-texto)" title="${esc(p.nome)}" role="img" aria-label="${esc(p.nome)}">${esc(iniciais(p.nome))}</span>`).join("")}${resto.length
-      ? `<span class="avatar mais" title="${esc(resto.map((p) => p.nome).join(", "))}" role="img" aria-label="Mais ${resto.length}: ${esc(resto.map((p) => p.nome).join(", "))}">+${resto.length}</span>` : ""}</span>` : ""}${unidades.map((u) =>
-      `<span class="unidade" title="${esc(u.nome)}" role="img" aria-label="${esc(u.nome)}">${esc(u.sigla || iniciais(u.nome))}</span>`).join("")}`;
-  }
 
   function linhaHtml(l) {
     const a = l.acao;
     const s = SITUACOES[l.situacao];
-    const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean));
+    const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus });
     const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
     const nota = l.situacao !== "concluida" && l.reprogramacoes
       ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";
@@ -255,7 +276,6 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
   }
 
   /* ---------- eventos ---------- */
-  ferramentas.addEventListener("change", aoMudarControle);
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;
     const filtro = t.closest("[data-filtro]");
@@ -266,14 +286,30 @@ export function mostrarEspaco(alvo, espaco, acoes, { hoje, responsaveis, usuario
     if (t.closest("[data-alternar-legenda]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
     if (t.closest("[data-opcoes]")) return abrirOpcoes();
     if (t.closest("[data-nova]")) return avisar(AVISO_NOVA);
-    if (t.closest("[data-abrir-acao]")) return avisar(AVISO_JANELA);
+    const item = t.closest("[data-abrir-acao]");
+    if (item) return abrirJanela(item.closest("[data-codigo]").dataset.codigo);
   };
-  lista.addEventListener("keydown", (e) => {
-    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
-  });
 
-  desenharFerramentas();
-  desenharLista();
+  function abrirJanela(codigo) {
+    janela = abrirAcao({
+      store, espacoId, codigo, hoje, usuario, dados: dadosDaJanela(),
+      aoFechar: () => {
+        janela = null;
+        lista?.querySelector(`[data-codigo="${CSS.escape(codigo)}"] [data-abrir-acao]`)?.focus();
+      },
+    });
+  }
+
+  /* ---------- acompanhamento: cada mudança no banco recalcula e redesenha ---------- */
+  let fila = Promise.resolve();
+  const parar = store.acompanharEspaco(espacoId, (dados) => {
+    fila = fila.then(async () => {
+      derivar(dados, await store.listarResponsaveis());
+      desenhar();
+      janela?.atualizar(dadosDaJanela());
+    }).catch((e) => avisar(e.message));
+  });
+  return () => { parar(); janela?.fechar(); };
 }
 
 function legendaHtml() {

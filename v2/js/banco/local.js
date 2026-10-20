@@ -47,6 +47,15 @@ export function criarBancoLocal() {
     for (const aoMudar of ouvintes.get(espacoId) ?? []) aoMudar(fotografia(espacoId));
   };
 
+  /** Lê, calcula e grava a ação de uma vez, sem espera no meio. */
+  const mudarAcao = (espacoId, codigo, mudanca) => {
+    const acoes = acoesDo(espacoId);
+    if (!acoes.has(codigo)) throw new ErroDeDados("nao-encontrado", `Ação ${codigo} não encontrada.`);
+    const atual = acoes.get(codigo);
+    acoes.set(codigo, { ...atual, ...copia(mudanca(copia(atual))) });
+    avisar(espacoId);
+  };
+
   return {
     // --- espaços ---
     async criarEspaco(id, dados) {
@@ -86,10 +95,42 @@ export function criarBancoLocal() {
     },
     /** Grava só os campos informados; os demais ficam como estão (seção 4.6). */
     async alterarAcao(espacoId, codigo, campos) {
-      const acoes = acoesDo(espacoId);
-      if (!acoes.has(codigo)) throw new ErroDeDados("nao-encontrado", `Ação ${codigo} não encontrada.`);
-      acoes.set(codigo, { ...acoes.get(codigo), ...copia(campos) });
-      avisar(espacoId);
+      mudarAcao(espacoId, codigo, () => campos);
+    },
+
+    /**
+     * Acrescenta itens a uma lista da ação, sem repetir os que já estão (seção 4.6):
+     * duas pessoas acrescentando ao mesmo tempo não apagam uma à outra.
+     * `extra`: outros campos gravados junto, como a data e o autor da alteração.
+     * Lê e grava de uma vez, sem espera no meio (no Firebase: arrayUnion).
+     */
+    async acrescentarNaLista(espacoId, codigo, campo, itens, extra = {}) {
+      mudarAcao(espacoId, codigo, (a) => {
+        const lista = a[campo] ?? [];
+        return { ...extra, [campo]: [...lista, ...itens.filter((i) => !lista.includes(i))] };
+      });
+    },
+    /** Retira itens de uma lista da ação, sem regravar os demais (seção 4.6; no Firebase: arrayRemove). */
+    async retirarDaLista(espacoId, codigo, campo, itens, extra = {}) {
+      mudarAcao(espacoId, codigo, (a) => ({ ...extra, [campo]: (a[campo] ?? []).filter((i) => !itens.includes(i)) }));
+    },
+    /** Acrescenta uma estimativa no fim do histórico, sem regravar as anteriores (seção 4.6). */
+    async acrescentarEstimativa(espacoId, codigo, estimativa, extra = {}) {
+      mudarAcao(espacoId, codigo, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }));
+    },
+    /**
+     * Troca a estimativa mais recente (correção, seção 4.3), só se a ação ainda tiver
+     * `quantas` estimativas: se alguém acrescentou outra nesse meio-tempo, recusa
+     * (no Firebase: transação).
+     */
+    async trocarUltimaEstimativa(espacoId, codigo, estimativa, quantas, extra = {}) {
+      mudarAcao(espacoId, codigo, (a) => {
+        const lista = a.estimativas ?? [];
+        if (!quantas || lista.length !== quantas) {
+          throw new ErroDeDados("estimativa-mudou", "Alguém registrou outra estimativa nesta ação agora. Confira o histórico antes de corrigir.");
+        }
+        return { ...extra, estimativas: [...lista.slice(0, -1), estimativa] };
+      });
     },
 
     // --- responsáveis ---

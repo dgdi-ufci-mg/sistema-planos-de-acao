@@ -8,6 +8,7 @@
 import { ErroDeDados } from "./banco/local.js";
 import { CAMPOS } from "./modelo.js";
 import { ajustarTons } from "./responsaveis.js";
+import { ordenarPorDependencia } from "./calculo.js";
 
 export { ErroDeDados };
 
@@ -19,7 +20,7 @@ export const SEMENTE_PADRAO = 20261014;
 const CODIGO_VALIDO = /^[A-Za-z0-9]{2,8}$/;
 
 /** Campos que não mudam depois de criados. */
-const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons"] // tons: o Store cuida deles;
+const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons"]; // tons: o Store cuida deles
 const FIXOS_DA_ACAO = ["codigo", "criadaEm"];
 
 /**
@@ -27,7 +28,25 @@ const FIXOS_DA_ACAO = ["codigo", "criadaEm"];
  * @property {() => string} [agora]   momento atual, em ISO 8601 (substituível nos testes)
  * @property {string|null} [usuario]  quem está gravando
  * @property {() => string} [novoId]  gerador de identificadores
+ * @property {() => string} [hoje]    data de hoje, ISO, no fuso do aparelho (substituível nos testes)
  */
+
+/** Data de hoje no fuso do aparelho, em ISO (AAAA-MM-DD). */
+export function hojeLocal() {
+  const d = new Date();
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+}
+
+/** Três pontos em dias úteis: números, 0 ≤ otimista ≤ mais provável ≤ pessimista, pessimista > 0. */
+function validarEstimativa({ o, m, p }) {
+  if (![o, m, p].every((x) => typeof x === "number" && Number.isFinite(x) && x >= 0)) {
+    throw new ErroDeDados("estimativa-invalida", "Informe os três prazos em dias úteis, com números a partir de zero.");
+  }
+  if (!(o <= m && m <= p)) {
+    throw new ErroDeDados("estimativa-fora-de-ordem", "O otimista não pode passar do mais provável, nem este do pessimista.");
+  }
+  if (p === 0) throw new ErroDeDados("estimativa-zerada", "O prazo pessimista precisa ser maior que zero.");
+}
 
 /**
  * @param {ReturnType<import("./banco/local.js").criarBancoLocal>} banco
@@ -45,6 +64,13 @@ export function criarStore(banco, opcoes = {}) {
   const agora = opcoes.agora ?? (() => new Date().toISOString());
   const usuario = opcoes.usuario ?? null;
   const novoId = opcoes.novoId ?? (() => globalThis.crypto.randomUUID());
+  const hoje = opcoes.hoje ?? hojeLocal;
+  const carimbo = () => ({ alteradaEm: agora(), alteradaPor: usuario });
+  const exigirAcao = async (espacoId, codigo) => {
+    const acao = await banco.lerAcao(espacoId, codigo);
+    if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${codigo} não encontrada.`);
+    return acao;
+  };
 
   /** Recusa campos fora do dicionário de dados (especificação, seção 4). */
   const recusarDesconhecidos = (campos, entidade) => {
@@ -124,6 +150,64 @@ export function criarStore(banco, opcoes = {}) {
       recusarFixos(campos, FIXOS_DA_ACAO);
       await banco.alterarAcao(espacoId, codigo, { ...campos, alteradaEm: agora(), alteradaPor: usuario });
       if ("responsaveis" in campos) await arrumarTons(espacoId);
+    },
+
+    // --- listas da ação: item a item (seção 4.6) ---
+    async acrescentarResponsavelNaAcao(espacoId, codigo, responsavelId) {
+      await banco.acrescentarNaLista(espacoId, codigo, "responsaveis", [responsavelId], carimbo());
+      await arrumarTons(espacoId);
+    },
+    async retirarResponsavelDaAcao(espacoId, codigo, responsavelId) {
+      await banco.retirarDaLista(espacoId, codigo, "responsaveis", [responsavelId], carimbo());
+      await arrumarTons(espacoId);
+    },
+    /** Acrescenta uma ação anterior. Recusa a própria ação, código inexistente e ciclo. */
+    async acrescentarDependencia(espacoId, codigo, anterior) {
+      const acoes = await banco.listarAcoes(espacoId);
+      if (anterior === codigo) throw new ErroDeDados("ciclo", "Uma ação não pode depender dela mesma.");
+      if (!acoes.some((a) => a.codigo === anterior)) throw new ErroDeDados("nao-encontrado", `Ação ${anterior} não encontrada.`);
+      const hipotese = acoes.map((a) => (a.codigo === codigo ? { ...a, dependeDe: [...(a.dependeDe ?? []), anterior] } : a));
+      try {
+        ordenarPorDependencia(hipotese);
+      } catch {
+        throw new ErroDeDados("ciclo", `${anterior} já depende de ${codigo}, direta ou indiretamente. A dependência criaria um ciclo.`);
+      }
+      await banco.acrescentarNaLista(espacoId, codigo, "dependeDe", [anterior], carimbo());
+    },
+    async retirarDependencia(espacoId, codigo, anterior) {
+      await banco.retirarDaLista(espacoId, codigo, "dependeDe", [anterior], carimbo());
+    },
+
+    // --- estimativas e conclusão (seções 4.3, 5.3 e 5.4) ---
+    /** Reestimativa: tempo que falta, a partir de hoje; entra no fim do histórico. */
+    async reestimar(espacoId, codigo, { o, m, p, motivo = "" }) {
+      validarEstimativa({ o, m, p });
+      await exigirAcao(espacoId, codigo);
+      const estimativa = { em: hoje(), por: usuario, o, m, p, contaDe: "data", ...(motivo.trim() ? { motivo: motivo.trim() } : {}) };
+      await banco.acrescentarEstimativa(espacoId, codigo, estimativa, carimbo());
+    },
+    /**
+     * Ajusta a estimativa sem criar histórico: ainda é planejamento, ou é correção de digitação.
+     * Quem chama decide se pode (estimativaLivre, em js/acao.js). Sem estimativa, cria a primeira.
+     */
+    async corrigirEstimativa(espacoId, codigo, { o, m, p }) {
+      validarEstimativa({ o, m, p });
+      const { estimativas = [] } = await exigirAcao(espacoId, codigo);
+      const ultima = estimativas.at(-1);
+      const estimativa = { ...ultima, em: hoje(), por: usuario, o, m, p, contaDe: ultima?.contaDe ?? "liberacao" };
+      if (!ultima) await banco.acrescentarEstimativa(espacoId, codigo, estimativa, carimbo());
+      else await banco.trocarUltimaEstimativa(espacoId, codigo, estimativa, estimativas.length, carimbo());
+    },
+    /** Registra a conclusão. A data não pode ser futura. */
+    async concluir(espacoId, codigo, data) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data de conclusão.");
+      if (data > hoje()) throw new ErroDeDados("data-futura", "A data de conclusão não pode ser depois de hoje.");
+      await exigirAcao(espacoId, codigo);
+      await banco.alterarAcao(espacoId, codigo, { concluidaEm: data, ...carimbo() });
+    },
+    async desfazerConclusao(espacoId, codigo) {
+      await exigirAcao(espacoId, codigo);
+      await banco.alterarAcao(espacoId, codigo, { concluidaEm: null, ...carimbo() });
     },
 
     // --- responsáveis ---

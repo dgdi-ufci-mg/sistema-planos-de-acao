@@ -68,6 +68,34 @@ export function testarContratoDoBanco(nome, criarBanco) {
       assert.deepEqual(avisos, [0, 1]);
     });
 
+    it("listas: acrescentar e retirar item a item, sem perder o que outra pessoa acrescentou", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarAcao("p1", acao("LEV", { responsaveis: ["a"] }));
+      await Promise.all([
+        banco.acrescentarNaLista("p1", "LEV", "responsaveis", ["b"]),
+        banco.acrescentarNaLista("p1", "LEV", "responsaveis", ["c"]),
+      ]);
+      await banco.acrescentarNaLista("p1", "LEV", "responsaveis", ["a"], { alteradaPor: "x" });
+      let lida = await banco.lerAcao("p1", "LEV");
+      assert.deepEqual([...lida.responsaveis].sort(), ["a", "b", "c"]);
+      assert.equal(lida.alteradaPor, "x");
+      await banco.retirarDaLista("p1", "LEV", "responsaveis", ["b"]);
+      lida = await banco.lerAcao("p1", "LEV");
+      assert.deepEqual([...lida.responsaveis].sort(), ["a", "c"]);
+    });
+
+    it("estimativas: acrescenta no fim e só corrige a última se ninguém acrescentou outra", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarAcao("p1", acao("LEV", { estimativas: [{ o: 1, m: 2, p: 3 }] }));
+      await banco.trocarUltimaEstimativa("p1", "LEV", { o: 2, m: 3, p: 4 }, 1);
+      await banco.acrescentarEstimativa("p1", "LEV", { o: 5, m: 6, p: 7 });
+      assert.deepEqual((await banco.lerAcao("p1", "LEV")).estimativas.map((e) => e.o), [2, 5]);
+      await assert.rejects(banco.trocarUltimaEstimativa("p1", "LEV", { o: 9, m: 9, p: 9 }, 1), { codigo: "estimativa-mudou" });
+      assert.deepEqual((await banco.lerAcao("p1", "LEV")).estimativas.map((e) => e.o), [2, 5]);
+    });
+
     it("recusa alterar o que não existe", async () => {
       const banco = criarBanco();
       await assert.rejects(banco.alterarEspaco("nao-existe", { nome: "x" }), { codigo: "nao-encontrado" });
