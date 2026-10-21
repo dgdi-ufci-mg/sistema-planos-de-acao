@@ -84,6 +84,8 @@ async function atualizarTopo() {
       abrirConfiguracao({ store: storeDe(id), espacoId: id });
     },
     aoNovo: () => boasVindas({ comFormulario: true }),
+    comLegenda: Boolean(abertoId),
+    aoLegenda: () => document.dispatchEvent(new CustomEvent("sextante:alternar-legenda")),
     aoAjuda: () => ajuda(),
     aoSistema: () => abrirConfiguracaoDoSistema({ store, hoje }),
     aoEntrar: entrar,
@@ -120,7 +122,7 @@ async function abrirEspaco(id) {
   pararEspaco();
   /* sem login, a tela esconde "Nova ação"; as demais gravações são recusadas com aviso */
   document.body.classList.toggle("so-leitura", !daqui.podeGravar);
-  const pararTela = mostrarEspaco(principal, { store: daqui, espacoId: id, hoje, usuario });
+  const pararTela = mostrarEspaco(principal, { store: daqui, espacoId: id, hoje, usuario, barra: document.querySelector("[data-acoes-topo]") });
   /* o nome do espaço no topo acompanha as mudanças (por exemplo, ao renomear em "Configurar este espaço") */
   /* o topo acompanha o nome do espaço e o nome de quem entrou (o do responsável ligado ao e-mail neste espaço) */
   const chaveDoTopo = (e, rs) => `${e.nome}|${rs.find((r) => usuario && r.usuario === usuario)?.nome ?? ""}`;

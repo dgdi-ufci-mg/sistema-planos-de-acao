@@ -80,6 +80,7 @@ export function mostrarNavegacao(opcoes) {
   acoes = {
     aoAbrir: opcoes.aoAbrir, aoConfigurar: opcoes.aoConfigurar, novo: opcoes.aoNovo, ajuda: opcoes.aoAjuda,
     sistema: opcoes.aoSistema, entrar: opcoes.aoEntrar, trocarSenha: opcoes.aoTrocarSenha, sair: opcoes.aoSair,
+    legenda: opcoes.aoLegenda,
   };
   if (!ligado) ligar();
   document.querySelector("[data-titulo]").textContent = titulo;
@@ -109,6 +110,7 @@ export function mostrarNavegacao(opcoes) {
       ${podeCriar ? `<button type="button" class="lateral-acao" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}
     </nav>
     <div class="lateral-pe">
+      ${opcoes.comLegenda ? `<button type="button" class="lateral-acao" data-item="legenda">${ICONES.legenda}Legenda</button>` : ""}
       <button type="button" class="lateral-acao" data-item="ajuda">${ICONES.ajuda}Ajuda e manual</button>
       ${usuario || !comLogin ? `<button type="button" class="lateral-acao" data-item="sistema">${ICONES.sistema}Configurar o sistema</button>` : ""}
     </div>`;

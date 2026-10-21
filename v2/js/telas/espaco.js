@@ -1,9 +1,9 @@
 /**
  * Espaço aberto: lista de ações (especificação, seção 8.3; passo 1.6).
- * Cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e
- * animações; no celular, painel "Filtros e ordem" e botão (+).
- * A conclusão prevista, a data segura e a chance ficam numa linha provisória no alto,
- * até a linha do tempo da aba Visualização (passo 1.17).
+ * Cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e animações.
+ * Ferramentas na barra do topo, à direita (21/10/2026): seletor de modo, Filtrar e Ordenar (painéis
+ * pequenos que abrem sob o botão) e Nova ação; no celular, um botão abre "Filtros e ordem" e o (+) cria.
+ * No alto do conteúdo, só os avisos: previsão incompleta e ações atrasadas.
  */
 import { criarCalendario, datasEfetivas } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
@@ -12,6 +12,7 @@ import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
 import { abrirPainel, avisar } from "./painel.js";
+import { surgir } from "./movimento.js";
 import { donosHtml } from "./pessoas.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
@@ -41,12 +42,15 @@ const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").ma
  * Mostra o espaço e acompanha as mudanças no banco: a cada gravação (de quem quer que seja),
  * recalcula e redesenha a lista e a janela aberta, mantendo filtros, ordem e grupos recolhidos.
  * @param {HTMLElement} alvo
- * @param {{store: object, espacoId: string, hoje: string, usuario?: string|null}} opcoes
- *   usuario: e-mail de quem entrou; sem ele, "Minhas ações" não aparece
+ * @param {{store: object, espacoId: string, hoje: string, usuario?: string|null, barra: HTMLElement}} opcoes
+ *   usuario: e-mail de quem entrou; sem ele, "Minhas ações" não aparece;
+ *   barra: lugar das ferramentas na barra do topo
  * @returns {() => void} para de acompanhar (ao trocar de espaço)
  */
-export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
+export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra }) {
   const ui = { modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false,
+    /** painel aberto sob um botão da barra: "filtrar", "ordenar" ou null */
+    pop: null,
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "" };
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
@@ -81,7 +85,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   });
 
   const agrupado = () => usaFases && ui.ordem === "espaco" && ui.modo === "lista";
-  const ativos = () => (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0);
+  const ativos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0);
   const visiveis = () => ordenar(filtrar(linhas, {
     situacao: ui.situacao, responsavel: ui.responsavel, minhas: ui.minhas ? meus : undefined,
   }), ui.ordem);
@@ -90,7 +94,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   /* o nome do espaço fica só na barra do topo (passo 1.14c); datas e chance saíram do alto (21/10/2026): vão para a linha do tempo e o cronograma (passos 1.17a e 1.17b);
      o aviso de previsão incompleta fica sempre à vista, em qualquer modo */
   function cabecaHtml() {
-    return `${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
+    const atrasadas = linhas.filter((l) => l.atrasada).length;
+    return `${atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
+        ? `Mostrando só ${plural(atrasadas, "a ação atrasada", `as ${atrasadas} ações atrasadas`)}. <u>Mostrar todas</u>`
+        : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : ""}
+      ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
   /** Monta a estrutura da tela; refeita só quando o espaço passa a ter ou deixa de ter ações. */
@@ -113,15 +121,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   function montar() {
     comAcoes = true;
     painelAcoes.innerHTML = `
-        <div class="ferramentas" data-ferramentas></div>
         <div class="legenda" data-legenda hidden>${legendaHtml()}</div>
         <div class="lista" data-lista></div>
         <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`;
-    ferramentas = painelAcoes.querySelector("[data-ferramentas]");
+    ferramentas = barra;
     lista = painelAcoes.querySelector("[data-lista]");
     legenda = painelAcoes.querySelector("[data-legenda]");
     ligarRapida();
-    ferramentas.addEventListener("change", aoMudarControle);
+    /* propriedades, e não addEventListener: a barra é a mesma para todos os espaços */
+    ferramentas.onchange = aoMudarControle;
+    ferramentas.onclick = aoClicarNaBarra;
     ligarArraste();
     lista.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
@@ -165,24 +174,90 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   const botaoRecolherHtml = () => agrupado()
     ? `<button class="botao discreto" type="button" data-recolher-tudo>${ui.recolhidos.size ? "Expandir tudo" : "Recolher fases"}</button>` : "";
 
-  function desenharFerramentas() {
+  /** Filtros ativos (situação, responsável, "Minhas ações"), para o número no funil. */
+  const filtrosAtivos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0);
+
+  function situacoesHtml() {
     const n = contar(linhas);
+    return BOTOES_DE_FILTRO.filter(([v]) => ui.modo === "lista" || v === "todas" || v === "atrasada").map(([v, t, icone, classe]) =>
+      `<button class="opcao" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
+        <span class="opcao-icone ${classe ?? ""}">${icone ? ICONES[icone] : ""}</span><span class="opcao-texto">${t}</span><span class="n">${n[v]}</span></button>`).join("");
+  }
+  function responsavelHtml() {
+    return `${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
+      <label class="campo-pop"><span>Responsável</span><select data-ctl="responsavel">
+        <option value="">Todos</option>
+        ${responsaveis.map((r) => `<option value="${esc(r.id)}"${ui.responsavel === r.id ? " selected" : ""}>${esc(r.sigla ? `${r.sigla} · ${r.nome}` : r.nome)}</option>`).join("")}
+      </select></label>`;
+  }
+  function ordensHtml() {
+    return ORDENS.map(([v, t]) => `<button class="opcao" type="button" data-ordem="${v}" aria-pressed="${ui.ordem === v}"><span class="opcao-icone">${ui.ordem === v ? ICONES.marcado : ""}</span><span class="opcao-texto">${t}</span></button>`).join("");
+  }
+  function popoverHtml() {
+    if (ui.pop === "filtrar") {
+      return `<div class="popover" data-popover role="dialog" aria-label="Filtrar">
+        <h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div>
+        ${responsavelHtml()}
+        ${filtrosAtivos() ? '<button class="botao discreto" type="button" data-limpar-filtros>Limpar filtros</button>' : ""}
+      </div>`;
+    }
+    if (ui.pop === "ordenar") {
+      return `<div class="popover" data-popover role="dialog" aria-label="Ordenar">
+        <h3>Ordenar por</h3><div class="opcoes-lista">${ordensHtml()}</div>
+        ${agrupado() ? `<div class="botoes">${botaoRecolherHtml()}</div>` : ""}
+      </div>`;
+    }
+    return "";
+  }
+
+  /** Ferramentas na barra do topo: modo, Filtrar, Ordenar e Nova ação (celular: "Filtros e ordem"). */
+  function desenharFerramentas({ abriu = false } = {}) {
+    const planilha = ui.modo === "planilha";
+    const nf = filtrosAtivos();
     ferramentas.innerHTML = `
       <div class="so-computador">${modosHtml()}</div>
-      <div class="chips" role="group" aria-label="Filtrar por situação"${ui.modo === "planilha" ? " hidden" : ""}>
-        ${BOTOES_DE_FILTRO.filter(([v]) => ui.modo === "lista" || v === "todas" || v === "atrasada").map(([v, t, icone, classe]) => `<button class="chip" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
-          ${icone ? `<span class="${classe}">${ICONES[icone]}</span>` : ""}${t} <span class="n">${n[v]}</span></button>`).join("")}
-      </div>
-      <div class="controles so-computador">
-        ${controlesHtml()}
-        ${botaoRecolherHtml()}
-        ${ui.modo === "planilha" ? "" : `<button class="botao discreto" type="button" data-alternar-legenda aria-pressed="${ui.legenda}">Legenda</button>`}
-        <button class="botao principal" type="button" data-nova>${ICONES.mais}Nova ação</button>
-      </div>
-      <button class="botao so-celular" type="button" data-opcoes>${ICONES.filtros}Filtros e ordem${ativos() ? ` <span class="contador">${ativos()}</span>` : ""}</button>`;
+      ${planilha ? "" : `
+      <button class="icone-barra so-computador" type="button" data-pop="filtrar" aria-label="Filtrar" title="Filtrar" aria-expanded="${ui.pop === "filtrar"}">
+        ${ICONES.funil}${nf ? `<span class="contador">${nf}</span>` : ""}</button>
+      <button class="icone-barra so-computador" type="button" data-pop="ordenar" aria-label="Ordenar" title="Ordenar" aria-expanded="${ui.pop === "ordenar"}">
+        ${ICONES.ordenar}${ui.ordem !== "espaco" ? '<span class="ponto" aria-hidden="true"></span>' : ""}</button>`}
+      <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
+        ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
+      <button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ação</button>
+      ${planilha ? "" : popoverHtml()}`;
     modoDesenhado = ui.modo;
-    legenda.hidden = !ui.legenda || ui.modo === "planilha";
+    legenda.hidden = !ui.legenda || planilha;
+    if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
+
+  function aoClicarNaBarra(e) {
+    const t = e.target;
+    const pop = t.closest("[data-pop]");
+    if (pop) { ui.pop = ui.pop === pop.dataset.pop ? null : pop.dataset.pop; return desenharFerramentas({ abriu: Boolean(ui.pop) }); }
+    const modo = t.closest("[data-modo]");
+    if (modo) { ui.pop = null; return mudarModo(modo.dataset.modo); }
+    const filtro = t.closest("[data-filtro]");
+    if (filtro) return mudar("situacao", filtro.dataset.filtro);
+    const ordem = t.closest("[data-ordem]");
+    if (ordem) return mudar("ordem", ordem.dataset.ordem);
+    if (t.closest("[data-limpar-filtros]")) { ui.responsavel = ""; ui.minhas = false; return mudar("situacao", "todas"); }
+    if (t.closest("[data-recolher-tudo]")) return recolherOuExpandirTudo();
+    if (t.closest("[data-opcoes]")) return abrirOpcoes();
+    if (t.closest("[data-nova]")) { ui.pop = null; desenharFerramentas(); return abrirNova(); }
+  }
+  /* clique fora do painel aberto, ou Esc, fecha o painel */
+  const fecharPop = (e) => {
+    if (!ui.pop) return;
+    /* composedPath: o botão clicado pode já ter sido trocado pelo redesenho da barra */
+    if (e.type === "keydown" ? e.key !== "Escape" : e.composedPath().includes(ferramentas)) return;
+    ui.pop = null;
+    desenharFerramentas();
+  };
+  document.addEventListener("click", fecharPop);
+  document.addEventListener("keydown", fecharPop);
+  /* legenda: item do menu lateral (passo 1.14c) */
+  const alternarLegenda = () => { ui.legenda = !ui.legenda; desenharFerramentas(); };
+  document.addEventListener("sextante:alternar-legenda", alternarLegenda);
 
   /* ---------- lista ---------- */
   function medidor(valor, titulo, cor, texto) {
@@ -404,6 +479,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   /* ---------- mudanças ---------- */
   function mudar(campo, valor) {
     ui[campo] = valor;
+    cabeca.innerHTML = cabecaHtml();
     desenharFerramentas();
     desenharLista({ animar: true });
     if (painelOpcoes?.isConnected) preencherOpcoes();
@@ -439,9 +515,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   let painelOpcoes = null;
   function preencherOpcoes() {
     painelOpcoes.innerHTML = `
-      <section class="opcoes">${modosHtml()}${controlesHtml()}</section>
+      <section class="opcoes">${modosHtml()}</section>
+      ${ui.modo === "planilha" ? "" : `<section class="opcoes"><h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div></section>
+      <section class="opcoes">${controlesHtml()}</section>`}
       ${agrupado() ? `<section>${botaoRecolherHtml()}</section>` : ""}
-      <section><h3>Legenda</h3>${legendaHtml()}</section>
       ${ativos() ? `<section><button class="botao discreto" type="button" data-limpar>Limpar filtros e ordem</button></section>` : ""}`;
   }
   function abrirOpcoes() {
@@ -451,8 +528,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     painelOpcoes.addEventListener("click", (e) => {
       const modo = e.target.closest("[data-modo]");
       if (modo) mudarModo(modo.dataset.modo);
+      const filtro = e.target.closest("[data-filtro]");
+      if (filtro) mudar("situacao", filtro.dataset.filtro);
       if (e.target.closest("[data-recolher-tudo]")) recolherOuExpandirTudo();
-      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; mudar("ordem", "espaco"); }
+      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.situacao = "todas"; mudar("ordem", "espaco"); }
     });
   }
 
@@ -464,15 +543,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   /* ---------- eventos ---------- */
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;
-    const modo = t.closest("[data-modo]");
-    if (modo) return mudarModo(modo.dataset.modo);
     const filtro = t.closest("[data-filtro]");
     if (filtro) return mudar("situacao", filtro.dataset.filtro);
     const grupo = t.closest("[data-alternar-grupo]");
     if (grupo) return alternarGrupo(grupo.dataset.alternarGrupo);
     if (t.closest("[data-recolher-tudo]")) return recolherOuExpandirTudo();
-    if (t.closest("[data-alternar-legenda]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
-    if (t.closest("[data-opcoes]")) return abrirOpcoes();
     if (t.closest("[data-nova]")) return abrirNova();
     const item = t.closest("[data-abrir-acao]");
     if (item) return abrirJanela(Number(item.closest("[data-numero]").dataset.numero));
@@ -512,7 +587,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
       novaJanela?.atualizar(dadosDaJanela());
     }).catch((e) => avisar(e.message));
   });
-  return () => { parar(); janela?.fechar(); };
+  return () => {
+    parar();
+    janela?.fechar();
+    document.removeEventListener("click", fecharPop);
+    document.removeEventListener("keydown", fecharPop);
+    document.removeEventListener("sextante:alternar-legenda", alternarLegenda);
+    barra.innerHTML = "";
+    barra.onclick = null;
+    barra.onchange = null;
+  };
 }
 
 function legendaHtml() {
