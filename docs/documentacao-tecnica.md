@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 64.3 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 64.4 da página)
 
 ---
 
@@ -494,6 +494,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 64.1 | Versão 2, movimento padrão aplicado a mais telas: na janela "Nova ação", os campos abertos pelos botões crescem; na janela da ação, "Reestimar" e "Registrar conclusão" abrem e fecham deslizando, e os editores no lugar surgem suavemente; em "Configurar este espaço" e "Configurar o sistema", as seções abrem e fecham deslizando (`surgir` e `ligarSecoesSuaves`, em `v2/js/telas/movimento.js`). Sem mudança na versão atual |
 | 64.2 | Versão 2, correção do movimento: dentro de janelas e painéis com rolagem, o bloco que abria ou fechava era espremido até a altura mínima e só aparecia inteiro no fim, o que dava a impressão de animação truncada (por exemplo, em "Reestimar"). O bloco animado deixou de encolher (`flexShrink: 0`), e a curva padrão ficou mais suave no começo (`cubic-bezier(.2, 0, 0, 1)`). Sem mudança na versão atual |
 | 64.3 | Versão 2: na janela da ação, os botões "Reestimar" e "Registrar conclusão" encolhem enquanto o formulário cresce no lugar deles, e o contrário ao cancelar (`trocarSuave`). Abrir e fechar passaram a levar também as folgas, as bordas e o espaço entre itens, para não sobrar salto no fim do movimento. Sem mudança na versão atual |
+| 64.4 | Versão 2: ao salvar uma reestimativa ou uma conclusão, o formulário também encolhe no lugar enquanto os botões (ou "Desfazer conclusão") voltam a crescer, em vez de sumir de uma vez quando a janela se atualiza com o dado gravado. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

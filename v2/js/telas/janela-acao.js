@@ -10,7 +10,7 @@ import { duracaoPert } from "../calculo.js";
 import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo } from "../acao.js";
 import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
-import { surgir, trocarSuave } from "./movimento.js";
+import { surgir, trocarSuave, abrirSuave, fecharSuave, reduzirMovimento } from "./movimento.js";
 import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 
@@ -148,6 +148,32 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
     restaurarValores(valores);
     seletores.desenhar();
+    encolherFormularioGravado();
+  }
+
+  /**
+   * Formulário de bloco ("Reestimar", "Registrar conclusão") que acabou de ser gravado: a gravação
+   * redesenha a janela sem ele; uma cópia encolhe no lugar enquanto os botões voltam a crescer.
+   */
+  let gravado = null;
+  function encolherFormularioGravado() {
+    if (!gravado) return;
+    const fantasma = gravado;
+    gravado = null;
+    const ancora = corpo.querySelector("[data-abrir-form], [data-desfazer-conclusao]")?.closest(".botoes");
+    if (!ancora || reduzirMovimento()) return;
+    fantasma.setAttribute("aria-hidden", "true");
+    fantasma.inert = true;
+    ancora.after(fantasma);
+    fecharSuave(fantasma).then(() => fantasma.remove());
+    abrirSuave(ancora);
+  }
+  /** Cópia do formulário com o que foi digitado (a cópia de um campo não leva o valor digitado). */
+  function copiaDoFormulario(form) {
+    const copia = form.cloneNode(true);
+    const originais = form.querySelectorAll("input, textarea");
+    copia.querySelectorAll("input, textarea").forEach((el, i) => { el.value = originais[i].value; });
+    return copia;
   }
 
   function barra(valor, cor, texto) {
@@ -364,9 +390,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const mensagens = { reestimar: "Reestimativa registrada.", concluir: "Conclusão registrada. As ações seguintes foram recalculadas." };
     try {
       editando = null; // antes de gravar: a gravação redesenha a janela já sem o editor
+      if (BLOCOS.includes(nome)) gravado = copiaDoFormulario(form);
       await operacoes[nome]();
       if (mensagens[nome]) avisar(mensagens[nome]);
     } catch (e) {
+      gravado = null;
       editando = nome;
       desenhar();
       const novoErro = corpo.querySelector(`[data-salvar="${nome}"] [data-erro]`) ?? erro;
