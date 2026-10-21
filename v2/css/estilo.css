@@ -30,7 +30,7 @@
   --tom-7: #C2E1FF; --tom-7-texto: #1D4D87; --tom-8: #FFCDE3; --tom-8-texto: #782F54; --tom-9: #FFD0BF; --tom-9-texto: #7D3319;
   --tom-10: #B3E7FF; --tom-10-texto: #00567D; --tom-11: #CCE8BD; --tom-11-texto: #305A12; --tom-12: #F6D0F5; --tom-12-texto: #6B346C;
   --tom-13: #F1DCAD; --tom-13-texto: #674700; --tom-14: #AEEDE2; --tom-14-texto: #005F53; --tom-15: #D4DAFF; --tom-15-texto: #424487;
-  --f-titulo: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-titulo: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif; /* escolhida pelo responsável em 21/10/2026 */
   --f-texto: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-dados: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --raio: 6px;
