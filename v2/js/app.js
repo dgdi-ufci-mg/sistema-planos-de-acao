@@ -137,13 +137,15 @@ async function abrirEspaco(id) {
 }
 
 function boasVindas({ comFormulario = false } = {}) {
+  const anterior = abertoId;
   pararEspaco();
   pararEspaco = () => {};
   abertoId = null;
   document.body.classList.remove("so-leitura");
-  esquecer();
+  if (!comFormulario) esquecer(); // ao cancelar o novo espaço, volta ao que estava aberto
   history.replaceState(null, "", location.pathname + location.search);
   mostrarBoasVindas(principal, {
+    aoCancelar: async () => { if (!anterior || !(await abrirEspaco(anterior))) boasVindas(); },
     aoCriar: async (dados) => abrirEspaco(await store.criarEspaco(dados)),
     aoVerExemplo: verExemplo,
     comFormulario,

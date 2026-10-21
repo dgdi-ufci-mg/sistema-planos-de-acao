@@ -195,6 +195,8 @@ body::before {
 .cabeca-espaco:empty { display: none; }
 @media (min-width: 900px) {
   body { padding-left: calc(var(--largura-lateral) + 24px); transition: padding-left var(--mov) var(--mov-curva); }
+  /* a barra encosta no menu lateral, sem vão entre os dois */
+  body:not(.lateral-recolhida) .topo { margin-left: -24px; padding-left: 24px; }
   body.lateral-recolhida { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
   body.lateral-recolhida .lateral { transform: translateX(-100%); }
   .fundo-lateral { display: none !important; }

@@ -16,11 +16,14 @@ const hojeIso = () => {
  * @param {{aoCriar: (dados: object) => Promise<void>, aoVerExemplo: () => Promise<void>, comFormulario?: boolean,
  *   podeCriar?: boolean, aoEntrar?: () => void}} acoes
  *   comFormulario: já abre o formulário de criação ("Novo espaço", no menu do espaço);
- *   podeCriar: falso sem login, e o botão de criar vira "Entrar para criar um espaço".
+ *   podeCriar: falso sem login, e o botão de criar vira "Entrar para criar um espaço";
+ *   aoCancelar: com o formulário sozinho, "Cancelar" volta para onde a pessoa estava.
  */
-export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false, podeCriar = true, aoEntrar }) {
+export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false, podeCriar = true, aoEntrar, aoCancelar }) {
+  /* "Novo espaço" (menu lateral): só o formulário, sem o quadro de boas-vindas */
+  const soFormulario = comFormulario && podeCriar;
   alvo.innerHTML = `
-    <section class="cartao boas-vindas">
+    <section class="cartao boas-vindas"${soFormulario ? " hidden" : ""}>
       <div class="identidade"><img src="../logo.png" alt="" width="40" height="40"><span><b>${NOME}</b><small>${INSTITUICAO}</small></span></div>
       <h1>Bem-vindo ao ${NOME}</h1>
       <p>Para cada ação, você informa quanto tempo ela deve levar e de quais outras ações ela depende.
@@ -60,6 +63,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
   alvo.querySelector('[data-acao="criar"]')?.addEventListener("click", abrirFormulario);
   alvo.querySelector('[data-acao="entrar"]')?.addEventListener("click", () => aoEntrar());
   alvo.querySelector('[data-acao="cancelar"]').addEventListener("click", () => {
+    if (soFormulario && aoCancelar) return aoCancelar(); // volta para onde a pessoa estava
     formulario.hidden = true;
     mostrarErro("");
   });
