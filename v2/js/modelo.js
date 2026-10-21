@@ -24,6 +24,8 @@ export const CAMPOS = Object.freeze({
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
+  /** Histórico de alterações das ações (passo 1.16): só de acréscimo. */
+  historico: ["id", "entidade", "chave", "tipo", "campo", "antes", "depois", "em", "por"],
   retrato: [
     "id", "nome", "origem", "criadoEm", "criadoPor",
     "semente", "simulacoes", "versaoCalculo", "espaco", "datasExcluidasEfetivas", "responsaveis", "resumo",

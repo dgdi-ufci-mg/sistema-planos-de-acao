@@ -31,6 +31,16 @@ export function criarBancoLocal() {
   const ouvintes = new Map();
   /** Calendário geral, o mesmo para todos os espaços. */
   let calendario = null;
+  /** Histórico de alterações das ações (passo 1.16): espacoId → registros, só de acréscimo. */
+  const historicoPorEspaco = new Map();
+  const historicoDo = (espacoId) => {
+    if (!historicoPorEspaco.has(espacoId)) historicoPorEspaco.set(espacoId, []);
+    return historicoPorEspaco.get(espacoId);
+  };
+  /** Grava os registros do histórico, se a operação os pediu (`historico(antes, depois)`). */
+  const registrar = (espacoId, historico, antes, depois) => {
+    if (historico) historicoDo(espacoId).push(...copia(historico(copia(antes), copia(depois))));
+  };
 
   const acoesDo = (espacoId) => {
     if (!acoesPorEspaco.has(espacoId)) acoesPorEspaco.set(espacoId, new Map());
@@ -57,12 +67,17 @@ export function criarBancoLocal() {
   };
   const avisarTodos = () => { for (const espacoId of ouvintes.keys()) avisar(espacoId); };
 
-  /** Lê, calcula e grava a ação de uma vez, sem espera no meio. */
-  const mudarAcao = (espacoId, numero, mudanca) => {
+  /**
+   * Lê, calcula e grava a ação de uma vez, sem espera no meio, com os registros do histórico
+   * (`historico`, opcional: recebe a ação antes e depois e devolve os registros).
+   */
+  const mudarAcao = (espacoId, numero, mudanca, historico) => {
     const acoes = acoesDo(espacoId);
     if (!acoes.has(numero)) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
     const atual = acoes.get(numero);
-    acoes.set(numero, { ...atual, ...copia(mudanca(copia(atual))) });
+    const nova = { ...atual, ...copia(mudanca(copia(atual))) };
+    registrar(espacoId, historico, atual, nova); // calcula antes de gravar: se falhar, nada muda
+    acoes.set(numero, nova);
     avisar(espacoId);
   };
 
@@ -99,12 +114,13 @@ export function criarBancoLocal() {
       return numero;
     },
     /** Cria a ação só se o número estiver livre no espaço (seção 4.6). */
-    async criarAcao(espacoId, acao) {
+    async criarAcao(espacoId, acao, historico) {
       exigirEspaco(espacoId);
       const acoes = acoesDo(espacoId);
       if (acoes.has(acao.numero)) {
         throw new ErroDeDados("numero-ocupado", `Já existe uma ação com o número ${acao.numero}.`);
       }
+      registrar(espacoId, historico, null, acao);
       acoes.set(acao.numero, copia(acao));
       avisar(espacoId);
     },
@@ -116,8 +132,8 @@ export function criarBancoLocal() {
       return [...acoesDo(espacoId).values()].map(copia);
     },
     /** Grava só os campos informados; os demais ficam como estão (seção 4.6). */
-    async alterarAcao(espacoId, numero, campos) {
-      mudarAcao(espacoId, numero, () => campos);
+    async alterarAcao(espacoId, numero, campos, historico) {
+      mudarAcao(espacoId, numero, () => campos, historico);
     },
 
     /**
@@ -126,33 +142,43 @@ export function criarBancoLocal() {
      * `extra`: outros campos gravados junto, como a data e o autor da alteração.
      * Lê e grava de uma vez, sem espera no meio (no Firebase: arrayUnion).
      */
-    async acrescentarNaLista(espacoId, numero, campo, itens, extra = {}) {
+    async acrescentarNaLista(espacoId, numero, campo, itens, extra = {}, historico) {
       mudarAcao(espacoId, numero, (a) => {
         const lista = a[campo] ?? [];
         return { ...extra, [campo]: [...lista, ...itens.filter((i) => !lista.includes(i))] };
-      });
+      }, historico);
     },
     /** Retira itens de uma lista da ação, sem regravar os demais (seção 4.6; no Firebase: arrayRemove). */
-    async retirarDaLista(espacoId, numero, campo, itens, extra = {}) {
-      mudarAcao(espacoId, numero, (a) => ({ ...extra, [campo]: (a[campo] ?? []).filter((i) => !itens.includes(i)) }));
+    async retirarDaLista(espacoId, numero, campo, itens, extra = {}, historico) {
+      mudarAcao(espacoId, numero, (a) => ({ ...extra, [campo]: (a[campo] ?? []).filter((i) => !itens.includes(i)) }), historico);
     },
     /** Acrescenta uma estimativa no fim do histórico, sem regravar as anteriores (seção 4.6). */
-    async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}) {
-      mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }));
+    async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}, historico) {
+      mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }), historico);
     },
     /**
      * Troca a estimativa mais recente (correção, seção 4.3), só se a ação ainda tiver
      * `quantas` estimativas: se alguém acrescentou outra nesse meio-tempo, recusa
      * (no Firebase: transação).
      */
-    async trocarUltimaEstimativa(espacoId, numero, estimativa, quantas, extra = {}) {
+    async trocarUltimaEstimativa(espacoId, numero, estimativa, quantas, extra = {}, historico) {
       mudarAcao(espacoId, numero, (a) => {
         const lista = a.estimativas ?? [];
         if (!quantas || lista.length !== quantas) {
           throw new ErroDeDados("estimativa-mudou", "Alguém registrou outra estimativa nesta ação agora. Confira o histórico antes de corrigir.");
         }
         return { ...extra, estimativas: [...lista.slice(0, -1), estimativa] };
-      });
+      }, historico);
+    },
+
+    // --- histórico de alterações (passo 1.16) ---
+    /** Registros de uma ação, do mais antigo ao mais recente. Ninguém altera nem apaga. */
+    async listarHistorico(espacoId, numero) {
+      return historicoDo(espacoId).filter((r) => r.chave === numero).map(copia);
+    },
+    /** Todos os registros do espaço (cópia de segurança). */
+    async listarHistoricoDoEspaco(espacoId) {
+      return historicoDo(espacoId).map(copia);
     },
 
     // --- responsáveis: de cada espaço (seção 4.5) ---

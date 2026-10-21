@@ -87,7 +87,8 @@ describe("Exportação e cópia de segurança (passo 1.19a)", () => {
     await store.excluirEspaco(outro);
     const copia = JSON.parse(JSON.stringify(await store.copiaDeSeguranca()));
     assert.equal(copia.formato, "sextante-copia-de-seguranca");
-    assert.equal(copia.versao, 1);
+    assert.equal(copia.versao, 2);
+    assert.equal(copia.espacos.find((e) => e.espaco.id === id).historico.filter((r) => r.tipo === "criacao").length, 12);
     assert.equal(copia.geradaPor, "ana.souza@ufci.edu.br");
     assert.equal(copia.espacos.length, 2);
     assert.ok(copia.espacos.find((e) => e.espaco.id === outro).espaco.excluidoEm);

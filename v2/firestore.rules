@@ -5,6 +5,7 @@
 // - qualquer pessoa consulta;
 // - só quem entrou com e-mail e senha cria e altera;
 // - ninguém apaga: a exclusão é lógica (passo 1.15);
+// - o histórico de alterações só recebe registros novos: ninguém altera nem apaga (passo 1.16);
 // - fora destes caminhos, nada.
 rules_version = '2';
 service cloud.firestore {
@@ -23,6 +24,11 @@ service cloud.firestore {
       match /responsaveis/{responsavelId} {
         allow read: if true;
         allow create, update: if logado();
+      }
+      // histórico de alterações das ações (passo 1.16): só de acréscimo (sem update nem delete)
+      match /historico/{registroId} {
+        allow read: if true;
+        allow create: if logado();
       }
     }
     match /sistema/calendario {

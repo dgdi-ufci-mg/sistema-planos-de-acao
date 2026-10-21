@@ -8,15 +8,16 @@
  *   espacos/{id}                    espaço
  *   espacos/{id}/acoes/{numero}     ação
  *   espacos/{id}/responsaveis/{id}  responsável do espaço (seção 4.5)
+ *   espacos/{id}/historico/{id}     histórico de alterações das ações (seção 4.2.1), só de acréscimo
  *   sistema/calendario              calendário geral
  *
- * Recebe o Firestore já iniciado (`db`, API compat) e `FieldValue`, para os testes
- * poderem usar um Firestore falso, em memória (`testes/firestore-falso.js`).
+ * Recebe o Firestore já iniciado (`db`, API compat), para os testes
+ * poderem usar um Firestore falso, em memória (`testes/firebase-falso.js`).
  */
 import { ErroDeDados } from "./local.js";
 
-/* Cópia só ao gravar documentos inteiros. Em `update`, nunca: copiar transforma o arrayUnion e o
- * arrayRemove em objetos comuns, que seriam gravados no lugar da lista (falha encontrada em 21/10/2026). */
+/* Cópia dos dados gravados. Desde o passo 1.16, as ações mudam por transação, com valores comuns;
+ * o arrayUnion e o arrayRemove, que uma cópia estragaria (falha encontrada em 21/10/2026), saíram. */
 const copia = (valor) => structuredClone(valor);
 
 /** Traduz os erros do Firestore para mensagens do sistema. */
@@ -43,13 +44,34 @@ const protegido = (operacao) => async (...args) => {
 
 /**
  * @param {any} db         Firestore (API compat): firebase.firestore()
- * @param {any} FieldValue firebase.firestore.FieldValue
  */
-export function criarBancoFirestore(db, FieldValue) {
+export function criarBancoFirestore(db) {
   const espacoRef = (id) => db.collection("espacos").doc(id);
   const acoesRef = (espacoId) => espacoRef(espacoId).collection("acoes");
   const acaoRef = (espacoId, numero) => acoesRef(espacoId).doc(String(numero));
   const responsaveisRef = (espacoId) => espacoRef(espacoId).collection("responsaveis");
+  const historicoRef = (espacoId) => espacoRef(espacoId).collection("historico");
+
+  /** Na mesma transação da mudança, grava os registros do histórico (um não existe sem o outro). */
+  const registrar = (t, espacoId, historico, antes, depois) => {
+    if (!historico) return;
+    for (const r of historico(antes ? copia(antes) : null, copia(depois))) t.set(historicoRef(espacoId).doc(r.id), copia(r));
+  };
+
+  /**
+   * Muda uma ação numa transação: lê, calcula os campos novos (`mudanca`, que recebe a ação atual),
+   * grava só esses campos e, junto, o histórico. Com duas pessoas ao mesmo tempo, o Firestore
+   * refaz a transação de quem chegou depois, sobre a ação já atualizada (seção 4.6).
+   */
+  async function mudarAcao(espacoId, numero, mudanca, historico) {
+    const ref = acaoRef(espacoId, numero);
+    await db.runTransaction(async (t) => {
+      const atual = await lerNaTransacao(t, ref, numero);
+      const campos = copia(mudanca(copia(atual)));
+      t.update(ref, campos);
+      registrar(t, espacoId, historico, atual, { ...atual, ...campos });
+    });
+  }
   const calendarioRef = () => db.collection("sistema").doc("calendario");
 
   /* ---------- tempo real ----------
@@ -120,12 +142,13 @@ export function criarBancoFirestore(db, FieldValue) {
         return numero;
       });
     },
-    async criarAcao(espacoId, acao) {
+    async criarAcao(espacoId, acao, historico) {
       await db.runTransaction(async (t) => {
         if (!(await t.get(espacoRef(espacoId))).exists) throw new ErroDeDados("nao-encontrado", `Espaço ${espacoId} não encontrado.`);
         const ref = acaoRef(espacoId, acao.numero);
         if ((await t.get(ref)).exists) throw new ErroDeDados("numero-ocupado", `Já existe uma ação com o número ${acao.numero}.`);
         t.set(ref, copia(acao));
+        registrar(t, espacoId, historico, null, acao);
       });
     },
     async lerAcao(espacoId, numero) {
@@ -135,41 +158,43 @@ export function criarBancoFirestore(db, FieldValue) {
     async listarAcoes(espacoId) {
       return (await acoesRef(espacoId).get()).docs.map((d) => d.data());
     },
-    async alterarAcao(espacoId, numero, campos) {
-      try {
-        await acaoRef(espacoId, numero).update(campos);
-      } catch (e) {
-        if (e?.code === "not-found") throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
-        throw e;
-      }
+    /** Grava só os campos informados; os demais ficam como estão (seção 4.6). */
+    async alterarAcao(espacoId, numero, campos, historico) {
+      await mudarAcao(espacoId, numero, () => campos, historico);
     },
-    /** Acréscimo item a item, sem regravar a lista (arrayUnion; seção 4.6). */
-    async acrescentarNaLista(espacoId, numero, campo, itens, extra = {}) {
-      await banco.alterarAcao(espacoId, numero, { ...extra, [campo]: FieldValue.arrayUnion(...itens) });
+    /** Acréscimo item a item, sem repetir e sem perder o que outra pessoa acrescentou ao mesmo tempo (seção 4.6). */
+    async acrescentarNaLista(espacoId, numero, campo, itens, extra = {}, historico) {
+      await mudarAcao(espacoId, numero, (a) => {
+        const lista = a[campo] ?? [];
+        return { ...extra, [campo]: [...lista, ...itens.filter((i) => !lista.includes(i))] };
+      }, historico);
     },
-    async retirarDaLista(espacoId, numero, campo, itens, extra = {}) {
-      await banco.alterarAcao(espacoId, numero, { ...extra, [campo]: FieldValue.arrayRemove(...itens) });
+    async retirarDaLista(espacoId, numero, campo, itens, extra = {}, historico) {
+      await mudarAcao(espacoId, numero, (a) => ({ ...extra, [campo]: (a[campo] ?? []).filter((i) => !itens.includes(i)) }), historico);
     },
-    /**
-     * Estimativa no fim do histórico. Por transação, e não por arrayUnion: este juntaria
-     * duas estimativas idênticas numa só.
-     */
-    async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}) {
-      const ref = acaoRef(espacoId, numero);
-      await db.runTransaction(async (t) => {
-        const a = await lerNaTransacao(t, ref, numero);
-        t.update(ref, { ...copia(extra), estimativas: [...(a.estimativas ?? []), copia(estimativa)] });
-      });
+    /** Estimativa no fim do histórico de estimativas (duas iguais continuam sendo duas). */
+    async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}, historico) {
+      await mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }), historico);
     },
-    async trocarUltimaEstimativa(espacoId, numero, estimativa, quantas, extra = {}) {
-      const ref = acaoRef(espacoId, numero);
-      await db.runTransaction(async (t) => {
-        const lista = (await lerNaTransacao(t, ref, numero)).estimativas ?? [];
+    async trocarUltimaEstimativa(espacoId, numero, estimativa, quantas, extra = {}, historico) {
+      await mudarAcao(espacoId, numero, (a) => {
+        const lista = a.estimativas ?? [];
         if (!quantas || lista.length !== quantas) {
           throw new ErroDeDados("estimativa-mudou", "Alguém registrou outra estimativa nesta ação agora. Confira o histórico antes de corrigir.");
         }
-        t.update(ref, { ...copia(extra), estimativas: [...lista.slice(0, -1), copia(estimativa)] });
-      });
+        return { ...extra, estimativas: [...lista.slice(0, -1), estimativa] };
+      }, historico);
+    },
+
+    // --- histórico de alterações (passo 1.16) ---
+    /** Registros de uma ação, em qualquer ordem (sem orderBy, para não exigir índice composto). */
+    async listarHistorico(espacoId, numero) {
+      const s = await historicoRef(espacoId).where("chave", "==", numero).get();
+      return s.docs.map((d) => d.data()); // o Store ordena
+    },
+    /** Todos os registros do espaço (cópia de segurança). */
+    async listarHistoricoDoEspaco(espacoId) {
+      return (await historicoRef(espacoId).get()).docs.map((d) => d.data()).sort((a, b) => a.em.localeCompare(b.em));
     },
 
     // --- responsáveis: de cada espaço (seção 4.5) ---

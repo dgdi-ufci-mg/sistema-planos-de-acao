@@ -9,6 +9,7 @@ Diário dos passos feitos em lote (especificação, seção 3.3, "Execução em 
 | 1.17a | `0c896ea` |
 | 1.17b | `b0d2785` |
 | 1.17c | `273c153` |
+| 1.19a | `0a39614` |
 
 Em cada passo: o que foi feito, os testes, a conferência na tela e as **decisões provisórias**, tomadas sem consulta e à espera da revisão do responsável.
 
@@ -132,3 +133,34 @@ Os registros vão como estão no banco, sem tradução: o dicionário de dados (
 5. Nome do arquivo: nome do sistema, "copia" e a data (`sextante-copia-2026-10-21.json`).
 
 **Nenhum número mudou de sentido.** Nada é gravado no banco.
+
+## Passo 1.16 — Histórico de alterações (21/10/2026, na branch `passos-1.16-1.18`)
+
+**Por que numa branch:** o histórico fica numa coleção nova do banco, `espacos/{id}/historico`, que as regras atuais do Firestore recusam. Se isso fosse para a `main` antes de o responsável publicar as regras novas, **toda alteração de ação falharia no site**, porque o registro e a alteração são gravados juntos. Por isso o passo está na branch `passos-1.16-1.18`, enviada ao GitHub mas não juntada à `main`.
+
+**Para publicar (responsável):**
+1. No console do Firebase do projeto `sextante-v2`: Firestore Database > Regras > colar o conteúdo de `v2/firestore.rules` da branch > Publicar.
+2. Depois, juntar a branch à `main` (eu faço, quando autorizado).
+
+**O que foi feito:**
+- Toda alteração de ação, por qualquer caminho (janela da ação, planilha, quadro, exclusão encadeada, substituição de responsável, retirada de etapa), grava um registro por campo que mudou: quem, quando, campo, valor antigo e valor novo. A criação grava um registro só. Dicionário de dados: seção 4.2.1 da especificação.
+- Os registros são gravados na mesma operação da alteração: no Firebase, na mesma transação; na memória, no mesmo passo. Se a alteração for recusada, nenhum registro fica.
+- Na janela da ação, abaixo do histórico de estimativas, a seção recolhida **Histórico de alterações**, carregada ao abrir, do mais recente ao mais antigo, em frases simples ("Mudou o rótulo de … para …", "Depende de: retirou …", "Registrou a conclusão em …"). Atualiza sozinha quando a ação muda.
+- Regras do banco (`v2/firestore.rules`): o histórico pode ser lido por todos e só recebe registros novos de quem entrou; ninguém altera nem apaga.
+- A cópia de segurança passou ao formato versão 2, com o histórico de cada espaço.
+
+**Mudança técnica importante:** no Firebase, toda mudança de ação passou a ser feita por transação (antes, as listas usavam `arrayUnion` e `arrayRemove`). A transação lê a ação, calcula a mudança e grava, junto, os registros; com duas pessoas ao mesmo tempo, o Firebase refaz a de quem chegou depois, sobre a ação já atualizada, sem perder nada. Efeito colateral: sem internet, alterar uma ação dá erro em vez de ficar na fila (as estimativas já funcionavam assim).
+
+**Arquivos:** `js/historico.js` (regras e frases), `js/modelo.js`, `js/dados.js`, `js/banco/local.js`, `js/banco/firestore.js`, `js/banco/firebase.js`, `js/telas/janela-acao.js`, `css/estilo.css`, `firestore.rules`, `testes/firebase-falso.js` (consulta por igualdade), `docs/especificacao-reescrita.md` (seções 4.2.1, 4.9 e 4.10).
+
+**Testes:** 201 testes automáticos passam, incluindo os novos de `testes/historico.test.js` (regras, frases e o Store nos dois bancos: criação, alterações, listas, estimativas, exclusão encadeada, restauração, e nada gravado quando a alteração é recusada) e o novo teste de contrato dos bancos (histórico gravado junto com a mudança). O teste do dicionário confere a entidade nova. No navegador de teste: com o exemplo (memória) e com o Firebase falso, entrando com login, criando espaço e ação, renomeando e abrindo o histórico: registros corretos, com o e-mail de quem entrou; sem erros.
+
+**Decisões provisórias:**
+1. Um registro por campo alterado; listas (dependências, responsáveis, estimativas) com a lista inteira antes e depois.
+2. Ficam fora os carimbos da gravação (`criadaEm`, `alteradaEm`, `alteradaPor`, `excluidaPor`), já guardados no próprio registro.
+3. Só as ações têm histórico, como diz a seção 16.4. Espaço e responsáveis, não.
+4. A correção de estimativa (que não cria item novo na lista de estimativas) também é registrada no histórico de alterações.
+5. A seção começa recolhida e só lê o banco quando aberta.
+6. Na janela, o autor aparece pelo nome do responsável ligado ao e-mail; sem ligação, pelo e-mail; sem login (exemplo), "Sem login".
+
+**Observado e não corrigido (fora do passo):** no "Histórico de estimativas" da janela da ação, a data, o autor e o selo "vigente" de cada item aparecem em linhas separadas, porque o item é uma coluna flexível. Problema de aparência anterior a este passo; fica para correção à parte, se o responsável quiser.

@@ -6,14 +6,14 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { criarBancoFirestore } from "../js/banco/firestore.js";
 import { testarContratoDoBanco } from "./contrato-banco.js";
-import { criarFirestoreFalso, criarAuthFalso, FieldValueFalso } from "./firebase-falso.js";
+import { criarFirestoreFalso, criarAuthFalso } from "./firebase-falso.js";
 
-testarContratoDoBanco("Firestore (falso, em memória)", () => criarBancoFirestore(criarFirestoreFalso(), FieldValueFalso));
+testarContratoDoBanco("Firestore (falso, em memória)", () => criarBancoFirestore(criarFirestoreFalso()));
 
 describe("Banco do Firestore: detalhes", () => {
   it("guarda os responsáveis dentro do espaço: espacos/{id}/responsaveis/{id}", async () => {
     const db = criarFirestoreFalso();
-    const banco = criarBancoFirestore(db, FieldValueFalso);
+    const banco = criarBancoFirestore(db);
     await banco.criarEspaco("p1", { nome: "Espaço 1" });
     await banco.criarResponsavel("p1", "r1", { nome: "Ana", tipo: "pessoa" });
     assert.ok(db._docs.has("espacos/p1/responsaveis/r1"));
@@ -21,14 +21,14 @@ describe("Banco do Firestore: detalhes", () => {
 
   it("guarda as ações em espacos/{id}/acoes/{numero}", async () => {
     const db = criarFirestoreFalso();
-    const banco = criarBancoFirestore(db, FieldValueFalso);
+    const banco = criarBancoFirestore(db);
     await banco.criarEspaco("p1", { nome: "Espaço 1" });
     await banco.criarAcao("p1", { numero: 7, rotulo: "Sete", ordem: 1 });
     assert.ok(db._docs.has("espacos/p1/acoes/7"));
   });
 
   it("mantém duas estimativas iguais no histórico", async () => {
-    const banco = criarBancoFirestore(criarFirestoreFalso(), FieldValueFalso);
+    const banco = criarBancoFirestore(criarFirestoreFalso());
     await banco.criarEspaco("p1", { nome: "Espaço 1" });
     await banco.criarAcao("p1", { numero: 1, rotulo: "Um", ordem: 1, estimativas: [] });
     const e = { em: "2026-10-21", o: 1, m: 2, p: 3 };
@@ -38,13 +38,13 @@ describe("Banco do Firestore: detalhes", () => {
 
   it("sem login, recusa a gravação com mensagem clara", async () => {
     const auth = criarAuthFalso({});
-    const banco = criarBancoFirestore(criarFirestoreFalso({ auth, exigirLogin: true }), FieldValueFalso);
+    const banco = criarBancoFirestore(criarFirestoreFalso({ auth, exigirLogin: true }));
     await assert.rejects(banco.criarEspaco("p1", { nome: "Espaço 1" }), { codigo: "sem-permissao" });
     assert.deepEqual(await banco.listarEspacos(), []);
   });
 
   it("responsável criado aparece na hora para quem acompanha", async () => {
-    const banco = criarBancoFirestore(criarFirestoreFalso(), FieldValueFalso);
+    const banco = criarBancoFirestore(criarFirestoreFalso());
     await banco.criarEspaco("p1", { nome: "Espaço 1" });
     const parar = banco.acompanharEspaco("p1", () => {});
     await new Promise((r) => setTimeout(r, 0));

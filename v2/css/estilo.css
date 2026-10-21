@@ -858,3 +858,13 @@ h3.editavel { padding: 2px 6px; }
 
 /* ---------- exportação (passo 1.19a) ---------- */
 .texto-exportado { width: 100%; box-sizing: border-box; font: .8rem var(--f-dados); padding: 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--sunk); color: var(--ink); margin-top: 8px; }
+
+/* ---------- histórico de alterações (passo 1.16) ---------- */
+.historico.alteracoes { display: block; }
+.historico.alteracoes > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+.historico.alteracoes > summary::-webkit-details-marker { display: none; }
+.historico.alteracoes > summary::before { content: "›"; display: inline-block; transition: transform var(--mov-rapido) var(--mov-curva); color: var(--muted); font-size: 1.2rem; line-height: 1; }
+.historico.alteracoes[open] > summary::before { transform: rotate(90deg); }
+.historico.alteracoes ol { margin-top: 8px; }
+.historico.alteracoes li { border-left-color: var(--line); }
+.historico.alteracoes .tec { margin-top: 6px; }

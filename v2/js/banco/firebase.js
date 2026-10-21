@@ -71,5 +71,5 @@ export async function conectarFirebase(config) {
     }),
     redefinirSenha: protegido((email) => auth.sendPasswordResetEmail(email.trim())),
   };
-  return { banco: criarBancoFirestore(db, firebase.firestore.FieldValue), acesso };
+  return { banco: criarBancoFirestore(db), acesso };
 }

@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 a 1.14, 1.14a, 1.14b, 1.14c, 1.15, 1.17a, 1.17b, 1.17c e 1.19a (primeiras versões).
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 a 1.14, 1.14a, 1.14b, 1.14c, 1.15, 1.16, 1.17a, 1.17b, 1.17c e 1.19a (primeiras versões).
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -256,6 +256,23 @@ Chave: o par (espaço, `numero`).
 
 Saem da versão atual: custo, custo gasto, % concluído, início real e término real separado. O campo `entrega` da ação, previsto antes, foi retirado em 20/10/2026 para não se confundir com as **entregas do Plano de Ação** (seção 16.7); o que a coluna "Entrega" da planilha da PI² dizia passa para a descrição.
 
+#### 4.2.1 Histórico de alterações: um registro por campo alterado
+
+Toda alteração de uma ação gera registros no histórico (seção 16.4; passo 1.16): um por campo que mudou, com o valor antigo e o novo. A criação gera um registro só. Os registros são gravados na mesma operação da alteração (no Firebase, na mesma transação): um não existe sem o outro. Só de acréscimo: ninguém altera nem apaga, nem o Administrador do Sistema. Não entram os carimbos da própria gravação (`criadaEm`, `alteradaEm`, `alteradaPor`, `excluidaPor`), que o registro já guarda em `em` e `por`. A correção de uma estimativa, que não cria item novo em `estimativas` (seção 4.3), também é registrada aqui, com a lista antes e depois.
+
+<!-- dicionario: historico -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do registro | |
+| `entidade` | texto | sim | O que foi alterado. Por enquanto, sempre `acao` | `acao` |
+| `chave` | inteiro | sim | Número da ação no espaço | `7` |
+| `tipo` | texto | sim | `criacao` ou `alteracao` | `alteracao` |
+| `campo` | texto | não | Campo da ação que mudou (seção 4.2). Vazio na criação | `concluidaEm` |
+| `antes` | qualquer | não | Valor antes da alteração, no formato do campo. Vazio na criação ou se o campo não existia | `null` |
+| `depois` | qualquer | não | Valor depois da alteração. Vazio na criação ou se o campo foi esvaziado | `2026-10-21` |
+| `em` | momento | sim | Quando | |
+| `por` | usuário | não | Quem. Vazio só em gravações sem login (espaço de exemplo, na memória) | |
+
 ### 4.3 Estimativa: cada item de `estimativas`
 
 <!-- dicionario: estimativa -->
@@ -417,6 +434,7 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Dependência | lista `dependeDe` dentro da ação | tabela `acao_dependencia` |
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
+| Histórico de alterações | `espacos/{id}/historico/{id}` | tabela `historico`, com `espaco_id` |
 | Retrato | cabeçalho em `espacos/{id}/retratos/{id}`; ações em `espacos/{id}/retratos/{id}/acoes/{numero}` | tabelas `retrato`, `retrato_acao` |
 | Calendário geral | documento `sistema/calendario` | tabela `data_excluida_geral` |
 | Responsável (criado no sistema) | `espacos/{id}/responsaveis/{id}` | tabela `responsavel`, com `espaco_id` |
@@ -427,7 +445,6 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
-- **Histórico de alterações** (passo 1.16): quem, quando, entidade, chave, campo, valor antigo e valor novo; coleção ou tabela própria, só de acréscimo (seção 16.4).
 - **Fase 2 e seguintes:** campos opcionais da seção 16.8 (`etiquetas`, `posicaoPrioridade`, `documentos` da ação, `justificativa`, `local`, `dataLimite`; depois, `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos).
 - **Fase 4:** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
 - **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
@@ -722,7 +739,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.14c. ✔ Menu lateral recolhível, como no Todoist e no Notion (decisão do responsável, 21/10/2026): no alto, quem entrou (trocar senha, sair ou entrar); no meio, a lista de espaços, cada um com engrenagem para "Configurar este espaço", e "+ Novo espaço"; no pé, "Ajuda e manual" e "Configurar o sistema". No celular, abre pelo botão ☰. A barra de cima fica só com o nome do espaço, no centro; logotipo, nome do sistema e sigla da instituição saem da tela de trabalho e ficam nas boas-vindas, na Ajuda e na aba do navegador. Feito no passo 1.14c: `js/telas/navegacao.js` (no lugar de `js/telas/topo.js`); no computador, a partir de 900 px, o menu fica ao lado do conteúdo e recolhe pelo botão ☰, deslizando, com a escolha lembrada no aparelho; abaixo disso, abre por cima, com fundo escurecido, e fecha ao escolher algo, ao tocar fora ou com Esc. A engrenagem aparece no espaço aberto e, no computador, ao passar o mouse nos outros (abre o espaço e a configuração dele). O item "Boas-vindas" saiu: o exemplo fica na Ajuda, e "Novo espaço" abre as boas-vindas com o formulário. O nome do espaço também saiu do alto do conteúdo e foi para a barra e para o título da aba do navegador. O logotipo virou o ícone da aba e aparece, com o nome e a sigla, nas boas-vindas e na Ajuda.
 1.14d. Cadastro provisório de logins pelo Administrador do sistema, só durante a prototipagem, no lugar do console do Firebase (a desenhar).
 1.15. ✔ Exclusão lógica e lixeira, para espaços, ações e responsáveis, com as regras de exclusão encadeada. Feito no passo 1.15: o `Store` filtra os excluídos em um lugar só (listas, leitura do espaço e acompanhamento) e ganhou `excluirAcao` (com `religar`: as dependentes passam às anteriores da excluída), `excluirResponsavel` (com `substituto`), `excluirEtapas` (com `destino` ou sem etapa), `excluirEspaco`, os `restaurar…` correspondentes e `listarLixeira`; o código de uma ação na lixeira continua reservado. Na tela (`js/telas/exclusao.js`, `js/telas/lixeira.js`): "Excluir ação" no pé da janela da ação; "Excluir" no formulário do responsável; o × de fase e etapa com ações; "Excluir este espaço" no fim de "Configurar este espaço". Exclusão sem itens afetados acontece na hora, com "Desfazer" no aviso (decisão do responsável, 21/10/2026); exclusão que afeta outros itens abre uma janela por cima do painel, com as alternativas da seção 4.7 e a primeira marcada. "Lixeira" no pé do menu lateral: o que foi excluído no espaço aberto e os espaços excluídos, com quem, quando e "Restaurar". Restaurar não refaz as ligações alteradas; o registro delas chega com o histórico (passo 1.16).
-1.16. Histórico de alterações (seção 16.4).
+1.16. ✔ Histórico de alterações (seção 16.4). Primeira versão, feita em lote (21/10/2026; detalhes em `docs/registro-de-execucao.md`): registro por campo alterado (seção 4.2.1), gravado na mesma operação da alteração (no Firebase, na mesma transação), em `espacos/{id}/historico/{id}`, só de acréscimo; seção "Histórico de alterações" na janela da ação, em frases simples; o histórico entra na cópia de segurança (formato versão 2). Regras do banco atualizadas em `v2/firestore.rules`.
 1.17. Modos de visualização interativos, no seletor da aba Ações, só no computador (seção 8.4; revisto em 21/10/2026, no lugar da aba Visualização), em três passos:
 1.17a. ✔ Linha do tempo interativa, com a chance de cumprir o prazo e o gráfico da data final. Primeira versão, feita em lote (21/10/2026; detalhes e decisões provisórias em `docs/registro-de-execucao.md`): modo "Linha do tempo" no seletor, só no computador; regras em `js/linha-do-tempo.js`, com testes; tela em `js/telas/linha-do-tempo.js`.
 1.17b. ✔ Cronograma (Gantt) interativo, com comparação de retrato. Primeira versão, feita em lote (21/10/2026; detalhes em `docs/registro-de-execucao.md`): modo "Cronograma", só no computador, com barras por fase e etapa, setas das dependências, caminho crítico, hoje e prazo final, aproximação em semanas ou meses; regras em `js/cronograma.js`, com testes; tela em `js/telas/cronograma.js`. A comparação com retrato fica para depois do passo 1.18.

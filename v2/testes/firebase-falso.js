@@ -92,6 +92,17 @@ export function criarFirestoreFalso({ auth = null, exigirLogin = false } = {}) {
       doc: (id) => docRef(`${caminho}/${id}`),
       async get() { await null; return instantaneoColecao(caminho); },
       onSnapshot: (f) => ouvir(ouvintesColecao, caminho, f, () => instantaneoColecao(caminho)),
+      /** Consulta simples por igualdade, como a usada no histórico. */
+      where: (campo, operador, valor) => {
+        if (operador !== "==") throw new Error(`Operador não imitado: ${operador}`);
+        return {
+          async get() {
+            await null;
+            const todos = instantaneoColecao(caminho).docs;
+            return { docs: todos.filter((d) => igual(d.data()[campo], valor)) };
+          },
+        };
+      },
     };
   }
 

@@ -14,6 +14,7 @@ import { excluirAcao } from "./exclusao.js";
 import { surgir, trocarSuave, abrirSuave, fecharSuave, reduzirMovimento } from "./movimento.js";
 import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
+import { descreverRegistro } from "../historico.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -42,6 +43,9 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /** Campo em edição ("rotulo", "etapa", "descricao", "naoAntesDe", "estimativa") ou formulário aberto ("reestimar", "concluir"). */
   let editando = abrirCom; // "concluir" quando a janela é aberta ao arrastar para Concluídas
   let fechada = false;
+  /** Histórico de alterações (passo 1.16): lido do banco só quando a seção é aberta. */
+  let registros = null;
+  let historicoAberto = false;
 
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `Ação ${inicial.codigo}` : "Ação", "", {
@@ -144,6 +148,10 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       </div>
 
       ${historicoHtml(acao, resumoEst)}
+      <details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
+        <summary><h4>Histórico de alterações</h4></summary>
+        <div data-registros>${registrosHtml()}</div>
+      </details>
       ${store.podeGravar ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ação</button></div>` : ""}`;
     corpo.closest(".painel").querySelector("header h2").textContent = d.usaCodigos && acao.codigo ? `Ação ${acao.codigo}` : "Ação";
     corpo.closest(".painel").style.setProperty("--calor", l.situacao === "concluida" ? "var(--ok)" : l.execucao == null ? "var(--neutral)"
@@ -317,6 +325,40 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       </li>`).join("")}</ol>
     </section>`;
   }
+
+  /** Registros do histórico de alterações, do mais recente ao mais antigo, em frases simples. */
+  function registrosHtml() {
+    if (!registros) return `<p class="vazio">Carregando…</p>`;
+    if (!registros.length) return `<p class="vazio">Nenhuma alteração registrada.</p>`;
+    const etapas = new Map((d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
+    const nomes = {
+      acao: (n) => { const a = d.acoes.find((x) => x.numero === n); return a ? `“${nomeTexto(a)}”` : "uma ação excluída"; },
+      responsavel: (id) => d.pessoas.get(id)?.nome ?? "um responsável excluído",
+      etapa: (id) => etapas.get(id) ?? "etapa retirada",
+    };
+    const quem = (email) => (email ? d.responsaveis.find((r) => r.usuario === email)?.nome ?? email : "Sem login");
+    const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return `<ol>${[...registros].reverse().map((r) => `<li>
+      <span><span class="mono">${esc(quando(r.em))}</span> · ${esc(quem(r.por))}</span>
+      <span>${esc(descreverRegistro(r, nomes))}</span>
+    </li>`).join("")}</ol>
+    <p class="tec">Registro permanente: ninguém altera nem apaga.</p>`;
+  }
+  async function carregarHistorico() {
+    try {
+      registros = await store.listarHistorico(espacoId, numero);
+    } catch (e) {
+      registros = [];
+      avisar(e.message);
+    }
+    const alvo = corpo.querySelector("[data-registros]");
+    if (alvo && !fechada) alvo.innerHTML = registrosHtml();
+  }
+  corpo.addEventListener("toggle", (e) => {
+    if (!e.target.matches?.("[data-historico]")) return;
+    historicoAberto = e.target.open;
+    if (historicoAberto) carregarHistorico();
+  }, true);
 
   /* ---------- seletores com busca ---------- */
   function opcoesDe(nome, texto) {
@@ -520,6 +562,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         tempoAlheia = setTimeout(() => { alheia = null; if (!fechada) desenhar(); }, 10000);
       }
       desenhar();
+      if (historicoAberto && antes?.alteradaEm !== depois?.alteradaEm) carregarHistorico();
     },
     fechar() { if (!fechada) fecharPainel(); },
   };

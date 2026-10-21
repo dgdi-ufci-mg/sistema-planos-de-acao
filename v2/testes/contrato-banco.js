@@ -145,5 +145,21 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await banco.criarEspaco("p1", { nome: "Espaço 1" });
       await assert.rejects(banco.alterarAcao("p1", 99, { rotulo: "x" }), { codigo: "nao-encontrado" });
     });
+
+    it("grava o histórico junto com a mudança da ação, e nada se a mudança falhar (passo 1.16)", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      let n = 0;
+      const historico = (antes, depois) => [{ id: `r${++n}`, chave: depois.numero, antes: antes?.rotulo ?? null, depois: depois.rotulo, em: `2026-10-21T00:00:0${n}Z` }];
+      await banco.criarAcao("p1", acao(1, { estimativas: [{ o: 1, m: 2, p: 3 }] }), historico);
+      await banco.alterarAcao("p1", 1, { rotulo: "Outro" }, historico);
+      await banco.acrescentarNaLista("p1", 1, "dependeDe", [7], {}, historico);
+      await assert.rejects(banco.trocarUltimaEstimativa("p1", 1, { o: 1, m: 1, p: 1 }, 5, {}, historico), { codigo: "estimativa-mudou" });
+      await assert.rejects(banco.alterarAcao("p1", 2, { rotulo: "x" }, historico), { codigo: "nao-encontrado" });
+      const rs = (await banco.listarHistorico("p1", 1)).sort((a, b) => a.em.localeCompare(b.em));
+      assert.deepEqual(rs.map((r) => [r.antes, r.depois]), [[null, "Ação 1"], ["Ação 1", "Outro"], ["Outro", "Outro"]]);
+      assert.equal((await banco.listarHistoricoDoEspaco("p1")).length, 3);
+      assert.deepEqual(await banco.listarHistorico("p1", 2), []);
+    });
   });
 }

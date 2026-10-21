@@ -9,6 +9,7 @@ import { ErroDeDados } from "./banco/local.js";
 import { CAMPOS } from "./modelo.js";
 import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
+import { registrosDaMudanca } from "./historico.js";
 
 export { ErroDeDados };
 
@@ -140,6 +141,8 @@ export function criarStore(banco, opcoes = {}) {
   const novoId = opcoes.novoId ?? (() => globalThis.crypto.randomUUID());
   const hoje = opcoes.hoje ?? hojeLocal;
   const carimbo = () => ({ alteradaEm: agora(), alteradaPor: usuario });
+  /** Histórico de alterações (passo 1.16): o banco chama com a ação antes e depois, e grava os registros junto. */
+  const hist = (antes, depois) => registrosDaMudanca(antes, depois, { em: agora(), por: usuario, novoId });
   const exigirAcao = async (espacoId, numero) => {
     const acao = await banco.lerAcao(espacoId, numero);
     if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
@@ -232,7 +235,7 @@ export function criarStore(banco, opcoes = {}) {
         ...(codigo ? { codigo } : {}),
         numero, rotulo: rotulo.trim(), ordem,
         criadaEm: agora(), alteradaEm: agora(), alteradaPor: usuario,
-      });
+      }, hist);
       if (outros.responsaveis?.length) await arrumarTons(espacoId);
       return numero;
     },
@@ -247,17 +250,17 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
-      await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario });
+      await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario }, hist);
       if ("responsaveis" in campos) await arrumarTons(espacoId);
     },
 
     // --- listas da ação: item a item (seção 4.6) ---
     async acrescentarResponsavelNaAcao(espacoId, numero, responsavelId) {
-      await banco.acrescentarNaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo());
+      await banco.acrescentarNaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo(), hist);
       await arrumarTons(espacoId);
     },
     async retirarResponsavelDaAcao(espacoId, numero, responsavelId) {
-      await banco.retirarDaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo());
+      await banco.retirarDaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo(), hist);
       await arrumarTons(espacoId);
     },
     /** Acrescenta uma ação anterior. Recusa a própria ação, código inexistente e ciclo. */
@@ -272,10 +275,10 @@ export function criarStore(banco, opcoes = {}) {
         const nome = (n) => `“${acoes.find((a) => a.numero === n)?.rotulo ?? n}”`;
         throw new ErroDeDados("ciclo", `${nome(anterior)} já depende de ${nome(numero)}, direta ou indiretamente. A dependência criaria um ciclo.`);
       }
-      await banco.acrescentarNaLista(espacoId, numero, "dependeDe", [anterior], carimbo());
+      await banco.acrescentarNaLista(espacoId, numero, "dependeDe", [anterior], carimbo(), hist);
     },
     async retirarDependencia(espacoId, numero, anterior) {
-      await banco.retirarDaLista(espacoId, numero, "dependeDe", [anterior], carimbo());
+      await banco.retirarDaLista(espacoId, numero, "dependeDe", [anterior], carimbo(), hist);
     },
 
     // --- estimativas e conclusão (seções 4.3, 5.3 e 5.4) ---
@@ -284,7 +287,7 @@ export function criarStore(banco, opcoes = {}) {
       validarEstimativa({ o, m, p });
       await exigirAcao(espacoId, numero);
       const estimativa = { em: hoje(), por: usuario, o, m, p, contaDe: "data", ...(motivo.trim() ? { motivo: motivo.trim() } : {}) };
-      await banco.acrescentarEstimativa(espacoId, numero, estimativa, carimbo());
+      await banco.acrescentarEstimativa(espacoId, numero, estimativa, carimbo(), hist);
     },
     /**
      * Ajusta a estimativa sem criar histórico: ainda é planejamento, ou é correção de digitação.
@@ -295,19 +298,19 @@ export function criarStore(banco, opcoes = {}) {
       const { estimativas = [] } = await exigirAcao(espacoId, numero);
       const ultima = estimativas.at(-1);
       const estimativa = { ...ultima, em: hoje(), por: usuario, o, m, p, contaDe: ultima?.contaDe ?? "liberacao" };
-      if (!ultima) await banco.acrescentarEstimativa(espacoId, numero, estimativa, carimbo());
-      else await banco.trocarUltimaEstimativa(espacoId, numero, estimativa, estimativas.length, carimbo());
+      if (!ultima) await banco.acrescentarEstimativa(espacoId, numero, estimativa, carimbo(), hist);
+      else await banco.trocarUltimaEstimativa(espacoId, numero, estimativa, estimativas.length, carimbo(), hist);
     },
     /** Registra a conclusão. A data não pode ser futura. */
     async concluir(espacoId, numero, data) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data de conclusão.");
       if (data > hoje()) throw new ErroDeDados("data-futura", "A data de conclusão não pode ser depois de hoje.");
       await exigirAcao(espacoId, numero);
-      await banco.alterarAcao(espacoId, numero, { concluidaEm: data, ...carimbo() });
+      await banco.alterarAcao(espacoId, numero, { concluidaEm: data, ...carimbo() }, hist);
     },
     async desfazerConclusao(espacoId, numero) {
       await exigirAcao(espacoId, numero);
-      await banco.alterarAcao(espacoId, numero, { concluidaEm: null, ...carimbo() });
+      await banco.alterarAcao(espacoId, numero, { concluidaEm: null, ...carimbo() }, hist);
     },
 
     // --- responsáveis: de cada espaço (seção 4.5) ---
@@ -375,11 +378,11 @@ export function criarStore(banco, opcoes = {}) {
       if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
       const anteriores = (acao.dependeDe ?? []).filter((n) => acoes.some((a) => a.numero === n));
       for (const d of acoes.filter((a) => (a.dependeDe ?? []).includes(numero))) {
-        await banco.retirarDaLista(espacoId, d.numero, "dependeDe", [numero], carimbo());
+        await banco.retirarDaLista(espacoId, d.numero, "dependeDe", [numero], carimbo(), hist);
         const novas = religar ? anteriores.filter((n) => !(d.dependeDe ?? []).includes(n)) : [];
-        if (novas.length) await banco.acrescentarNaLista(espacoId, d.numero, "dependeDe", novas, carimbo());
+        if (novas.length) await banco.acrescentarNaLista(espacoId, d.numero, "dependeDe", novas, carimbo(), hist);
       }
-      await banco.alterarAcao(espacoId, numero, { excluidaEm: agora(), excluidaPor: usuario, ...carimbo() });
+      await banco.alterarAcao(espacoId, numero, { excluidaEm: agora(), excluidaPor: usuario, ...carimbo() }, hist);
       if (acao.responsaveis?.length) await arrumarTons(espacoId);
     },
     /** Volta a ação da lixeira; as ligações alteradas na exclusão não são refeitas. */
@@ -390,8 +393,8 @@ export function criarStore(banco, opcoes = {}) {
       /* anteriores que também foram para a lixeira deixam de valer */
       const vivas = new Set(acoes.filter(ativa).map((a) => a.numero));
       const sobra = (acao.dependeDe ?? []).filter((n) => !vivas.has(n));
-      if (sobra.length) await banco.retirarDaLista(espacoId, numero, "dependeDe", sobra, carimbo());
-      await banco.alterarAcao(espacoId, numero, { excluidaEm: null, excluidaPor: null, ...carimbo() });
+      if (sobra.length) await banco.retirarDaLista(espacoId, numero, "dependeDe", sobra, carimbo(), hist);
+      await banco.alterarAcao(espacoId, numero, { excluidaEm: null, excluidaPor: null, ...carimbo() }, hist);
       if (acao.responsaveis?.length) await arrumarTons(espacoId);
     },
     /** Exclui o responsável do espaço; nas ações dele, `substituto` entra no lugar ou ele só sai. */
@@ -402,8 +405,8 @@ export function criarStore(banco, opcoes = {}) {
         throw new ErroDeDados("nao-encontrado", "Escolha outro responsável para a substituição.");
       }
       for (const a of (await banco.listarAcoes(espacoId)).filter((x) => ativa(x) && (x.responsaveis ?? []).includes(id))) {
-        await banco.retirarDaLista(espacoId, a.numero, "responsaveis", [id], carimbo());
-        if (substituto) await banco.acrescentarNaLista(espacoId, a.numero, "responsaveis", [substituto], carimbo());
+        await banco.retirarDaLista(espacoId, a.numero, "responsaveis", [id], carimbo(), hist);
+        if (substituto) await banco.acrescentarNaLista(espacoId, a.numero, "responsaveis", [substituto], carimbo(), hist);
       }
       await banco.alterarResponsavel(espacoId, id, { excluidoEm: agora(), excluidoPor: usuario, alteradoEm: agora(), alteradoPor: usuario });
       await arrumarTons(espacoId);
@@ -430,7 +433,7 @@ export function criarStore(banco, opcoes = {}) {
         throw new ErroDeDados("nao-encontrado", "Escolha uma etapa que continua no espaço.");
       }
       for (const a of (await banco.listarAcoes(espacoId)).filter((x) => etapasDeFora.has(x.etapa))) {
-        await banco.alterarAcao(espacoId, a.numero, { etapa: destino, ...carimbo() });
+        await banco.alterarAcao(espacoId, a.numero, { etapa: destino, ...carimbo() }, hist);
       }
       await banco.alterarEspaco(espacoId, { estrutura, alteradoEm: agora(), alteradoPor: usuario });
     },
@@ -440,6 +443,12 @@ export function criarStore(banco, opcoes = {}) {
     },
     async restaurarEspaco(id) {
       await banco.alterarEspaco(id, { excluidoEm: null, excluidoPor: null, alteradoEm: agora(), alteradoPor: usuario });
+    },
+    /** Histórico de alterações de uma ação (passo 1.16), do mais antigo ao mais recente. */
+    async listarHistorico(espacoId, numero) {
+      /* registros da mesma gravação têm o mesmo momento: ficam na ordem dos campos da ação */
+      const posicao = (r) => (r.campo ? CAMPOS.acao.indexOf(r.campo) + 1 : 0);
+      return (await banco.listarHistorico(espacoId, numero)).sort((a, b) => a.em.localeCompare(b.em) || posicao(a) - posicao(b));
     },
     /** Lixeira de um espaço: ações e responsáveis excluídos, os mais recentes primeiro. */
     async listarLixeira(espacoId) {
@@ -461,7 +470,7 @@ export function criarStore(banco, opcoes = {}) {
       const espacos = (await banco.listarEspacos()).sort((a, b) => a.id.localeCompare(b.id));
       return {
         formato: "sextante-copia-de-seguranca",
-        versao: 1,
+        versao: 2, // 2: com o histórico de alterações (passo 1.16)
         geradaEm: agora(),
         geradaPor: usuario ?? null,
         calendarioGeral: (await banco.lerCalendarioGeral()) ?? null,
@@ -469,6 +478,7 @@ export function criarStore(banco, opcoes = {}) {
           espaco,
           acoes: (await banco.listarAcoes(espaco.id)).sort((a, b) => a.numero - b.numero),
           responsaveis: (await banco.listarResponsaveis(espaco.id)).sort((a, b) => a.id.localeCompare(b.id)),
+          historico: (await banco.listarHistoricoDoEspaco(espaco.id)).sort((a, b) => a.em.localeCompare(b.em) || a.id.localeCompare(b.id)),
         }))),
       };
     },
