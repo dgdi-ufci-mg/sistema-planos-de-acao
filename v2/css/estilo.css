@@ -855,3 +855,6 @@ h3.editavel { padding: 2px 6px; }
 .rede.destacando .rede-seta.ligada { stroke-width: 2.4; }
 .rede-no.apontada .rede-cartao { box-shadow: 0 0 0 2px var(--ink), var(--sombra); }
 @media (prefers-reduced-motion: reduce) { .rede-cartao, .rede-no, .rede-seta { transition: none; } }
+
+/* ---------- exportação (passo 1.19a) ---------- */
+.texto-exportado { width: 100%; box-sizing: border-box; font: .8rem var(--f-dados); padding: 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--sunk); color: var(--ink); margin-top: 8px; }

@@ -452,6 +452,26 @@ export function criarStore(banco, opcoes = {}) {
     async listarEspacosExcluidos() {
       return (await banco.listarEspacos()).filter((e) => !ativo(e)).sort((a, b) => (b.excluidoEm ?? "").localeCompare(a.excluidoEm ?? ""));
     },
+    /**
+     * Cópia de segurança (passo 1.19a): tudo o que está no banco, inclusive o que está na lixeira,
+     * num formato próprio, independente do banco (seção 3.3, "A cópia de segurança é a ponte").
+     * Só leitura. Formato documentado em `docs/registro-de-execucao.md` (passo 1.19a).
+     */
+    async copiaDeSeguranca() {
+      const espacos = (await banco.listarEspacos()).sort((a, b) => a.id.localeCompare(b.id));
+      return {
+        formato: "sextante-copia-de-seguranca",
+        versao: 1,
+        geradaEm: agora(),
+        geradaPor: usuario ?? null,
+        calendarioGeral: (await banco.lerCalendarioGeral()) ?? null,
+        espacos: await Promise.all(espacos.map(async (espaco) => ({
+          espaco,
+          acoes: (await banco.listarAcoes(espaco.id)).sort((a, b) => a.numero - b.numero),
+          responsaveis: (await banco.listarResponsaveis(espaco.id)).sort((a, b) => a.id.localeCompare(b.id)),
+        }))),
+      };
+    },
   };
 
   /* sem login, nenhuma gravação sai daqui (as regras do banco também recusam) */

@@ -8,6 +8,7 @@ Diário dos passos feitos em lote (especificação, seção 3.3, "Execução em 
 |---|---|
 | 1.17a | `0c896ea` |
 | 1.17b | `b0d2785` |
+| 1.17c | `273c153` |
 
 Em cada passo: o que foi feito, os testes, a conferência na tela e as **decisões provisórias**, tomadas sem consulta e à espera da revisão do responsável.
 
@@ -87,3 +88,47 @@ Os passos 1.16 (histórico) e 1.18 (retratos) criam coleções novas no banco e 
 5. Termo novo no glossário: "Rede (fluxo das ações)".
 
 **Nenhum número mudou de sentido:** a rede só desenha as dependências e o caminho crítico já calculados.
+
+## Passo 1.19a — Exportação e cópia de segurança (21/10/2026)
+
+**Por que dividido:** o passo 1.19 junta o que só lê os dados (exportar, baixar a cópia) e o que grava (importar, restaurar). A gravação em lote no banco real, com decisões sobre atualizar ou não ações existentes, é do tipo que o responsável deve conferir antes. Feita só a parte de leitura (1.19a); a importação e a restauração ficam no 1.19b.
+
+**O que foi feito:**
+- "Configurar este espaço" ganhou a seção **Exportar**:
+  - **Copiar para planilha:** uma linha por ação ativa, separada por tabulações, para colar no Google Planilhas ou no Excel. Colunas: Número, Código (se o espaço usa códigos), Fase e Etapa (se usa fases), Ação, Descrição (se usa), Depende de (códigos, se o espaço os usa; senão, números), Otimista, Mais provável, Pessimista e Prazo previsto (da estimativa vigente), Responsáveis (siglas), Situação, Atrasada, Início previsto, Conclusão prevista, Folga (dias úteis) e Sem folga. Números com vírgula decimal; datas em dd/mm/aaaa.
+  - **Copiar fluxograma:** texto em Mermaid, com fases e etapas como grupos, uma caixa por ação (nome e data prevista), uma seta por dependência e as cores da tela (sem folga, com folga, concluída).
+  - Se o navegador não deixar copiar, o texto aparece selecionado numa caixa, para Ctrl+C.
+- "Configurar o sistema" ganhou **Baixar cópia de segurança**: um arquivo `.json` com todos os espaços, inclusive os excluídos, com todas as ações (também as da lixeira) e os responsáveis, e o calendário geral. O espaço de exemplo não entra (fica só na memória do navegador).
+
+**Formato da cópia de segurança (versão 1):**
+
+```
+{
+  "formato": "sextante-copia-de-seguranca",   identificador fixo, mesmo se o nome do sistema mudar
+  "versao": 1,
+  "geradaEm": "2026-10-21T…Z",
+  "geradaPor": e-mail de quem baixou, ou null,
+  "calendarioGeral": {datasExcluidas, alteradoEm, alteradoPor} ou null,
+  "espacos": [
+    { "espaco": {…todos os campos da seção 4.1…},
+      "acoes": [{…todos os campos da seção 4.2…}],       por número
+      "responsaveis": [{…todos os campos da seção 4.5…}] por id
+    }
+  ]
+}
+```
+
+Os registros vão como estão no banco, sem tradução: o dicionário de dados (seção 4 da especificação) descreve cada campo. Quando o histórico (1.16) e os retratos (1.18) existirem, entram na versão 2 do formato.
+
+**Arquivos:** `js/exportar.js` (regras, sem tela), `js/dados.js` (`copiaDeSeguranca`, só leitura), `js/telas/arquivos.js` (copiar e baixar), `js/telas/configurar.js`, `js/telas/configurar-sistema.js`, `css/estilo.css`.
+
+**Testes:** 186 testes automáticos passam, incluindo os novos de `testes/exportar.test.js`: uma linha por ação, colunas alinhadas, conclusão igual à da lista, dependências por código quando ligados; fluxograma com uma caixa por ação, uma seta por dependência e os grupos de fases e etapas; a ação excluída não aparece nas exportações e aparece na cópia de segurança (exigência da seção 4.7 da especificação); a cópia leva os espaços excluídos, os responsáveis e o calendário geral. O fluxograma do exemplo foi conferido com o próprio Mermaid (versão 11.4.1, no navegador de teste): lido e desenhado sem erro, com e sem fases e códigos. No navegador de teste: copiar para planilha, copiar fluxograma e baixar a cópia funcionaram, sem erros.
+
+**Decisões provisórias:**
+1. Divisão do passo 1.19 em 1.19a (leitura) e 1.19b (gravação), registrada na especificação.
+2. Exportar fica em "Configurar este espaço"; a cópia de segurança, de todos os espaços, em "Configurar o sistema" (a especificação punha ambos em "Configurar o espaço").
+3. Planilha por cópia (colar), como na versão atual, sem gerar arquivo .xlsx (sem biblioteca).
+4. Colunas da planilha e conteúdo das caixas do fluxograma, como descrito acima. Sem as prioridades calculadas, que dependem da simulação.
+5. Nome do arquivo: nome do sistema, "copia" e a data (`sextante-copia-2026-10-21.json`).
+
+**Nenhum número mudou de sentido.** Nada é gravado no banco.

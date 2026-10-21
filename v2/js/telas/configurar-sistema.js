@@ -1,6 +1,7 @@
 /**
- * Configurar o sistema (especificação, seções 5.1 e 8.1): por enquanto, o calendário geral,
- * com as datas sem expediente que valem para todos os espaços. Aberto pelo menu do usuário.
+ * Configurar o sistema (especificação, seções 5.1 e 8.1): o calendário geral, com as datas sem
+ * expediente que valem para todos os espaços, e a cópia de segurança de todos os espaços
+ * (passo 1.19a). Aberto pelo menu lateral.
  * Até existirem os papéis (Fase 2), qualquer pessoa conectada pode editar; depois, só o
  * Administrador do Sistema.
  */
@@ -10,6 +11,9 @@ import { ICONES } from "../icones.js";
 import { feriadosNacionais } from "../feriados.js";
 import { abrirPainel, avisar } from "./painel.js";
 import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
+import { baixarArquivo } from "./arquivos.js";
+import { NOME } from "../identidade.js";
+import { normalizar } from "../acao.js";
 
 /** @param {{store: object, hoje: string}} opcoes */
 export async function abrirConfiguracaoDoSistema({ store, hoje }) {
@@ -52,8 +56,23 @@ export async function abrirConfiguracaoDoSistema({ store, hoje }) {
           <div class="botoes"><button class="botao" type="button" data-acrescentar>${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar calendário</button>${AVISO_PENDENTE}</div>
         </form>
       </section>
+      <section class="config">
+        <h3>Cópia de segurança</h3>
+        <p class="tec">Baixa um arquivo com todos os espaços, ações e responsáveis, inclusive o que está na lixeira, e o calendário geral.
+          Guarde-o para ter uma cópia dos dados ou para levá-los a outra instalação do sistema. A restauração chega num próximo passo.</p>
+        <div class="botoes"><button class="botao" type="button" data-copia>Baixar cópia de segurança</button></div>
+      </section>
       <p class="tec">Outras configurações gerais, como usuários e permissões, chegam nas próximas fases.</p>`;
     marcar();
+  }
+  async function baixarCopia() {
+    try {
+      const copia = await store.copiaDeSeguranca();
+      baixarArquivo(`${normalizar(NOME).replace(/[^a-z0-9]+/g, "-")}-copia-${hoje}.json`, JSON.stringify(copia, null, 2));
+      avisar(`Cópia baixada: ${copia.espacos.length} ${copia.espacos.length === 1 ? "espaço" : "espaços"}.`);
+    } catch (falha) {
+      avisar(falha.message);
+    }
   }
   const marcar = () => marcarPendencias(corpo.querySelector("[data-salvar-calendario]"), rascunho, salvos, ["data", "motivo"]);
 
@@ -65,6 +84,7 @@ export async function abrirConfiguracaoDoSistema({ store, hoje }) {
   corpo.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
+    if (t.matches("[data-copia]")) { baixarCopia(); return; }
     if (t.matches("[data-feriados]")) {
       const existentes = new Set(rascunho.map((d) => d.data));
       const sugeridas = feriadosNacionais(anoFeriados).filter((f) => !existentes.has(f.data));

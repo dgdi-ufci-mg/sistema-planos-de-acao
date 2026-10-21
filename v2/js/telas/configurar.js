@@ -2,8 +2,8 @@
  * Configurar o espaço (especificação, seções 4.1 e 8.1; passo 1.13): painel lateral aberto pelo
  * menu do espaço, com dados e datas, datas excluídas, fases e etapas, campos opcionais,
  * documentos e a semente da simulação (visível, mas fixa). Cada seção é gravada pelo seu botão
- * Salvar; os campos opcionais, na hora. Retratos, importação, exportação e cópia de segurança
- * entram nos passos 1.18 e 1.19.
+ * Salvar; os campos opcionais, na hora. Exportação (passo 1.19a): copiar para planilha e copiar
+ * o fluxograma em Mermaid. Retratos e importação entram nos passos 1.18 e 1.19b.
  */
 import { ligarSecoesSuaves } from "./movimento.js";
 import { criarTelaResponsaveis } from "./responsaveis.js";
@@ -14,6 +14,9 @@ import { datasEfetivas } from "../calendario.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { excluirEtapas, excluirEspaco } from "./exclusao.js";
 import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
+import { planilhaDoEspaco, mermaidDoEspaco } from "../exportar.js";
+import { hojeLocal } from "../dados.js";
+import { copiarTexto } from "./arquivos.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
@@ -160,7 +163,16 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <p class="tec">Fixos desde a criação do espaço, para que qualquer pessoa obtenha os mesmos resultados ao refazer o cálculo.</p>
       </details>
 
-      <p class="tec">Retratos, importação, exportação e cópia de segurança chegam nos próximos passos.</p>
+      <details class="config" data-secao="exportar"${aberta("exportar")}>
+        <summary><h3>Exportar</h3></summary>
+        <p class="tec">Copia as ações deste espaço, com as datas previstas, a folga e a situação, prontas para colar no Google Planilhas ou no Excel.</p>
+        <div class="botoes"><button class="botao" type="button" data-exportar="planilha">Copiar para planilha</button></div>
+        <p class="tec">Copia o fluxograma das ações em linguagem Mermaid, com as fases e etapas como grupos e as ações sem folga destacadas. Cole em mermaid.live para ver o desenho.</p>
+        <div class="botoes"><button class="botao" type="button" data-exportar="mermaid">Copiar fluxograma</button></div>
+        <textarea class="texto-exportado" data-exportado rows="6" readonly hidden aria-label="Texto exportado"></textarea>
+      </details>
+
+      <p class="tec">Retratos e importação chegam nos próximos passos. A cópia de segurança de todos os espaços fica em "Configurar o sistema".</p>
       ${store.podeGravar ? '<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>' : ""}`;
   }
 
@@ -299,6 +311,13 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     const t = e.target.closest("button");
     if (!t || t.disabled) return;
     if (t.dataset.comAcoes) { tirarComAcoes(t); return; }
+    if (t.dataset.exportar) {
+      const dados = { espaco, acoes, responsaveis, geral, hoje: hojeLocal() };
+      const planilha = t.dataset.exportar === "planilha";
+      copiarTexto(planilha ? planilhaDoEspaco(dados) : mermaidDoEspaco(dados), corpo.querySelector("[data-exportado]"),
+        planilha ? "Copiado. Cole na primeira célula de uma planilha vazia." : "Fluxograma copiado.");
+      return;
+    }
     if (t.dataset.excluirEspaco != null) {
       try {
         if (await excluirEspaco({ store, espaco })) { fecharPainel(); aoExcluirEspaco(); }
