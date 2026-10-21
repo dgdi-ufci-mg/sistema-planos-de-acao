@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 a 1.14, 1.14a, 1.14b, 1.14c e 1.15.
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 a 1.14, 1.14a, 1.14b, 1.14c, 1.15 e 1.17a (primeira versão).
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -724,7 +724,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.15. ✔ Exclusão lógica e lixeira, para espaços, ações e responsáveis, com as regras de exclusão encadeada. Feito no passo 1.15: o `Store` filtra os excluídos em um lugar só (listas, leitura do espaço e acompanhamento) e ganhou `excluirAcao` (com `religar`: as dependentes passam às anteriores da excluída), `excluirResponsavel` (com `substituto`), `excluirEtapas` (com `destino` ou sem etapa), `excluirEspaco`, os `restaurar…` correspondentes e `listarLixeira`; o código de uma ação na lixeira continua reservado. Na tela (`js/telas/exclusao.js`, `js/telas/lixeira.js`): "Excluir ação" no pé da janela da ação; "Excluir" no formulário do responsável; o × de fase e etapa com ações; "Excluir este espaço" no fim de "Configurar este espaço". Exclusão sem itens afetados acontece na hora, com "Desfazer" no aviso (decisão do responsável, 21/10/2026); exclusão que afeta outros itens abre uma janela por cima do painel, com as alternativas da seção 4.7 e a primeira marcada. "Lixeira" no pé do menu lateral: o que foi excluído no espaço aberto e os espaços excluídos, com quem, quando e "Restaurar". Restaurar não refaz as ligações alteradas; o registro delas chega com o histórico (passo 1.16).
 1.16. Histórico de alterações (seção 16.4).
 1.17. Modos de visualização interativos, no seletor da aba Ações, só no computador (seção 8.4; revisto em 21/10/2026, no lugar da aba Visualização), em três passos:
-1.17a. Linha do tempo interativa, com a chance de cumprir o prazo e o gráfico da data final.
+1.17a. ✔ Linha do tempo interativa, com a chance de cumprir o prazo e o gráfico da data final. Primeira versão, feita em lote (21/10/2026; detalhes e decisões provisórias em `docs/registro-de-execucao.md`): modo "Linha do tempo" no seletor, só no computador; regras em `js/linha-do-tempo.js`, com testes; tela em `js/telas/linha-do-tempo.js`.
 1.17b. Cronograma (Gantt) interativo, com comparação de retrato.
 1.17c. Rede (fluxo das ações) interativa.
 1.18. Retratos manuais.

@@ -17,6 +17,7 @@ import { donosHtml } from "./pessoas.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
 import { criarPlanilha } from "./editar-planilha.js";
+import { desenharLinhaDoTempo } from "./linha-do-tempo.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -150,7 +151,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * Seletor de modo: só ícones; o modo ativo mostra também o nome, e os demais o mostram ao
    * passar o mouse (decisão do responsável, 21/10/2026). No celular, só Lista e Quadro.
    */
-  const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""], ["planilha", "Planilha", "modoPlanilha", "so-computador"]];
+  const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""], ["planilha", "Planilha", "modoPlanilha", "so-computador"],
+    ["linha", "Linha do tempo", "modoLinha", "so-computador"]];
+  /** Modos sem filtros nem ordem: a planilha mostra todas as ações; a linha do tempo, o espaço inteiro. */
+  const semFiltros = () => ui.modo === "planilha" || ui.modo === "linha";
   let modoDesenhado = null;
   function modosHtml() {
     const trocou = modoDesenhado !== null && modoDesenhado !== ui.modo;
@@ -161,7 +165,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
   function controlesHtml() {
     return `
-      ${ui.modo === "planilha" ? "" : `
+      ${semFiltros() ? "" : `
       ${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
       <select data-ctl="responsavel" aria-label="Responsável">
         <option value="">Todos os responsáveis</option>
@@ -212,7 +216,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /** Ferramentas na barra do topo: modo, Filtrar, Ordenar e Nova ação (celular: "Filtros e ordem"). */
   function desenharFerramentas({ abriu = false } = {}) {
-    const planilha = ui.modo === "planilha";
+    const planilha = semFiltros();
     const nf = filtrosAtivos();
     ferramentas.innerHTML = `
       <div class="so-computador">${modosHtml()}</div>
@@ -365,6 +369,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const ls = visiveis();
     let corpo;
     if (ui.modo === "planilha") { planilha.desenhar(lista, dadosDaJanela()); return; }
+    if (ui.modo === "linha") { desenharLinhaDoTempo(lista, { espaco, cal, sim, hoje, temAcoes: acoes.length > 0 }); return; }
     const rapida = comRapida();
     if (ui.modo === "quadro") corpo = quadroHtml(ls);
     else if (!ls.length && !rapida) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
@@ -516,7 +521,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function preencherOpcoes() {
     painelOpcoes.innerHTML = `
       <section class="opcoes">${modosHtml()}</section>
-      ${ui.modo === "planilha" ? "" : `<section class="opcoes"><h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div></section>
+      ${semFiltros() ? "" : `<section class="opcoes"><h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div></section>
       <section class="opcoes">${controlesHtml()}</section>`}
       ${agrupado() ? `<section>${botaoRecolherHtml()}</section>` : ""}
       ${ativos() ? `<section><button class="botao discreto" type="button" data-limpar>Limpar filtros e ordem</button></section>` : ""}`;

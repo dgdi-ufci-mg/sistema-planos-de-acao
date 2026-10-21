@@ -738,3 +738,35 @@ h3.editavel { padding: 2px 6px; }
 .item-lixeira { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
 .item-lixeira-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .item-lixeira-texto small { color: var(--muted); }
+
+/* ---------- linha do tempo (passo 1.17a) ---------- */
+.tempo-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tempo-numero { background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); padding: 12px 14px; display: grid; gap: 2px; box-shadow: var(--relevo); border-top: 3px solid var(--accent); }
+.tempo-numero.segura { border-top-color: var(--warn); }
+.tempo-numero.prazo { border-top-color: var(--ink); }
+.tempo-numero.prazo.ruim { border-top-color: var(--crit); }
+.tempo-numero b.mono { font-family: var(--f-dados); font-size: 1.35rem; font-weight: 600; }
+.tempo-rotulo { color: var(--muted); font-size: .85rem; }
+.tempo-numero .tec { margin: 0; }
+.tempo-grafico { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); padding: 12px 12px 8px; position: relative; box-shadow: var(--relevo); }
+.tempo-desenho svg { display: block; width: 100%; height: auto; overflow: visible; }
+.tempo-grafico figcaption { margin: 6px 4px 0; }
+.t-passado { fill: var(--sunk); }
+.t-grade { stroke: var(--grid); stroke-width: 1; }
+.t-mes { stroke: var(--line); }
+.t-eixo { fill: var(--faint); font: 11px var(--f-dados); }
+.t-barra { fill: var(--accent-soft); stroke: var(--accent); stroke-width: .6; }
+.t-barra.depois { fill: var(--crit-soft); stroke: var(--crit); }
+.t-curva { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round; }
+.t-marca line { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 3 3; }
+.t-marca text { font: 12px var(--f-texto); fill: var(--ink); }
+.t-marca-nome { font-weight: 600; }
+.t-marca-data { font-family: var(--f-dados); fill: var(--muted); font-size: 11px; }
+.t-marca.hoje line { stroke: var(--faint); }
+.t-marca.p50 line { stroke: var(--accent); stroke-dasharray: none; }
+.t-marca.p80 line { stroke: var(--warn); stroke-dasharray: none; }
+.t-marca.prazo line { stroke: var(--crit); stroke-dasharray: none; stroke-width: 1.6; }
+.t-mira { stroke: var(--ink); stroke-width: 1; opacity: .5; }
+.t-ponto { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.t-sensor { fill: transparent; cursor: crosshair; }
+.tempo-dica { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: .85rem; padding: 4px 8px; border-radius: var(--raio); white-space: nowrap; box-shadow: var(--sombra); }

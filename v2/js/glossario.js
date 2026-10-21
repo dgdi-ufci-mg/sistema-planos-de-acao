@@ -33,4 +33,7 @@ export const GLOSSARIO = [
   { chave: "dataSegura", titulo: "Data segura",
     texto: "Data em que o trabalho termina em 80% dos cenários simulados. A conclusão prevista é a data de 50%.",
     tecnico: "percentil 80 (P80) da simulação de Monte Carlo" },
+  { chave: "chancePrazo", titulo: "Chance de cumprir o prazo",
+    texto: "Parte dos cenários simulados em que o trabalho termina até o prazo final. Com 70%, de cada 10 cenários, 7 terminam a tempo.",
+    tecnico: "proporção de simulações de Monte Carlo com término até o prazo final" },
 ];
