@@ -499,10 +499,18 @@ h3.editavel { padding: 2px 6px; }
 .item.recem-criada { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 /* ---------- modo Quadro (passo 1.10) ---------- */
-.segmentos { display: inline-flex; border: 1px solid var(--line); border-radius: var(--raio); overflow: hidden; background: var(--surface); }
-.segmentos button { border: 0; background: none; padding: 5px 12px; cursor: pointer; font-size: .88rem; }
-.segmentos button + button { border-left: 1px solid var(--line); }
-.segmentos button[aria-pressed="true"] { background: var(--ink); color: var(--bg); font-weight: 600; }
+/* seletor de modo (Lista, Quadro, Planilha): ícones; o ativo mostra também o nome */
+.modos { display: inline-flex; width: max-content; align-self: flex-start; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--sunk); }
+.modo { display: inline-flex; align-items: center; gap: 0; border: 0; background: transparent; color: var(--muted); padding: 5px 9px; border-radius: 999px; cursor: pointer; font: inherit; font-size: .88rem; font-weight: 600; transition: background-color var(--mov-rapido), color var(--mov-rapido); }
+.modo:hover { color: var(--ink); background: var(--surface); }
+.modo[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); gap: 6px; padding-right: 12px; }
+.modo:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.modo .icone { width: 18px; height: 18px; }
+.modo-nome { display: none; white-space: nowrap; }
+.modo[aria-pressed="true"] .modo-nome { display: inline-block; }
+.modo-nome.entrando { animation: nome-do-modo var(--mov) var(--mov-curva); }
+@keyframes nome-do-modo { from { opacity: 0; max-width: 0; } to { opacity: 1; max-width: 8em; } }
+@media (prefers-reduced-motion: reduce) { .modo { transition: none; } .modo-nome.entrando { animation: none; } }
 .quadro { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
 .coluna { background: var(--sunk); border: 1px solid var(--grid); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; min-height: 160px; transition: border-color .15s, background-color .15s; }
 .coluna header { display: flex; align-items: center; gap: 6px; font-family: var(--f-titulo); font-size: 1.05rem; }

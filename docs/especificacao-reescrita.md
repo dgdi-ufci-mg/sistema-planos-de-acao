@@ -580,7 +580,7 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 
 ### 8.2 Abas
 
-**Ações · Visualização · Responsáveis**, em ordem de frequência de uso.
+**Ações · Responsáveis**, em ordem de frequência de uso. *Revisto em 21/10/2026:* a aba Visualização sai; o cronograma, a rede e a linha do tempo viram modos do seletor da aba Ações (seção 8.4).
 
 ### 8.3 Aba Ações
 
@@ -604,6 +604,7 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
   - **Modo "Editar em planilha"**, para cadastros grandes no computador, disponível também com o espaço vazio.
   - **Código opcional**, só com o campo `codigos` ligado: se vazio, o sistema sugere um a partir do rótulo; se preenchido, precisa ter de 2 a 8 letras ou números e não pode repetir um código existente, com aviso enquanto se digita.
 - **Seletores com busca** para dependências e responsáveis: ao digitar, aparecem as opções que contêm o texto (código ou nome da ação; nome, sigla ou setor da pessoa). Setas e Enter escolhem; cada escolha vira uma etiqueta com ×. Nas dependências, ficam de fora a própria ação e as que dependem dela, o que impede ciclos. Nos responsáveis, as últimas opções são "Cadastrar … como pessoa" e "Cadastrar … como unidade" (o tipo é obrigatório, seção 4.5).
+- **Seletor de modo** (decisão do responsável, 21/10/2026), sempre no canto esquerdo das ferramentas, no mesmo lugar em todos os modos: só ícones em SVG, no padrão do sistema (lista com marcadores, quadro de colunas, grade de planilha); o modo ativo mostra também o nome, e os demais o mostram ao passar o mouse; o leitor de tela lê o nome de todos. Motivo: o seletor é usado o tempo todo e fica fixo, então os ícones se aprendem em poucos usos (como no seletor de visualização do Finder, no Mac), e o nome do modo ativo evita que quem chega fique perdido. No celular, ficam só Lista e Quadro, no painel "Filtros e ordem"; Planilha, Cronograma e Rede não aparecem.
 - **Modo "Editar em planilha"**, ao lado da lista: uma grade com todas as ações e uma coluna por campo, para edição rápida por usuários experientes. Cada célula é salva ao sair dela; Enter desce para a linha de baixo; é possível colar um bloco copiado do Google Planilhas ou do Excel, inclusive criando linhas novas. Dependências e responsáveis são digitados como códigos e siglas separados por vírgula, com validação (código inexistente, ciclo, sigla desconhecida). Células que não podem ser editadas ali ficam cinza, com o motivo ao passar o mouse; por exemplo, a estimativa de uma ação liberada, que só muda por reestimativa.
 - **Modo "Quadro"** (estilo Kanban, como o Trello), ao lado de Lista e Editar em planilha: os mesmos cartões em três colunas, **Não liberadas**, **Liberadas** e **Concluídas**, cada uma com a contagem. "Atrasada" não é coluna: é o carimbo (ícone de relógio) no cartão, e o filtro "Atrasadas" continua disponível. O cartão mostra código, rótulo, etapa, responsáveis, conclusão prevista e a barra de prioridade de execução, com a faixa de cor à esquerda; tocar nele abre a janela da ação.
   - **Arrastar** (no computador): de Liberadas para Concluídas abre o registro da conclusão, com a data; de Concluídas para Liberadas desfaz a conclusão. A coluna Não liberadas não aceita cartões, porque a liberação é automática (quando as anteriores terminam e a data mínima chega); a descrição da coluna explica isso.
@@ -613,15 +614,17 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
 - **O número da ação não muda** depois de criado, porque é a referência usada nas dependências (seção 4.2). O código mnemônico, quando usado, pode ser alterado.
 - **Protótipo antes da implementação:** esta aba será prototipada com dados fictícios e publicada como página de teste privada, para avaliação do responsável no computador e no celular.
 
-### 8.4 Aba Visualização
+### 8.4 Modos de visualização interativos
 
-No alto da aba fica a **linha do tempo do espaço** (decisão do responsável: fora da aba Ações, para deixá-la mais limpa): um eixo **fino**, do início do espaço ao prazo final, com a parte já decorrida, a marca de hoje e três pontos: **conclusão prevista**, **data segura** (P80) e **prazo final**. Uma faixa clara destaca o intervalo entre a conclusão prevista e a data segura. **As datas ficam na própria linha**, junto de cada marca, acima ou abaixo do eixo, distribuídas automaticamente para não se sobreporem; no celular, em formato curto (dia/mês). Uma legenda de uma linha explica só os símbolos, com a chance de cumprir o prazo junto ao prazo final. A linha do tempo fica sobre um fundo levemente esverdeado, com cantos arredondados, para se separar do resto do conteúdo.
+*Revisto em 21/10/2026 (decisão do responsável):* a aba Visualização sai. O cronograma, a rede e a linha do tempo passam a ser **modos do seletor da aba Ações** (seção 8.3), ao lado de Lista, Quadro e Planilha, e são **interativos**, como nos programas comerciais, no mesmo padrão visual e de movimento do resto do sistema. Os desenhos estáticos da versão atual (diagrama por etapas, Gantt e linha do tempo renderizados) são descartados. Só no computador.
 
-Três botões no topo levam a cada parte:
+- **Linha do tempo:** do início do espaço ao prazo final, com hoje, a conclusão prevista, a data segura (P80) e o prazo final; interativa. O desenho previsto antes (eixo fino com as datas junto das marcas e faixa entre a conclusão prevista e a data segura) serve de ponto de partida, não de regra.
+- **Cronograma** (*Termo técnico: Gantt*): barras das ações no tempo, com as dependências, e opção de comparar com um retrato (linha fina sob cada barra).
+- **Rede** ("Fluxo das ações"; *Termo técnico: diagrama de rede PERT/CPM*).
+- **A decidir no passo 1.17:** onde fica o gráfico "Em que data o trabalho pode terminar" (resultado da simulação), que estava nesta aba.
+- **Calendário: a avaliar, sem compromisso.** Faz sentido sobretudo com datas fixas (data-limite, Fase 2); com as datas previstas pelo PERT, que mudam a cada recálculo, o calendário "se mexeria sozinho" e confundiria. Se for feito, aparece também no celular, ao lado de Lista e Quadro.
 
-- **Fluxo:** "Fluxo das ações". *Termo técnico: diagrama de rede (PERT/CPM).* É o diagrama atual, por etapas.
-- **Cronograma:** Gantt, com opção de comparar com um retrato (linha fina sob cada barra).
-- **Data final:** "Em que data o trabalho pode terminar", o gráfico da simulação de Monte Carlo.
+Construir um Gantt e uma rede interativos sem biblioteca externa é o maior trabalho da versão 2; por isso o passo 1.17 é dividido em três.
 
 ### 8.5 Notas
 
@@ -638,7 +641,7 @@ Três botões no topo levam a cada parte:
 | Valor agregado, Earned Schedule e o indicador "Ritmo" | Exigem % concluído e custos, raramente disponíveis; difíceis para leigos. A pergunta útil ("quando termina, com o que já aconteceu?") é respondida pelo recálculo contínuo |
 | Campos de custo, custo gasto, % concluído e início real | Só serviam ao valor agregado, ou não são usados (KISS, "só pedir o necessário") |
 | Aba Andamento | O acompanhamento passa a acontecer em cada ação |
-| Abas Cronograma, Diagrama e Previsões | Reunidas em Visualização e Ações |
+| Abas Cronograma, Diagrama e Previsões | Modos interativos do seletor da aba Ações (seção 8.4) |
 | Aba Entenda os termos | Vai para a Ajuda |
 | Escolha triangular/beta | Uma só distribuição (seção 5.2) |
 | Crucialidade e SSI como números na tela | Substituídos pela contribuição para a variância, que responde à mesma pergunta de forma padronizada e mais clara (seção 15.4) |
@@ -711,7 +714,10 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.14a. ✔ Criação rápida de ações (incluído em 21/10/2026, a pedido do responsável). Feito no passo 1.14a: o espaço vazio já mostra as ferramentas (Lista, Quadro, Editar em planilha) e a linha de criação rápida; linhas "+ Adicionar ação" no fim de cada etapa, da lista e da coluna Liberadas do quadro (`js/telas/espaco.js`; etapas vazias aparecem com `agrupar(…, {vazias: true})`, em `js/lista.js`), que mantêm o cursor e o texto quando a lista é redesenhada; janela "Nova ação" compacta (`js/telas/nova-acao.js`), com rótulo e três pontos à vista e os demais campos em botões; ações sem estimativa com a marca "Falta estimar" na lista, no quadro e na janela da ação, e aviso de previsão incompleta no alto do espaço (seção 5.2). O cálculo já contava a ação sem estimativa como zero dias; passou a não lhe dar o carimbo Atrasada. A versão do cálculo não muda: até aqui, toda ação tinha estimativa.
 1.15. Exclusão lógica e lixeira, para espaços, ações e responsáveis, com as regras de exclusão encadeada.
 1.16. Histórico de alterações (seção 16.4).
-1.17. Aba Visualização: linha do tempo, fluxo, cronograma com comparação de retrato e data final.
+1.17. Modos de visualização interativos, no seletor da aba Ações, só no computador (seção 8.4; revisto em 21/10/2026, no lugar da aba Visualização), em três passos:
+1.17a. Linha do tempo interativa; e onde fica o gráfico da data final.
+1.17b. Cronograma (Gantt) interativo, com comparação de retrato.
+1.17c. Rede (fluxo das ações) interativa.
 1.18. Retratos manuais.
 1.19. Importação e exportação (planilha e Mermaid), cópia de segurança e restauração.
 1.20. Troca: cópia de segurança, migração dos dados (seção 11) e versão 2 na raiz. Se houver outros usuários nessa época, também aviso prévio e gravação congelada na versão atual durante a migração. Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas; AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.

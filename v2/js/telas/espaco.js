@@ -150,13 +150,21 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   }
 
   /* ---------- ferramentas: filtros de situação, controles e Nova ação ---------- */
+  /**
+   * Seletor de modo: só ícones; o modo ativo mostra também o nome, e os demais o mostram ao
+   * passar o mouse (decisão do responsável, 21/10/2026). No celular, só Lista e Quadro.
+   */
+  const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""], ["planilha", "Planilha", "modoPlanilha", "so-computador"]];
+  let modoDesenhado = null;
+  function modosHtml() {
+    const trocou = modoDesenhado !== null && modoDesenhado !== ui.modo;
+    return `<div class="modos" role="group" aria-label="Exibir como">
+      ${MODOS.map(([v, nome, icone, classe]) => `<button type="button" class="modo ${classe}" data-modo="${v}" aria-pressed="${ui.modo === v}" title="${nome}" aria-label="${nome}">
+        ${ICONES[icone]}<span class="modo-nome${ui.modo === v && trocou ? " entrando" : ""}" aria-hidden="true">${nome}</span></button>`).join("")}
+    </div>`;
+  }
   function controlesHtml() {
     return `
-      <div class="segmentos" role="group" aria-label="Exibir como">
-        <button type="button" data-modo="lista" aria-pressed="${ui.modo === "lista"}">Lista</button>
-        <button type="button" data-modo="quadro" aria-pressed="${ui.modo === "quadro"}">Quadro</button>
-        <button type="button" class="so-computador" data-modo="planilha" aria-pressed="${ui.modo === "planilha"}">Editar em planilha</button>
-      </div>
       ${ui.modo === "planilha" ? "" : `
       ${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
       <select data-ctl="responsavel" aria-label="Responsável">
@@ -173,6 +181,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   function desenharFerramentas() {
     const n = contar(linhas);
     ferramentas.innerHTML = `
+      <div class="so-computador">${modosHtml()}</div>
       <div class="chips" role="group" aria-label="Filtrar por situação"${ui.modo === "planilha" ? " hidden" : ""}>
         ${BOTOES_DE_FILTRO.filter(([v]) => ui.modo === "lista" || v === "todas" || v === "atrasada").map(([v, t, icone, classe]) => `<button class="chip" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
           ${icone ? `<span class="${classe}">${ICONES[icone]}</span>` : ""}${t} <span class="n">${n[v]}</span></button>`).join("")}
@@ -184,6 +193,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
         <button class="botao principal" type="button" data-nova>${ICONES.mais}Nova ação</button>
       </div>
       <button class="botao so-celular" type="button" data-opcoes>${ICONES.filtros}Filtros e ordem${ativos() ? ` <span class="contador">${ativos()}</span>` : ""}</button>`;
+    modoDesenhado = ui.modo;
     legenda.hidden = !ui.legenda || ui.modo === "planilha";
   }
 
@@ -442,7 +452,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   let painelOpcoes = null;
   function preencherOpcoes() {
     painelOpcoes.innerHTML = `
-      <section class="opcoes">${controlesHtml()}</section>
+      <section class="opcoes">${modosHtml()}${controlesHtml()}</section>
       ${agrupado() ? `<section>${botaoRecolherHtml()}</section>` : ""}
       <section><h3>Legenda</h3>${legendaHtml()}</section>
       ${ativos() ? `<section><button class="botao discreto" type="button" data-limpar>Limpar filtros e ordem</button></section>` : ""}`;

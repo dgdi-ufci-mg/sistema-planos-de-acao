@@ -8,6 +8,12 @@ const svg = (conteudo) =>
   `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${conteudo}</svg>`;
 
 export const ICONES = Object.freeze({
+  /** Modo Lista: linhas com marcadores. */
+  modoLista: svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".6"/><circle cx="4.5" cy="12" r=".6"/><circle cx="4.5" cy="18" r=".6"/>'),
+  /** Modo Quadro: três colunas de alturas diferentes, como um Kanban. */
+  modoQuadro: svg('<rect x="3" y="4" width="5" height="15" rx="1.5"/><rect x="9.5" y="4" width="5" height="10" rx="1.5"/><rect x="16" y="4" width="5" height="13" rx="1.5"/>'),
+  /** Modo Planilha: grade de células. */
+  modoPlanilha: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 14.5h18M9 4v16M15 4v16"/>'),
   /** Concluída: visto num círculo. */
   concluida: svg('<circle cx="12" cy="12" r="9.5"/><path d="m8 12.5 2.7 2.7L16 9.8"/>'),
   /** Liberada: cadeado aberto. */
