@@ -339,7 +339,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         achados.push({
           html: `${ICONES.mais} Cadastrar “${esc(nomeNovo)}” como ${comoTexto}`,
           escolher: async () => {
-            const id = await store.criarResponsavel({ tipo, nome: nomeNovo, ...(tipo === "unidade" ? { sigla: nomeNovo.length <= 10 ? nomeNovo.toUpperCase() : "" } : {}) });
+            const id = await store.criarResponsavel(espacoId, { tipo, nome: nomeNovo, ...(tipo === "unidade" ? { sigla: nomeNovo.length <= 10 ? nomeNovo.toUpperCase() : "" } : {}) });
             await store.acrescentarResponsavelNaAcao(espacoId, numero, id);
           },
         });

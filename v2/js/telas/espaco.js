@@ -16,7 +16,6 @@ import { donosHtml } from "./pessoas.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
 import { criarPlanilha } from "./editar-planilha.js";
-import { criarTelaResponsaveis } from "./responsaveis.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -47,7 +46,7 @@ const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").ma
  * @returns {() => void} para de acompanhar (ao trocar de espaço)
  */
 export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
-  const ui = { aba: "acoes", modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false,
+  const ui = { modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false,
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "" };
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
@@ -55,7 +54,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   /** janela "Nova ação" aberta: fica aberta entre criações e recebe as mudanças do banco */
   let novaJanela = null;
   const planilha = criarPlanilha({ store, espacoId, hoje, usuario });
-  const telaResponsaveis = criarTelaResponsaveis({ store });
   let comAcoes = null;
   let ferramentas, lista, legenda, cabeca;
 
@@ -97,22 +95,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   }
 
   /** Monta a estrutura da tela; refeita só quando o espaço passa a ter ou deixa de ter ações. */
-  /** Estrutura fixa da tela: cabeçalho, abas e um painel por aba (seção 8.2). */
+  /**
+   * Estrutura fixa da tela: cabeçalho e ações. Sem abas desde 21/10/2026: os responsáveis
+   * são do espaço e ficam em "Configurar este espaço" (seções 4.5 e 8.2).
+   */
   let base = false;
-  let painelAcoes, painelResponsaveis;
+  let painelAcoes;
   function montarBase() {
     base = true;
     alvo.innerHTML = `
       <section class="cabeca-espaco" data-cabeca></section>
-      <nav class="abas" role="tablist" aria-label="Partes do espaço">
-        <button type="button" role="tab" data-aba="acoes" id="aba-acoes" aria-controls="painel-acoes">Ações</button>
-        <button type="button" role="tab" data-aba="responsaveis" id="aba-responsaveis" aria-controls="painel-responsaveis">Responsáveis</button>
-      </nav>
-      <div data-painel="acoes" id="painel-acoes" role="tabpanel" aria-labelledby="aba-acoes"></div>
-      <div data-painel="responsaveis" id="painel-responsaveis" role="tabpanel" aria-labelledby="aba-responsaveis"></div>`;
+      <div data-painel="acoes"></div>`;
     cabeca = alvo.querySelector("[data-cabeca]");
     painelAcoes = alvo.querySelector('[data-painel="acoes"]');
-    painelResponsaveis = alvo.querySelector('[data-painel="responsaveis"]');
   }
 
   /** Painel da aba Ações, montado uma vez: ferramentas, legenda e lista, mesmo com o espaço vazio. */
@@ -138,11 +133,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     if (!base) montarBase();
     if (!comAcoes) montar();
     cabeca.innerHTML = cabecaHtml();
-    for (const aba of alvo.querySelectorAll("[data-aba]")) aba.setAttribute("aria-selected", String(aba.dataset.aba === ui.aba));
-    painelAcoes.hidden = ui.aba !== "acoes";
-    painelResponsaveis.hidden = ui.aba !== "responsaveis";
-    if (ui.aba === "responsaveis") telaResponsaveis.desenhar(painelResponsaveis, { espaco, acoes, responsaveis, meus });
-    else { desenharFerramentas(); desenharLista(); }
+    desenharFerramentas();
+    desenharLista();
   }
 
   /* ---------- ferramentas: filtros de situação, controles e Nova ação ---------- */
@@ -473,8 +465,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   /* ---------- eventos ---------- */
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;
-    const aba = t.closest("[data-aba]");
-    if (aba) { ui.aba = aba.dataset.aba; desenhar(); return; }
     const modo = t.closest("[data-modo]");
     if (modo) return mudarModo(modo.dataset.modo);
     const filtro = t.closest("[data-filtro]");
@@ -517,7 +507,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   let fila = Promise.resolve();
   const parar = store.acompanharEspaco(espacoId, (dados) => {
     fila = fila.then(async () => {
-      derivar(dados, await store.listarResponsaveis(), await store.lerCalendarioGeral());
+      derivar(dados, dados.responsaveis, await store.lerCalendarioGeral());
       desenhar();
       janela?.atualizar(dadosDaJanela());
       novaJanela?.atualizar(dadosDaJanela());

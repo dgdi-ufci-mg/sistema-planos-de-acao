@@ -156,7 +156,7 @@ export function criarStore(banco, opcoes = {}) {
    */
   async function arrumarTons(espacoId) {
     const [espaco, acoes, responsaveis] = await Promise.all([
-      banco.lerEspaco(espacoId), banco.listarAcoes(espacoId), banco.listarResponsaveis(),
+      banco.lerEspaco(espacoId), banco.listarAcoes(espacoId), banco.listarResponsaveis(espacoId),
     ]);
     const pessoas = new Set(responsaveis.filter((r) => r.tipo === "pessoa").map((r) => r.id));
     const emUso = [...new Set(acoes.sort((a, b) => a.ordem - b.ordem).flatMap((a) => a.responsaveis ?? []))].filter((id) => pessoas.has(id));
@@ -298,27 +298,28 @@ export function criarStore(banco, opcoes = {}) {
       await banco.alterarAcao(espacoId, numero, { concluidaEm: null, ...carimbo() });
     },
 
-    // --- responsáveis ---
-    async criarResponsavel(dados) {
+    // --- responsáveis: de cada espaço (seção 4.5) ---
+    /** Cadastra um responsável no espaço; o e-mail de login não se repete dentro do espaço. */
+    async criarResponsavel(espacoId, dados) {
       recusarDesconhecidos(dados, "responsavel");
       const { nome, sigla = "", usuario: login, ...outros } = dados;
       if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do responsável.");
       validarTipo(dados);
-      if (login) validarLogin(login, await banco.listarResponsaveis());
-      return banco.criarResponsavel(novoId(), {
+      if (login) validarLogin(login, await banco.listarResponsaveis(espacoId));
+      return banco.criarResponsavel(espacoId, novoId(), {
         ...outros, nome: nome.trim(), sigla: sigla.trim(), ...(login ? { usuario: login.trim().toLowerCase() } : {}),
         criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario,
       });
     },
-    listarResponsaveis: () => banco.listarResponsaveis(),
+    listarResponsaveis: (espacoId) => banco.listarResponsaveis(espacoId),
     /**
      * Altera um responsável. O tipo é fixo: um cadastro feito com o tipo errado é corrigido
      * criando outro e excluindo este com "substituir por" (seções 4.5 e 4.7).
      */
-    async alterarResponsavel(id, campos) {
+    async alterarResponsavel(espacoId, id, campos) {
       recusarDesconhecidos(campos, "responsavel");
       recusarFixos(campos, ["id", "tipo", "criadoEm"]);
-      const todos = await banco.listarResponsaveis();
+      const todos = await banco.listarResponsaveis(espacoId);
       const atual = todos.find((r) => r.id === id);
       if (!atual) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
       if ("nome" in campos && !campos.nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do responsável.");
@@ -330,7 +331,7 @@ export function criarStore(banco, opcoes = {}) {
         validarLogin(mudanca.usuario, todos.filter((r) => r.id !== id));
       } else if ("usuario" in mudanca) mudanca.usuario = null;
       validarTipo({ ...atual, ...mudanca });
-      await banco.alterarResponsavel(id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
+      await banco.alterarResponsavel(espacoId, id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
     },
 
     // --- calendário geral (seções 4.1.5 e 5.1) ---

@@ -137,7 +137,7 @@ export async function carregarExemplo(store, hoje = new Date()) {
   const idPorSigla = {};
   const usuarioPorSigla = {};
   for (const r of RESPONSAVEIS) {
-    idPorSigla[r.sigla] = await store.criarResponsavel(r);
+    idPorSigla[r.sigla] = await store.criarResponsavel(espacoId, r);
     usuarioPorSigla[r.sigla] = r.usuario ?? null;
   }
 

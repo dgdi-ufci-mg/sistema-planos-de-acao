@@ -106,15 +106,25 @@ export function testarContratoDoBanco(nome, criarBanco) {
       assert.deepEqual((await banco.lerAcao("p1", 1)).estimativas.map((e) => e.o), [2, 5]);
     });
 
-    it("avisa quem acompanha qualquer espaço quando um responsável é criado ou alterado", async () => {
+    it("responsáveis são de cada espaço: avisa só quem acompanha aquele espaço", async () => {
       const banco = criarBanco();
       await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarEspaco("p2", { nome: "Espaço 2" });
       let avisos = 0;
-      const parar = banco.acompanharEspaco("p1", () => avisos++);
-      await banco.criarResponsavel("r1", { nome: "Ana", tipo: "pessoa" });
-      await banco.alterarResponsavel("r1", { sigla: "ANA" });
-      parar();
+      let outros = 0;
+      let ultima = null;
+      const parar = banco.acompanharEspaco("p1", (foto) => { avisos++; ultima = foto; });
+      const parar2 = banco.acompanharEspaco("p2", () => outros++);
+      await new Promise((r) => setTimeout(r, 0));
+      await banco.criarResponsavel("p1", "r1", { nome: "Ana", tipo: "pessoa" });
+      await banco.alterarResponsavel("p1", "r1", { sigla: "ANA" });
+      await new Promise((r) => setTimeout(r, 0));
+      parar(); parar2();
       assert.equal(avisos, 3); // ao começar a acompanhar, ao criar e ao alterar
+      assert.equal(outros, 1); // só ao começar
+      assert.deepEqual(ultima.responsaveis.map((r) => r.sigla), ["ANA"]);
+      assert.deepEqual(await banco.listarResponsaveis("p2"), []);
+      await assert.rejects(banco.alterarResponsavel("p2", "r1", { sigla: "X" }), { codigo: "nao-encontrado" });
     });
 
     it("guarda o calendário geral e avisa todos os espaços acompanhados", async () => {

@@ -90,11 +90,12 @@ describe("Store: ações", () => {
   });
 });
 
-describe("Store: responsáveis", () => {
+describe("Store: responsáveis do espaço", () => {
   it("cria e lista responsáveis, com carimbos", async () => {
     const store = storeDeTeste();
-    await store.criarResponsavel({ tipo: "pessoa", nome: "Ana Souza", sigla: "ANA", setor: "DGDI" });
-    const [ana] = await store.listarResponsaveis();
+    const e = await store.criarEspaco({ nome: "P" });
+    await store.criarResponsavel(e, { tipo: "pessoa", nome: "Ana Souza", sigla: "ANA", setor: "DGDI" });
+    const [ana] = await store.listarResponsaveis(e);
     assert.deepEqual([ana.nome, ana.sigla, ana.setor], ["Ana Souza", "ANA", "DGDI"]);
     assert.ok(ana.criadoEm);
     assert.equal(ana.alteradoPor, "ana@ufci.edu.br");
@@ -102,14 +103,26 @@ describe("Store: responsáveis", () => {
 
   it("exige o tipo (pessoa ou unidade) e só aceita login de pessoa", async () => {
     const store = storeDeTeste();
-    await assert.rejects(store.criarResponsavel({ nome: "Ana" }), { codigo: "tipo-invalido" });
-    await assert.rejects(store.criarResponsavel({ tipo: "grupo", nome: "Ana" }), { codigo: "tipo-invalido" });
-    await assert.rejects(store.criarResponsavel({ tipo: "unidade", nome: "DTI", usuario: "dti@ufci.edu.br" }), { codigo: "unidade-com-login" });
-    const dti = await store.criarResponsavel({ tipo: "unidade", nome: "Diretoria de TI", sigla: "DTI" });
-    await assert.rejects(store.alterarResponsavel(dti, { usuario: "dti@ufci.edu.br" }), { codigo: "unidade-com-login" });
-    const ana = await store.criarResponsavel({ tipo: "pessoa", nome: "Ana", usuario: "ana@ufci.edu.br" });
-    await assert.rejects(store.alterarResponsavel(ana, { tipo: "unidade" }), { codigo: "campo-fixo" });
-    await assert.rejects(store.alterarResponsavel(dti, { tipo: "pessoa" }), { codigo: "campo-fixo" });
+    const e = await store.criarEspaco({ nome: "P" });
+    await assert.rejects(store.criarResponsavel(e, { nome: "Ana" }), { codigo: "tipo-invalido" });
+    await assert.rejects(store.criarResponsavel(e, { tipo: "grupo", nome: "Ana" }), { codigo: "tipo-invalido" });
+    await assert.rejects(store.criarResponsavel(e, { tipo: "unidade", nome: "DTI", usuario: "dti@ufci.edu.br" }), { codigo: "unidade-com-login" });
+    const dti = await store.criarResponsavel(e, { tipo: "unidade", nome: "Diretoria de TI", sigla: "DTI" });
+    await assert.rejects(store.alterarResponsavel(e, dti, { usuario: "dti@ufci.edu.br" }), { codigo: "unidade-com-login" });
+    const ana = await store.criarResponsavel(e, { tipo: "pessoa", nome: "Ana", usuario: "ana@ufci.edu.br" });
+    await assert.rejects(store.alterarResponsavel(e, ana, { tipo: "unidade" }), { codigo: "campo-fixo" });
+    await assert.rejects(store.alterarResponsavel(e, dti, { tipo: "pessoa" }), { codigo: "campo-fixo" });
+  });
+
+  it("cada espaço tem a sua lista; o mesmo e-mail de login pode estar em espaços diferentes, mas não repetido num espaço", async () => {
+    const store = storeDeTeste();
+    const a = await store.criarEspaco({ nome: "A" });
+    const b = await store.criarEspaco({ nome: "B" });
+    await store.criarResponsavel(a, { tipo: "pessoa", nome: "Ana", usuario: "ana@ufci.edu.br" });
+    assert.equal((await store.listarResponsaveis(b)).length, 0);
+    await store.criarResponsavel(b, { tipo: "pessoa", nome: "Ana", usuario: "ana@ufci.edu.br" });
+    await assert.rejects(store.criarResponsavel(a, { tipo: "pessoa", nome: "Ana 2", usuario: "ana@ufci.edu.br" }), { codigo: "login-ocupado" });
+    assert.equal((await store.listarResponsaveis(a)).length, 1);
   });
 });
 
@@ -122,7 +135,7 @@ describe("Store: só grava campos do dicionário de dados", () => {
     await assert.rejects(store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x", pct: 50 }), { codigo: "campo-desconhecido" });
     const n = await store.criarAcao(espacoId, { codigo: "LEV", rotulo: "x" });
     await assert.rejects(store.alterarAcao(espacoId, n, { name: "y" }), { codigo: "campo-desconhecido" });
-    await assert.rejects(store.criarResponsavel({ tipo: "pessoa", nome: "Ana", email: "a@b" }), { codigo: "campo-desconhecido" });
+    await assert.rejects(store.criarResponsavel(espacoId, { tipo: "pessoa", nome: "Ana", email: "a@b" }), { codigo: "campo-desconhecido" });
   });
 });
 

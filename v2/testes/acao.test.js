@@ -98,7 +98,7 @@ describe("Janela da ação: operações do Store", async () => {
 
   it("acrescenta e retira responsáveis, mantendo os tons do espaço", async () => {
     const { store, id } = await novo();
-    const ana = await store.criarResponsavel({ tipo: "pessoa", nome: "Ana Souza" });
+    const ana = await store.criarResponsavel(id, { tipo: "pessoa", nome: "Ana Souza" });
     await store.acrescentarResponsavelNaAcao(id, 1, ana);
     assert.deepEqual((await store.lerAcao(id, 1)).responsaveis, [ana]);
     assert.equal((await store.lerEspaco(id)).tons[ana], 1);

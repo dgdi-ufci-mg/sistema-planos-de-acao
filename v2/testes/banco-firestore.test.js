@@ -11,6 +11,14 @@ import { criarFirestoreFalso, criarAuthFalso, FieldValueFalso } from "./firebase
 testarContratoDoBanco("Firestore (falso, em memória)", () => criarBancoFirestore(criarFirestoreFalso(), FieldValueFalso));
 
 describe("Banco do Firestore: detalhes", () => {
+  it("guarda os responsáveis dentro do espaço: espacos/{id}/responsaveis/{id}", async () => {
+    const db = criarFirestoreFalso();
+    const banco = criarBancoFirestore(db, FieldValueFalso);
+    await banco.criarEspaco("p1", { nome: "Espaço 1" });
+    await banco.criarResponsavel("p1", "r1", { nome: "Ana", tipo: "pessoa" });
+    assert.ok(db._docs.has("espacos/p1/responsaveis/r1"));
+  });
+
   it("guarda as ações em espacos/{id}/acoes/{numero}", async () => {
     const db = criarFirestoreFalso();
     const banco = criarBancoFirestore(db, FieldValueFalso);
@@ -40,8 +48,8 @@ describe("Banco do Firestore: detalhes", () => {
     await banco.criarEspaco("p1", { nome: "Espaço 1" });
     const parar = banco.acompanharEspaco("p1", () => {});
     await new Promise((r) => setTimeout(r, 0));
-    await banco.criarResponsavel("r1", { nome: "Ana", tipo: "pessoa" });
-    assert.deepEqual((await banco.listarResponsaveis()).map((r) => r.nome), ["Ana"]);
+    await banco.criarResponsavel("p1", "r1", { nome: "Ana", tipo: "pessoa" });
+    assert.deepEqual((await banco.listarResponsaveis("p1")).map((r) => r.nome), ["Ana"]);
     parar();
   });
 });

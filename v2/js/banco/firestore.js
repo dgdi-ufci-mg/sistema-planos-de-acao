@@ -7,7 +7,7 @@
  * arrayUnion). Onde fica cada entidade:
  *   espacos/{id}                    espaço
  *   espacos/{id}/acoes/{numero}     ação
- *   responsaveis/{id}               responsável
+ *   espacos/{id}/responsaveis/{id}  responsável do espaço (seção 4.5)
  *   sistema/calendario              calendário geral
  *
  * Recebe o Firestore já iniciado (`db`, API compat) e `FieldValue`, para os testes
@@ -49,47 +49,32 @@ export function criarBancoFirestore(db, FieldValue) {
   const espacoRef = (id) => db.collection("espacos").doc(id);
   const acoesRef = (espacoId) => espacoRef(espacoId).collection("acoes");
   const acaoRef = (espacoId, numero) => acoesRef(espacoId).doc(String(numero));
-  const responsaveisRef = () => db.collection("responsaveis");
+  const responsaveisRef = (espacoId) => espacoRef(espacoId).collection("responsaveis");
   const calendarioRef = () => db.collection("sistema").doc("calendario");
 
   /* ---------- tempo real ----------
-   * Responsáveis e calendário geral valem para todos os espaços. Ficam guardados aqui,
-   * acompanhados por um só ouvinte cada, para não reler tudo a cada mudança. */
-  let responsaveis = null; // Map id → responsável, quando acompanhado
+   * O calendário geral vale para todos os espaços: fica guardado aqui, acompanhado por um só
+   * ouvinte, ligado enquanto a página estiver aberta. A cópia só é aceita quando confirmada pelo
+   * servidor (fromCache falso): uma leitura parcial faria dados sumirem da tela (falha vista em
+   * 21/10/2026). Sem cópia válida, ou se o ouvinte falhar, as leituras vão direto ao banco. */
   let calendario; // undefined: ainda não acompanhado
   let pararGerais = null;
   /** espacoId → conjunto de funções que avisam a tela */
   const ouvintes = new Map();
   const avisarTodos = () => { for (const avisos of ouvintes.values()) for (const avisar of avisos) avisar(); };
 
-  /**
-   * Os ouvintes dos responsáveis e do calendário ficam ligados enquanto a página estiver aberta,
-   * sem parar e recomeçar a cada troca de espaço. A cópia guardada só é aceita quando confirmada
-   * pelo servidor (fromCache falso): uma leitura parcial, só com o que o aparelho já tinha, faria
-   * responsáveis sumirem da tela (falha vista em 21/10/2026). Sem cópia válida, ou se o ouvinte
-   * falhar, as leituras vão direto ao banco.
-   */
   function acompanharGerais() {
     if (pararGerais) return;
-    const daServidor = (s) => !s.metadata?.fromCache;
-    const falhou = (erro) => {
-      console.error("Ouvinte geral do Firestore falhou:", erro);
-      pararGerais?.();
-    };
-    /* a primeira leitura confirmada não avisa: a tela já leu esses dados ao abrir o espaço */
-    const p1 = responsaveisRef().onSnapshot((s) => {
-      if (!daServidor(s)) return;
-      const primeira = !responsaveis;
-      responsaveis = new Map(s.docs.map((d) => [d.id, d.data()]));
-      if (!primeira) avisarTodos();
-    }, falhou);
     const p2 = calendarioRef().onSnapshot((s) => {
-      if (!daServidor(s)) return;
-      const primeira = calendario === undefined;
+      if (s.metadata?.fromCache) return;
+      const primeira = calendario === undefined; // a primeira não avisa: a tela já leu ao abrir o espaço
       calendario = s.exists ? s.data() : null;
       if (!primeira) avisarTodos();
-    }, falhou);
-    pararGerais = () => { p1(); p2(); pararGerais = null; responsaveis = null; calendario = undefined; };
+    }, (erro) => {
+      console.error("Ouvinte do calendário geral falhou:", erro);
+      pararGerais?.();
+    });
+    pararGerais = () => { p2(); pararGerais = null; calendario = undefined; };
   }
 
   /** Lê dentro de uma transação e recusa se a ação não existir. */
@@ -187,23 +172,22 @@ export function criarBancoFirestore(db, FieldValue) {
       });
     },
 
-    // --- responsáveis ---
+    // --- responsáveis: de cada espaço (seção 4.5) ---
     /**
      * Gravação simples, sem transação: o id é um UUID novo, e assim o ouvinte recebe o
      * responsável na hora, antes da confirmação do servidor (quem cadastra e já escolhe
      * o responsável numa ação precisa encontrá-lo na lista).
      */
-    async criarResponsavel(id, dados) {
-      await responsaveisRef().doc(id).set({ ...copia(dados), id });
+    async criarResponsavel(espacoId, id, dados) {
+      await responsaveisRef(espacoId).doc(id).set({ ...copia(dados), id });
       return id;
     },
-    async listarResponsaveis() {
-      if (responsaveis) return [...responsaveis.values()].map(copia);
-      return (await responsaveisRef().get()).docs.map((d) => d.data());
+    async listarResponsaveis(espacoId) {
+      return (await responsaveisRef(espacoId).get()).docs.map((d) => d.data());
     },
-    async alterarResponsavel(id, campos) {
+    async alterarResponsavel(espacoId, id, campos) {
       try {
-        await responsaveisRef().doc(id).update(campos);
+        await responsaveisRef(espacoId).doc(id).update(campos);
       } catch (e) {
         if (e?.code === "not-found") throw new ErroDeDados("nao-encontrado", `Responsável ${id} não encontrado.`);
         throw e;
@@ -222,23 +206,26 @@ export function criarBancoFirestore(db, FieldValue) {
 
     // --- tempo real ---
     /**
-     * Avisa `aoMudar` quando o espaço e as ações chegam e a cada mudança neles,
-     * nos responsáveis ou no calendário geral. Devolve a função que para de avisar.
+     * Avisa `aoMudar` quando o espaço, as ações e os responsáveis chegam e a cada mudança neles
+     * ou no calendário geral, com {espaco, acoes, responsaveis}. Devolve a função que para de avisar.
      */
     acompanharEspaco(espacoId, aoMudar) {
       acompanharGerais();
       let espaco;
       let acoes;
+      let responsaveis;
       const avisar = () => {
-        if (espaco !== undefined && acoes !== undefined && espaco !== null) aoMudar({ espaco: copia(espaco), acoes: acoes.map(copia) });
+        if (espaco === undefined || espaco === null || acoes === undefined || responsaveis === undefined) return;
+        aoMudar({ espaco: copia(espaco), acoes: acoes.map(copia), responsaveis: responsaveis.map(copia) });
       };
       if (!ouvintes.has(espacoId)) ouvintes.set(espacoId, new Set());
       ouvintes.get(espacoId).add(avisar);
       const falhou = (erro) => console.error("Ouvinte do espaço falhou:", erro);
       const p1 = espacoRef(espacoId).onSnapshot((s) => { espaco = s.exists ? s.data() : null; avisar(); }, falhou);
       const p2 = acoesRef(espacoId).onSnapshot((s) => { acoes = s.docs.map((d) => d.data()); avisar(); }, falhou);
+      const p3 = responsaveisRef(espacoId).onSnapshot((s) => { responsaveis = s.docs.map((d) => d.data()); avisar(); }, falhou);
       return () => {
-        p1(); p2();
+        p1(); p2(); p3();
         ouvintes.get(espacoId)?.delete(avisar);
         if (!ouvintes.get(espacoId)?.size) ouvintes.delete(espacoId);
       };

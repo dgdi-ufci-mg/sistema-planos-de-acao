@@ -6,6 +6,7 @@
  * entram nos passos 1.18 e 1.19.
  */
 import { ligarSecoesSuaves } from "./movimento.js";
+import { criarTelaResponsaveis } from "./responsaveis.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
@@ -28,6 +29,16 @@ export async function abrirConfiguracao({ store, espacoId }) {
   let espaco = await store.lerEspaco(espacoId);
   let geral = await store.lerCalendarioGeral();
   let acoes = await store.listarAcoes(espacoId);
+  let responsaveis = await store.listarResponsaveis(espacoId);
+  /** responsáveis do espaço (seção 4.5): a mesma tela de antes, agora numa seção deste painel */
+  const telaResponsaveis = criarTelaResponsaveis({ store });
+  const meus = () => (store.usuario ? responsaveis.filter((r) => r.usuario === store.usuario).map((r) => r.id) : null);
+  const desenharResponsaveis = () => {
+    const alvo = corpo.querySelector("[data-responsaveis]");
+    if (alvo) telaResponsaveis.desenhar(alvo, { espaco, acoes, responsaveis, meus: meus() });
+    const n = corpo.querySelector('[data-secao="responsaveis"] > summary .n');
+    if (n) n.textContent = String(responsaveis.length);
+  };
   const novoId = (prefixo) => `${prefixo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   /** Rascunhos das listas, editados na tela até o Salvar da seção. */
   const rascunho = {
@@ -36,7 +47,10 @@ export async function abrirConfiguracao({ store, espacoId }) {
     documentos: structuredClone(espaco.documentos ?? []),
   };
 
-  const corpo = abrirPainel("Configurar este espaço", "");
+  /* enquanto o painel está aberto, mudanças nos responsáveis (de quem quer que seja) aparecem na seção;
+     as demais seções não são redesenhadas, para não perder o que está sendo digitado */
+  let pararDeAcompanhar = () => {};
+  const corpo = abrirPainel("Configurar este espaço", "", { aoFechar: () => pararDeAcompanhar() });
   ligarSecoesSuaves(corpo);
   /** Seções abertas; os dados do espaço começam abertos. Mantidas quando o painel é redesenhado. */
   const abertas = new Set(["dados"]);
@@ -50,6 +64,7 @@ export async function abrirConfiguracao({ store, espacoId }) {
     espaco = await store.lerEspaco(espacoId);
     geral = await store.lerCalendarioGeral();
     acoes = await store.listarAcoes(espacoId);
+    responsaveis = await store.listarResponsaveis(espacoId);
   }
 
   /* ---------- desenho ---------- */
@@ -60,6 +75,7 @@ export async function abrirConfiguracao({ store, espacoId }) {
 
   function desenhar() {
     desenharSecoes();
+    desenharResponsaveis();
     marcar();
   }
 
@@ -95,6 +111,11 @@ export async function abrirConfiguracao({ store, espacoId }) {
           <p class="erro" data-erro hidden></p>
           <div class="botoes"><button class="botao" type="button" data-acrescentar="datas">${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar</button>${AVISO_PENDENTE}</div>
         </form>
+      </details>
+
+      <details class="config" data-secao="responsaveis"${aberta("responsaveis")}>
+        <summary><h3>Responsáveis</h3><span class="n">${responsaveis.length}</span></summary>
+        <div class="responsaveis-do-espaco" data-responsaveis></div>
       </details>
 
       ${ligado(campos, "fasesEtapas") ? estruturaHtml() : ""}
@@ -278,7 +299,16 @@ export async function abrirConfiguracao({ store, espacoId }) {
       alvo[alvo.length - (t.dataset.acrescentar === "documentos" ? 4 : t.dataset.acrescentar === "datas" ? 2 : 1)]?.focus();
     }
   });
-  corpo.addEventListener("submit", (e) => { e.preventDefault(); salvar(e.target); });
+  corpo.addEventListener("submit", (e) => {
+    if (!e.target.dataset.salvar) return; // o formulário dos responsáveis grava por conta própria
+    e.preventDefault();
+    salvar(e.target);
+  });
 
   desenhar();
+  pararDeAcompanhar = store.acompanharEspaco(espacoId, (dados) => {
+    responsaveis = dados.responsaveis;
+    acoes = dados.acoes;
+    desenharResponsaveis();
+  });
 }

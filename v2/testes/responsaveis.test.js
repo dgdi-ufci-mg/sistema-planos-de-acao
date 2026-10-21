@@ -51,7 +51,7 @@ describe("Responsáveis na tela", () => {
 describe("Tons das pessoas no espaço (Store)", async () => {
   const store = criarStore(criarBancoLocal());
   const id = await carregarExemplo(store, new Date("2026-10-20T12:00:00Z"));
-  const responsaveis = await store.listarResponsaveis();
+  const responsaveis = await store.listarResponsaveis(id);
   const pessoa = (sigla) => responsaveis.find((r) => r.sigla === sigla).id;
 
   it("o exemplo tem um tom diferente para cada pessoa, e nenhum para unidades", async () => {
@@ -71,28 +71,28 @@ describe("Tons das pessoas no espaço (Store)", async () => {
     const sem = (await store.lerEspaco(id)).tons;
     assert.equal(sem[dro], undefined);
     for (const [r, t] of Object.entries(sem)) assert.equal(t, antes[r]);
-    const eva = await store.criarResponsavel({ tipo: "pessoa", nome: "Eva Prado" });
+    const eva = await store.criarResponsavel(id, { tipo: "pessoa", nome: "Eva Prado" });
     await store.alterarAcao(id, acoes[0].numero, { responsaveis: [...acoes[0].responsaveis, eva] });
     assert.equal((await store.lerEspaco(id)).tons[eva], antes[dro]);
   });
 
   it("o tipo é fixo depois do cadastro", async () => {
     const dti = responsaveis.find((r) => r.sigla === "DTI").id;
-    await assert.rejects(store.alterarResponsavel(dti, { tipo: "pessoa" }), { codigo: "campo-fixo" });
+    await assert.rejects(store.alterarResponsavel(id, dti, { tipo: "pessoa" }), { codigo: "campo-fixo" });
   });
 
   it("login: e-mail válido, ligado a um responsável só, e nunca a uma unidade", async () => {
     const ana = pessoa("ANA");
     const brl = pessoa("BRL");
-    await assert.rejects(store.alterarResponsavel(brl, { usuario: "ana.souza@ufci.edu.br" }), { codigo: "login-ocupado" });
-    await assert.rejects(store.alterarResponsavel(brl, { usuario: "bruno" }), { codigo: "login-invalido" });
-    await store.alterarResponsavel(brl, { usuario: " Bruno.Novo@UFCI.edu.br " });
-    assert.equal((await store.listarResponsaveis()).find((r) => r.id === brl).usuario, "bruno.novo@ufci.edu.br");
-    await store.alterarResponsavel(ana, { usuario: "" });
-    assert.equal((await store.listarResponsaveis()).find((r) => r.id === ana).usuario, null);
+    await assert.rejects(store.alterarResponsavel(id, brl, { usuario: "ana.souza@ufci.edu.br" }), { codigo: "login-ocupado" });
+    await assert.rejects(store.alterarResponsavel(id, brl, { usuario: "bruno" }), { codigo: "login-invalido" });
+    await store.alterarResponsavel(id, brl, { usuario: " Bruno.Novo@UFCI.edu.br " });
+    assert.equal((await store.listarResponsaveis(id)).find((r) => r.id === brl).usuario, "bruno.novo@ufci.edu.br");
+    await store.alterarResponsavel(id, ana, { usuario: "" });
+    assert.equal((await store.listarResponsaveis(id)).find((r) => r.id === ana).usuario, null);
     const pf = responsaveis.find((r) => r.sigla === "PF").id;
-    await assert.rejects(store.alterarResponsavel(pf, { usuario: "pf@ufci.edu.br" }), { codigo: "unidade-com-login" });
-    await assert.rejects(store.alterarResponsavel(pf, { nome: "  " }), { codigo: "nome-vazio" });
+    await assert.rejects(store.alterarResponsavel(id, pf, { usuario: "pf@ufci.edu.br" }), { codigo: "unidade-com-login" });
+    await assert.rejects(store.alterarResponsavel(id, pf, { nome: "  " }), { codigo: "nome-vazio" });
   });
 
   it("o tom não pode ser alterado à mão", async () => {

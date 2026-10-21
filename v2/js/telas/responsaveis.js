@@ -1,6 +1,6 @@
 /**
- * Aba Responsáveis (especificação, seções 4.5 e 8.2; passo 1.12).
- * Lista global, igual em todos os espaços, separada em pessoas e unidades, com busca.
+ * Responsáveis do espaço (especificação, seção 4.5; passos 1.12 e 1.14b), na seção "Responsáveis"
+ * de "Configurar este espaço". Cada espaço tem a sua lista, separada em pessoas e unidades, com busca.
  * Cadastro e edição no lugar: tipo, nome, sigla, setor e, para pessoas, o e-mail de login,
  * que faz funcionar "Minhas ações". O tipo é escolhido só no cadastro e não muda depois.
  * A exclusão chega com a lixeira (passo 1.15).
@@ -78,10 +78,10 @@ export function criarTelaResponsaveis({ store }) {
     </section>`;
     alvo.innerHTML = `
       <div class="ferramentas-responsaveis">
-        <input type="search" data-busca-responsaveis placeholder="Buscar por nome, sigla, setor ou e-mail" aria-label="Buscar responsáveis" value="${esc(texto)}">
+        <input type="search" data-busca-responsaveis placeholder="Buscar responsável" aria-label="Buscar responsáveis" value="${esc(texto)}">
         <button class="botao principal" type="button" data-novo-responsavel>${ICONES.mais}Novo responsável</button>
       </div>
-      <p class="tec">Os responsáveis são os mesmos em todos os espaços. Pessoas aparecem em círculos com as iniciais; unidades, em quadrados com a sigla.</p>
+      <p class="tec">Pessoas e unidades deste espaço; não aparecem nos outros. Pessoas aparecem em círculos com as iniciais; unidades, em quadrados com a sigla.</p>
       ${editando === "novo" ? formularioHtml(null) : ""}
       ${grupo("Pessoas", achados.filter((r) => r.tipo !== "unidade"))}
       ${grupo("Unidades", achados.filter((r) => r.tipo === "unidade"))}`;
@@ -144,11 +144,11 @@ export function criarTelaResponsaveis({ store }) {
     try {
       if (form.dataset.formResponsavel === "novo") {
         if (!dados.usuario) delete dados.usuario;
-        await store.criarResponsavel({ tipo: f.tipo, ...dados });
+        await store.criarResponsavel(d.espaco.id, { tipo: f.tipo, ...dados });
         avisar(`Cadastro salvo: ${dados.nome.trim()}.`);
       } else {
         if (f.tipo === "unidade") delete dados.usuario;
-        await store.alterarResponsavel(form.dataset.formResponsavel, dados);
+        await store.alterarResponsavel(d.espaco.id, form.dataset.formResponsavel, dados);
       }
       await fechar();
     } catch (e) {

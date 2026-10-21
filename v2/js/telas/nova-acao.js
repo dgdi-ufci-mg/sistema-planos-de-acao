@@ -147,8 +147,8 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
             achados.push({
               html: `${ICONES.mais} Cadastrar “${esc(nome)}” como ${comoTexto}`,
               escolher: async () => {
-                const id = await store.criarResponsavel({ tipo, nome, ...(tipo === "unidade" && nome.length <= 10 ? { sigla: nome.toUpperCase() } : {}) });
-                responsaveis = await store.listarResponsaveis();
+                const id = await store.criarResponsavel(espacoId, { tipo, nome, ...(tipo === "unidade" && nome.length <= 10 ? { sigla: nome.toUpperCase() } : {}) });
+                responsaveis = await store.listarResponsaveis(espacoId);
                 acrescentar("responsaveis", id);
               },
             });

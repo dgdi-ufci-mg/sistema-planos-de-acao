@@ -28,7 +28,7 @@ describe("Espaço de exemplo", async () => {
   const espacoId = await carregarExemplo(store, hoje);
   const espaco = await store.lerEspaco(espacoId);
   const acoes = await store.listarAcoes(espacoId);
-  const responsaveis = await store.listarResponsaveis();
+  const responsaveis = await store.listarResponsaveis(espacoId);
   const etapas = new Set(espaco.estrutura.flatMap((f) => f.etapas.map((e) => e.id)));
   const ehDiaUtil = (iso) => {
     const d = new Date(`${iso}T12:00:00Z`);

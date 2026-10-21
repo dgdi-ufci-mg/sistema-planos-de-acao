@@ -69,7 +69,8 @@ async function atualizarTopo() {
     ...await tentar(() => store.listarEspacos(), []),
     ...(exemplo ? await exemplo.listarEspacos() : []),
   ];
-  const ligado = usuario ? (await tentar(() => store.listarResponsaveis(), [])).find((r) => r.usuario === usuario) : null;
+  /* nome de quem entrou: o do responsável ligado ao e-mail no espaço aberto (os responsáveis são de cada espaço) */
+  const ligado = usuario && abertoId ? (await tentar(() => storeDe(abertoId).listarResponsaveis(abertoId), [])).find((r) => r.usuario === usuario) : null;
   mostrarTopo(menus, {
     espacos,
     abertoId,
@@ -119,9 +120,13 @@ async function abrirEspaco(id) {
   document.body.classList.toggle("so-leitura", !daqui.podeGravar);
   const pararTela = mostrarEspaco(principal, { store: daqui, espacoId: id, hoje, usuario });
   /* o nome do espaço no topo acompanha as mudanças (por exemplo, ao renomear em "Configurar este espaço") */
-  let nome = espaco.nome;
-  const pararTopo = daqui.acompanharEspaco(id, ({ espaco: atual }) => {
-    if (atual.nome !== nome) { nome = atual.nome; atualizarTopo(); }
+  /* o topo acompanha o nome do espaço e o nome de quem entrou (o do responsável ligado ao e-mail neste espaço) */
+  const chaveDoTopo = (e, rs) => `${e.nome}|${rs.find((r) => usuario && r.usuario === usuario)?.nome ?? ""}`;
+  let chave = null;
+  const pararTopo = daqui.acompanharEspaco(id, ({ espaco: atual, responsaveis }) => {
+    const nova = chaveDoTopo(atual, responsaveis);
+    if (chave !== null && nova !== chave) atualizarTopo();
+    chave = nova;
   });
   pararEspaco = () => { pararTela(); pararTopo(); };
   await atualizarTopo();

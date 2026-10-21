@@ -24,8 +24,9 @@ export function criarBancoLocal() {
   const espacos = new Map();
   /** @type {Map<string, Map<string, object>>} */
   const acoesPorEspaco = new Map();
-  /** @type {Map<string, object>} */
-  const responsaveis = new Map();
+  /** Responsáveis de cada espaço (seção 4.5): espacoId → (id → responsável). */
+  /** @type {Map<string, Map<string, object>>} */
+  const responsaveisPorEspaco = new Map();
   /** @type {Map<string, Set<Function>>} */
   const ouvintes = new Map();
   /** Calendário geral, o mesmo para todos os espaços. */
@@ -36,6 +37,11 @@ export function criarBancoLocal() {
     return acoesPorEspaco.get(espacoId);
   };
 
+  const responsaveisDo = (espacoId) => {
+    if (!responsaveisPorEspaco.has(espacoId)) responsaveisPorEspaco.set(espacoId, new Map());
+    return responsaveisPorEspaco.get(espacoId);
+  };
+
   const exigirEspaco = (espacoId) => {
     if (!espacos.has(espacoId)) throw new ErroDeDados("nao-encontrado", `Espaço ${espacoId} não encontrado.`);
   };
@@ -43,6 +49,7 @@ export function criarBancoLocal() {
   const fotografia = (espacoId) => ({
     espaco: copia(espacos.get(espacoId)),
     acoes: [...acoesDo(espacoId).values()].map(copia),
+    responsaveis: [...responsaveisDo(espacoId).values()].map(copia),
   });
 
   const avisar = (espacoId) => {
@@ -148,20 +155,23 @@ export function criarBancoLocal() {
       });
     },
 
-    // --- responsáveis ---
-    async criarResponsavel(id, dados) {
-      if (responsaveis.has(id)) throw new ErroDeDados("id-ocupado", `Já existe um responsável com o id ${id}.`);
-      responsaveis.set(id, copia({ ...dados, id }));
-      avisarTodos(); // responsáveis são de todos os espaços
+    // --- responsáveis: de cada espaço (seção 4.5) ---
+    async criarResponsavel(espacoId, id, dados) {
+      exigirEspaco(espacoId);
+      const lista = responsaveisDo(espacoId);
+      if (lista.has(id)) throw new ErroDeDados("id-ocupado", `Já existe um responsável com o id ${id}.`);
+      lista.set(id, copia({ ...dados, id }));
+      avisar(espacoId);
       return id;
     },
-    async listarResponsaveis() {
-      return [...responsaveis.values()].map(copia);
+    async listarResponsaveis(espacoId) {
+      return [...responsaveisDo(espacoId).values()].map(copia);
     },
-    async alterarResponsavel(id, campos) {
-      if (!responsaveis.has(id)) throw new ErroDeDados("nao-encontrado", `Responsável ${id} não encontrado.`);
-      responsaveis.set(id, { ...responsaveis.get(id), ...copia(campos) });
-      avisarTodos();
+    async alterarResponsavel(espacoId, id, campos) {
+      const lista = responsaveisDo(espacoId);
+      if (!lista.has(id)) throw new ErroDeDados("nao-encontrado", `Responsável ${id} não encontrado.`);
+      lista.set(id, { ...lista.get(id), ...copia(campos) });
+      avisar(espacoId);
     },
 
     // --- calendário geral (seção 4.1.5) ---
@@ -175,7 +185,8 @@ export function criarBancoLocal() {
 
     // --- tempo real ---
     /**
-     * Avisa `aoMudar` agora e a cada mudança no espaço ou nas ações dele.
+     * Avisa `aoMudar` agora e a cada mudança no espaço, nas ações ou nos responsáveis dele
+     * (e no calendário geral), com {espaco, acoes, responsaveis}.
      * Devolve a função que para de avisar.
      */
     acompanharEspaco(espacoId, aoMudar) {
