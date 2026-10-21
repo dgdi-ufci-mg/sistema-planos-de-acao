@@ -34,6 +34,8 @@ export function montarLinhas(acoes, caminho, simulacao, calendario, hoje) {
       execucao: concluida ? null : s.prioridadeExecucao,
       revisao: concluida ? null : s.prioridadeRevisao,
       vigente: estimativaVigente(acao),
+      /** ação ainda sem estimativa: conta como zero dias no cálculo (seção 5.2) */
+      semEstimativa: !concluida && !estimativaVigente(acao),
     };
   });
 }
@@ -77,16 +79,17 @@ export function ordenar(linhas, ordem = "espaco") {
 /**
  * Agrupa por fase e etapa, na ordem da estrutura do espaço. Grupos vazios ficam de fora;
  * ações sem etapa (ou com etapa que não existe mais) vão para "Sem fase nem etapa".
+ * vazias: inclui as etapas sem ações (para a linha de criação rápida de cada etapa).
  * @returns {{fases: {fase: object, linhas: object[], etapas: {etapa: object, linhas: object[]}[]}[], semEtapa: object[]}}
  */
-export function agrupar(linhas, estrutura = []) {
+export function agrupar(linhas, estrutura = [], { vazias = false } = {}) {
   const conhecidas = new Set(estrutura.flatMap((f) => f.etapas.map((e) => e.id)));
   const fases = estrutura.map((fase) => {
     const etapas = fase.etapas
       .map((etapa) => ({ etapa, linhas: linhas.filter((l) => l.acao.etapa === etapa.id) }))
-      .filter((e) => e.linhas.length);
+      .filter((e) => vazias || e.linhas.length);
     return { fase, etapas, linhas: etapas.flatMap((e) => e.linhas) };
-  }).filter((f) => f.linhas.length);
+  }).filter((f) => (vazias ? f.etapas.length : f.linhas.length));
   return { fases, semEtapa: linhas.filter((l) => !conhecidas.has(l.acao.etapa)) };
 }
 

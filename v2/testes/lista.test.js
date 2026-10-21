@@ -78,3 +78,12 @@ describe("Lista de ações", async () => {
     assert.equal(r.termina, linhas.map((l) => l.conclusao).sort().at(-1));
   });
 });
+
+describe("Agrupar com etapas vazias (passo 1.14a)", () => {
+  it("com vazias, mostra as etapas sem ações, para a criação rápida", () => {
+    const estrutura = [{ id: "f1", nome: "Fase", etapas: [{ id: "e1", nome: "Etapa 1" }, { id: "e2", nome: "Etapa 2" }] }];
+    assert.equal(agrupar([], estrutura).fases.length, 0);
+    const g = agrupar([], estrutura, { vazias: true });
+    assert.deepEqual(g.fases[0].etapas.map((e) => e.etapa.id), ["e1", "e2"]);
+  });
+});

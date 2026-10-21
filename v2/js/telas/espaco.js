@@ -14,7 +14,7 @@ import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lis
 import { abrirPainel, avisar } from "./painel.js";
 import { donosHtml } from "./pessoas.js";
 import { abrirAcao } from "./janela-acao.js";
-import { abrirNovaAcao } from "./nova-acao.js";
+import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
 import { criarPlanilha } from "./editar-planilha.js";
 import { criarTelaResponsaveis } from "./responsaveis.js";
 
@@ -47,9 +47,13 @@ const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").ma
  * @returns {() => void} para de acompanhar (ao trocar de espaço)
  */
 export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
-  const ui = { aba: "acoes", modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false };
+  const ui = { aba: "acoes", modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false,
+    /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
+    rapida: null, rapidaTexto: "" };
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
   let janela = null;
+  /** janela "Nova ação" aberta: fica aberta entre criações e recebe as mudanças do banco */
+  let novaJanela = null;
   const planilha = criarPlanilha({ store, espacoId, hoje, usuario });
   const telaResponsaveis = criarTelaResponsaveis({ store });
   let comAcoes = null;
@@ -84,6 +88,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     situacao: ui.situacao, responsavel: ui.responsavel, minhas: ui.minhas ? meus : undefined,
   }), ui.ordem);
 
+  const faltam = () => linhas.filter((l) => l.semEstimativa).length;
   function cabecaHtml() {
     return `<h1>${esc(espaco.nome)}</h1>
       <p class="tec">Início em ${dataBr(espaco.inicio)}${espaco.prazoFinal ? ` · prazo final em ${dataBr(espaco.prazoFinal)}` : ""}</p>
@@ -91,7 +96,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
         <span>Conclusão prevista <b class="mono">${dataBr(cal.dataDeConclusao(sim.p50, 0))}</b></span>
         <span>Data segura <b class="mono">${dataBr(cal.dataDeConclusao(sim.p80, 0))}</b> <a href="#" class="oque" data-termo="dataSegura">o que é?</a></span>
         ${sim.chancePrazo == null ? "" : `<span>Chance de cumprir o prazo <b class="mono">${Math.round(sim.chancePrazo * 100)}%</b></span>`}
-      </p>` : ""}`;
+      </p>` : ""}
+      ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
   /** Monta a estrutura da tela; refeita só quando o espaço passa a ter ou deixa de ter ações. */
@@ -113,20 +119,18 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     painelResponsaveis = alvo.querySelector('[data-painel="responsaveis"]');
   }
 
-  /** Painel da aba Ações; refeito só quando o espaço passa a ter ou deixa de ter ações. */
+  /** Painel da aba Ações, montado uma vez: ferramentas, legenda e lista, mesmo com o espaço vazio. */
   function montar() {
-    comAcoes = acoes.length > 0;
-    painelAcoes.innerHTML = comAcoes ? `
+    comAcoes = true;
+    painelAcoes.innerHTML = `
         <div class="ferramentas" data-ferramentas></div>
         <div class="legenda" data-legenda hidden>${legendaHtml()}</div>
         <div class="lista" data-lista></div>
-        <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`
-      : `<section class="cartao"><p>Este espaço ainda não tem ações.</p>
-          <div class="botoes"><button class="botao principal" type="button" data-nova>${ICONES.mais}Nova ação</button></div></section>`;
+        <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`;
     ferramentas = painelAcoes.querySelector("[data-ferramentas]");
     lista = painelAcoes.querySelector("[data-lista]");
     legenda = painelAcoes.querySelector("[data-legenda]");
-    if (!comAcoes) return;
+    ligarRapida();
     ferramentas.addEventListener("change", aoMudarControle);
     ligarArraste();
     lista.addEventListener("keydown", (e) => {
@@ -136,13 +140,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
 
   function desenhar() {
     if (!base) montarBase();
-    if (comAcoes !== acoes.length > 0) montar();
+    if (!comAcoes) montar();
     cabeca.innerHTML = cabecaHtml();
     for (const aba of alvo.querySelectorAll("[data-aba]")) aba.setAttribute("aria-selected", String(aba.dataset.aba === ui.aba));
     painelAcoes.hidden = ui.aba !== "acoes";
     painelResponsaveis.hidden = ui.aba !== "responsaveis";
     if (ui.aba === "responsaveis") telaResponsaveis.desenhar(painelResponsaveis, { espaco, acoes, responsaveis, meus });
-    else if (comAcoes) { desenharFerramentas(); desenharLista(); }
+    else { desenharFerramentas(); desenharLista(); }
   }
 
   /* ---------- ferramentas: filtros de situação, controles e Nova ação ---------- */
@@ -190,6 +194,61 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   }
   const corDe = (l) => (l.situacao === "concluida" ? "var(--ok)" : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
 
+  const FALTA_ESTIMAR = `<span class="falta-estimar">Falta estimar</span>`;
+
+  /* ---------- criação rápida (passo 1.14a): nome e Enter, no fim de cada etapa e da coluna Liberadas ---------- */
+  /** Sem filtros: com filtro, a ação criada poderia sumir da tela logo ao nascer. */
+  const comRapida = () => store.podeGravar !== false && ui.situacao === "todas" && !ui.responsavel && !ui.minhas;
+  function rapidaHtml(chave, etapa = "", ondeTexto = "") {
+    return `<form class="linha-rapida" data-rapida="${esc(chave)}" data-etapa="${esc(etapa)}">${ICONES.mais}
+      <input name="rotulo" maxlength="120" autocomplete="off" placeholder="Adicionar ação${ondeTexto}" aria-label="Adicionar ação${ondeTexto}: digite o nome e tecle Enter"></form>`;
+  }
+  function ligarRapida() {
+    lista.addEventListener("submit", async (e) => {
+      const form = e.target.closest("[data-rapida]");
+      if (!form) return;
+      e.preventDefault();
+      const rotulo = form.rotulo.value.trim();
+      if (!rotulo) return;
+      ui.rapida = form.dataset.rapida;
+      ui.rapidaTexto = "";
+      form.rotulo.value = "";
+      const naoAntesDe = dataMinimaPadrao(espaco, hoje);
+      try {
+        await store.criarAcao(espacoId, {
+          rotulo,
+          ...(form.dataset.etapa ? { etapa: form.dataset.etapa } : {}),
+          ...(naoAntesDe ? { naoAntesDe } : {}),
+        });
+      } catch (falha) {
+        ui.rapidaTexto = rotulo;
+        const atual = lista.querySelector(`[data-rapida="${CSS.escape(ui.rapida)}"] input`);
+        if (atual) atual.value = rotulo;
+        avisar(falha.message);
+      }
+    });
+    lista.addEventListener("input", (e) => { if (e.target.closest("[data-rapida]")) ui.rapidaTexto = e.target.value; });
+    lista.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && e.target.closest("[data-rapida]")) { e.target.value = ""; ui.rapidaTexto = ""; e.target.blur(); }
+    });
+    lista.addEventListener("focusin", (e) => {
+      const form = e.target.closest("[data-rapida]");
+      if (form && ui.rapida !== form.dataset.rapida) { ui.rapida = form.dataset.rapida; ui.rapidaTexto = e.target.value; }
+    });
+    /* o cursor foi para outro lugar (e não sumiu num redesenho): esquece a linha */
+    lista.addEventListener("focusout", (e) => {
+      if (e.target.closest("[data-rapida]") && e.relatedTarget && !e.relatedTarget.closest("[data-rapida]")) ui.rapida = null;
+    });
+  }
+  /** Depois de redesenhar, devolve o cursor e o texto à linha rápida que estava em uso. */
+  function restaurarRapida() {
+    if (!ui.rapida) return;
+    const input = lista.querySelector(`[data-rapida="${CSS.escape(ui.rapida)}"] input`);
+    if (!input) return;
+    input.value = ui.rapidaTexto;
+    input.focus({ preventScroll: true });
+  }
+
   function linhaHtml(l) {
     const a = l.acao;
     const s = SITUACOES[l.situacao];
@@ -202,7 +261,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
         <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
         <div class="sit"><span class="${s.classe}">${ICONES[s.icone]}</span><span>${s.texto}</span>${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</div>
         <div class="donos">${donos}</div>
-        <div class="conc"><span class="mlab">${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</span><span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>${nota ? `<small>${nota}</small>` : ""}</div>
+        <div class="conc"><span class="mlab">${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</span>${l.semEstimativa ? FALTA_ESTIMAR
+          : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}${nota ? `<small>${nota}</small>` : ""}</div>
         <div class="ex"><span class="mlab">Prioridade de execução</span>${medidor(l.execucao, "Prioridade de execução", "var(--calor)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>
         <div class="rv"><span class="mlab">Prioridade de revisão</span>${medidor(l.revisao, `Responde por ${revisao} da incerteza do prazo final`, "var(--accent)", revisao)}</div>
         <span class="seta">${ICONES.seguir}</span>
@@ -213,12 +273,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   function grupoHtml(nivel, id, titulo, ls, miolo) {
     const r = resumir(ls);
     const fechado = ui.recolhidos.has(id);
+    const resumo = r.total
+      ? `${r.total} ${plural(r.total, "ação", "ações")} · ${r.concluidas} ${plural(r.concluidas, "concluída", "concluídas")}${r.atrasadas ? ` · <span class="grupo-atrasadas">${r.atrasadas} ${plural(r.atrasadas, "atrasada", "atrasadas")}</span>` : ""} · ${r.concluidas === r.total ? "concluído em" : "termina em"} <span class="mono">${dataBr(r.termina)}</span>`
+      : "Nenhuma ação";
     return `<section class="grupo ${nivel}${fechado ? " fechado" : ""}" data-grupo="${esc(id)}">
       <button class="grupo-cabeca" type="button" aria-expanded="${!fechado}" data-alternar-grupo="${esc(id)}">
         <span class="grupo-seta">${ICONES.seguir}</span><span class="grupo-titulo">${esc(titulo)}</span>
-        <span class="grupo-info"><span class="grupo-resumo">${r.total} ${plural(r.total, "ação", "ações")} · ${r.concluidas} ${plural(r.concluidas, "concluída", "concluídas")}${r.atrasadas ? ` · <span class="grupo-atrasadas">${r.atrasadas} ${plural(r.atrasadas, "atrasada", "atrasadas")}</span>` : ""} · ${r.concluidas === r.total ? "concluído em" : "termina em"} <span class="mono">${dataBr(r.termina)}</span></span>
+        <span class="grupo-info"><span class="grupo-resumo">${resumo}</span>
         ${r.atrasadas ? `<span class="icone-atrasada grupo-alerta so-celular" title="${r.atrasadas} ${plural(r.atrasadas, "ação atrasada", "ações atrasadas")}">${ICONES.atrasada}</span>` : ""}
-        <span class="grupo-progresso" title="Ações concluídas"><i style="width:${Math.round((100 * r.concluidas) / r.total)}%"></i></span></span>
+        <span class="grupo-progresso" title="Ações concluídas"><i style="width:${r.total ? Math.round((100 * r.concluidas) / r.total) : 0}%"></i></span></span>
       </button>
       <div class="grupo-corpo"><div class="grupo-dentro">${miolo}</div></div>
     </section>`;
@@ -230,18 +293,22 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     const ls = visiveis();
     let corpo;
     if (ui.modo === "planilha") { planilha.desenhar(lista, dadosDaJanela()); return; }
+    const rapida = comRapida();
     if (ui.modo === "quadro") corpo = quadroHtml(ls);
-    else if (!ls.length) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
+    else if (!ls.length && !rapida) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
     else if (agrupado()) {
-      const g = agrupar(ls, espaco.estrutura);
+      const g = agrupar(ls, espaco.estrutura, { vazias: rapida });
       corpo = g.fases.map(({ fase, etapas, linhas: daFase }) => grupoHtml("fase", fase.id, fase.nome, daFase,
-        etapas.map(({ etapa, linhas: daEtapa }) => grupoHtml("etapa", etapa.id, etapa.nome, daEtapa, daEtapa.map(linhaHtml).join(""))).join(""))).join("")
+        etapas.map(({ etapa, linhas: daEtapa }) => grupoHtml("etapa", etapa.id, etapa.nome, daEtapa,
+          daEtapa.map(linhaHtml).join("") + (rapida ? rapidaHtml(etapa.id, etapa.id, ` em ${etapa.nome}`) : ""))).join(""))).join("")
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
     } else {
-      corpo = ls.map(linhaHtml).join("")
-        + (usaFases ? `<p class="tec">Em "Ordem do espaço", as ações aparecem separadas por fases e etapas.</p>` : "");
+      corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ações. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ação".</p>`)
+        + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "")
+        + (usaFases && ls.length ? `<p class="tec">Em "Ordem do espaço", as ações aparecem separadas por fases e etapas.</p>` : "");
     }
     lista.innerHTML = corpo;
+    restaurarRapida();
     if (animar && !reduzirMovimento()) animarMudanca(antes);
   }
 
@@ -271,7 +338,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
         ${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}
-        <div class="cartao-base"><div class="donos">${donos}</div><span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span></div>
+        <div class="cartao-base"><div class="donos">${donos}</div>${l.semEstimativa ? FALTA_ESTIMAR : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}</div>
         ${l.execucao == null ? "" : medidor(l.execucao, "Prioridade de execução", "var(--calor)", `${Math.round(l.execucao * 100)}%`)}
       </div>
     </article>`;
@@ -283,6 +350,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
         <header><span class="${classe}">${ICONES[SITUACOES[situacao].icone]}</span><b>${titulo}</b><span class="n">${daColuna.length}</span></header>
         <p class="tec so-computador">${dica}</p>
         <div class="coluna-cartoes">${daColuna.map(cartaoHtml).join("") || `<p class="vazio">Nenhuma ação.</p>`}</div>
+        ${situacao === "liberada" && comRapida() ? rapidaHtml("quadro") : ""}
       </section>`;
     }).join("")}</div>`;
   }
@@ -416,7 +484,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   };
 
   function abrirNova() {
-    abrirNovaAcao({
+    novaJanela = abrirNovaAcao({
+      aoFechar: () => { novaJanela = null; },
       store, espacoId, hoje, usuario, dados: dadosDaJanela(),
       aoCriar: (numero) => requestAnimationFrame(() => {
         const item = lista?.querySelector(`[data-numero="${numero}"]`);
@@ -445,6 +514,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
       derivar(dados, await store.listarResponsaveis(), await store.lerCalendarioGeral());
       desenhar();
       janela?.atualizar(dadosDaJanela());
+      novaJanela?.atualizar(dadosDaJanela());
     }).catch((e) => avisar(e.message));
   });
   return () => { parar(); janela?.fechar(); };

@@ -119,3 +119,19 @@ describe("Situações, carimbo Atrasada e regras do mundo real", () => {
     assert.ok(r.porAcao.get("B").liberacao >= 8); // depois de hoje
   });
 });
+
+describe("Ação sem estimativa (passo 1.14a)", () => {
+  it("conta zero dias, não fica atrasada e não termina no passado", async () => {
+    const { caminhoCritico } = await import("../js/calculo.js");
+    const { criarCalendario } = await import("../js/calendario.js");
+    const cal = criarCalendario({ inicio: "2026-10-01", datasExcluidas: [] }, "2026-10-21");
+    const acoes = [{ numero: 1, rotulo: "Sem estimativa", ordem: 1, dependeDe: [], estimativas: [] }];
+    const r = caminhoCritico(acoes, cal, { hoje: "2026-10-21" });
+    const c = r.porAcao.get(1);
+    assert.equal(c.situacao, "liberada");
+    assert.equal(c.atrasada, false);
+    assert.equal(c.regraDoPassado, false);
+    assert.ok(cal.dataDeConclusao(c.conclusao, c.liberacao) >= "2026-10-21");
+    assert.ok(r.avisos.some((a) => a.codigo === "sem-estimativa"));
+  });
+});

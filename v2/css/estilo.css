@@ -617,3 +617,22 @@ h3.editavel { padding: 2px 6px; }
 /* linhas ainda não salvas: destacadas até o Salvar (passo 1.13) */
 .nao-salva input, .documento-config.nao-salva { border-color: var(--warn) !important; background: var(--warn-soft) !important; }
 .pendente { align-self: center; font-size: .82rem; font-weight: 600; color: var(--warn-ink); }
+
+/* ---------- criação rápida e "Falta estimar" (passo 1.14a) ---------- */
+.linha-rapida { display: flex; align-items: center; gap: 8px; padding: 4px 12px; margin: 4px 0 8px; border-radius: var(--raio); color: var(--muted); }
+.linha-rapida:focus-within { background: var(--sunk); color: var(--accent-ink); }
+.linha-rapida input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); padding: 6px 0; outline: none; }
+.linha-rapida input::placeholder { color: var(--muted); }
+.coluna .linha-rapida { margin: 6px 0 0; }
+.falta-estimar { display: inline-block; font-size: .78rem; font-weight: 600; color: var(--warn-ink); background: var(--warn-soft); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.previsao-incompleta { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 0; font-size: .88rem; color: var(--warn-ink); }
+.previsao-incompleta .icone { flex: none; margin-top: 2px; }
+.nova-acao .rotulo-novo { font-size: 1.1rem; font-weight: 600; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--bg); color: var(--ink); }
+.chips-campos { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips-campos:empty { display: none; }
+.chip-campo { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 999px; padding: 4px 10px; font: inherit; font-size: .85rem; cursor: pointer; }
+.chip-campo .icone { width: 14px; height: 14px; }
+.chip-campo:hover { background: var(--sunk); }
+.chip-campo.com-valor { border-color: var(--accent); color: var(--accent-ink); }
+.chip-campo.discreto { border-style: dashed; color: var(--muted); }
+.nova-acao .botoes { align-items: center; }
