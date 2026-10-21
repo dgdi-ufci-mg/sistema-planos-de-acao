@@ -25,10 +25,6 @@ service cloud.firestore {
         allow create, update: if logado();
       }
     }
-    // lista antiga, geral, de antes do passo 1.14b: só leitura, para a mudança dos cadastros para os espaços
-    match /responsaveis/{responsavelId} {
-      allow read: if true;
-    }
     match /sistema/calendario {
       allow read: if true;
       allow create, update: if logado();
