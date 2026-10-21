@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 63.1 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 63.2 da página)
 
 ---
 
@@ -488,6 +488,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 62 | Versão 2, passo 1.14: espaços gravados no projeto próprio do Firebase ("sextante-v2"; `v2/config.js`), com o exemplo sempre em memória; banco do Firestore (`v2/js/banco/firestore.js`) testado com os mesmos testes de contrato, sobre um Firebase falso em memória (`v2/testes/firebase-falso.js`); regras provisórias em `v2/firestore.rules` (consulta livre, gravação com login, nada se apaga); login, "Esqueci a senha", troca de senha e saída; sem login, gravações recusadas com aviso; aviso "Fulano alterou esta ação agora" na janela da ação. Sem mudança na versão atual |
 | 63 | Versão 2, passo 1.14a: criação rápida de ações. Espaço vazio com as ferramentas e a planilha; linha "+ Adicionar ação" no fim de cada etapa, da lista e da coluna Liberadas do quadro; janela "Nova ação" compacta (rótulo e três pontos à vista, demais campos recolhidos, Enter cria e continua); ação sem estimativa com a marca "Falta estimar", sem carimbo Atrasada, e aviso de previsão incompleta (`v2/js/telas/nova-acao.js`, `v2/js/telas/espaco.js`). Sem mudança na versão atual |
 | 63.1 | Versão 2: a ação sem estimativa não mostra as prioridades de execução e de revisão (calculadas com duração zero), na lista, no quadro e na janela; a faixa de cor fica neutra. Sem mudança na versão atual |
+| 63.2 | Versão 2, correção: ao acrescentar uma dependência ou um responsável, o banco do Firestore copiava a operação de lista (`arrayUnion`/`arrayRemove`) antes de gravar, e a cópia era gravada como um objeto no lugar da lista, o que travava a tela do espaço. O banco deixou de copiar nas alterações, e o Firebase falso dos testes passou a imitar o SDK nesse ponto (a operação é um objeto de classe própria), de modo que o teste de contrato agora acusa essa falha. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

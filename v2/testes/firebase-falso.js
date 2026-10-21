@@ -14,7 +14,10 @@
 
 const clonar = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 const igual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-const OPERACAO = "__operacaoFalsa";
+/** Operação sobre lista. Classe, como no SDK: uma cópia (structuredClone) perde a classe e vira objeto comum. */
+class OperacaoFalsa {
+  constructor(tipo, itens) { this.tipo = tipo; this.itens = itens; }
+}
 
 export function criarFirestoreFalso({ auth = null, exigirLogin = false } = {}) {
   /** caminho do documento → dados */
@@ -45,11 +48,11 @@ export function criarFirestoreFalso({ auth = null, exigirLogin = false } = {}) {
     const novo = { ...atual };
     for (const [k, v] of Object.entries(campos)) {
       if (v === undefined) continue;
-      if (v && v[OPERACAO] === "uniao") {
+      if (v instanceof OperacaoFalsa && v.tipo === "uniao") {
         const lista = Array.isArray(novo[k]) ? [...novo[k]] : [];
         for (const i of v.itens) if (!lista.some((x) => igual(x, i))) lista.push(clonar(i));
         novo[k] = lista;
-      } else if (v && v[OPERACAO] === "retirada") {
+      } else if (v instanceof OperacaoFalsa && v.tipo === "retirada") {
         novo[k] = (Array.isArray(novo[k]) ? novo[k] : []).filter((x) => !v.itens.some((i) => igual(x, i)));
       } else novo[k] = clonar(v);
     }
@@ -119,8 +122,8 @@ export function criarFirestoreFalso({ auth = null, exigirLogin = false } = {}) {
 }
 
 export const FieldValueFalso = {
-  arrayUnion: (...itens) => ({ [OPERACAO]: "uniao", itens: clonar(itens) }),
-  arrayRemove: (...itens) => ({ [OPERACAO]: "retirada", itens: clonar(itens) }),
+  arrayUnion: (...itens) => new OperacaoFalsa("uniao", clonar(itens)),
+  arrayRemove: (...itens) => new OperacaoFalsa("retirada", clonar(itens)),
 };
 
 /**

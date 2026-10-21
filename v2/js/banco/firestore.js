@@ -15,6 +15,8 @@
  */
 import { ErroDeDados } from "./local.js";
 
+/* Cópia só ao gravar documentos inteiros. Em `update`, nunca: copiar transforma o arrayUnion e o
+ * arrayRemove em objetos comuns, que seriam gravados no lugar da lista (falha encontrada em 21/10/2026). */
 const copia = (valor) => structuredClone(valor);
 
 /** Traduz os erros do Firestore para mensagens do sistema. */
@@ -101,7 +103,7 @@ export function criarBancoFirestore(db, FieldValue) {
     },
     async alterarEspaco(id, campos) {
       try {
-        await espacoRef(id).update(copia(campos));
+        await espacoRef(id).update(campos);
       } catch (e) {
         if (e?.code === "not-found") throw new ErroDeDados("nao-encontrado", `Espaço ${id} não encontrado.`);
         throw e;
@@ -136,7 +138,7 @@ export function criarBancoFirestore(db, FieldValue) {
     },
     async alterarAcao(espacoId, numero, campos) {
       try {
-        await acaoRef(espacoId, numero).update(copia(campos));
+        await acaoRef(espacoId, numero).update(campos);
       } catch (e) {
         if (e?.code === "not-found") throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
         throw e;
@@ -187,7 +189,7 @@ export function criarBancoFirestore(db, FieldValue) {
     },
     async alterarResponsavel(id, campos) {
       try {
-        await responsaveisRef().doc(id).update(copia(campos));
+        await responsaveisRef().doc(id).update(campos);
       } catch (e) {
         if (e?.code === "not-found") throw new ErroDeDados("nao-encontrado", `Responsável ${id} não encontrado.`);
         throw e;
