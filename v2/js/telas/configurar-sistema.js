@@ -4,6 +4,7 @@
  * Até existirem os papéis (Fase 2), qualquer pessoa conectada pode editar; depois, só o
  * Administrador do Sistema.
  */
+import { ligarSecoesSuaves } from "./movimento.js";
 import { esc } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { feriadosNacionais } from "../feriados.js";
@@ -18,6 +19,7 @@ export async function abrirConfiguracaoDoSistema({ store, hoje }) {
   let anoFeriados = anoAtual + (Number(hoje.slice(5, 7)) >= 10 ? 1 : 0); // a partir de outubro, sugere o ano seguinte
   let novas = new Set(); // datas acrescentadas pelo botão, destacadas até salvar
   const corpo = abrirPainel("Configurar o sistema", "");
+  ligarSecoesSuaves(corpo);
 
   function desenhar() {
     const porAno = new Map();

@@ -29,3 +29,32 @@ export function fecharSuave(el) {
   ], { duration: DURACAO * 0.8, easing: CURVA, fill: "forwards" });
   return animacao.finished.catch(() => {});
 }
+
+/** Faz o elemento surgir no lugar, sem mudar a altura (editores que substituem um valor). */
+export function surgir(el) {
+  if (!el || reduzirMovimento()) return;
+  el.animate([{ opacity: 0, transform: "translateY(-3px)" }, { opacity: 1, transform: "none" }], { duration: DURACAO, easing: CURVA });
+}
+
+/**
+ * Seções recolhíveis (<details>) abrem e fecham deslizando, em vez de saltar.
+ * Liga uma vez na raiz; vale para todas as seções dentro dela, inclusive as redesenhadas.
+ */
+export function ligarSecoesSuaves(raiz) {
+  raiz.addEventListener("click", (e) => {
+    const resumo = e.target.closest("summary");
+    const secao = resumo?.parentElement;
+    if (!secao || secao.tagName !== "DETAILS" || !raiz.contains(secao) || reduzirMovimento()) return;
+    e.preventDefault();
+    const abrir = !secao.open;
+    const de = secao.getBoundingClientRect().height;
+    secao.open = !secao.open; // mede a outra altura
+    const ate = secao.getBoundingClientRect().height;
+    if (!abrir) secao.open = true; // ao fechar, o conteúdo fica à vista até o fim do movimento
+    const animacao = secao.animate([
+      { height: `${de}px`, overflow: "hidden", boxSizing: "border-box" },
+      { height: `${ate}px`, overflow: "hidden", boxSizing: "border-box" },
+    ], { duration: DURACAO, easing: CURVA, fill: abrir ? "none" : "forwards" });
+    if (!abrir) animacao.finished.then(() => { secao.open = false; animacao.cancel(); }).catch(() => {});
+  });
+}

@@ -5,6 +5,7 @@
  * Salvar; os campos opcionais, na hora. Retratos, importação, exportação e cópia de segurança
  * entram nos passos 1.18 e 1.19.
  */
+import { ligarSecoesSuaves } from "./movimento.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
@@ -36,6 +37,7 @@ export async function abrirConfiguracao({ store, espacoId }) {
   };
 
   const corpo = abrirPainel("Configurar este espaço", "");
+  ligarSecoesSuaves(corpo);
   /** Seções abertas; os dados do espaço começam abertos. Mantidas quando o painel é redesenhado. */
   const abertas = new Set(["dados"]);
   const aberta = (secao) => (abertas.has(secao) ? " open" : "");

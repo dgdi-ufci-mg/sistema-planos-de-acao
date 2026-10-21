@@ -10,6 +10,7 @@ import { esc, plural, dataBr } from "../formato.js";
 import { duracaoPert } from "../calculo.js";
 import { buscar, normalizarCodigo, problemaDoCodigo, sugerirCodigo } from "../acao.js";
 import { abrirPainel, avisar } from "./painel.js";
+import { abrirSuave } from "./movimento.js";
 import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 
@@ -102,7 +103,9 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
     for (const [n] of OPCIONAIS) {
       if (nome !== "todos" && n !== nome) continue;
       abertos.add(n);
-      corpo.querySelector(`[data-bloco="${n}"]`).hidden = false;
+      const bloco = corpo.querySelector(`[data-bloco="${n}"]`);
+      bloco.hidden = false;
+      abrirSuave(bloco);
     }
     desenharChips();
     if (nome !== "todos") corpo.querySelector(`[data-bloco="${nome}"]`).querySelector("input, select, textarea")?.focus();
