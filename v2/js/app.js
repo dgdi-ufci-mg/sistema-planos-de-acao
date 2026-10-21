@@ -15,6 +15,7 @@ import { mostrarEspaco } from "./telas/espaco.js";
 import { mostrarTopo } from "./telas/topo.js";
 import { mostrarAjuda } from "./telas/ajuda.js";
 import { avisar } from "./telas/painel.js";
+import { abrirConfiguracao } from "./telas/configurar.js";
 
 document.title = NOME;
 document.querySelector("[data-nome]").textContent = NOME;
@@ -50,7 +51,7 @@ async function atualizarTopo(abertoId = null) {
     espacos: await store.listarEspacos(),
     abertoId,
     aoAbrir: abrirEspaco,
-    aoConfigurar: () => avisar("A configuração do espaço chega no passo 1.13."),
+    aoConfigurar: () => abrirConfiguracao({ store, espacoId: abertoId }),
     aoNovo: () => boasVindas({ comFormulario: true }),
     aoBoasVindas: () => boasVindas(),
     aoAjuda: () => ajuda(),
@@ -76,7 +77,13 @@ async function abrirEspaco(id) {
   lembrar(id);
   if (location.hash !== `#/espaco/${id}`) history.replaceState(null, "", `#/espaco/${id}`);
   pararEspaco();
-  pararEspaco = mostrarEspaco(principal, { store, espacoId: id, hoje });
+  const pararTela = mostrarEspaco(principal, { store, espacoId: id, hoje });
+  /* o nome do espaço no topo acompanha as mudanças (por exemplo, ao renomear em "Configurar este espaço") */
+  let nome = espaco.nome;
+  const pararTopo = store.acompanharEspaco(id, ({ espaco: atual }) => {
+    if (atual.nome !== nome) { nome = atual.nome; atualizarTopo(id); }
+  });
+  pararEspaco = () => { pararTela(); pararTopo(); };
   await atualizarTopo(id);
   window.scrollTo(0, 0);
   return true;

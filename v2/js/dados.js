@@ -61,6 +61,47 @@ function validarEstimativa({ o, m, p }) {
  * @param {ReturnType<import("./banco/local.js").criarBancoLocal>} banco
  * @param {OpcoesDoStore} [opcoes]
  */
+const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Regras do espaço (seção 4.1), conferidas no espaço inteiro, como ficaria depois da gravação:
+ * nome; datas; prazo final não antes do início; datas excluídas sem repetir; fases e etapas com
+ * nome e identificadores únicos; documentos com nome e link seguro; campos de cada item no dicionário.
+ */
+function validarEspaco(e, recusarDesconhecidos) {
+  if (!e.nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do espaço.");
+  for (const campo of ["inicio", "prazoFinal"]) {
+    if (e[campo] && !DATA_ISO.test(e[campo])) throw new ErroDeDados("data-invalida", "Data inválida.");
+  }
+  if (e.inicio && e.prazoFinal && e.prazoFinal < e.inicio) {
+    throw new ErroDeDados("prazo-antes-do-inicio", "O prazo final não pode ser antes do início.");
+  }
+  const vistas = new Set();
+  for (const d of e.datasExcluidas ?? []) {
+    recusarDesconhecidos(d, "dataExcluida");
+    if (!DATA_ISO.test(d.data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data excluída.");
+    if (vistas.has(d.data)) throw new ErroDeDados("data-repetida", `A data ${d.data.split("-").reverse().join("/")} aparece duas vezes.`);
+    vistas.add(d.data);
+  }
+  const ids = new Set();
+  for (const f of e.estrutura ?? []) {
+    recusarDesconhecidos(f, "fase");
+    for (const item of [f, ...(f.etapas ?? [])]) {
+      if (item !== f) recusarDesconhecidos(item, "etapa");
+      if (!item.id || ids.has(item.id)) throw new ErroDeDados("id-repetido", "Fase ou etapa com identificador repetido.");
+      ids.add(item.id);
+      if (!item.nome?.trim()) throw new ErroDeDados("nome-vazio", "Toda fase e toda etapa precisam de nome.");
+    }
+  }
+  for (const doc of e.documentos ?? []) {
+    recusarDesconhecidos(doc, "documento");
+    if (!doc.nome?.trim()) throw new ErroDeDados("nome-vazio", "Todo documento precisa de nome.");
+    if (doc.data && !DATA_ISO.test(doc.data)) throw new ErroDeDados("data-invalida", "Data do documento inválida.");
+    if (doc.link && !/^https?:\/\/\S+$/i.test(doc.link)) throw new ErroDeDados("link-invalido", "O link do documento deve começar com https:// ou http://.");
+  }
+  if (e.camposOpcionais) recusarDesconhecidos(e.camposOpcionais, "camposOpcionais");
+}
+
 /** Login ligado a um responsável: um e-mail, e de um responsável só (seção 4.5). */
 function validarLogin(login, outros) {
   const email = login.trim().toLowerCase();
@@ -119,8 +160,8 @@ export function criarStore(banco, opcoes = {}) {
     /** Cria um espaço. Semente e número de simulações ficam fixos daqui em diante. */
     async criarEspaco(dados) {
       recusarDesconhecidos(dados, "espaco");
+      validarEspaco(dados, recusarDesconhecidos);
       const { nome, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO, ...outros } = dados;
-      if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do espaço.");
       const id = novoId();
       await banco.criarEspaco(id, {
         ...outros, nome: nome.trim(), semente, simulacoes,
@@ -133,7 +174,12 @@ export function criarStore(banco, opcoes = {}) {
     async alterarEspaco(id, campos) {
       recusarDesconhecidos(campos, "espaco");
       recusarFixos(campos, FIXOS_DO_ESPACO);
-      await banco.alterarEspaco(id, { ...campos, alteradoEm: agora(), alteradoPor: usuario });
+      const atual = await banco.lerEspaco(id);
+      if (!atual) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      validarEspaco({ ...atual, ...campos }, recusarDesconhecidos);
+      const mudanca = { ...campos };
+      if ("nome" in mudanca) mudanca.nome = mudanca.nome.trim();
+      await banco.alterarEspaco(id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
     },
 
     // --- ações ---

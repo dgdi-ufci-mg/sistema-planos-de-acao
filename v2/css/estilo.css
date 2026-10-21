@@ -567,3 +567,33 @@ h3.editavel { padding: 2px 6px; }
   .responsavel { flex-wrap: wrap; }
   .responsavel-contagem { width: 100%; padding-left: 40px; white-space: normal; }
 }
+
+/* ---------- Configurar o espaço (passo 1.13) ---------- */
+.config { display: flex; flex-direction: column; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.config:last-of-type { border-bottom: 0; }
+.config .tec { margin: 0; }
+.config input:not([type=checkbox]):not([type=radio]) {
+  font-size: 1rem; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); width: 100%; min-width: 0;
+}
+.linhas-config { display: flex; flex-direction: column; gap: 8px; }
+.linha-config { display: flex; align-items: center; gap: 6px; }
+.config .linha-config > input { flex: 1 1 auto; width: auto; }
+.config .linha-config > input[type=date] { flex: 0 0 10.5em; }
+.config .linha-config > .tirar, .config .linha-config > .botao { flex: none; }
+.documento-config { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--grid); border-radius: var(--raio); background: var(--sunk); }
+.fase-config { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--grid); border-radius: var(--raio); background: var(--sunk); }
+.fase-config > .linha-config input { font-weight: 600; }
+.etapas-config { display: flex; flex-direction: column; gap: 6px; padding-left: 16px; border-left: 2px solid var(--grid); margin-left: 6px; align-items: stretch; }
+.etapas-config > .botao { align-self: flex-start; }
+.config .tirar:disabled { opacity: .35; cursor: not-allowed; }
+.config .tirar { font-size: .95rem; min-width: 26px; justify-content: center; }
+.alternar-campo { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.alternar-campo input { margin-top: 4px; }
+.alternar-campo span { display: flex; flex-direction: column; }
+.alternar-campo small { color: var(--muted); }
+.config > summary { display: flex; align-items: baseline; gap: 8px; cursor: pointer; list-style: none; padding: 4px 0; }
+.config > summary::-webkit-details-marker { display: none; }
+.config > summary::before { content: "›"; color: var(--muted); display: inline-block; transition: transform .2s; font-size: 1.2rem; line-height: 1; }
+.config[open] > summary::before { transform: rotate(90deg); }
+.config > summary .n { font-family: var(--f-dados); font-size: .8rem; color: var(--muted); }
+.config:not([open]) { padding-bottom: 6px; }

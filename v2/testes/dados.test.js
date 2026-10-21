@@ -125,3 +125,47 @@ describe("Store: só grava campos do dicionário de dados", () => {
     await assert.rejects(store.criarResponsavel({ tipo: "pessoa", nome: "Ana", email: "a@b" }), { codigo: "campo-desconhecido" });
   });
 });
+
+describe("Store: regras do espaço (configuração)", () => {
+  const novo = async () => {
+    const store = storeDeTeste();
+    const id = await store.criarEspaco({ nome: "P", inicio: "2026-10-01", prazoFinal: "2026-12-01" });
+    return { store, id };
+  };
+
+  it("recusa prazo final antes do início, também quando só um dos dois muda", async () => {
+    const { store, id } = await novo();
+    await assert.rejects(store.alterarEspaco(id, { prazoFinal: "2026-09-01" }), { codigo: "prazo-antes-do-inicio" });
+    await assert.rejects(store.alterarEspaco(id, { inicio: "2027-01-01" }), { codigo: "prazo-antes-do-inicio" });
+    await store.alterarEspaco(id, { inicio: "2026-11-01", nome: "  Novo nome  " });
+    assert.equal((await store.lerEspaco(id)).nome, "Novo nome");
+  });
+
+  it("datas excluídas: data válida, sem repetir, só com os campos do dicionário", async () => {
+    const { store, id } = await novo();
+    await assert.rejects(store.alterarEspaco(id, { datasExcluidas: [{ data: "2026-11-20" }, { data: "2026-11-20" }] }), { codigo: "data-repetida" });
+    await assert.rejects(store.alterarEspaco(id, { datasExcluidas: [{ data: "20/11/2026" }] }), { codigo: "data-invalida" });
+    await assert.rejects(store.alterarEspaco(id, { datasExcluidas: [{ data: "2026-11-20", obs: "x" }] }), { codigo: "campo-desconhecido" });
+    await store.alterarEspaco(id, { datasExcluidas: [{ data: "2026-11-20", motivo: "Consciência Negra" }] });
+  });
+
+  it("fases e etapas: nome obrigatório e identificadores únicos", async () => {
+    const { store, id } = await novo();
+    await assert.rejects(store.alterarEspaco(id, { estrutura: [{ id: "f1", nome: "", etapas: [] }] }), { codigo: "nome-vazio" });
+    await assert.rejects(store.alterarEspaco(id, { estrutura: [{ id: "f1", nome: "F", etapas: [{ id: "f1", nome: "E" }] }] }), { codigo: "id-repetido" });
+    await store.alterarEspaco(id, { estrutura: [{ id: "f1", nome: "F", etapas: [{ id: "e1", nome: "E" }] }] });
+  });
+
+  it("documentos: nome obrigatório e link só http ou https", async () => {
+    const { store, id } = await novo();
+    await assert.rejects(store.alterarEspaco(id, { documentos: [{ nome: "Plano", link: "javascript:alert(1)" }] }), { codigo: "link-invalido" });
+    await assert.rejects(store.alterarEspaco(id, { documentos: [{ nome: " " }] }), { codigo: "nome-vazio" });
+    await store.alterarEspaco(id, { documentos: [{ nome: "Plano aprovado", identificacao: "23062.001234/2026-11", link: "https://sipac.ufci.edu.br/x" }] });
+  });
+
+  it("campos opcionais: só os do dicionário", async () => {
+    const { store, id } = await novo();
+    await assert.rejects(store.alterarEspaco(id, { camposOpcionais: { cores: true } }), { codigo: "campo-desconhecido" });
+    await store.alterarEspaco(id, { camposOpcionais: { codigos: true, notas: false } });
+  });
+});
