@@ -10,7 +10,7 @@ import { duracaoPert } from "../calculo.js";
 import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo } from "../acao.js";
 import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
-import { abrirSuave, fecharSuave, surgir } from "./movimento.js";
+import { surgir, trocarSuave } from "./movimento.js";
 import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 
@@ -378,11 +378,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   /** Formulários que entram como um bloco novo (crescem); os demais editores substituem o valor (surgem). */
   const BLOCOS = ["reestimar", "concluir"];
+  const botoesDaAcao = () => corpo.querySelector("[data-abrir-form]")?.closest(".botoes") ?? null;
   function editar(nome) {
     editando = nome;
-    desenhar();
-    const editor = corpo.querySelector(`[data-salvar="${nome}"]`);
-    if (BLOCOS.includes(nome)) abrirSuave(editor); else surgir(editor);
+    if (BLOCOS.includes(nome)) {
+      /* os botões encolhem enquanto o formulário cresce no lugar deles */
+      trocarSuave({ sai: botoesDaAcao(), redesenhar: desenhar, entra: () => corpo.querySelector(`[data-salvar="${nome}"]`), lado: "antes" });
+    } else {
+      desenhar();
+      surgir(corpo.querySelector(`[data-salvar="${nome}"]`));
+    }
     const ed = editorNotas();
     if (nome === "notas" && ed) {
       ed.focus();
@@ -392,15 +397,17 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       corpo.querySelector(`[data-salvar="${nome}"] [name]`)?.focus();
     }
   }
-  async function cancelar() {
+  function cancelar() {
     const nome = editando;
-    if (BLOCOS.includes(nome)) await fecharSuave(corpo.querySelector(`[data-salvar="${nome}"]`));
-    if (editando !== nome) return; // outra ação aconteceu durante o movimento
     editando = null;
-    desenhar();
-    const volta = corpo.querySelector(`[data-editar="${nome}"], [data-abrir-form="${nome}"]`);
-    if (!BLOCOS.includes(nome)) surgir(volta);
-    volta?.focus();
+    if (BLOCOS.includes(nome)) {
+      /* o formulário encolhe enquanto os botões voltam a crescer */
+      trocarSuave({ sai: corpo.querySelector(`[data-salvar="${nome}"]`), redesenhar: desenhar, entra: botoesDaAcao, lado: "depois" });
+    } else {
+      desenhar();
+      surgir(corpo.querySelector(`[data-editar="${nome}"]`));
+    }
+    corpo.querySelector(`[data-editar="${nome}"], [data-abrir-form="${nome}"]`)?.focus();
   }
 
   /* ---------- eventos ---------- */

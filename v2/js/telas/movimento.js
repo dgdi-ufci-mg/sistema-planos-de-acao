@@ -10,27 +10,42 @@ export const CURVA = "cubic-bezier(.2, 0, 0, 1)"; // igual a --mov-curva: começ
 export const reduzirMovimento = () => globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? true;
 
 /**
- * Abre o elemento crescendo a partir da altura zero, com o conteúdo surgindo.
+ * Medidas do elemento aberto e do elemento "achatado" (altura, folgas e bordas zero e, numa
+ * coluna flexível, sem o espaço entre itens), para que abrir e fechar não deixem salto no fim.
  * flexShrink 0: dentro de um painel com rolagem (coluna flexível), o elemento com overflow
  * escondido seria espremido até a altura mínima, e a animação não apareceria (falha de 21/10/2026).
  */
+function medidas(el) {
+  const cs = getComputedStyle(el);
+  const pai = el.parentElement ? getComputedStyle(el.parentElement) : null;
+  const vao = pai && /flex|grid/.test(pai.display) ? parseFloat(pai.rowGap) || 0 : 0;
+  const lado = el.previousElementSibling ? "marginTop" : "marginBottom";
+  const comum = { overflow: "hidden", boxSizing: "border-box", flexShrink: 0 };
+  const aberto = {
+    ...comum, height: `${el.getBoundingClientRect().height}px`, opacity: 1, transform: "none",
+    paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom, borderTopWidth: cs.borderTopWidth,
+    borderBottomWidth: cs.borderBottomWidth, [lado]: cs[lado],
+  };
+  const achatado = {
+    ...comum, height: "0px", opacity: 0, transform: "translateY(-4px)",
+    paddingTop: "0px", paddingBottom: "0px", borderTopWidth: "0px", borderBottomWidth: "0px",
+    [lado]: `${(parseFloat(cs[lado]) || 0) - (el.previousElementSibling || el.nextElementSibling ? vao : 0)}px`,
+  };
+  return { aberto, achatado };
+}
+
+/** Abre o elemento crescendo a partir da altura zero, com o conteúdo surgindo. */
 export function abrirSuave(el) {
   if (!el || reduzirMovimento()) return;
-  const altura = el.getBoundingClientRect().height;
-  el.animate([
-    { height: "0px", opacity: 0, overflow: "hidden", flexShrink: 0, transform: "translateY(-4px)" },
-    { height: `${altura}px`, opacity: 1, overflow: "hidden", flexShrink: 0, transform: "none" },
-  ], { duration: DURACAO, easing: CURVA });
+  const { aberto, achatado } = medidas(el);
+  el.animate([achatado, aberto], { duration: DURACAO, easing: CURVA });
 }
 
 /** Fecha o elemento encolhendo até a altura zero; resolve quando terminar. */
 export function fecharSuave(el) {
   if (!el || reduzirMovimento()) return Promise.resolve();
-  const altura = el.getBoundingClientRect().height;
-  const animacao = el.animate([
-    { height: `${altura}px`, opacity: 1, overflow: "hidden", flexShrink: 0 },
-    { height: "0px", opacity: 0, overflow: "hidden", flexShrink: 0, transform: "translateY(-4px)" },
-  ], { duration: DURACAO * 0.8, easing: CURVA, fill: "forwards" });
+  const { aberto, achatado } = medidas(el);
+  const animacao = el.animate([aberto, achatado], { duration: DURACAO, easing: CURVA, fill: "forwards" });
   return animacao.finished.catch(() => {});
 }
 
@@ -61,4 +76,25 @@ export function ligarSecoesSuaves(raiz) {
     ], { duration: DURACAO, easing: CURVA, fill: abrir ? "none" : "forwards" });
     if (!abrir) animacao.finished.then(() => { secao.open = false; animacao.cancel(); }).catch(() => {});
   });
+}
+
+/**
+ * Troca um bloco por outro sem salto: uma cópia do que sai encolhe no lugar, ao mesmo tempo
+ * que o que entra cresce. Usado quando um redesenho substitui, por exemplo, os botões
+ * "Reestimar" e "Registrar conclusão" pelo formulário, e o contrário.
+ * @param {{sai: Element|null, redesenhar: () => void, entra: () => Element|null, lado: "antes"|"depois"}} troca
+ *   lado: onde o que sai estava em relação ao que entra
+ */
+export function trocarSuave({ sai, redesenhar, entra, lado }) {
+  const fantasma = sai && !reduzirMovimento() ? sai.cloneNode(true) : null;
+  redesenhar();
+  const novo = entra();
+  if (!novo) return;
+  if (fantasma) {
+    fantasma.setAttribute("aria-hidden", "true");
+    fantasma.inert = true;
+    novo[lado === "antes" ? "before" : "after"](fantasma);
+    fecharSuave(fantasma).then(() => fantasma.remove());
+  }
+  abrirSuave(novo);
 }
