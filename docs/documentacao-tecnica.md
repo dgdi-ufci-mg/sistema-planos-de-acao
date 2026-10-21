@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 67.1 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 68 da página)
 
 ---
 
@@ -499,6 +499,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 66 | Versão 2: o alto do espaço deixa de mostrar datas e a chance de cumprir o prazo (irão para a linha do tempo e o cronograma); o aviso "Previsão incompleta" fica sempre à vista. Especificação: responsáveis criados no sistema passam a ser de cada espaço (passo 1.14b), menu lateral (1.14c), cadastro provisório de logins (1.14d), linha do tempo com a chance e o gráfico da data final, e a integração com os cadastros da instituição como decisão pendente. Sem mudança na versão atual |
 | 67 | Versão 2, passo 1.14b: responsáveis de cada espaço. Banco: `espacos/{id}/responsaveis/{id}` (dicionário, seções 4.5 e 4.9 da especificação); `Store` com o espaço nas operações de responsáveis; e-mail de login único dentro do espaço. Tela: seção "Responsáveis" em "Configurar este espaço"; fim das abas do espaço. Regras do Firestore novas (`v2/firestore.rules`), a publicar no console. Sem mudança na versão atual |
 | 67.1 | Versão 2: responsáveis antigos copiados para o espaço em uso; a coleção geral `responsaveis` foi excluída no console e saiu das regras do Firestore. Sem mudança na versão atual |
+| 68 | Versão 2, passo 1.14c: menu lateral (conta, espaços com engrenagem de configuração, novo espaço, Ajuda e Configurar o sistema), recolhível no computador e por cima no celular (`v2/js/telas/navegacao.js`, no lugar de `topo.js`); barra do topo só com o botão do menu e o nome do espaço; logotipo, nome do sistema e sigla da instituição saem da tela de trabalho (ficam nas boas-vindas, na Ajuda e no ícone da aba). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

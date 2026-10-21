@@ -3,7 +3,7 @@
  * Oferece criar um espaço e ver o exemplo. A restauração de uma cópia de
  * segurança entra aqui no passo 1.19, junto com a cópia.
  */
-import { NOME } from "../identidade.js";
+import { NOME, INSTITUICAO } from "../identidade.js";
 import { ICONES } from "../icones.js";
 
 const hojeIso = () => {
@@ -21,6 +21,7 @@ const hojeIso = () => {
 export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false, podeCriar = true, aoEntrar }) {
   alvo.innerHTML = `
     <section class="cartao boas-vindas">
+      <div class="identidade"><img src="../logo.png" alt="" width="40" height="40"><span><b>${NOME}</b><small>${INSTITUICAO}</small></span></div>
       <h1>Bem-vindo ao ${NOME}</h1>
       <p>Para cada ação, você informa quanto tempo ela deve levar e de quais outras ações ela depende.
       O sistema calcula as datas, mostra quais ações não podem atrasar sem atrasar todo o trabalho,

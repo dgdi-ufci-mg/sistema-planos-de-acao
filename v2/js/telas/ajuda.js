@@ -5,12 +5,14 @@
 import { GLOSSARIO } from "../glossario.js";
 import { ICONES } from "../icones.js";
 import { abrirPainel, fecharPainel } from "./painel.js";
+import { NOME, INSTITUICAO } from "../identidade.js";
 
 const CLASSE_DO_ICONE = { concluida: "icone-concluida", liberada: "icone-liberada", naoLiberada: "icone-nao-liberada", atrasada: "icone-atrasada" };
 
 /** @param {{foco?: string, aoVerExemplo: () => void}} opcoes */
 export function mostrarAjuda({ foco, aoVerExemplo }) {
   const corpo = abrirPainel("Ajuda", `
+    <div class="identidade"><img src="../logo.png" alt="" width="32" height="32"><span><b>${NOME}</b><small>${INSTITUICAO}</small></span></div>
     <section>
       <p>Quer ver como funciona? Abra um espaço de exemplo, com dados fictícios.</p>
       <button class="botao" type="button" data-exemplo>Ver um exemplo</button>

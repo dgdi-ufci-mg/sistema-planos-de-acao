@@ -8,7 +8,7 @@
  * - senão, abre o último espaço aberto neste aparelho, se ele ainda existir;
  * - senão, vê as boas-vindas.
  */
-import { NOME, INSTITUICAO } from "./identidade.js";
+import { NOME } from "./identidade.js";
 import { FIREBASE_CONFIG } from "../config.js";
 import { criarBancoLocal } from "./banco/local.js";
 import { conectarFirebase } from "./banco/firebase.js";
@@ -16,7 +16,7 @@ import { criarStore, hojeLocal } from "./dados.js";
 import { carregarExemplo } from "./exemplo.js";
 import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
-import { mostrarTopo } from "./telas/topo.js";
+import { mostrarNavegacao } from "./telas/navegacao.js";
 import { mostrarAjuda } from "./telas/ajuda.js";
 import { avisar } from "./telas/painel.js";
 import { abrirConfiguracao } from "./telas/configurar.js";
@@ -24,8 +24,6 @@ import { abrirConfiguracaoDoSistema } from "./telas/configurar-sistema.js";
 import { abrirEntrar, abrirTrocarSenha } from "./telas/acesso.js";
 
 document.title = NOME;
-document.querySelector("[data-nome]").textContent = NOME;
-document.querySelector("[data-instituicao]").textContent = INSTITUICAO;
 
 /* barra do topo: "rolou" liga o vidro (especificação, seção 8.1) */
 const topo = document.querySelector(".topo");
@@ -49,7 +47,6 @@ const ultimo = () => { try { return localStorage.getItem(CHAVE_ULTIMO); } catch 
 
 const hoje = hojeLocal();
 const principal = document.querySelector("#principal");
-const menus = document.querySelector(".menus");
 
 /** Banco dos espaços (Firebase ou memória) e acesso (login), definidos na partida. */
 let store = null;
@@ -71,17 +68,23 @@ async function atualizarTopo() {
   ];
   /* nome de quem entrou: o do responsável ligado ao e-mail no espaço aberto (os responsáveis são de cada espaço) */
   const ligado = usuario && abertoId ? (await tentar(() => storeDe(abertoId).listarResponsaveis(abertoId), [])).find((r) => r.usuario === usuario) : null;
-  mostrarTopo(menus, {
+  const aberto = espacos.find((e) => e.id === abertoId);
+  document.title = aberto ? `${aberto.nome} · ${NOME}` : NOME;
+  mostrarNavegacao({
     espacos,
     abertoId,
+    titulo: aberto?.nome ?? "",
     usuario: usuario ? { email: usuario, nome: ligado?.nome } : null,
     comLogin: Boolean(acesso),
-    podeConfigurar: Boolean(abertoId) && storeDe(abertoId).podeGravar,
+    podeConfigurar: (id) => storeDe(id).podeGravar,
     podeCriar: store.podeGravar,
     aoAbrir: abrirEspaco,
-    aoConfigurar: () => abrirConfiguracao({ store: storeDe(abertoId), espacoId: abertoId }),
+    /* a engrenagem de outro espaço abre esse espaço antes de configurar */
+    aoConfigurar: async (id) => {
+      if (id !== abertoId && !(await abrirEspaco(id))) return;
+      abrirConfiguracao({ store: storeDe(id), espacoId: id });
+    },
     aoNovo: () => boasVindas({ comFormulario: true }),
-    aoBoasVindas: () => boasVindas(),
     aoAjuda: () => ajuda(),
     aoSistema: () => abrirConfiguracaoDoSistema({ store, hoje }),
     aoEntrar: entrar,

@@ -87,11 +87,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   }), ui.ordem);
 
   const faltam = () => linhas.filter((l) => l.semEstimativa).length;
-  /* datas e chance saíram do alto (21/10/2026): vão para a linha do tempo e o cronograma (passos 1.17a e 1.17b);
+  /* o nome do espaço fica só na barra do topo (passo 1.14c); datas e chance saíram do alto (21/10/2026): vão para a linha do tempo e o cronograma (passos 1.17a e 1.17b);
      o aviso de previsão incompleta fica sempre à vista, em qualquer modo */
   function cabecaHtml() {
-    return `<h1>${esc(espaco.nome)}</h1>
-      ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
+    return `${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
   /** Monta a estrutura da tela; refeita só quando o espaço passa a ter ou deixa de ter ações. */
