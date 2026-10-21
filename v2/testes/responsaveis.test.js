@@ -76,14 +76,9 @@ describe("Tons das pessoas no espaço (Store)", async () => {
     assert.equal((await store.lerEspaco(id)).tons[eva], antes[dro]);
   });
 
-  it("corrigir o tipo refaz os tons: unidade que vira pessoa ganha tom; pessoa que vira unidade libera o tom", async () => {
+  it("o tipo é fixo depois do cadastro", async () => {
     const dti = responsaveis.find((r) => r.sigla === "DTI").id;
-    await store.alterarResponsavel(dti, { tipo: "pessoa" });
-    const t1 = (await store.lerEspaco(id)).tons;
-    assert.ok(t1[dti] >= 1);
-    assert.equal(new Set(Object.values(t1)).size, Object.keys(t1).length);
-    await store.alterarResponsavel(dti, { tipo: "unidade" });
-    assert.equal((await store.lerEspaco(id)).tons[dti], undefined);
+    await assert.rejects(store.alterarResponsavel(dti, { tipo: "pessoa" }), { codigo: "campo-fixo" });
   });
 
   it("login: e-mail válido, ligado a um responsável só, e nunca a uma unidade", async () => {

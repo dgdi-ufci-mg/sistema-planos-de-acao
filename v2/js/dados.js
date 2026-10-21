@@ -251,12 +251,12 @@ export function criarStore(banco, opcoes = {}) {
     },
     listarResponsaveis: () => banco.listarResponsaveis(),
     /**
-     * Altera um responsável. O tipo só muda para corrigir erro de cadastro; quando muda,
-     * os tons das pessoas são refeitos em todos os espaços (seções 4.1 e 4.5).
+     * Altera um responsável. O tipo é fixo: um cadastro feito com o tipo errado é corrigido
+     * criando outro e excluindo este com "substituir por" (seções 4.5 e 4.7).
      */
     async alterarResponsavel(id, campos) {
       recusarDesconhecidos(campos, "responsavel");
-      recusarFixos(campos, ["id", "criadoEm"]);
+      recusarFixos(campos, ["id", "tipo", "criadoEm"]);
       const todos = await banco.listarResponsaveis();
       const atual = todos.find((r) => r.id === id);
       if (!atual) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
@@ -270,11 +270,6 @@ export function criarStore(banco, opcoes = {}) {
       } else if ("usuario" in mudanca) mudanca.usuario = null;
       validarTipo({ ...atual, ...mudanca });
       await banco.alterarResponsavel(id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
-      if ("tipo" in mudanca && mudanca.tipo !== atual.tipo) {
-        for (const e of await banco.listarEspacos()) {
-          if ((await banco.listarAcoes(e.id)).some((a) => a.responsaveis?.includes(id))) await arrumarTons(e.id);
-        }
-      }
     },
 
     // --- tempo real ---

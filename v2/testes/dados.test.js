@@ -108,8 +108,8 @@ describe("Store: responsáveis", () => {
     const dti = await store.criarResponsavel({ tipo: "unidade", nome: "Diretoria de TI", sigla: "DTI" });
     await assert.rejects(store.alterarResponsavel(dti, { usuario: "dti@ufci.edu.br" }), { codigo: "unidade-com-login" });
     const ana = await store.criarResponsavel({ tipo: "pessoa", nome: "Ana", usuario: "ana@ufci.edu.br" });
-    await assert.rejects(store.alterarResponsavel(ana, { tipo: "unidade" }), { codigo: "unidade-com-login" });
-    await store.alterarResponsavel(dti, { tipo: "pessoa" });
+    await assert.rejects(store.alterarResponsavel(ana, { tipo: "unidade" }), { codigo: "campo-fixo" });
+    await assert.rejects(store.alterarResponsavel(dti, { tipo: "pessoa" }), { codigo: "campo-fixo" });
   });
 });
 

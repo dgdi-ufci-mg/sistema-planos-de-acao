@@ -2,7 +2,7 @@
  * Aba Responsáveis (especificação, seções 4.5 e 8.2; passo 1.12).
  * Lista global, igual em todos os espaços, separada em pessoas e unidades, com busca.
  * Cadastro e edição no lugar: tipo, nome, sigla, setor e, para pessoas, o e-mail de login,
- * que faz funcionar "Minhas ações". O tipo só muda para corrigir erro de cadastro.
+ * que faz funcionar "Minhas ações". O tipo é escolhido só no cadastro e não muda depois.
  * A exclusão chega com a lixeira (passo 1.15).
  */
 import { esc, plural } from "../formato.js";
@@ -26,11 +26,13 @@ export function criarTelaResponsaveis({ store }) {
     const tipo = r?.tipo ?? "pessoa";
     return `<form class="editor cartao-form form-responsavel" data-form-responsavel="${r ? esc(r.id) : "novo"}">
       <h4>${r ? "Editar responsável" : "Novo responsável"}</h4>
-      <fieldset class="tipo-responsavel"><legend>Tipo</legend>
-        <label><input type="radio" name="tipo" value="pessoa"${tipo === "pessoa" ? " checked" : ""}> Pessoa</label>
-        <label><input type="radio" name="tipo" value="unidade"${tipo === "unidade" ? " checked" : ""}> Unidade <small>(setor, equipe ou grupo)</small></label>
-        ${r ? `<small class="tec">Mude o tipo só para corrigir erro de cadastro.</small>` : ""}
-      </fieldset>
+      ${r ? `<p class="tec">${tipo === "pessoa" ? "Pessoa" : "Unidade"}. O tipo não muda depois do cadastro: se estiver errado, cadastre de novo
+        com o tipo certo e exclua este, substituindo-o nas ações (a exclusão chega no passo 1.15).</p>
+        <input type="hidden" name="tipo" value="${tipo}">`
+      : `<fieldset class="tipo-responsavel"><legend>Tipo</legend>
+        <label><input type="radio" name="tipo" value="pessoa" checked> Pessoa</label>
+        <label><input type="radio" name="tipo" value="unidade"> Unidade <small>(setor, equipe ou grupo)</small></label>
+      </fieldset>`}
       <label class="campo"><span>Nome</span><input name="nome" maxlength="120" required value="${esc(r?.nome ?? "")}"></label>
       <div class="campos-lado-a-lado">
         <label class="campo"><span>Sigla <small>(opcional)</small></span><input name="sigla" maxlength="12" value="${esc(r?.sigla ?? "")}"></label>
@@ -115,7 +117,6 @@ export function criarTelaResponsaveis({ store }) {
     const f = Object.fromEntries(new FormData(form));
     const erro = form.querySelector("[data-erro]");
     const dados = {
-      tipo: f.tipo,
       nome: f.nome,
       sigla: f.sigla ?? "",
       setor: (f.setor ?? "").trim(),
@@ -124,9 +125,10 @@ export function criarTelaResponsaveis({ store }) {
     try {
       if (form.dataset.formResponsavel === "novo") {
         if (!dados.usuario) delete dados.usuario;
-        await store.criarResponsavel(dados);
+        await store.criarResponsavel({ tipo: f.tipo, ...dados });
         avisar(`Cadastro salvo: ${dados.nome.trim()}.`);
       } else {
+        if (f.tipo === "unidade") delete dados.usuario;
         await store.alterarResponsavel(form.dataset.formResponsavel, dados);
       }
       editando = null;

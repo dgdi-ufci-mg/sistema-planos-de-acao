@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 20/10/2026 (versão 59 da página)
+**Última atualização deste documento:** 20/10/2026 (versão 59.1 da página)
 
 ---
 
@@ -480,6 +480,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 57 | Versão 2, passo 1.10: modo Quadro, com colunas Não liberadas, Liberadas e Concluídas, arrastar para concluir ou desfazer a conclusão no computador e colunas deslizantes no celular (`v2/js/telas/espaco.js`). Sem mudança na versão atual |
 | 58 | Versão 2, passo 1.11: modo "Editar em planilha", no computador, com gravação por célula, Enter para descer, colagem de blocos (criando ações novas) e células bloqueadas com o motivo (`v2/js/telas/editar-planilha.js`, `v2/js/planilha.js`). Sem mudança na versão atual |
 | 59 | Versão 2, passo 1.12: abas do espaço (Ações e Responsáveis) e aba Responsáveis, com busca, cadastro e edição de pessoas e unidades e o e-mail de login (validado e único), que fará funcionar "Minhas ações"; ao corrigir o tipo de um responsável, os tons são refeitos em todos os espaços (`v2/js/telas/responsaveis.js`). Sem mudança na versão atual |
+| 59.1 | Versão 2: o tipo do responsável (pessoa ou unidade) passa a ser fixo depois do cadastro; a correção será por exclusão com "substituir por" (passo 1.15). Especificação: registrados os quatro tipos de responsável previstos para a Fase 4 (pessoa da IU, pessoa etiqueta, unidade oficial, grupo criado no sistema) e os campos `origem` e `identificadorInstitucional`. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
