@@ -132,3 +132,15 @@ Os registros vão como estão no banco, sem tradução: o dicionário de dados (
 5. Nome do arquivo: nome do sistema, "copia" e a data (`sextante-copia-2026-10-21.json`).
 
 **Nenhum número mudou de sentido.** Nada é gravado no banco.
+
+## Resumo do lote (21/10/2026)
+
+**Na `main`, já no site:** 1.17a (linha do tempo), 1.17b (cronograma), 1.17c (rede) e 1.19a (exportação e cópia de segurança). Todos com testes automáticos passando e conferidos no navegador de teste.
+
+**Na branch `passos-1.16-1.18`, à espera das regras do banco:** 1.16 (histórico de alterações) e 1.18 (retratos manuais e comparação no cronograma). Os registros detalhados desses dois passos estão no diário da branch. Para publicar:
+1. No console do Firebase (`sextante-v2`): Firestore Database > Regras > colar `v2/firestore.rules` da branch > Publicar.
+2. Avisar, para eu juntar a branch à `main`.
+
+**Fora do lote, à espera de decisão:** 1.19b (importação por planilha e Mermaid, e restauração da cópia), porque grava no banco e pede decisões de comportamento (por exemplo, se a importação atualiza ações existentes ou só cria novas); 1.14d, 1.20, 1.21 e 1.22, já excluídos do lote.
+
+**Observado e não corrigido:** no "Histórico de estimativas" da janela da ação, a data, o autor e o selo "vigente" aparecem em linhas separadas (aparência anterior ao lote).
