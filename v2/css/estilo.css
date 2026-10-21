@@ -199,6 +199,12 @@ body::before {
 .menu button:hover { background: var(--sunk); }
 .menu .atual { font-weight: 700; }
 .menu .atual .icone { color: var(--accent); }
+.menu-cabeca { display: flex; flex-direction: column; gap: 2px; padding: 6px 10px 2px; overflow-wrap: anywhere; }
+.menu-cabeca small { color: var(--muted); }
+.redondo.com-login { background: var(--accent-soft); color: var(--accent-ink); font-weight: 700; font-size: .8rem; }
+.form-acesso .erro.ok { color: var(--muted); font-weight: 400; }
+body.so-leitura [data-nova] { display: none; }
+.alteracao-alheia { margin: 0 0 10px; padding: 8px 12px; border-radius: var(--raio); background: var(--warn-soft); color: var(--warn-ink); font-size: .9rem; }
 .menu hr { border: 0; border-top: 1px solid var(--line); margin: 6px 4px; width: auto; }
 /* celular em pé: some a marca e o menu do espaço ocupa o espaço dela */
 @media (max-width: 600px) and (orientation: portrait) {

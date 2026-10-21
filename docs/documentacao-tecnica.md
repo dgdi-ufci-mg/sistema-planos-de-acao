@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 20/10/2026 (versão 61.2 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 62 da página)
 
 ---
 
@@ -485,6 +485,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 61 | Versão 2: calendário em dois níveis. Calendário geral em "Configurar o sistema" (menu do usuário), com sugestão dos feriados nacionais de um ano para revisão; datas próprias do espaço e opção de desconsiderar datas gerais em "Configurar o espaço". Dicionário: nova entidade `calendarioGeral` e campos `datasGeraisDesconsideradas` (espaço) e `datasExcluidasEfetivas` (retrato). Especificação: "Quadro de equipe" passa a "Quadro de tarefas" (também individual); ação e tarefa são a mesma coisa, com nomes diferentes por tipo de espaço; formas de prazo (estimativa em dias úteis ou data-limite opcional) previstas para a Fase 2 (`v2/js/feriados.js`, `v2/js/telas/configurar-sistema.js`). Sem mudança na versão atual |
 | 61.1 | Versão 2: a sugestão do calendário geral segue a lista anual típica do MGI (inclusive Quarta-feira de Cinzas, Dia do Servidor Público, vésperas de Natal e de Ano Novo, como dias inteiros) e acrescenta as pontes prováveis marcadas com ⚠️ para conferência; nas listas de datas e documentos, o que não foi salvo fica destacado, com o aviso "Alterações não salvas" (`v2/js/telas/pendencias.js`). Sem mudança na versão atual |
 | 61.2 | Especificação da reescrita: campos opcionais previstos (seção 16.8): etiquetas por espaço, prioridade da equipe como lista ordenada (sem níveis), links da ação, justificativa e local (Fase 2); recorrência (Fase 3); custos com orçamento e curvas e registro de riscos (futuro). Sem mudança no sistema |
+| 62 | Versão 2, passo 1.14: espaços gravados no projeto próprio do Firebase ("sextante-v2"; `v2/config.js`), com o exemplo sempre em memória; banco do Firestore (`v2/js/banco/firestore.js`) testado com os mesmos testes de contrato, sobre um Firebase falso em memória (`v2/testes/firebase-falso.js`); regras provisórias em `v2/firestore.rules` (consulta livre, gravação com login, nada se apaga); login, "Esqueci a senha", troca de senha e saída; sem login, gravações recusadas com aviso; aviso "Fulano alterou esta ação agora" na janela da ação. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

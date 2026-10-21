@@ -28,8 +28,11 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
  *   abrirCom: formulário já aberto, como "concluir"
  * @returns {{atualizar: (dados: object) => void, fechar: () => void}}
  */
-export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null }) {
+export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null }) {
   let d = dados;
+  /** Quem acabou de alterar a ação, se não foi quem está com a janela aberta (seção 4.6). */
+  let alheia = null;
+  let tempoAlheia = null;
   /** Nome de outra ação: o código (se o espaço usa códigos) e o rótulo. */
   const nomeHtml = (a) => `${d.usaCodigos && a.codigo ? `<span class="mono">${esc(a.codigo)}</span> ` : ""}${esc(a.rotulo)}`;
   const nomeTexto = (a) => `${d.usaCodigos && a.codigo ? `${a.codigo} ` : ""}${a.rotulo}`;
@@ -73,6 +76,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
     const valores = guardarValores();
     corpo.innerHTML = `
+      ${alheia ? `<p class="alteracao-alheia" role="status">${esc(alheia)} alterou esta ação agora.</p>` : ""}
       <div class="janela-cabeca">
         ${d.usaFases ? `<span class="tec">${etapa ? `${esc(etapa.fase)} · ${esc(etapa.nome)}` : "Sem fase nem etapa"}</span>` : ""}
         ${editando === "rotulo"
@@ -448,7 +452,22 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   desenhar();
   return {
-    atualizar(novos) { if (!fechada) { d = novos; desenhar(); } },
+    /**
+     * Novos dados do banco. Se outra pessoa alterou a ação, avisa por 10 segundos; os campos
+     * em edição ficam como estão (guardarValores), e a pessoa decide se grava.
+     */
+    atualizar(novos) {
+      if (fechada) return;
+      const antes = acaoAtual();
+      d = novos;
+      const depois = acaoAtual();
+      if (antes && depois && depois.alteradaEm !== antes.alteradaEm && depois.alteradaPor && depois.alteradaPor !== usuario) {
+        alheia = d.responsaveis.find((r) => r.usuario === depois.alteradaPor)?.nome ?? depois.alteradaPor;
+        clearTimeout(tempoAlheia);
+        tempoAlheia = setTimeout(() => { alheia = null; if (!fechada) desenhar(); }, 10000);
+      }
+      desenhar();
+    },
     fechar() { if (!fechada) fecharPainel(); },
   };
 }

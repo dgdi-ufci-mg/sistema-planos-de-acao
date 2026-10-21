@@ -13,10 +13,12 @@ const hojeIso = () => {
 
 /**
  * @param {HTMLElement} alvo
- * @param {{aoCriar: (dados: object) => Promise<void>, aoVerExemplo: () => Promise<void>, comFormulario?: boolean}} acoes
- *   comFormulario: já abre o formulário de criação ("Novo espaço", no menu do espaço).
+ * @param {{aoCriar: (dados: object) => Promise<void>, aoVerExemplo: () => Promise<void>, comFormulario?: boolean,
+ *   podeCriar?: boolean, aoEntrar?: () => void}} acoes
+ *   comFormulario: já abre o formulário de criação ("Novo espaço", no menu do espaço);
+ *   podeCriar: falso sem login, e o botão de criar vira "Entrar para criar um espaço".
  */
-export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false }) {
+export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false, podeCriar = true, aoEntrar }) {
   alvo.innerHTML = `
     <section class="cartao boas-vindas">
       <h1>Bem-vindo ao ${NOME}</h1>
@@ -24,7 +26,8 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
       O sistema calcula as datas, mostra quais ações não podem atrasar sem atrasar todo o trabalho,
       estima a chance de cumprir o prazo e acompanha o andamento.</p>
       <div class="botoes">
-        <button class="botao principal" type="button" data-acao="criar">${ICONES.mais}Criar um espaço de planejamento</button>
+        ${podeCriar ? `<button class="botao principal" type="button" data-acao="criar">${ICONES.mais}Criar um espaço de planejamento</button>`
+          : '<button class="botao principal" type="button" data-acao="entrar">Entrar para criar um espaço</button>'}
         <button class="botao" type="button" data-acao="exemplo">Ver um exemplo</button>
       </div>
     </section>
@@ -53,7 +56,8 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
     formulario.hidden = false;
     formulario.querySelector('[name="nome"]').focus();
   };
-  alvo.querySelector('[data-acao="criar"]').addEventListener("click", abrirFormulario);
+  alvo.querySelector('[data-acao="criar"]')?.addEventListener("click", abrirFormulario);
+  alvo.querySelector('[data-acao="entrar"]')?.addEventListener("click", () => aoEntrar());
   alvo.querySelector('[data-acao="cancelar"]').addEventListener("click", () => {
     formulario.hidden = true;
     mostrarErro("");
@@ -72,5 +76,5 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
       mostrarErro(e.message);
     }
   });
-  if (comFormulario) abrirFormulario();
+  if (comFormulario && podeCriar) abrirFormulario();
 }

@@ -189,3 +189,17 @@ describe("Store: calendário geral", () => {
     await store.alterarEspaco(id, { datasGeraisDesconsideradas: ["2027-02-08"] });
   });
 });
+
+describe("Store: login (passo 1.14)", () => {
+  it("com exigirLogin, recusa gravar sem login e grava com o autor depois de entrar", async () => {
+    const store = criarStore(criarBancoLocal(), { exigirLogin: true });
+    assert.equal(store.podeGravar, false);
+    await assert.rejects(store.criarEspaco({ nome: "X" }), { codigo: "sem-login" });
+    store.definirUsuario("ana@ufci.edu.br");
+    const id = await store.criarEspaco({ nome: "X" });
+    assert.equal((await store.lerEspaco(id)).alteradoPor, "ana@ufci.edu.br");
+    store.definirUsuario(null);
+    await assert.rejects(store.alterarEspaco(id, { nome: "Y" }), { codigo: "sem-login" });
+    assert.equal((await store.listarEspacos()).length, 1); // leitura continua livre
+  });
+});

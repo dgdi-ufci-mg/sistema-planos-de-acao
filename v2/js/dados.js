@@ -32,7 +32,8 @@ function validarCodigo(codigo, outrasAcoes) {
 /**
  * @typedef {object} OpcoesDoStore
  * @property {() => string} [agora]   momento atual, em ISO 8601 (substituível nos testes)
- * @property {string|null} [usuario]  quem está gravando
+ * @property {string|null} [usuario]  quem está gravando (muda com definirUsuario, ao entrar e sair)
+ * @property {boolean} [exigirLogin]  recusa gravações sem login (banco compartilhado; no exemplo, não)
  * @property {() => string} [novoId]  gerador de identificadores
  * @property {() => string} [hoje]    data de hoje, ISO, no fuso do aparelho (substituível nos testes)
  */
@@ -128,7 +129,7 @@ function validarTipo({ tipo, usuario }) {
 
 export function criarStore(banco, opcoes = {}) {
   const agora = opcoes.agora ?? (() => new Date().toISOString());
-  const usuario = opcoes.usuario ?? null;
+  let usuario = opcoes.usuario ?? null;
   const novoId = opcoes.novoId ?? (() => globalThis.crypto.randomUUID());
   const hoje = opcoes.hoje ?? hojeLocal;
   const carimbo = () => ({ alteradaEm: agora(), alteradaPor: usuario });
@@ -163,7 +164,13 @@ export function criarStore(banco, opcoes = {}) {
     if (JSON.stringify(tons) !== JSON.stringify(espaco.tons ?? {})) await banco.alterarEspaco(espacoId, { tons });
   }
 
-  return {
+  const store = {
+    /** Quem está gravando: o e-mail de quem entrou, ou null. */
+    definirUsuario(email) { usuario = email ?? null; },
+    get usuario() { return usuario; },
+    /** Se este Store aceita gravações agora. */
+    get podeGravar() { return !opcoes.exigirLogin || Boolean(usuario); },
+
     // --- espaços ---
     /** Cria um espaço. Semente e número de simulações ficam fixos daqui em diante. */
     async criarEspaco(dados) {
@@ -341,4 +348,17 @@ export function criarStore(banco, opcoes = {}) {
     // --- tempo real ---
     acompanharEspaco: (espacoId, aoMudar) => banco.acompanharEspaco(espacoId, aoMudar),
   };
+
+  /* sem login, nenhuma gravação sai daqui (as regras do banco também recusam) */
+  const GRAVACOES = ["criarEspaco", "alterarEspaco", "criarAcao", "alterarAcao", "acrescentarResponsavelNaAcao",
+    "retirarResponsavelDaAcao", "acrescentarDependencia", "retirarDependencia", "reestimar", "corrigirEstimativa",
+    "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral"];
+  for (const nome of GRAVACOES) {
+    const operacao = store[nome];
+    store[nome] = async (...args) => {
+      if (!store.podeGravar) throw new ErroDeDados("sem-login", "Entre com seu e-mail e senha para fazer alterações.");
+      return operacao(...args);
+    };
+  }
+  return store;
 }
