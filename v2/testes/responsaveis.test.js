@@ -76,6 +76,30 @@ describe("Tons das pessoas no espaço (Store)", async () => {
     assert.equal((await store.lerEspaco(id)).tons[eva], antes[dro]);
   });
 
+  it("corrigir o tipo refaz os tons: unidade que vira pessoa ganha tom; pessoa que vira unidade libera o tom", async () => {
+    const dti = responsaveis.find((r) => r.sigla === "DTI").id;
+    await store.alterarResponsavel(dti, { tipo: "pessoa" });
+    const t1 = (await store.lerEspaco(id)).tons;
+    assert.ok(t1[dti] >= 1);
+    assert.equal(new Set(Object.values(t1)).size, Object.keys(t1).length);
+    await store.alterarResponsavel(dti, { tipo: "unidade" });
+    assert.equal((await store.lerEspaco(id)).tons[dti], undefined);
+  });
+
+  it("login: e-mail válido, ligado a um responsável só, e nunca a uma unidade", async () => {
+    const ana = pessoa("ANA");
+    const brl = pessoa("BRL");
+    await assert.rejects(store.alterarResponsavel(brl, { usuario: "ana.souza@ufci.edu.br" }), { codigo: "login-ocupado" });
+    await assert.rejects(store.alterarResponsavel(brl, { usuario: "bruno" }), { codigo: "login-invalido" });
+    await store.alterarResponsavel(brl, { usuario: " Bruno.Novo@UFCI.edu.br " });
+    assert.equal((await store.listarResponsaveis()).find((r) => r.id === brl).usuario, "bruno.novo@ufci.edu.br");
+    await store.alterarResponsavel(ana, { usuario: "" });
+    assert.equal((await store.listarResponsaveis()).find((r) => r.id === ana).usuario, null);
+    const pf = responsaveis.find((r) => r.sigla === "PF").id;
+    await assert.rejects(store.alterarResponsavel(pf, { usuario: "pf@ufci.edu.br" }), { codigo: "unidade-com-login" });
+    await assert.rejects(store.alterarResponsavel(pf, { nome: "  " }), { codigo: "nome-vazio" });
+  });
+
   it("o tom não pode ser alterado à mão", async () => {
     await assert.rejects(store.alterarEspaco(id, { tons: {} }), { codigo: "campo-fixo" });
   });

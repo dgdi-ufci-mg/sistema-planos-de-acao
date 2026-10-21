@@ -61,6 +61,14 @@ function validarEstimativa({ o, m, p }) {
  * @param {ReturnType<import("./banco/local.js").criarBancoLocal>} banco
  * @param {OpcoesDoStore} [opcoes]
  */
+/** Login ligado a um responsável: um e-mail, e de um responsável só (seção 4.5). */
+function validarLogin(login, outros) {
+  const email = login.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ErroDeDados("login-invalido", "Informe o e-mail de login, como nome@ufci.edu.br.");
+  const dono = outros.find((r) => r.usuario === email);
+  if (dono) throw new ErroDeDados("login-ocupado", `Este e-mail já está ligado a ${dono.nome}.`);
+}
+
 /** Responsável: tipo "pessoa" ou "unidade"; só pessoa pode ter login (seção 4.5). */
 function validarTipo({ tipo, usuario }) {
   if (tipo !== "pessoa" && tipo !== "unidade") {
@@ -232,23 +240,41 @@ export function criarStore(banco, opcoes = {}) {
     // --- responsáveis ---
     async criarResponsavel(dados) {
       recusarDesconhecidos(dados, "responsavel");
-      const { nome, sigla = "", ...outros } = dados;
+      const { nome, sigla = "", usuario: login, ...outros } = dados;
       if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do responsável.");
       validarTipo(dados);
+      if (login) validarLogin(login, await banco.listarResponsaveis());
       return banco.criarResponsavel(novoId(), {
-        ...outros, nome: nome.trim(), sigla: sigla.trim(),
+        ...outros, nome: nome.trim(), sigla: sigla.trim(), ...(login ? { usuario: login.trim().toLowerCase() } : {}),
         criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario,
       });
     },
     listarResponsaveis: () => banco.listarResponsaveis(),
+    /**
+     * Altera um responsável. O tipo só muda para corrigir erro de cadastro; quando muda,
+     * os tons das pessoas são refeitos em todos os espaços (seções 4.1 e 4.5).
+     */
     async alterarResponsavel(id, campos) {
       recusarDesconhecidos(campos, "responsavel");
       recusarFixos(campos, ["id", "criadoEm"]);
-      if ("tipo" in campos || campos.usuario) {
-        const atual = (await banco.listarResponsaveis()).find((r) => r.id === id);
-        validarTipo({ ...atual, ...campos });
+      const todos = await banco.listarResponsaveis();
+      const atual = todos.find((r) => r.id === id);
+      if (!atual) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
+      if ("nome" in campos && !campos.nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do responsável.");
+      const mudanca = { ...campos };
+      if ("nome" in mudanca) mudanca.nome = mudanca.nome.trim();
+      if ("sigla" in mudanca) mudanca.sigla = (mudanca.sigla ?? "").trim();
+      if (mudanca.usuario) {
+        mudanca.usuario = mudanca.usuario.trim().toLowerCase();
+        validarLogin(mudanca.usuario, todos.filter((r) => r.id !== id));
+      } else if ("usuario" in mudanca) mudanca.usuario = null;
+      validarTipo({ ...atual, ...mudanca });
+      await banco.alterarResponsavel(id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
+      if ("tipo" in mudanca && mudanca.tipo !== atual.tipo) {
+        for (const e of await banco.listarEspacos()) {
+          if ((await banco.listarAcoes(e.id)).some((a) => a.responsaveis?.includes(id))) await arrumarTons(e.id);
+        }
       }
-      await banco.alterarResponsavel(id, { ...campos, alteradoEm: agora(), alteradoPor: usuario });
     },
 
     // --- tempo real ---

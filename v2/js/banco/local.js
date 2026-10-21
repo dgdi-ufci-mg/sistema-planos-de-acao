@@ -46,6 +46,7 @@ export function criarBancoLocal() {
   const avisar = (espacoId) => {
     for (const aoMudar of ouvintes.get(espacoId) ?? []) aoMudar(fotografia(espacoId));
   };
+  const avisarTodos = () => { for (const espacoId of ouvintes.keys()) avisar(espacoId); };
 
   /** Lê, calcula e grava a ação de uma vez, sem espera no meio. */
   const mudarAcao = (espacoId, numero, mudanca) => {
@@ -149,6 +150,7 @@ export function criarBancoLocal() {
     async criarResponsavel(id, dados) {
       if (responsaveis.has(id)) throw new ErroDeDados("id-ocupado", `Já existe um responsável com o id ${id}.`);
       responsaveis.set(id, copia({ ...dados, id }));
+      avisarTodos(); // responsáveis são de todos os espaços
       return id;
     },
     async listarResponsaveis() {
@@ -157,6 +159,7 @@ export function criarBancoLocal() {
     async alterarResponsavel(id, campos) {
       if (!responsaveis.has(id)) throw new ErroDeDados("nao-encontrado", `Responsável ${id} não encontrado.`);
       responsaveis.set(id, { ...responsaveis.get(id), ...copia(campos) });
+      avisarTodos();
     },
 
     // --- tempo real ---

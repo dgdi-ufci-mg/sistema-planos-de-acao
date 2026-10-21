@@ -106,6 +106,17 @@ export function testarContratoDoBanco(nome, criarBanco) {
       assert.deepEqual((await banco.lerAcao("p1", 1)).estimativas.map((e) => e.o), [2, 5]);
     });
 
+    it("avisa quem acompanha qualquer espaço quando um responsável é criado ou alterado", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      let avisos = 0;
+      const parar = banco.acompanharEspaco("p1", () => avisos++);
+      await banco.criarResponsavel("r1", { nome: "Ana", tipo: "pessoa" });
+      await banco.alterarResponsavel("r1", { sigla: "ANA" });
+      parar();
+      assert.equal(avisos, 3); // ao começar a acompanhar, ao criar e ao alterar
+    });
+
     it("recusa alterar o que não existe", async () => {
       const banco = criarBanco();
       await assert.rejects(banco.alterarEspaco("nao-existe", { nome: "x" }), { codigo: "nao-encontrado" });

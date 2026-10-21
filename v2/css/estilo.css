@@ -535,3 +535,35 @@ h3.editavel { padding: 2px 6px; }
 .planilha tr:hover td:not(.bloqueada) { background: color-mix(in srgb, var(--sunk) 60%, transparent); }
 .planilha .linha-nova td { background: var(--bg); }
 .planilha .linha-nova input[data-chave="rotulo"]::placeholder { color: var(--faint); }
+
+/* ---------- abas do espaço e aba Responsáveis (passo 1.12) ---------- */
+.abas { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.abas button {
+  border: 0; background: none; padding: 8px 14px; cursor: pointer; font-family: var(--f-titulo); font-size: 1.05rem; font-weight: 600;
+  color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px;
+}
+.abas button:hover { color: var(--ink); }
+.abas button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+[data-painel] { display: flex; flex-direction: column; gap: 14px; }
+[data-painel][hidden] { display: none; }
+.ferramentas-responsaveis { display: flex; gap: 8px; flex-wrap: wrap; }
+.ferramentas-responsaveis input { flex: 1; min-width: 200px; font-size: 1rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
+.grupo-responsaveis { display: flex; flex-direction: column; gap: 6px; }
+.grupo-responsaveis h3 { font-size: 1.15rem; display: flex; align-items: baseline; gap: 8px; }
+.grupo-responsaveis h3 .n { font-family: var(--f-dados); font-size: .8rem; color: var(--muted); font-weight: 400; }
+.responsavel {
+  display: flex; align-items: center; gap: 12px; margin: 0; padding: 10px 12px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo);
+}
+.responsavel-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.responsavel-texto .tec { overflow-wrap: anywhere; }
+.responsavel-contagem { font-size: .82rem; color: var(--muted); white-space: nowrap; }
+.tipo-responsavel { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
+.tipo-responsavel legend { font-weight: 600; font-size: .9rem; padding: 0; margin-bottom: 4px; }
+.tipo-responsavel label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.tipo-responsavel .tec { width: 100%; }
+.form-responsavel .campo input { font-weight: 400; font-size: 1rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--bg); width: 100%; }
+@media (max-width: 600px) {
+  .responsavel { flex-wrap: wrap; }
+  .responsavel-contagem { width: 100%; padding-left: 40px; white-space: normal; }
+}
