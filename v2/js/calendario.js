@@ -74,3 +74,17 @@ export function criarCalendario({ inicio, datasExcluidas = [] }, hoje = paraIso(
     dataDeConclusao: (fim, inicio = 0) => data(Math.max(inicio, Math.ceil(fim - 1e-9) - 1)),
   };
 }
+
+/**
+ * Datas excluídas que valem para o espaço (seção 5.1): o calendário geral, menos as datas
+ * gerais que o espaço desconsidera, mais as datas próprias do espaço. Sem repetição, em ordem.
+ * @param {{datasExcluidas?: {data: string, motivo?: string}[], datasGeraisDesconsideradas?: string[]}} espaco
+ * @param {{datasExcluidas?: {data: string, motivo?: string}[]}|null} geral
+ */
+export function datasEfetivas(espaco, geral) {
+  const fora = new Set(espaco.datasGeraisDesconsideradas ?? []);
+  const porData = new Map();
+  for (const d of geral?.datasExcluidas ?? []) if (!fora.has(d.data)) porData.set(d.data, d);
+  for (const d of espaco.datasExcluidas ?? []) porData.set(d.data, d);
+  return [...porData.values()].sort((a, b) => a.data.localeCompare(b.data));
+}

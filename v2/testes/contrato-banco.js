@@ -117,6 +117,18 @@ export function testarContratoDoBanco(nome, criarBanco) {
       assert.equal(avisos, 3); // ao começar a acompanhar, ao criar e ao alterar
     });
 
+    it("guarda o calendário geral e avisa todos os espaços acompanhados", async () => {
+      const banco = criarBanco();
+      assert.equal(await banco.lerCalendarioGeral(), null);
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      let avisos = 0;
+      const parar = banco.acompanharEspaco("p1", () => avisos++);
+      await banco.gravarCalendarioGeral({ datasExcluidas: [{ data: "2027-04-21", motivo: "Tiradentes" }] });
+      parar();
+      assert.equal((await banco.lerCalendarioGeral()).datasExcluidas[0].data, "2027-04-21");
+      assert.equal(avisos, 2);
+    });
+
     it("recusa alterar o que não existe", async () => {
       const banco = criarBanco();
       await assert.rejects(banco.alterarEspaco("nao-existe", { nome: "x" }), { codigo: "nao-encontrado" });

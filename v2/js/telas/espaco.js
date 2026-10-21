@@ -5,7 +5,7 @@
  * A conclusão prevista, a data segura e a chance ficam numa linha provisória no alto,
  * até a linha do tempo da aba Visualização (passo 1.17).
  */
-import { criarCalendario } from "../calendario.js";
+import { criarCalendario, datasEfetivas } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
 import { simular } from "../simulacao.js";
 import { ICONES } from "../icones.js";
@@ -56,11 +56,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   let ferramentas, lista, legenda, cabeca;
 
   /** Recalcula tudo o que depende dos dados. */
-  function derivar(dados, todos) {
+  function derivar(dados, todos, geral) {
     espaco = dados.espaco;
     acoes = [...dados.acoes].sort((a, b) => a.ordem - b.ordem);
     responsaveis = todos;
-    cal = criarCalendario(espaco, hoje);
+    cal = criarCalendario({ ...espaco, datasExcluidas: datasEfetivas(espaco, geral) }, hoje);
     caminho = caminhoCritico(acoes, cal, { hoje });
     sim = simular(acoes, cal, { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal });
     linhas = montarLinhas(acoes, caminho, sim, cal, hoje);
@@ -442,7 +442,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   let fila = Promise.resolve();
   const parar = store.acompanharEspaco(espacoId, (dados) => {
     fila = fila.then(async () => {
-      derivar(dados, await store.listarResponsaveis());
+      derivar(dados, await store.listarResponsaveis(), await store.lerCalendarioGeral());
       desenhar();
       janela?.atualizar(dadosDaJanela());
     }).catch((e) => avisar(e.message));

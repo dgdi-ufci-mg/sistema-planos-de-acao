@@ -16,6 +16,7 @@ import { mostrarTopo } from "./telas/topo.js";
 import { mostrarAjuda } from "./telas/ajuda.js";
 import { avisar } from "./telas/painel.js";
 import { abrirConfiguracao } from "./telas/configurar.js";
+import { abrirConfiguracaoDoSistema } from "./telas/configurar-sistema.js";
 
 document.title = NOME;
 document.querySelector("[data-nome]").textContent = NOME;
@@ -55,6 +56,7 @@ async function atualizarTopo(abertoId = null) {
     aoNovo: () => boasVindas({ comFormulario: true }),
     aoBoasVindas: () => boasVindas(),
     aoAjuda: () => ajuda(),
+    aoSistema: () => abrirConfiguracaoDoSistema({ store, hoje }),
     aoEntrar: () => avisar("A entrada com e-mail e senha chega no passo 1.14."),
   });
 }

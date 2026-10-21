@@ -8,11 +8,12 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "inicio", "prazoFinal", "datasExcluidas", "documentos",
+    "id", "nome", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
   dataExcluida: ["data", "motivo"],
+  calendarioGeral: ["datasExcluidas", "alteradoEm", "alteradoPor"],
   documento: ["nome", "data", "identificacao", "link"],
   fase: ["id", "nome", "etapas"],
   etapa: ["id", "nome"],
@@ -25,7 +26,7 @@ export const CAMPOS = Object.freeze({
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
   retrato: [
     "id", "nome", "origem", "criadoEm", "criadoPor",
-    "semente", "simulacoes", "versaoCalculo", "espaco", "responsaveis", "resumo",
+    "semente", "simulacoes", "versaoCalculo", "espaco", "datasExcluidasEfetivas", "responsaveis", "resumo",
   ],
   /** Cada ação do retrato: todos os campos de `acao` mais estes valores calculados. */
   retratoAcaoCalculos: [

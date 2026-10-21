@@ -144,7 +144,8 @@ erDiagram
 | `nome` | texto | sim | Nome do espaço | `PI² · Fase 1` |
 | `inicio` | data | não | Início do espaço: a partir dele contam os dias úteis | `2026-08-03` |
 | `prazoFinal` | data | não | Prazo final, por exemplo o fixado por ato da Diretoria-Geral | `2027-04-14` |
-| `datasExcluidas` | lista de data excluída (4.1.1) | não | Feriados e outras datas sem expediente | |
+| `datasExcluidas` | lista de data excluída (4.1.1) | não | Datas sem expediente próprias do espaço (feriados locais, exclusões específicas), que complementam o calendário geral (4.1.5) | |
+| `datasGeraisDesconsideradas` | lista de data | não | Datas do calendário geral que este espaço não exclui (por exemplo, um ponto facultativo em que a equipe trabalha) | `["2027-02-08"]` |
 | `documentos` | lista de documento (4.1.2) | não | Documentos do espaço, como o espaço aprovado e suas revisões | |
 | `simulacoes` | inteiro | sim | Número de simulações. Padrão 10.000. Definido na criação e **imutável** (seção 5.7) | `10000` |
 | `semente` | inteiro | sim | Semente da simulação. Padrão 20261014. Definida na criação e **imutável** (seção 5.7) | `20261014` |
@@ -204,6 +205,17 @@ Saem da versão atual: `dist` (escolha de distribuição), `statusDate` (a data 
 | `codigos` | sim/não | não | Usa os códigos mnemônicos das ações, como `LEV` (seção 4.2). **Ausente: desligado**, ao contrário dos demais | `false` |
 
 Desligar um campo o esconde do formulário, da tabela e das exportações; os dados já gravados são mantidos.
+
+#### 4.1.5 Calendário geral
+
+Um só, para todos os espaços (seção 5.1). Cuidado pelo Administrador do Sistema.
+
+<!-- dicionario: calendarioGeral -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `datasExcluidas` | lista de data excluída (4.1.1) | sim | Feriados nacionais, recessos e outras datas sem expediente na instituição | |
+| `alteradoEm` | momento | sim | Última gravação | |
+| `alteradoPor` | usuário | não | Autor da última gravação | |
 
 ### 4.2 Ação
 
@@ -273,6 +285,7 @@ O retrato é guardado em duas partes: o cabeçalho, abaixo, e um registro por a�
 | `simulacoes` | inteiro | sim | Número de simulações usado | `10000` |
 | `versaoCalculo` | inteiro | sim | Versão do método de cálculo (seção 5.7) | `1` |
 | `espaco` | espaço (4.1) | sim | Cópia integral do espaço, com todos os campos de 4.1 | |
+| `datasExcluidasEfetivas` | lista de data excluída (4.1.1) | sim | Datas excluídas que valiam no cálculo naquele momento: calendário geral, menos as desconsideradas, mais as do espaço. O calendário geral pode mudar depois; sem esta cópia, refazer o cálculo daria outro resultado | |
 | `responsaveis` | lista de responsável (4.5) | sim | Cópia integral dos responsáveis citados nas ações, para os nomes continuarem legíveis | |
 | `resumo` | resumo do retrato (4.4.2) | sim | Resultado do espaço naquele momento | |
 
@@ -396,7 +409,8 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Dependência | lista `dependeDe` dentro da ação | tabela `acao_dependencia` |
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
-| Retrato | cabeçalho em `espacos/{id}/retratos/{id}`; ações em `espacos/{id}/retratos/{id}/acoes/{codigo}` | tabelas `retrato`, `retrato_acao` |
+| Retrato | cabeçalho em `espacos/{id}/retratos/{id}`; ações em `espacos/{id}/retratos/{id}/acoes/{numero}` | tabelas `retrato`, `retrato_acao` |
+| Calendário geral | documento `sistema/calendario` | tabela `data_excluida_geral` |
 | Responsável | `responsaveis/{id}` | tabela `responsavel` |
 
 Os nomes do Firebase passam a ser em português, porque a versão 2 usa um projeto novo (seção 3.3); a migração (seção 11) converte os nomes da versão atual (`projects`, `tasks`, `people`). No PostgreSQL, as listas viram tabelas de ligação e as regras da seção 4.6 viram restrições do banco (seção 3.4).
@@ -415,7 +429,10 @@ Entram no dicionário, com tabela marcada e teste, no passo em que forem constru
 
 ### 5.1 Contagem do tempo
 
-- Prazos em **dias úteis**, descontadas as datas excluídas do espaço.
+- Prazos em **dias úteis**: de segunda a sexta, descontadas as datas excluídas, que vêm de dois cadastros (decisão do responsável, 21/10/2026):
+  - **Calendário geral**, cuidado pelo Administrador do Sistema em "Configurar o sistema" (menu do usuário): feriados nacionais, recessos e datas da instituição, que valem para todos os espaços. Um botão acrescenta os feriados nacionais de um ano, inclusive os móveis (Carnaval, Sexta-feira Santa, Corpus Christi), para revisão antes de salvar: a lista pode ser corrigida e completada. Até existirem os papéis (Fase 2), qualquer pessoa conectada pode editá-lo.
+  - **Datas do espaço**, cuidadas pelo administrador do espaço em "Configurar o espaço": feriados locais e exclusões específicas, que complementam o calendário geral. Ali se vê também a lista geral, sem poder editá-la, e se pode **desconsiderar** uma data geral no espaço (por exemplo, um ponto facultativo em que a equipe trabalha).
+  - Datas efetivas do espaço = calendário geral, menos as desconsideradas, mais as do espaço.
 - Uma ação é **liberada** quando todas as anteriores estão concluídas. Sem ações anteriores, é liberada no início do espaço.
 - **"Não começa antes de" (data mínima, opcional).** A ação só é liberada quando todas as anteriores estiverem concluídas **e** essa data tiver chegado. Liberação = a mais tardia entre a conclusão das anteriores e a data mínima. É o mesmo conceito da restrição "não iniciar antes de" do MS Project, numa forma simples.
   - **Nova ação:** o campo já vem preenchido com a data de criação. Assim, uma ação criada depois que as anteriores terminaram não nasce atrasada. O usuário pode apagar a data, se a ação puder começar assim que as anteriores terminarem.
@@ -659,7 +676,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 0.1. ✔ Pasta `/v2/` no site, com página provisória; AGENTS.md ajustado (a regra do arquivo único passa a valer só para a versão atual; testes com `node --test`).
 0.2. ✔ Estrutura de arquivos, testes automáticos, banco em memória e `Store` com operações do sistema (seção 3.4).
 0.3. ✔ Dicionário de dados completo: modelo lógico, mapeamento físico, diagrama das relações, campos calculados que não ficam no banco, formato das datas e fuso. Teste do dicionário.
-0.4. ✔ Espaço de exemplo, com dados fictícios e datas relativas a hoje (`js/exemplo.js`), e cópia do espaço da PI² para o teste de comparação (`testes/dados/pi2-fase1.json`, lida dos dados reais só por leitura, sem responsáveis nem descrições, com conferência por SHA-256). A PI² não é exemplo público: dados reais mudam, e o exemplo precisa ser estável e didático (decisão de 20/10/2026). Este primeiro exemplo serve de base ao tipo Projeto; os exemplos de Plano de Ação e de Quadro de equipe entram nos passos 2.6 e 3.1.
+0.4. ✔ Espaço de exemplo, com dados fictícios e datas relativas a hoje (`js/exemplo.js`), e cópia do espaço da PI² para o teste de comparação (`testes/dados/pi2-fase1.json`, lida dos dados reais só por leitura, sem responsáveis nem descrições, com conferência por SHA-256). A PI² não é exemplo público: dados reais mudam, e o exemplo precisa ser estável e didático (decisão de 20/10/2026). Este primeiro exemplo serve de base ao tipo Projeto; os exemplos de Plano de Ação e de Quadro de tarefas entram nos passos 2.6 e 3.1.
 0.5. ✔ Base visual: cores, temas claro e escuro (`css/estilo.css`), ícones em SVG (`js/icones.js`) e barra do topo, mostrados numa página provisória. Esconder logotipo e nome no celular na vertical fica para o passo 1.5, quando houver o menu do espaço para ocupar o lugar.
 
 ### Fase 1: núcleo (substitui a versão atual)
@@ -676,7 +693,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.10. ✔ Modo Quadro. Feito no passo 1.10: botões "Lista | Quadro" junto dos filtros (no celular, no painel "Filtros e ordem"); três colunas com contagem e uma dica curta; cartões com etapa, responsáveis, conclusão prevista, carimbo Atrasada e a barra de prioridade de execução; no quadro, os filtros de situação se reduzem a Todas e Atrasadas, e o filtro de responsável e a ordenação continuam valendo dentro das colunas. Arrastar de Liberadas para Concluídas abre a janela da ação já no registro da conclusão; de Concluídas para Liberadas desfaz a conclusão; os cartões não liberados não se arrastam. No celular, as colunas deslizam para o lado, uma por vez.
 1.11. ✔ Modo "Editar em planilha", no computador. Feito no passo 1.11: terceiro botão em "Lista | Quadro | Editar em planilha", só no computador (`js/telas/editar-planilha.js`; regras em `js/planilha.js`, com testes). Colunas: Nº (o número da ação, só leitura), Código (com os códigos ligados), Rótulo, Etapa (lista), Descrição, Depende de (números ou códigos, separados por ponto e vírgula), Responsáveis (siglas ou nomes), Não começa antes de, os três pontos da estimativa e Concluída em (preencher registra a conclusão; apagar desfaz). Cinza, com o motivo ao passar o mouse: o número; a estimativa de ação liberada ou concluída; a conclusão de ação não liberada. Dependências e responsáveis são gravados item a item (seção 4.6), com as mesmas recusas da janela (ciclo, inexistente, sigla desconhecida). Colar um bloco do Google Planilhas ou do Excel aceita células entre aspas com quebra de linha e cria ações novas para as linhas que passarem do fim; a etapa colada é reconhecida pelo nome. A última linha, vazia, cria uma ação ao receber um rótulo. No modo planilha, os filtros, a ordenação e a legenda ficam escondidos: a grade mostra todas as ações, na ordem do espaço.
 1.12. ✔ Aba Responsáveis, com a ligação ao usuário que faz funcionar "Minhas ações". Feito no passo 1.12: abas do espaço, por enquanto Ações e Responsáveis (Visualização chega no passo 1.17); aba Responsáveis em `js/telas/responsaveis.js`, com busca, pessoas e unidades em grupos separados, quantas ações cada um tem no espaço aberto e cadastro e edição no lugar (tipo, nome, sigla, setor e, só para pessoas, o e-mail de login). O `Store` passou a validar o e-mail de login (formato e um responsável por e-mail). O tipo é escolhido só no cadastro e não muda depois (revisto em 21/10/2026; seção 4.5). O banco avisa todos os espaços acompanhados quando um responsável muda, porque a lista é a mesma para todos. "Minhas ações" já usa o e-mail de login, mas só aparece depois da entrada com login (passo 1.14). A exclusão de responsáveis chega com a lixeira (passo 1.15).
-1.13. ✔ Configurar o espaço: dados, datas excluídas, fases e etapas, campos opcionais, documentos (identificação no SIPAC/Protocolo e link) e semente visível. Feito no passo 1.13: painel lateral aberto por "Configurar este espaço", no menu do espaço (`js/telas/configurar.js`), com seções recolhíveis (só os dados do espaço começam abertos): dados do espaço (nome, início, prazo final); datas excluídas com motivo; fases e etapas (criar, renomear, reordenar com ↑ e ↓ e retirar as que não têm ações; a retirada das que têm ações chega com a exclusão encadeada, no passo 1.15); campos opcionais, gravados na hora, incluindo "Códigos das ações"; documentos (nome, data, identificação no SIPAC/Protocolo e link, com botão Abrir); e a simulação (semente, cenários e versão do cálculo), visível e fixa. Cada seção grava pelo seu botão Salvar. O `Store` passou a conferir o espaço inteiro a cada gravação: prazo final não antes do início, datas excluídas sem repetir, fases e etapas com nome e identificadores únicos, documentos com nome e link só http ou https, e os campos de cada item contra o dicionário de dados. Ao renomear, o nome muda também no topo. Retratos, importação, exportação e cópia de segurança entram nos passos 1.18 e 1.19.
+1.13. ✔ Configurar o espaço: dados, datas excluídas, fases e etapas, campos opcionais, documentos (identificação no SIPAC/Protocolo e link) e semente visível. Feito no passo 1.13: painel lateral aberto por "Configurar este espaço", no menu do espaço (`js/telas/configurar.js`), com seções recolhíveis (só os dados do espaço começam abertos): dados do espaço (nome, início, prazo final); datas excluídas com motivo; fases e etapas (criar, renomear, reordenar com ↑ e ↓ e retirar as que não têm ações; a retirada das que têm ações chega com a exclusão encadeada, no passo 1.15); campos opcionais, gravados na hora, incluindo "Códigos das ações"; documentos (nome, data, identificação no SIPAC/Protocolo e link, com botão Abrir); e a simulação (semente, cenários e versão do cálculo), visível e fixa. Cada seção grava pelo seu botão Salvar. O `Store` passou a conferir o espaço inteiro a cada gravação: prazo final não antes do início, datas excluídas sem repetir, fases e etapas com nome e identificadores únicos, documentos com nome e link só http ou https, e os campos de cada item contra o dicionário de dados. Ao renomear, o nome muda também no topo. Retratos, importação, exportação e cópia de segurança entram nos passos 1.18 e 1.19. **Revisto em 21/10/2026:** calendário em dois níveis (seção 5.1). "Configurar o sistema", no menu do usuário (`js/telas/configurar-sistema.js`), cuida do calendário geral, agrupado por ano, com o botão que sugere os feriados nacionais de um ano (`js/feriados.js`, com a Páscoa calculada; fixos e móveis, inclusive os pontos facultativos de Carnaval e Corpus Christi), destacados para revisão antes de salvar. Em "Configurar o espaço", a seção de datas excluídas mostra as datas gerais a partir do início do espaço, cada uma com "desconsiderar", e as datas próprias do espaço. O cálculo usa as datas efetivas (`datasEfetivas`, em `js/calendario.js`). O exemplo continua com os feriados na lista própria, por ser fictício e não poder alterar o calendário geral.
 1.14. Firebase: área de dados separada, login, troca de senha e edição simultânea com aviso (seção 4.6).
 1.15. Exclusão lógica e lixeira, para espaços, ações e responsáveis, com as regras de exclusão encadeada.
 1.16. Histórico de alterações (seção 16.4).
@@ -701,9 +718,9 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.10. Extração personalizada (seção 16.6).
 2.11. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
 
-### Fase 3: quadro de equipe
+### Fase 3: quadro de tarefas
 
-3.1. Tipo "Quadro de equipe": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de equipe.
+3.1. Tipo "Quadro de tarefas": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de tarefas.
 
 ### Fase 4: servidor da UFCI-MG
 
@@ -816,11 +833,20 @@ Decisões acordadas com o responsável em 19/10/2026. A fase em que cada uma ent
 
 ### 16.1 Finalidades e tipos de espaço
 
-**Nomes na tela (decisão de 20/10/2026):** cada tipo é chamado pelo próprio nome, para não se confundir com o "Plano de Entregas" e o "Plano de Trabalho" do PGD. **Palavra geral: Espaço de Planejamento** (decisão de 20/10/2026), o conjunto que reúne um Plano de Ação, um Projeto ou um Quadro de equipe. Na fala do dia a dia, "espaço"; na tela, o nome completo sempre que couber, e "Espaço" nas telas estreitas. Exemplos: "Meus espaços"; "Novo espaço de planejamento: Plano de Ação, Projeto ou Quadro de equipe". O qualificativo "de Planejamento" afasta o sentido físico e as colisões com outros "espaços", como os do Google Chat. Foram descartados: Espaço (colide com o PGD), Projeto (errado para o quadro), Painel (já significa *dashboard*), Rota (não combina com o quadro de equipe, de destinos difusos) e outros. Nesta especificação, o conjunto é sempre chamado de "espaço"; no código e no banco, `espaco`. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
+**Nomes na tela (decisão de 20/10/2026):** cada tipo é chamado pelo próprio nome, para não se confundir com o "Plano de Entregas" e o "Plano de Trabalho" do PGD. **Palavra geral: Espaço de Planejamento** (decisão de 20/10/2026), o conjunto que reúne um Plano de Ação, um Projeto ou um Quadro de tarefas. Na fala do dia a dia, "espaço"; na tela, o nome completo sempre que couber, e "Espaço" nas telas estreitas. Exemplos: "Meus espaços"; "Novo espaço de planejamento: Plano de Ação, Projeto ou Quadro de tarefas". O qualificativo "de Planejamento" afasta o sentido físico e as colisões com outros "espaços", como os do Google Chat. Foram descartados: Espaço (colide com o PGD), Projeto (errado para o quadro), Painel (já significa *dashboard*), Rota (não combina com o quadro de tarefas, de destinos difusos) e outros. Nesta especificação, o conjunto é sempre chamado de "espaço"; no código e no banco, `espaco`. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
 
 1. **Plano de Ação:** só os estrategicamente formalizados, derivados do PEI/PDI. Mantém o sentido institucional exato. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano de Ação; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCI-MG.
 2. **Projeto:** os de propósito geral; mesmo motor do tipo 1, sem vínculo obrigatório ao catálogo.
-3. **Quadro de equipe:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível.
+3. **Quadro de tarefas:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível. Pode ser **individual** (uma pessoa organiza as próprias tarefas) e ser compartilhado depois, quando alguém chega à equipe: é só um espaço restrito em que o criador convida outras pessoas (papéis e visibilidade, seção 16.3). O nome era "Quadro de equipe" até 21/10/2026; mudou porque "de equipe" excluía o uso individual.
+
+**Ação e tarefa são a mesma coisa** (decisão do responsável, 21/10/2026). No Plano de Ação e no Projeto, o item do espaço se chama **ação**; no Quadro de tarefas, **tarefa**, porque é assim que se pensa num quadro (como no Planner e no Todoist) e porque "ação" soa formal para o uso diário. Só a palavra na tela muda conforme o tipo do espaço: a entidade, os campos, o código e o banco são os mesmos (`acao`, seção 4.2). Os textos da tela ficam centralizados, para a troca ser feita num lugar só.
+
+**Formas de prazo** (decisão do responsável, 21/10/2026). Cada espaço escolhe como os prazos são definidos:
+
+1. **Estimativa em dias úteis:** três pontos por ação, cálculo, previsões, prioridades e datas excluídas (seção 5). É a única forma até a Fase 2. Uma ação sem estimativa não entra nas previsões.
+2. **Data-limite opcional:** cada ação pode ter uma data-limite escolhida pela pessoa, como no Planner e no Todoist, sem cálculo nem previsões. A ação com data-limite vencida e não concluída recebe o carimbo "Atrasada"; a ação sem data-limite simplesmente não tem prazo. Ter e não ter data-limite convivem no mesmo espaço.
+
+As **datas excluídas** só fazem sentido na forma 1: em "Configurar o espaço", a seção aparece só nela (não é um campo opcional próprio). A escolha da forma entra entre as opções dos modelos de configuração, na Fase 2, quando a forma 2 for construída (novo campo `dataLimite` na ação, com regra própria de "Atrasada" e telas sem as barras de prioridade). O Quadro de tarefas (Fase 3) usa só a forma 2.
 
 Nos tipos 1 e 2, a criação oferece **modelos prontos de configuração**, como na escolha de opções no início de um jogo: "Cronograma estruturado" (dependências, estimativas e previsões ligadas; por exemplo, obras e eventos), "Cronograma aberto" (sem dependências, estimativas opcionais; por exemplo, projetos de TI) e "Personalizado". Escolhido o modelo, cada opção pode ser ajustada. No tipo 3, não há modelo: as colunas são criadas no dia a dia.
 

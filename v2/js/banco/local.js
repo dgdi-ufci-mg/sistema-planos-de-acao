@@ -28,6 +28,8 @@ export function criarBancoLocal() {
   const responsaveis = new Map();
   /** @type {Map<string, Set<Function>>} */
   const ouvintes = new Map();
+  /** Calendário geral, o mesmo para todos os espaços. */
+  let calendario = null;
 
   const acoesDo = (espacoId) => {
     if (!acoesPorEspaco.has(espacoId)) acoesPorEspaco.set(espacoId, new Map());
@@ -160,6 +162,15 @@ export function criarBancoLocal() {
       if (!responsaveis.has(id)) throw new ErroDeDados("nao-encontrado", `Responsável ${id} não encontrado.`);
       responsaveis.set(id, { ...responsaveis.get(id), ...copia(campos) });
       avisarTodos();
+    },
+
+    // --- calendário geral (seção 4.1.5) ---
+    async lerCalendarioGeral() {
+      return calendario ? copia(calendario) : null;
+    },
+    async gravarCalendarioGeral(dados) {
+      calendario = copia(dados);
+      avisarTodos(); // vale para todos os espaços
     },
 
     // --- tempo real ---

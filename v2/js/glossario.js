@@ -4,7 +4,7 @@
  */
 export const GLOSSARIO = [
   { chave: "espaco", titulo: "Espaço de planejamento",
-    texto: "O conjunto que reúne um Plano de Ação, um Projeto ou um Quadro de equipe, com as suas ações, responsáveis e datas. No dia a dia, só \"espaço\"." },
+    texto: "O conjunto que reúne um Plano de Ação, um Projeto ou um Quadro de tarefas, com as suas ações, responsáveis e datas. No dia a dia, só \"espaço\"." },
   { chave: "concluida", icone: "concluida", titulo: "Concluída",
     texto: "A ação tem data de conclusão registrada. Ela entra nos cálculos com a duração real." },
   { chave: "liberada", icone: "liberada", titulo: "Liberada",

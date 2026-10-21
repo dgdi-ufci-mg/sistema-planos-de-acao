@@ -169,3 +169,23 @@ describe("Store: regras do espaço (configuração)", () => {
     await store.alterarEspaco(id, { camposOpcionais: { codigos: true, notas: false } });
   });
 });
+
+describe("Store: calendário geral", () => {
+  it("começa vazio, grava em ordem e recusa datas repetidas ou inválidas", async () => {
+    const store = storeDeTeste();
+    assert.deepEqual((await store.lerCalendarioGeral()).datasExcluidas, []);
+    await assert.rejects(store.alterarCalendarioGeral([{ data: "2027-04-21" }, { data: "2027-04-21" }]), { codigo: "data-repetida" });
+    await assert.rejects(store.alterarCalendarioGeral([{ data: "21/04/2027" }]), { codigo: "data-invalida" });
+    await store.alterarCalendarioGeral([{ data: "2027-12-25", motivo: "Natal" }, { data: "2027-04-21", motivo: "Tiradentes" }]);
+    const c = await store.lerCalendarioGeral();
+    assert.deepEqual(c.datasExcluidas.map((d) => d.data), ["2027-04-21", "2027-12-25"]);
+    assert.equal(c.alteradoPor, "ana@ufci.edu.br");
+  });
+
+  it("o espaço pode desconsiderar datas gerais, informadas como datas válidas", async () => {
+    const store = storeDeTeste();
+    const id = await store.criarEspaco({ nome: "P" });
+    await assert.rejects(store.alterarEspaco(id, { datasGeraisDesconsideradas: ["08/02/2027"] }), { codigo: "data-invalida" });
+    await store.alterarEspaco(id, { datasGeraisDesconsideradas: ["2027-02-08"] });
+  });
+});

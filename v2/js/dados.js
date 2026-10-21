@@ -76,12 +76,9 @@ function validarEspaco(e, recusarDesconhecidos) {
   if (e.inicio && e.prazoFinal && e.prazoFinal < e.inicio) {
     throw new ErroDeDados("prazo-antes-do-inicio", "O prazo final não pode ser antes do início.");
   }
-  const vistas = new Set();
-  for (const d of e.datasExcluidas ?? []) {
-    recusarDesconhecidos(d, "dataExcluida");
-    if (!DATA_ISO.test(d.data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data excluída.");
-    if (vistas.has(d.data)) throw new ErroDeDados("data-repetida", `A data ${d.data.split("-").reverse().join("/")} aparece duas vezes.`);
-    vistas.add(d.data);
+  validarDatasExcluidas(e.datasExcluidas, recusarDesconhecidos);
+  for (const d of e.datasGeraisDesconsideradas ?? []) {
+    if (!DATA_ISO.test(d)) throw new ErroDeDados("data-invalida", "Data desconsiderada inválida.");
   }
   const ids = new Set();
   for (const f of e.estrutura ?? []) {
@@ -100,6 +97,17 @@ function validarEspaco(e, recusarDesconhecidos) {
     if (doc.link && !/^https?:\/\/\S+$/i.test(doc.link)) throw new ErroDeDados("link-invalido", "O link do documento deve começar com https:// ou http://.");
   }
   if (e.camposOpcionais) recusarDesconhecidos(e.camposOpcionais, "camposOpcionais");
+}
+
+/** Lista de datas excluídas: data válida, sem repetir, só com os campos do dicionário. */
+function validarDatasExcluidas(lista, recusarDesconhecidos) {
+  const vistas = new Set();
+  for (const d of lista ?? []) {
+    recusarDesconhecidos(d, "dataExcluida");
+    if (!DATA_ISO.test(d.data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data excluída.");
+    if (vistas.has(d.data)) throw new ErroDeDados("data-repetida", `A data ${d.data.split("-").reverse().join("/")} aparece duas vezes.`);
+    vistas.add(d.data);
+  }
 }
 
 /** Login ligado a um responsável: um e-mail, e de um responsável só (seção 4.5). */
@@ -316,6 +324,18 @@ export function criarStore(banco, opcoes = {}) {
       } else if ("usuario" in mudanca) mudanca.usuario = null;
       validarTipo({ ...atual, ...mudanca });
       await banco.alterarResponsavel(id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
+    },
+
+    // --- calendário geral (seções 4.1.5 e 5.1) ---
+    /** Calendário geral; sem cadastro ainda, lista vazia. */
+    async lerCalendarioGeral() {
+      return (await banco.lerCalendarioGeral()) ?? { datasExcluidas: [] };
+    },
+    /** Grava a lista inteira de datas do calendário geral, em ordem de data. */
+    async alterarCalendarioGeral(datasExcluidas) {
+      validarDatasExcluidas(datasExcluidas, recusarDesconhecidos);
+      const ordenadas = [...datasExcluidas].sort((a, b) => a.data.localeCompare(b.data));
+      await banco.gravarCalendarioGeral({ datasExcluidas: ordenadas, alteradoEm: agora(), alteradoPor: usuario });
     },
 
     // --- tempo real ---

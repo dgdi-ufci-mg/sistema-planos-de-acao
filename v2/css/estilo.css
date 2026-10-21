@@ -597,3 +597,15 @@ h3.editavel { padding: 2px 6px; }
 .config[open] > summary::before { transform: rotate(90deg); }
 .config > summary .n { font-family: var(--f-dados); font-size: .8rem; color: var(--muted); }
 .config:not([open]) { padding-bottom: 6px; }
+.config h4 { margin: 4px 0 0; font-size: .92rem; }
+.gerais-config { display: flex; flex-direction: column; border: 1px solid var(--grid); border-radius: var(--raio); background: var(--surface); max-height: 260px; overflow-y: auto; }
+.geral-config { display: grid; grid-template-columns: 6.5em 1fr auto; gap: 8px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--grid); font-size: .9rem; cursor: pointer; }
+.geral-config:last-child { border-bottom: 0; }
+.geral-config.desconsiderada > span:not(.desconsiderar) { text-decoration: line-through; color: var(--faint); }
+.desconsiderar { display: inline-flex; gap: 4px; align-items: center; font-size: .8rem; color: var(--muted); white-space: nowrap; }
+.feriados-ano { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.feriados-ano select { font-size: 1rem; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
+.ano-calendario > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.ano-calendario > summary .n { font-family: var(--f-dados); font-size: .8rem; color: var(--muted); font-weight: 400; }
+.ano-calendario .linhas-config { margin: 6px 0 10px; }
+.recem-acrescentada input { border-color: var(--warn) !important; background: var(--warn-soft) !important; }

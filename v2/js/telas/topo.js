@@ -10,7 +10,7 @@ import { esc } from "../formato.js";
 /**
  * @param {HTMLElement} alvo
  * @param {{espacos: object[], abertoId?: string|null, aoAbrir: (id: string) => void, aoConfigurar: () => void,
- *   aoNovo: () => void, aoBoasVindas: () => void, aoAjuda: () => void, aoEntrar: () => void}} opcoes
+ *   aoNovo: () => void, aoBoasVindas: () => void, aoAjuda: () => void, aoSistema: () => void, aoEntrar: () => void}} opcoes
  */
 export function mostrarTopo(alvo, opcoes) {
   const { espacos, abertoId } = opcoes;
@@ -33,6 +33,7 @@ export function mostrarTopo(alvo, opcoes) {
       <button class="redondo" type="button" aria-label="Menu do usuário" aria-haspopup="true" aria-expanded="false" data-abrir="usuario">${ICONES.pessoa}</button>
       <div class="menu" data-menu="usuario" hidden>
         <button type="button" data-item="ajuda">Ajuda e manual</button>
+        <button type="button" data-item="sistema">Configurar o sistema</button>
         <button type="button" data-item="entrar">Entrar</button>
       </div>
     </div>`;
@@ -43,7 +44,7 @@ export function mostrarTopo(alvo, opcoes) {
   };
   const itens = {
     configurar: opcoes.aoConfigurar, novo: opcoes.aoNovo, boasVindas: opcoes.aoBoasVindas,
-    ajuda: opcoes.aoAjuda, entrar: opcoes.aoEntrar,
+    ajuda: opcoes.aoAjuda, sistema: opcoes.aoSistema, entrar: opcoes.aoEntrar,
   };
   alvo.onclick = (e) => {
     const abrir = e.target.closest("[data-abrir]");

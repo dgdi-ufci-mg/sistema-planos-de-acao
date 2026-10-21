@@ -8,6 +8,7 @@
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
+import { datasEfetivas } from "../calendario.js";
 import { abrirPainel, avisar } from "./painel.js";
 
 const CAMPOS_OPCIONAIS = [
@@ -23,6 +24,7 @@ const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[c
 /** @param {{store: object, espacoId: string}} opcoes */
 export async function abrirConfiguracao({ store, espacoId }) {
   let espaco = await store.lerEspaco(espacoId);
+  let geral = await store.lerCalendarioGeral();
   let acoes = await store.listarAcoes(espacoId);
   const novoId = (prefixo) => `${prefixo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   /** Rascunhos das listas, editados na tela até o Salvar da seção. */
@@ -43,6 +45,7 @@ export async function abrirConfiguracao({ store, espacoId }) {
 
   async function recarregar() {
     espaco = await store.lerEspaco(espacoId);
+    geral = await store.lerCalendarioGeral();
     acoes = await store.listarAcoes(espacoId);
   }
 
@@ -64,14 +67,18 @@ export async function abrirConfiguracao({ store, espacoId }) {
       </details>
 
       <details class="config" data-secao="datas"${aberta("datas")}>
-        <summary><h3>Datas excluídas</h3><span class="n">${rascunho.datas.length}</span></summary>
-        <p class="tec">Feriados e outros dias sem expediente. Não contam como dias úteis.</p>
+        <summary><h3>Datas excluídas</h3><span class="n">${datasEfetivas(espaco, geral).length}</span></summary>
+        <p class="tec">Dias sem expediente, que não contam como dias úteis. Valem as datas do calendário geral, cuidado em
+          "Configurar o sistema", mais as deste espaço, como feriados locais.</p>
+        <h4>Do calendário geral</h4>
+        ${geraisHtml()}
+        <h4>Deste espaço</h4>
         <form class="editor" data-salvar="datas">
           <div class="linhas-config">${rascunho.datas.map((d, i) => `<div class="linha-config">
             <input type="date" data-lista="datas" data-indice="${i}" data-campo="data" value="${esc(d.data ?? "")}" aria-label="Data">
             <input data-lista="datas" data-indice="${i}" data-campo="motivo" value="${esc(d.motivo ?? "")}" placeholder="Motivo (opcional)" aria-label="Motivo">
             <button type="button" class="tirar" data-tirar="datas" data-indice="${i}" aria-label="Retirar a data">${ICONES.fechar}</button>
-          </div>`).join("") || `<p class="vazio">Nenhuma data excluída.</p>`}</div>
+          </div>`).join("") || `<p class="vazio">Nenhuma data própria.</p>`}</div>
           <p class="erro" data-erro hidden></p>
           <div class="botoes"><button class="botao" type="button" data-acrescentar="datas">${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar</button></div>
         </form>
@@ -119,6 +126,21 @@ export async function abrirConfiguracao({ store, espacoId }) {
       </details>
 
       <p class="tec">Retratos, importação, exportação e cópia de segurança chegam nos próximos passos.</p>`;
+  }
+
+  /** Datas do calendário geral a partir do início do espaço, cada uma com a opção de desconsiderar. */
+  function geraisHtml() {
+    const desde = espaco.inicio ?? "";
+    const lista = geral.datasExcluidas.filter((d) => d.data >= desde);
+    if (!lista.length) {
+      return `<p class="vazio">${geral.datasExcluidas.length ? "Nenhuma data geral a partir do início do espaço." : "O calendário geral ainda não tem datas."}</p>`;
+    }
+    const fora = new Set(espaco.datasGeraisDesconsideradas ?? []);
+    return `<div class="gerais-config">${lista.map((d) => `<label class="geral-config${fora.has(d.data) ? " desconsiderada" : ""}">
+      <span class="mono">${dataBr(d.data)}</span><span>${esc(d.motivo ?? "")}</span>
+      <span class="desconsiderar"><input type="checkbox" data-desconsiderar="${esc(d.data)}"${fora.has(d.data) ? " checked" : ""}> desconsiderar</span>
+    </label>`).join("")}</div>
+    <p class="tec">Marque "desconsiderar" nas datas em que este espaço trabalha, como um ponto facultativo.</p>`;
   }
 
   function estruturaHtml() {
@@ -191,6 +213,19 @@ export async function abrirConfiguracao({ store, espacoId }) {
     else if (t.dataset.fase != null) rascunho.estrutura[Number(t.dataset.fase)].nome = t.value;
   });
   corpo.addEventListener("change", async (e) => {
+    const data = e.target.dataset.desconsiderar;
+    if (data) {
+      const atuais = new Set(espaco.datasGeraisDesconsideradas ?? []);
+      if (e.target.checked) atuais.add(data); else atuais.delete(data);
+      try {
+        await store.alterarEspaco(espacoId, { datasGeraisDesconsideradas: [...atuais].sort() });
+        await recarregar();
+        desenhar();
+      } catch (falha) {
+        avisar(falha.message);
+      }
+      return;
+    }
     const chave = e.target.dataset.campoOpcional;
     if (!chave) return;
     try {
