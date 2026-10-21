@@ -11,6 +11,7 @@ Diário dos passos feitos em lote (especificação, seção 3.3, "Execução em 
 | 1.17c | `273c153` |
 | 1.19a | `0a39614` |
 | 1.16 | `bb3635d` (branch `passos-1.16-1.18`) |
+| 1.18 | `59ed650` (branch `passos-1.16-1.18`) |
 
 Em cada passo: o que foi feito, os testes, a conferência na tela e as **decisões provisórias**, tomadas sem consulta e à espera da revisão do responsável.
 
@@ -186,3 +187,15 @@ Os registros vão como estão no banco, sem tradução: o dicionário de dados (
 3. A comparação fica no cronograma. Na linha do tempo e na lista, ainda não.
 4. Linha do retrato em cinza, fina, sob a barra; legenda "No retrato".
 5. A lista de retratos do cronograma é lida ao entrar no modo; um retrato salvo com o cronograma aberto aparece ao voltar a ele.
+
+## Resumo do lote (21/10/2026)
+
+**Na `main`, já no site:** 1.17a (linha do tempo), 1.17b (cronograma), 1.17c (rede) e 1.19a (exportação e cópia de segurança). Todos com testes automáticos passando e conferidos no navegador de teste.
+
+**Na branch `passos-1.16-1.18`, à espera das regras do banco:** 1.16 (histórico de alterações) e 1.18 (retratos manuais e comparação no cronograma). Os registros detalhados desses dois passos estão no diário da branch. Para publicar:
+1. No console do Firebase (`sextante-v2`): Firestore Database > Regras > colar `v2/firestore.rules` da branch > Publicar.
+2. Avisar, para eu juntar a branch à `main`.
+
+**Fora do lote, à espera de decisão:** 1.19b (importação por planilha e Mermaid, e restauração da cópia), porque grava no banco e pede decisões de comportamento (por exemplo, se a importação atualiza ações existentes ou só cria novas); 1.14d, 1.20, 1.21 e 1.22, já excluídos do lote.
+
+**Observado e não corrigido:** no "Histórico de estimativas" da janela da ação, a data, o autor e o selo "vigente" aparecem em linhas separadas (aparência anterior ao lote).
