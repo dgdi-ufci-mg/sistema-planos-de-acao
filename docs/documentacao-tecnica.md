@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 64.1 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 64.2 da página)
 
 ---
 
@@ -492,6 +492,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 63.3 | Versão 2, correção: um responsável recém-cadastrado podia fazer outros sumirem da tela até recarregar a página (os dados no banco ficavam corretos). Os ouvintes dos responsáveis e do calendário geral passaram a ficar ligados enquanto a página está aberta, a lista guardada só é aceita quando confirmada pelo servidor, e uma falha do ouvinte faz as leituras irem direto ao banco, com registro no console. Sem mudança na versão atual |
 | 64 | Versão 2: princípio "Movimento com sentido" (especificação, seção 2; AGENTS.md): transições curtas e padronizadas (`--mov`, `--mov-rapido`, `--mov-curva`; `v2/js/telas/movimento.js`) em tudo que aparece ou some, respeitando "Reduzir movimento". Na aba Responsáveis, o tipo virou um alternador com a marca deslizante, e os formulários de cadastro e de edição abrem e fecham com animação, assim como o campo de e-mail ao voltar para "Pessoa". Sem mudança na versão atual |
 | 64.1 | Versão 2, movimento padrão aplicado a mais telas: na janela "Nova ação", os campos abertos pelos botões crescem; na janela da ação, "Reestimar" e "Registrar conclusão" abrem e fecham deslizando, e os editores no lugar surgem suavemente; em "Configurar este espaço" e "Configurar o sistema", as seções abrem e fecham deslizando (`surgir` e `ligarSecoesSuaves`, em `v2/js/telas/movimento.js`). Sem mudança na versão atual |
+| 64.2 | Versão 2, correção do movimento: dentro de janelas e painéis com rolagem, o bloco que abria ou fechava era espremido até a altura mínima e só aparecia inteiro no fim, o que dava a impressão de animação truncada (por exemplo, em "Reestimar"). O bloco animado deixou de encolher (`flexShrink: 0`), e a curva padrão ficou mais suave no começo (`cubic-bezier(.2, 0, 0, 1)`). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

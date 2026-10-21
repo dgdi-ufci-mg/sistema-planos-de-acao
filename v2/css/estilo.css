@@ -35,7 +35,7 @@
   --f-dados: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --raio: 6px;
   /* movimento padrão (seção 2, "Movimento com sentido"); js/telas/movimento.js usa os mesmos valores */
-  --mov-rapido: .18s; --mov: .25s; --mov-curva: cubic-bezier(.2, .7, .2, 1);
+  --mov-rapido: .18s; --mov: .25s; --mov-curva: cubic-bezier(.2, 0, 0, 1);
   color-scheme: light;
 }
 
