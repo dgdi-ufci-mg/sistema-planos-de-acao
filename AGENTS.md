@@ -53,6 +53,7 @@ A versão antiga, publicada como artefato no claude.ai, está **descontinuada**.
 - **Reprodutibilidade.** A simulação usa semente fixa (mulberry32, `20261014`). Não introduza aleatoriedade sem semente.
 - **Um único arquivo (versão atual).** A versão 2, na pasta `v2/`, segue a estrutura de vários arquivos da especificação (seção 3.1), também sem compilação, sem npm e sem *framework*. Na versão atual, todo o sistema fica em `index.html`, sem etapa de compilação, sem npm e sem *framework*. Bibliotecas externas entram só por CDN e com **versão fixa**: hoje, dagre 0.8.5 e Firebase compat 10.14.1, ambos do cdn.jsdelivr.net.
 - **Celular.** Toda tela precisa funcionar em cerca de 400 px de largura.
+- **Movimento com sentido (versão 2).** Nada aparece ou some de repente: painéis, formulários, seções e itens entram e saem com a transição padrão (`--mov`, `--mov-curva` e `v2/js/telas/movimento.js`), respeitando "Reduzir movimento". Detalhes na seção 2 da especificação.
 - **Temas claro e escuro.** Use sempre as variáveis CSS de `:root`. Elas existem em **três** blocos: claro, `prefers-color-scheme: dark` e `[data-theme="dark"]`, e qualquer cor nova vai nos três. Não use cores fixas no código. As exceções existentes são as cores das etapas do diagrama (`CL`) e os `classDef` da exportação Mermaid; ao mexer na paleta, atualize-as também.
 - **Paleta derivada do logotipo** (`logo.png`, rosa dos ventos):
   - verde-azulado `#00796B`: destaque e ações com folga;

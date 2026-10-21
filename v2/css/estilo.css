@@ -34,6 +34,8 @@
   --f-texto: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif;
   --f-dados: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --raio: 6px;
+  /* movimento padrão (seção 2, "Movimento com sentido"); js/telas/movimento.js usa os mesmos valores */
+  --mov-rapido: .18s; --mov: .25s; --mov-curva: cubic-bezier(.2, .7, .2, 1);
   color-scheme: light;
 }
 
@@ -564,10 +566,15 @@ h3.editavel { padding: 2px 6px; }
 .responsavel-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .responsavel-texto .tec { overflow-wrap: anywhere; }
 .responsavel-contagem { font-size: .82rem; color: var(--muted); white-space: nowrap; }
-.tipo-responsavel { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; }
-.tipo-responsavel legend { font-weight: 600; font-size: .9rem; padding: 0; margin-bottom: 4px; }
-.tipo-responsavel label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
-.tipo-responsavel .tec { width: 100%; }
+/* alternador de duas opções (pessoa ou unidade): a pílula clara desliza até a opção escolhida */
+.alternador { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; width: max-content; padding: 3px; border: 1px solid var(--line); border-radius: 999px; background: var(--sunk); }
+.alternador::before { content: ""; position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); border-radius: 999px; background: var(--accent-soft); box-shadow: var(--relevo); transition: transform var(--mov) var(--mov-curva); }
+.alternador:has(label:nth-child(2) input:checked)::before { transform: translateX(100%); }
+.alternador label { position: relative; z-index: 1; padding: 6px 20px; border-radius: 999px; text-align: center; cursor: pointer; font-weight: 600; color: var(--muted); transition: color var(--mov-rapido); }
+.alternador label:has(input:checked) { color: var(--accent-ink); }
+.alternador label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+.alternador input { position: absolute; opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .alternador::before, .alternador label { transition: none; } }
 .form-responsavel .campo input { font-weight: 400; font-size: 1rem; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--bg); width: 100%; }
 @media (max-width: 600px) {
   .responsavel { flex-wrap: wrap; }

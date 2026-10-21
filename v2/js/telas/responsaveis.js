@@ -10,6 +10,7 @@ import { ICONES } from "../icones.js";
 import { buscar } from "../acao.js";
 import { seloHtml } from "./pessoas.js";
 import { avisar } from "./painel.js";
+import { abrirSuave, fecharSuave } from "./movimento.js";
 
 /**
  * @param {{store: object}} contexto
@@ -21,6 +22,8 @@ export function criarTelaResponsaveis({ store }) {
   let texto = "";
   /** id do responsável em edição, "novo" para o cadastro, ou null. */
   let editando = null;
+  /** o formulário acabou de ser aberto: anima a abertura no próximo desenho (e só nele) */
+  let animarAbertura = false;
 
   function formularioHtml(r) {
     const tipo = r?.tipo ?? "pessoa";
@@ -29,10 +32,12 @@ export function criarTelaResponsaveis({ store }) {
       ${r ? `<p class="tec">${tipo === "pessoa" ? "Pessoa" : "Unidade"}. O tipo não muda depois do cadastro: se estiver errado, cadastre de novo
         com o tipo certo e exclua este, substituindo-o nas ações (a exclusão chega no passo 1.15).</p>
         <input type="hidden" name="tipo" value="${tipo}">`
-      : `<fieldset class="tipo-responsavel"><legend>Tipo</legend>
-        <label><input type="radio" name="tipo" value="pessoa" checked> Pessoa</label>
-        <label><input type="radio" name="tipo" value="unidade"> Unidade <small>(setor, equipe ou grupo)</small></label>
-      </fieldset>`}
+      : `<div class="campo"><span id="rotulo-tipo">Tipo</span>
+        <div class="alternador" role="radiogroup" aria-labelledby="rotulo-tipo">
+          <label><input type="radio" name="tipo" value="pessoa" checked><span>Pessoa</span></label>
+          <label><input type="radio" name="tipo" value="unidade"><span>Unidade</span></label>
+        </div>
+        <small>Unidade: setor, equipe ou grupo.</small></div>`}
       <label class="campo"><span>Nome</span><input name="nome" maxlength="120" required value="${esc(r?.nome ?? "")}"></label>
       <div class="campos-lado-a-lado">
         <label class="campo"><span>Sigla <small>(opcional)</small></span><input name="sigla" maxlength="12" value="${esc(r?.sigla ?? "")}"></label>
@@ -82,6 +87,7 @@ export function criarTelaResponsaveis({ store }) {
       ${grupo("Unidades", achados.filter((r) => r.tipo === "unidade"))}`;
     restaurarValores(valores);
     if (trocou) ligar();
+    if (animarAbertura) { animarAbertura = false; abrirSuave(alvo.querySelector("[data-form-responsavel]")); }
   }
 
   /* valores digitados num formulário aberto sobrevivem a um redesenho causado por outra gravação */
@@ -112,6 +118,19 @@ export function criarTelaResponsaveis({ store }) {
   }
 
   function redesenhar() { desenhar(alvo, d); }
+  /** Abre o formulário (de cadastro ou de edição) com a animação de abertura. */
+  function abrir(qual) {
+    editando = qual;
+    animarAbertura = true;
+    redesenhar();
+    alvo.querySelector('[name="nome"]')?.focus();
+  }
+  /** Fecha o formulário aberto, com a animação de fechamento. */
+  async function fechar() {
+    await fecharSuave(alvo.querySelector("[data-form-responsavel]"));
+    editando = null;
+    redesenhar();
+  }
 
   async function salvar(form) {
     const f = Object.fromEntries(new FormData(form));
@@ -131,8 +150,7 @@ export function criarTelaResponsaveis({ store }) {
         if (f.tipo === "unidade") delete dados.usuario;
         await store.alterarResponsavel(form.dataset.formResponsavel, dados);
       }
-      editando = null;
-      redesenhar();
+      await fechar();
     } catch (e) {
       erro.textContent = e.message;
       erro.hidden = false;
@@ -142,20 +160,24 @@ export function criarTelaResponsaveis({ store }) {
   function ligar() {
     alvo.addEventListener("click", (e) => {
       const t = e.target;
-      if (t.closest("[data-novo-responsavel]")) { editando = "novo"; redesenhar(); alvo.querySelector('[name="nome"]')?.focus(); return; }
-      if (t.closest("[data-cancelar-responsavel]")) { editando = null; redesenhar(); return; }
+      if (t.closest("[data-novo-responsavel]")) { if (editando !== "novo") abrir("novo"); return; }
+      if (t.closest("[data-cancelar-responsavel]")) { fechar(); return; }
       const r = t.closest("[data-editar-responsavel]");
-      if (r) { editando = r.dataset.editarResponsavel; redesenhar(); alvo.querySelector('[name="nome"]')?.focus(); }
+      if (r) abrir(r.dataset.editarResponsavel);
     });
     alvo.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-editar-responsavel]")) { e.preventDefault(); e.target.click(); }
-      if (e.key === "Escape" && editando) { e.preventDefault(); editando = null; redesenhar(); }
+      if (e.key === "Escape" && editando) { e.preventDefault(); fechar(); }
     });
     alvo.addEventListener("input", (e) => {
       if (e.target.matches("[data-busca-responsaveis]")) { texto = e.target.value; redesenhar(); }
     });
     alvo.addEventListener("change", (e) => {
-      if (e.target.name === "tipo") e.target.closest("form").querySelector("[data-so-pessoa]").hidden = e.target.value === "unidade";
+      if (e.target.name === "tipo") {
+        const email = e.target.closest("form").querySelector("[data-so-pessoa]");
+        email.hidden = e.target.value === "unidade";
+        if (!email.hidden) abrirSuave(email);
+      }
     });
     alvo.addEventListener("submit", (e) => { e.preventDefault(); salvar(e.target); });
   }
