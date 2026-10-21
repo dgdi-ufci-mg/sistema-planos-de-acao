@@ -43,8 +43,13 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
 
 export function fecharPainel() { fecharAtual?.(); }
 
-/** Aviso curto no rodapé da tela, que some sozinho. */
-export function avisar(texto) {
+/**
+ * Aviso curto no rodapé da tela, que some sozinho.
+ * Com `acao` (por exemplo, "Desfazer"), mostra um botão e fica um pouco mais na tela.
+ * @param {string} texto
+ * @param {{acao?: {texto: string, fazer: () => void}}} [opcoes]
+ */
+export function avisar(texto, { acao } = {}) {
   let aviso = document.querySelector(".aviso-curto");
   if (!aviso) {
     aviso = document.createElement("div");
@@ -53,7 +58,73 @@ export function avisar(texto) {
     document.body.append(aviso);
   }
   aviso.textContent = texto;
+  if (acao) {
+    const botao = document.createElement("button");
+    botao.type = "button";
+    botao.className = "aviso-acao";
+    botao.textContent = acao.texto;
+    botao.addEventListener("click", () => { aviso.hidden = true; acao.fazer(); });
+    aviso.append(" ", botao);
+  }
   aviso.hidden = false;
   clearTimeout(avisar.relogio);
-  avisar.relogio = setTimeout(() => { aviso.hidden = true; }, 4000);
+  avisar.relogio = setTimeout(() => { aviso.hidden = true; }, acao ? 7000 : 4000);
+}
+
+/**
+ * Pergunta antes de uma ação com consequências (exclusões): janela pequena, por cima de
+ * qualquer painel aberto. Devolve os campos do formulário ao confirmar, ou null ao cancelar.
+ * `validar(campos)` pode devolver uma mensagem de erro, e a janela continua aberta.
+ * @param {{titulo: string, corpo: string, confirmar?: string, perigo?: boolean, validar?: (campos: object) => string|null}} pergunta
+ * @returns {Promise<object|null>}
+ */
+export function perguntar({ titulo, corpo, confirmar = "Excluir", perigo = true, validar = () => null }) {
+  return new Promise((resolver) => {
+    const anterior = document.activeElement;
+    const camada = document.createElement("div");
+    camada.className = "dialogo-camada";
+    camada.innerHTML = `
+      <div class="fundo-escuro" data-cancelar></div>
+      <form class="dialogo" role="alertdialog" aria-modal="true" aria-labelledby="dialogo-titulo" novalidate>
+        <h2 id="dialogo-titulo">${titulo}</h2>
+        <div class="dialogo-corpo">${corpo}</div>
+        <p class="erro" data-erro hidden></p>
+        <div class="botoes">
+          <button class="botao ${perigo ? "perigo" : "principal"}" type="submit">${confirmar}</button>
+          <button class="botao" type="button" data-cancelar>Cancelar</button>
+        </div>
+      </form>`;
+    document.body.append(camada);
+    requestAnimationFrame(() => requestAnimationFrame(() => camada.classList.add("aberta")));
+    const form = camada.querySelector("form");
+    const terminar = (valor) => {
+      window.removeEventListener("keydown", aoTeclar, true);
+      camada.classList.remove("aberta");
+      setTimeout(() => camada.remove(), 250);
+      anterior?.focus?.();
+      resolver(valor);
+    };
+    /* Esc cancela só esta janela, e não o painel que está por baixo (fase de captura) */
+    const aoTeclar = (e) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      terminar(null);
+    };
+    window.addEventListener("keydown", aoTeclar, true);
+    camada.addEventListener("click", (e) => { if (e.target.closest("[data-cancelar]")) terminar(null); });
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const campos = Object.fromEntries(new FormData(form));
+      const problema = validar(campos);
+      if (problema) {
+        const erro = form.querySelector("[data-erro]");
+        erro.textContent = problema;
+        erro.hidden = false;
+        return;
+      }
+      terminar(campos);
+    });
+    (form.querySelector("input, select") ?? form.querySelector("[type=submit]")).focus();
+  });
 }

@@ -11,7 +11,8 @@ import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
 import { datasEfetivas } from "../calendario.js";
-import { abrirPainel, avisar } from "./painel.js";
+import { abrirPainel, fecharPainel, avisar } from "./painel.js";
+import { excluirEtapas, excluirEspaco } from "./exclusao.js";
 import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
 
 const CAMPOS_OPCIONAIS = [
@@ -24,8 +25,8 @@ const CAMPOS_OPCIONAIS = [
 const DESLIGADOS_POR_PADRAO = new Set(["codigos"]);
 const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[chave] === true : campos?.[chave] !== false);
 
-/** @param {{store: object, espacoId: string}} opcoes */
-export async function abrirConfiguracao({ store, espacoId }) {
+/** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void}} opcoes */
+export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () => {} }) {
   let espaco = await store.lerEspaco(espacoId);
   let geral = await store.lerCalendarioGeral();
   let acoes = await store.listarAcoes(espacoId);
@@ -159,7 +160,8 @@ export async function abrirConfiguracao({ store, espacoId }) {
         <p class="tec">Fixos desde a criação do espaço, para que qualquer pessoa obtenha os mesmos resultados ao refazer o cálculo.</p>
       </details>
 
-      <p class="tec">Retratos, importação, exportação e cópia de segurança chegam nos próximos passos.</p>`;
+      <p class="tec">Retratos, importação, exportação e cópia de segurança chegam nos próximos passos.</p>
+      ${store.podeGravar ? '<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>' : ""}`;
   }
 
   /** Datas do calendário geral a partir do início do espaço, cada uma com a opção de desconsiderar. */
@@ -182,9 +184,8 @@ export async function abrirConfiguracao({ store, espacoId }) {
     for (const a of acoes) if (a.etapa) usos.set(a.etapa, (usos.get(a.etapa) ?? 0) + 1);
     const botaoMover = (lista, i, total, sentido, extra = "") => `<button type="button" class="tirar" data-mover="${lista}" data-indice="${i}"${extra} data-sentido="${sentido}"
       aria-label="${sentido < 0 ? "Subir" : "Descer"}"${(sentido < 0 && i === 0) || (sentido > 0 && i === total - 1) ? " disabled" : ""}>${sentido < 0 ? "↑" : "↓"}</button>`;
-    const botaoTirar = (n, atributos) => n
-      ? `<button type="button" class="tirar" disabled title="Tem ${n} ${plural(n, "ação", "ações")}. Mova-as para outra etapa antes; a exclusão com essa opção chega no passo 1.15." aria-label="Não pode ser retirada">${ICONES.fechar}</button>`
-      : `<button type="button" class="tirar" ${atributos} aria-label="Retirar">${ICONES.fechar}</button>`;
+    /* com ações, o × pergunta para onde elas vão e grava na hora (passo 1.15) */
+    const botaoTirar = (n, atributos) => `<button type="button" class="tirar" ${atributos}${n ? ` data-com-acoes="${n}"` : ""} aria-label="Retirar">${ICONES.fechar}</button>`;
     return `<details class="config" data-secao="estrutura"${aberta("estrutura")}>
       <summary><h3>Fases e etapas</h3><span class="n">${rascunho.estrutura.length}</span></summary>
       <p class="tec">As fases agrupam etapas, e as etapas agrupam ações, na ordem desta lista.</p>
@@ -272,9 +273,38 @@ export async function abrirConfiguracao({ store, espacoId }) {
       avisar(falha.message);
     }
   });
-  corpo.addEventListener("click", (e) => {
+  /** Fase ou etapa com ações: pergunta e grava na hora; o resto do rascunho continua como estava. */
+  async function tirarComAcoes(t) {
+    const fase = rascunho.estrutura[Number(t.dataset.tirarFase ?? t.dataset.faseDaEtapa)];
+    const ehFase = t.dataset.tirarFase != null;
+    const etapa = ehFase ? null : fase.etapas[Number(t.dataset.tirarEtapa)];
+    const ids = ehFase ? [fase.id, ...fase.etapas.map((x) => x.id)] : [etapa.id];
+    const fora = new Set(ids);
+    const etapasQueFicam = (espaco.estrutura ?? []).filter((f) => !fora.has(f.id))
+      .flatMap((f) => f.etapas.filter((x) => !fora.has(x.id)).map((x) => ({ ...x, fase: f.nome })));
+    try {
+      const excluiu = await excluirEtapas({
+        store, espacoId, ids, nome: (ehFase ? fase : etapa).nome, ehFase, nAcoes: Number(t.dataset.comAcoes), etapasQueFicam,
+      });
+      if (!excluiu) return;
+      await recarregar();
+      rascunho.estrutura = rascunho.estrutura.filter((f) => !fora.has(f.id)).map((f) => ({ ...f, etapas: f.etapas.filter((x) => !fora.has(x.id)) }));
+      desenhar();
+    } catch (falha) {
+      avisar(falha.message);
+    }
+  }
+
+  corpo.addEventListener("click", async (e) => {
     const t = e.target.closest("button");
     if (!t || t.disabled) return;
+    if (t.dataset.comAcoes) { tirarComAcoes(t); return; }
+    if (t.dataset.excluirEspaco != null) {
+      try {
+        if (await excluirEspaco({ store, espaco })) { fecharPainel(); aoExcluirEspaco(); }
+      } catch (falha) { avisar(falha.message); }
+      return;
+    }
     const i = Number(t.dataset.indice);
     if (t.dataset.acrescentar === "datas") rascunho.datas.push({ data: "", motivo: "" });
     else if (t.dataset.acrescentar === "documentos") rascunho.documentos.push({ nome: "", data: "", identificacao: "", link: "" });

@@ -48,6 +48,8 @@ export const ICONES = Object.freeze({
   ordenar: svg('<path d="M8 4v16M4.5 7.5 8 4l3.5 3.5M16 20V4M12.5 16.5 16 20l3.5-3.5"/>'),
   /** Legenda: lista com amostras. */
   legenda: svg('<rect x="4" y="5" width="4" height="4" rx="1"/><rect x="4" y="15" width="4" height="4" rx="1"/><path d="M11 7h9M11 17h9"/>'),
+  /** Lixeira: cesto com tampa. */
+  lixeira: svg('<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
   /** Fechar: xis. */
   fechar: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
 });

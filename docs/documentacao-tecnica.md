@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 69 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 70 da página)
 
 ---
 
@@ -505,6 +505,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 68.3 | Especificação da reescrita: no passo 2.4, o menu lateral agrupa os espaços por tipo, com o nome do tipo no plural. Sem mudança no sistema |
 | 68.4 | Versão 2: a barra do topo encosta no menu lateral, sem o vão que aparecia ao rolar; "Novo espaço" mostra só o formulário "Novo espaço de planejamento", sem o quadro de boas-vindas, e "Cancelar" volta ao espaço que estava aberto. Sem mudança na versão atual |
 | 69 | Versão 2: ferramentas da lista na barra do topo, à direita: seletor de modo, Filtrar e Ordenar (painéis pequenos sob o botão) e Nova ação; aviso fixo de ações atrasadas, que filtra ao ser tocado; Legenda no pé do menu lateral; no celular, um funil abre "Filtros e ordem", agora também com a situação. Sem mudança na versão atual |
+| 70 | Versão 2, passo 1.15: exclusão lógica e lixeira. Ações, responsáveis e espaços vão para a lixeira com autor e data, e podem ser restaurados; fases e etapas com ações saem movendo as ações para outra etapa ou deixando-as sem etapa. Exclusão simples com "Desfazer"; exclusão com consequências pergunta antes (ligar dependentes às anteriores; substituir responsável). Lixeira no menu lateral. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

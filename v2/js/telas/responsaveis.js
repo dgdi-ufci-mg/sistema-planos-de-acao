@@ -3,7 +3,7 @@
  * de "Configurar este espaço". Cada espaço tem a sua lista, separada em pessoas e unidades, com busca.
  * Cadastro e edição no lugar: tipo, nome, sigla, setor e, para pessoas, o e-mail de login,
  * que faz funcionar "Minhas ações". O tipo é escolhido só no cadastro e não muda depois.
- * A exclusão chega com a lixeira (passo 1.15).
+ * A exclusão vai para a lixeira, com "substituir por" nas ações (passo 1.15; js/telas/exclusao.js).
  */
 import { esc, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
@@ -11,6 +11,7 @@ import { buscar } from "../acao.js";
 import { seloHtml } from "./pessoas.js";
 import { avisar } from "./painel.js";
 import { abrirSuave, fecharSuave } from "./movimento.js";
+import { excluirResponsavel } from "./exclusao.js";
 
 /**
  * @param {{store: object}} contexto
@@ -30,7 +31,7 @@ export function criarTelaResponsaveis({ store }) {
     return `<form class="editor cartao-form form-responsavel" data-form-responsavel="${r ? esc(r.id) : "novo"}">
       <h4>${r ? "Editar responsável" : "Novo responsável"}</h4>
       ${r ? `<p class="tec">${tipo === "pessoa" ? "Pessoa" : "Unidade"}. O tipo não muda depois do cadastro: se estiver errado, cadastre de novo
-        com o tipo certo e exclua este, substituindo-o nas ações (a exclusão chega no passo 1.15).</p>
+        com o tipo certo e exclua este, substituindo-o nas ações.</p>
         <input type="hidden" name="tipo" value="${tipo}">`
       : `<div class="campo"><span id="rotulo-tipo">Tipo</span>
         <div class="alternador" role="radiogroup" aria-labelledby="rotulo-tipo">
@@ -47,7 +48,8 @@ export function criarTelaResponsaveis({ store }) {
         <input name="usuario" type="email" inputmode="email" autocomplete="off" value="${esc(r?.usuario ?? "")}" placeholder="nome@ufci.edu.br">
         <small>Liga a pessoa a quem entra no sistema com este e-mail, para funcionar "Minhas ações".</small></label>
       <p class="erro" data-erro hidden></p>
-      <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar-responsavel>Cancelar</button></div>
+      <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar-responsavel>Cancelar</button>
+        ${r ? '<button class="botao-excluir" type="button" data-excluir-responsavel>Excluir</button>' : ""}</div>
     </form>`;
   }
 
@@ -162,6 +164,13 @@ export function criarTelaResponsaveis({ store }) {
       const t = e.target;
       if (t.closest("[data-novo-responsavel]")) { if (editando !== "novo") abrir("novo"); return; }
       if (t.closest("[data-cancelar-responsavel]")) { fechar(); return; }
+      if (t.closest("[data-excluir-responsavel]")) {
+        const responsavel = d.responsaveis.find((x) => x.id === editando);
+        excluirResponsavel({ store, espacoId: d.espaco.id, responsavel, acoes: d.acoes, responsaveis: d.responsaveis })
+          .then((excluiu) => { if (excluiu) { editando = null; redesenhar(); } })
+          .catch((e) => avisar(e.message));
+        return;
+      }
       const r = t.closest("[data-editar-responsavel]");
       if (r) abrir(r.dataset.editarResponsavel);
     });

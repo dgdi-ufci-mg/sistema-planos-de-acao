@@ -10,6 +10,7 @@ import { duracaoPert } from "../calculo.js";
 import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo } from "../acao.js";
 import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
+import { excluirAcao } from "./exclusao.js";
 import { surgir, trocarSuave, abrirSuave, fecharSuave, reduzirMovimento } from "./movimento.js";
 import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
@@ -142,7 +143,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         ${campos.notas !== false ? notasHtml(acao) : ""}
       </div>
 
-      ${historicoHtml(acao, resumoEst)}`;
+      ${historicoHtml(acao, resumoEst)}
+      ${store.podeGravar ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ação</button></div>` : ""}`;
     corpo.closest(".painel").querySelector("header h2").textContent = d.usaCodigos && acao.codigo ? `Ação ${acao.codigo}` : "Ação";
     corpo.closest(".painel").style.setProperty("--calor", l.situacao === "concluida" ? "var(--ok)" : l.execucao == null ? "var(--neutral)"
       : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
@@ -446,6 +448,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const form = t.closest("[data-abrir-form]");
     if (form) return editar(form.dataset.abrirForm);
     if (t.closest("[data-cancelar]")) return cancelar();
+    if (t.closest("[data-excluir-acao]")) {
+      try {
+        if (await excluirAcao({ store, espacoId, acao: acaoAtual(), acoes: d.acoes })) fecharPainel();
+      } catch (falha) { avisar(falha.message); }
+      return;
+    }
     const dep = t.closest("[data-tirar-dependencia]");
     if (dep) return executar(() => store.retirarDependencia(espacoId, numero, Number(dep.dataset.tirarDependencia)));
     const resp = t.closest("[data-tirar-responsavel]");

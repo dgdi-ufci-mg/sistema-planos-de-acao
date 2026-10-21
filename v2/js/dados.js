@@ -26,8 +26,15 @@ const FIXOS_DA_ACAO = ["numero", "criadaEm"];
 /** Código mnemônico: de 2 a 8 letras maiúsculas ou números, sem repetir no espaço. */
 function validarCodigo(codigo, outrasAcoes) {
   if (!CODIGO_VALIDO.test(codigo)) throw new ErroDeDados("codigo-invalido", "O código deve ter de 2 a 8 letras maiúsculas ou números.");
-  if (outrasAcoes.some((a) => a.codigo === codigo)) throw new ErroDeDados("codigo-ocupado", `Já existe uma ação com o código ${codigo}. Escolha outro.`);
+  const dona = outrasAcoes.find((a) => a.codigo === codigo);
+  /* o código de uma ação excluída continua reservado (seção 4.7) */
+  if (dona?.excluidaEm) throw new ErroDeDados("codigo-ocupado", `O código ${codigo} é de uma ação na lixeira ("${dona.rotulo}"). Restaure-a ou escolha outro código.`);
+  if (dona) throw new ErroDeDados("codigo-ocupado", `Já existe uma ação com o código ${codigo}. Escolha outro.`);
 }
+
+/** Exclusão lógica (seção 4.7): itens excluídos ficam no banco, fora das operações comuns. */
+const ativa = (a) => !a.excluidaEm;
+const ativo = (x) => !x.excluidoEm;
 
 /**
  * @typedef {object} OpcoesDoStore
@@ -158,8 +165,8 @@ export function criarStore(banco, opcoes = {}) {
     const [espaco, acoes, responsaveis] = await Promise.all([
       banco.lerEspaco(espacoId), banco.listarAcoes(espacoId), banco.listarResponsaveis(espacoId),
     ]);
-    const pessoas = new Set(responsaveis.filter((r) => r.tipo === "pessoa").map((r) => r.id));
-    const emUso = [...new Set(acoes.sort((a, b) => a.ordem - b.ordem).flatMap((a) => a.responsaveis ?? []))].filter((id) => pessoas.has(id));
+    const pessoas = new Set(responsaveis.filter((r) => ativo(r) && r.tipo === "pessoa").map((r) => r.id));
+    const emUso = [...new Set(acoes.filter(ativa).sort((a, b) => a.ordem - b.ordem).flatMap((a) => a.responsaveis ?? []))].filter((id) => pessoas.has(id));
     const tons = ajustarTons(espaco.tons, emUso);
     if (JSON.stringify(tons) !== JSON.stringify(espaco.tons ?? {})) await banco.alterarEspaco(espacoId, { tons });
   }
@@ -184,8 +191,13 @@ export function criarStore(banco, opcoes = {}) {
       });
       return id;
     },
-    lerEspaco: (id) => banco.lerEspaco(id),
-    listarEspacos: () => banco.listarEspacos(),
+    /** Espaço ativo; um espaço na lixeira só é lido pela lixeira (null aqui). */
+    async lerEspaco(id) {
+      const e = await banco.lerEspaco(id);
+      return e && ativo(e) ? e : null;
+    },
+    /** Espaços ativos (seção 4.7: o filtro dos excluídos fica só aqui, no Store). */
+    listarEspacos: async () => (await banco.listarEspacos()).filter(ativo),
     async alterarEspaco(id, campos) {
       recusarDesconhecidos(campos, "espaco");
       recusarFixos(campos, FIXOS_DO_ESPACO);
@@ -210,7 +222,7 @@ export function criarStore(banco, opcoes = {}) {
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
       if (codigo) validarCodigo(codigo, acoes);
-      const inexistente = (outros.dependeDe ?? []).find((n) => !acoes.some((a) => a.numero === n));
+      const inexistente = (outros.dependeDe ?? []).find((n) => !acoes.some((a) => a.numero === n && ativa(a)));
       if (inexistente) throw new ErroDeDados("nao-encontrado", `Ação ${inexistente} não encontrada.`);
       const ordem = Math.max(0, ...acoes.map((a) => a.ordem ?? 0)) + 1;
       const numero = await banco.reservarNumero(espacoId);
@@ -227,7 +239,7 @@ export function criarStore(banco, opcoes = {}) {
     lerAcao: (espacoId, numero) => banco.lerAcao(espacoId, numero),
     /** Ações do espaço, na ordem do espaço. */
     async listarAcoes(espacoId) {
-      const acoes = await banco.listarAcoes(espacoId);
+      const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
       return acoes.sort((a, b) => a.ordem - b.ordem);
     },
     /** Grava só os campos informados, com data e autor da alteração. */
@@ -250,7 +262,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Acrescenta uma ação anterior. Recusa a própria ação, código inexistente e ciclo. */
     async acrescentarDependencia(espacoId, numero, anterior) {
-      const acoes = await banco.listarAcoes(espacoId);
+      const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
       if (anterior === numero) throw new ErroDeDados("ciclo", "Uma ação não pode depender dela mesma.");
       if (!acoes.some((a) => a.numero === anterior)) throw new ErroDeDados("nao-encontrado", `Ação ${anterior} não encontrada.`);
       const hipotese = acoes.map((a) => (a.numero === numero ? { ...a, dependeDe: [...(a.dependeDe ?? []), anterior] } : a));
@@ -305,13 +317,13 @@ export function criarStore(banco, opcoes = {}) {
       const { nome, sigla = "", usuario: login, ...outros } = dados;
       if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do responsável.");
       validarTipo(dados);
-      if (login) validarLogin(login, await banco.listarResponsaveis(espacoId));
+      if (login) validarLogin(login, (await banco.listarResponsaveis(espacoId)).filter(ativo));
       return banco.criarResponsavel(espacoId, novoId(), {
         ...outros, nome: nome.trim(), sigla: sigla.trim(), ...(login ? { usuario: login.trim().toLowerCase() } : {}),
         criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario,
       });
     },
-    listarResponsaveis: (espacoId) => banco.listarResponsaveis(espacoId),
+    listarResponsaveis: async (espacoId) => (await banco.listarResponsaveis(espacoId)).filter(ativo),
     /**
      * Altera um responsável. O tipo é fixo: um cadastro feito com o tipo errado é corrigido
      * criando outro e excluindo este com "substituir por" (seções 4.5 e 4.7).
@@ -328,7 +340,7 @@ export function criarStore(banco, opcoes = {}) {
       if ("sigla" in mudanca) mudanca.sigla = (mudanca.sigla ?? "").trim();
       if (mudanca.usuario) {
         mudanca.usuario = mudanca.usuario.trim().toLowerCase();
-        validarLogin(mudanca.usuario, todos.filter((r) => r.id !== id));
+        validarLogin(mudanca.usuario, todos.filter((r) => r.id !== id && ativo(r)));
       } else if ("usuario" in mudanca) mudanca.usuario = null;
       validarTipo({ ...atual, ...mudanca });
       await banco.alterarResponsavel(espacoId, id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
@@ -347,13 +359,106 @@ export function criarStore(banco, opcoes = {}) {
     },
 
     // --- tempo real ---
-    acompanharEspaco: (espacoId, aoMudar) => banco.acompanharEspaco(espacoId, aoMudar),
+    /** Acompanha o espaço; a tela recebe só ações e responsáveis ativos. */
+    acompanharEspaco: (espacoId, aoMudar) => banco.acompanharEspaco(espacoId, (foto) => aoMudar({
+      ...foto, acoes: foto.acoes.filter(ativa), responsaveis: (foto.responsaveis ?? []).filter(ativo),
+    })),
+
+    // --- exclusão lógica e lixeira (seção 4.7; passo 1.15) ---
+    /**
+     * Exclui a ação. As que dependem dela: com `religar`, passam a depender das anteriores
+     * da excluída (a sequência continua); sem, só perdem a dependência.
+     */
+    async excluirAcao(espacoId, numero, { religar = false } = {}) {
+      const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
+      const acao = acoes.find((a) => a.numero === numero);
+      if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
+      const anteriores = (acao.dependeDe ?? []).filter((n) => acoes.some((a) => a.numero === n));
+      for (const d of acoes.filter((a) => (a.dependeDe ?? []).includes(numero))) {
+        await banco.retirarDaLista(espacoId, d.numero, "dependeDe", [numero], carimbo());
+        const novas = religar ? anteriores.filter((n) => !(d.dependeDe ?? []).includes(n)) : [];
+        if (novas.length) await banco.acrescentarNaLista(espacoId, d.numero, "dependeDe", novas, carimbo());
+      }
+      await banco.alterarAcao(espacoId, numero, { excluidaEm: agora(), excluidaPor: usuario, ...carimbo() });
+      if (acao.responsaveis?.length) await arrumarTons(espacoId);
+    },
+    /** Volta a ação da lixeira; as ligações alteradas na exclusão não são refeitas. */
+    async restaurarAcao(espacoId, numero) {
+      const acoes = await banco.listarAcoes(espacoId);
+      const acao = acoes.find((a) => a.numero === numero);
+      if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
+      /* anteriores que também foram para a lixeira deixam de valer */
+      const vivas = new Set(acoes.filter(ativa).map((a) => a.numero));
+      const sobra = (acao.dependeDe ?? []).filter((n) => !vivas.has(n));
+      if (sobra.length) await banco.retirarDaLista(espacoId, numero, "dependeDe", sobra, carimbo());
+      await banco.alterarAcao(espacoId, numero, { excluidaEm: null, excluidaPor: null, ...carimbo() });
+      if (acao.responsaveis?.length) await arrumarTons(espacoId);
+    },
+    /** Exclui o responsável do espaço; nas ações dele, `substituto` entra no lugar ou ele só sai. */
+    async excluirResponsavel(espacoId, id, { substituto = null } = {}) {
+      const todos = (await banco.listarResponsaveis(espacoId)).filter(ativo);
+      if (!todos.some((r) => r.id === id)) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
+      if (substituto && (substituto === id || !todos.some((r) => r.id === substituto))) {
+        throw new ErroDeDados("nao-encontrado", "Escolha outro responsável para a substituição.");
+      }
+      for (const a of (await banco.listarAcoes(espacoId)).filter((x) => ativa(x) && (x.responsaveis ?? []).includes(id))) {
+        await banco.retirarDaLista(espacoId, a.numero, "responsaveis", [id], carimbo());
+        if (substituto) await banco.acrescentarNaLista(espacoId, a.numero, "responsaveis", [substituto], carimbo());
+      }
+      await banco.alterarResponsavel(espacoId, id, { excluidoEm: agora(), excluidoPor: usuario, alteradoEm: agora(), alteradoPor: usuario });
+      await arrumarTons(espacoId);
+    },
+    async restaurarResponsavel(espacoId, id) {
+      const todos = await banco.listarResponsaveis(espacoId);
+      const r = todos.find((x) => x.id === id);
+      if (!r) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
+      if (r.usuario) validarLogin(r.usuario, todos.filter((x) => x.id !== id && ativo(x)));
+      await banco.alterarResponsavel(espacoId, id, { excluidoEm: null, excluidoPor: null, alteradoEm: agora(), alteradoPor: usuario });
+    },
+    /**
+     * Retira fases ou etapas que têm ações: as ações vão para `destino` (id de uma etapa que fica)
+     * ou ficam sem fase nem etapa (destino null). `ids`: as etapas e, se for o caso, a fase.
+     */
+    async excluirEtapas(espacoId, ids, { destino = null } = {}) {
+      const espaco = await banco.lerEspaco(espacoId);
+      const fora = new Set(ids);
+      const estrutura = (espaco.estrutura ?? [])
+        .filter((f) => !fora.has(f.id))
+        .map((f) => ({ ...f, etapas: f.etapas.filter((e) => !fora.has(e.id)) }));
+      const etapasDeFora = new Set((espaco.estrutura ?? []).flatMap((f) => (fora.has(f.id) ? f.etapas.map((e) => e.id) : f.etapas.filter((e) => fora.has(e.id)).map((e) => e.id))));
+      if (destino && (etapasDeFora.has(destino) || !estrutura.some((f) => f.etapas.some((e) => e.id === destino)))) {
+        throw new ErroDeDados("nao-encontrado", "Escolha uma etapa que continua no espaço.");
+      }
+      for (const a of (await banco.listarAcoes(espacoId)).filter((x) => etapasDeFora.has(x.etapa))) {
+        await banco.alterarAcao(espacoId, a.numero, { etapa: destino, ...carimbo() });
+      }
+      await banco.alterarEspaco(espacoId, { estrutura, alteradoEm: agora(), alteradoPor: usuario });
+    },
+    async excluirEspaco(id) {
+      if (!(await store.lerEspaco(id))) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      await banco.alterarEspaco(id, { excluidoEm: agora(), excluidoPor: usuario, alteradoEm: agora(), alteradoPor: usuario });
+    },
+    async restaurarEspaco(id) {
+      await banco.alterarEspaco(id, { excluidoEm: null, excluidoPor: null, alteradoEm: agora(), alteradoPor: usuario });
+    },
+    /** Lixeira de um espaço: ações e responsáveis excluídos, os mais recentes primeiro. */
+    async listarLixeira(espacoId) {
+      const recentes = (campo) => (a, b) => (b[campo] ?? "").localeCompare(a[campo] ?? "");
+      return {
+        acoes: (await banco.listarAcoes(espacoId)).filter((a) => !ativa(a)).sort(recentes("excluidaEm")),
+        responsaveis: (await banco.listarResponsaveis(espacoId)).filter((r) => !ativo(r)).sort(recentes("excluidoEm")),
+      };
+    },
+    async listarEspacosExcluidos() {
+      return (await banco.listarEspacos()).filter((e) => !ativo(e)).sort((a, b) => (b.excluidoEm ?? "").localeCompare(a.excluidoEm ?? ""));
+    },
   };
 
   /* sem login, nenhuma gravação sai daqui (as regras do banco também recusam) */
   const GRAVACOES = ["criarEspaco", "alterarEspaco", "criarAcao", "alterarAcao", "acrescentarResponsavelNaAcao",
     "retirarResponsavelDaAcao", "acrescentarDependencia", "retirarDependencia", "reestimar", "corrigirEstimativa",
-    "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral"];
+    "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral",
+    "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

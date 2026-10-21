@@ -706,3 +706,35 @@ h3.editavel { padding: 2px 6px; }
 .identidade span { display: flex; flex-direction: column; line-height: 1.2; }
 .identidade b { font-family: var(--f-titulo); font-size: 1.1rem; }
 .identidade small { color: var(--muted); }
+
+/* ---------- exclusão e lixeira (passo 1.15) ---------- */
+.zona-exclusao { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; }
+.botao-excluir { border: 0; background: transparent; color: var(--crit-ink); font-weight: 600; padding: 6px 10px; border-radius: var(--raio); cursor: pointer; }
+.botao-excluir:hover { background: var(--crit-soft); }
+.botoes .botao-excluir { margin-left: auto; }
+.botao.perigo { background: var(--crit); border-color: var(--crit); color: var(--texto-sobre-destaque); }
+.dialogo-camada { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.dialogo-camada .fundo-escuro { opacity: 0; transition: opacity var(--mov) var(--mov-curva); }
+.dialogo {
+  position: relative; width: min(460px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sombra); padding: 18px; display: flex; flex-direction: column; gap: 10px;
+  opacity: 0; transform: translateY(8px) scale(.98); transition: opacity var(--mov) var(--mov-curva), transform var(--mov) var(--mov-curva);
+}
+.dialogo-camada.aberta .fundo-escuro { opacity: 1; }
+.dialogo-camada.aberta .dialogo { opacity: 1; transform: none; }
+.dialogo h2 { font-size: 1.15rem; }
+.dialogo p { margin: 0; }
+.dialogo-corpo { display: flex; flex-direction: column; gap: 10px; }
+.dialogo .botoes { margin-top: 4px; }
+.dialogo select { border: 1px solid var(--line); border-radius: var(--raio); background: var(--bg); padding: 7px 8px; margin-left: 26px; width: calc(100% - 26px); }
+.escolha { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.escolha input { margin-top: 4px; flex: none; }
+@media (prefers-reduced-motion: reduce) { .dialogo, .dialogo-camada .fundo-escuro { transition: none; } }
+.aviso-acao { margin-left: 10px; border: 0; background: transparent; color: var(--accent-soft); font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
+.secao-lixeira { display: flex; flex-direction: column; gap: 6px; }
+.secao-lixeira h3 { font-size: 1.05rem; }
+.secao-lixeira h4 { margin: 6px 0 0; font-size: .9rem; color: var(--muted); }
+.secao-lixeira ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.item-lixeira { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.item-lixeira-texto { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.item-lixeira-texto small { color: var(--muted); }

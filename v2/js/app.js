@@ -22,6 +22,7 @@ import { avisar } from "./telas/painel.js";
 import { abrirConfiguracao } from "./telas/configurar.js";
 import { abrirConfiguracaoDoSistema } from "./telas/configurar-sistema.js";
 import { abrirEntrar, abrirTrocarSenha } from "./telas/acesso.js";
+import { abrirLixeira } from "./telas/lixeira.js";
 
 document.title = NOME;
 
@@ -81,11 +82,15 @@ async function atualizarTopo() {
     /* a engrenagem de outro espaço abre esse espaço antes de configurar */
     aoConfigurar: async (id) => {
       if (id !== abertoId && !(await abrirEspaco(id))) return;
-      abrirConfiguracao({ store: storeDe(id), espacoId: id });
+      abrirConfiguracao({ store: storeDe(id), espacoId: id, aoExcluirEspaco: espacoExcluido });
     },
     aoNovo: () => boasVindas({ comFormulario: true }),
     comLegenda: Boolean(abertoId),
     aoLegenda: () => document.dispatchEvent(new CustomEvent("sextante:alternar-legenda")),
+    aoLixeira: () => abrirLixeira({
+      store: storeDe(abertoId), espacoId: abertoId, storeEspacos: store,
+      aoRestaurarEspaco: () => atualizarTopo(),
+    }),
     aoAjuda: () => ajuda(),
     aoSistema: () => abrirConfiguracaoDoSistema({ store, hoje }),
     aoEntrar: entrar,
@@ -95,6 +100,13 @@ async function atualizarTopo() {
 }
 
 const entrar = () => abrirEntrar({ acesso });
+
+/** Depois de excluir o espaço aberto: abre outro, se houver, ou as boas-vindas. */
+async function espacoExcluido() {
+  esquecer();
+  const [outro] = await tentar(() => store.listarEspacos(), []);
+  if (!outro || !(await abrirEspaco(outro.id))) boasVindas();
+}
 
 /** Ajuda; com `foco`, destaca um termo do glossário (links "o que é?"). */
 function ajuda(foco) {
