@@ -420,6 +420,7 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
 - **Histórico de alterações** (passo 1.16): quem, quando, entidade, chave, campo, valor antigo e valor novo; coleção ou tabela própria, só de acréscimo (seção 16.4).
+- **Fase 2 e seguintes:** campos opcionais da seção 16.8 (`etiquetas`, `posicaoPrioridade`, `documentos` da ação, `justificativa`, `local`, `dataLimite`; depois, `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos).
 - **Fase 4:** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
 - **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
 
@@ -717,11 +718,13 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.8. Checklist.
 2.9. Comentários.
 2.10. Extração personalizada (seção 16.6).
+2.10a. Campos opcionais: etiquetas, prioridade da equipe (lista ordenada), links e documentos da ação, justificativa e local; forma de prazo "data-limite opcional" (seções 16.1 e 16.8).
 2.11. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
 
 ### Fase 3: quadro de tarefas
 
 3.1. Tipo "Quadro de tarefas": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de tarefas.
+3.2. Recorrência de tarefas (seção 16.8).
 
 ### Fase 4: servidor da UFCI-MG
 
@@ -734,6 +737,8 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 ### Futuro, sem fase
 
 - Previsão por classe de referência (documentação técnica, seção 9).
+- Custos: custo previsto e lançamentos executados por ação, orçamento do espaço e curvas de previsto contra executado (seção 16.8).
+- Registro de riscos do espaço (seção 16.8).
 - Aplicativo instalável no celular (PWA; documentação técnica, seção 9).
 - Avaliar baixar o diagrama como imagem.
 - Editor visual do fluxo dentro do sistema, que torne desnecessárias a importação e a exportação por Mermaid (desejo do responsável).
@@ -933,3 +938,22 @@ Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
 - **Sem validação por terceiros:** o registro é uma declaração do administrador do espaço. A confiabilidade vem da evidência, aberta a quem quiser conferir, e do histórico, que ninguém altera nem apaga (seção 16.4).
 - **Ligação com as ações:** opcional e discreta. Na janela da ação, um campo "Entrega do Plano de Ação", escondido sob "Mais opções", como os atributos avançados dos cartões do Trello.
 - **Estrutura:** duas entidades novas, **Entrega** e **Registro de alcance**, que entram no dicionário de dados (seção 4), com tabela e teste, no passo 2.6. Esboço: Entrega (título, descrição, tipo de meta, meta, unidade, prazo, ordem, responsáveis, situação de cancelamento com justificativa, ligação "continua a entrega"); Registro de alcance (entrega, data, valor alcançado, descrição, evidências, quem realizou, registrado em, registrado por).
+
+### 16.8 Campos opcionais previstos (decisão do responsável, 21/10/2026)
+
+Os campos opcionais servem à **adesão** (o espaço começa simples) e à **sofisticação gradual** do uso. Todos são desligados por padrão, salvo indicação, e nenhum pode atrapalhar as demais funções. Como o banco aceita campos novos sem migração, entram quando forem construídos; aqui fica o desenho, para ninguém construir algo que o contrarie.
+
+- **Etiquetas** (Fase 2). Catálogo **por espaço** (nome e cor da paleta), como no Trello e no Planner; cada equipe usa as suas. A ação guarda os ids das etiquetas (`etiquetas`), gravados item a item (seção 4.6); filtro por etiqueta. Previsto: campo `etiquetas` no espaço (lista de {`id`, `nome`, `cor`}) e na ação (lista de id).
+- **Prioridade da equipe** (Fase 2). Sem níveis (P1 a P4, "urgente", "importante"), que sofrem inflação (tudo vira o mais alto) e envelhecem sem revisão; nem estrela, que destaca mas não ordena. Adota-se a **lista ordenada** (o Guia do Scrum fala em backlog ordenado; Linear, Jira e Notion priorizam pela posição): a equipe arrasta as ações na ordenação "Prioridade da equipe", revista a cada mudança de contexto. É separada da "Ordem do espaço" (estrutura de fases e etapas). Nos espaços com cálculo, convive com as prioridades calculadas (seção 7). A posição é guardada como uma chave de ordenação fracionária (campo previsto `posicaoPrioridade`, texto): mover uma ação grava só ela, sem regravar a lista, o que evita conflito entre duas pessoas reordenando ao mesmo tempo. A estrela fica como possibilidade futura, só se a prática pedir. Usos principais: Quadro de tarefas e projetos sem dependências.
+- **Links e documentos da ação** (Fase 2): identificação no SIPAC/Protocolo e link, como nos documentos do espaço (4.1.2). Campo previsto `documentos` na ação.
+- **Justificativa** (por quê) e **Local** (onde), do 5W2H (Fase 2): textos opcionais, pouco usados no geral. Campos previstos `justificativa` e `local`.
+- **Recorrência** (Fase 3, Quadro de tarefas): tarefas que se repetem (por exemplo, relatório mensal), como no Todoist e no Planner.
+- **Custos** (futuro, sem fase; para quando houver amadurecimento):
+  - na ação, custo previsto (`custoPrevisto`) e uma lista de **lançamentos executados** (`custosExecutados`: data, valor, descrição e, opcionalmente, o número do empenho ou de outro documento), porque a execução acontece ao longo do tempo;
+  - no espaço, o orçamento total (`orcamento`);
+  - acompanhamento: curva prevista (o custo de cada ação distribuído pelo seu prazo) contra a executada, em gráfico e tabela, no espírito do valor agregado da versão atual;
+  - valores em centavos (inteiros), para evitar erros de arredondamento;
+  - ligação futura com o orçamento institucional (ação orçamentária, natureza de despesa, fonte), quando essa integração for desenhada.
+- **Registro de riscos do espaço** (futuro, sem fase): risco, probabilidade, impacto e resposta, como no PMBOK e na gestão de riscos cobrada pelo TCU.
+- **Continuam fora, de propósito:** percentual concluído, data de início real e horas de esforço (seções 4.2 e 5.1): geram trabalho de registro sem melhorar as previsões.
+
