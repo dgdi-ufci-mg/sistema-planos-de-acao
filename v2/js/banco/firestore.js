@@ -62,19 +62,33 @@ export function criarBancoFirestore(db, FieldValue) {
   const ouvintes = new Map();
   const avisarTodos = () => { for (const avisos of ouvintes.values()) for (const avisar of avisos) avisar(); };
 
+  /**
+   * Os ouvintes dos responsáveis e do calendário ficam ligados enquanto a página estiver aberta,
+   * sem parar e recomeçar a cada troca de espaço. A cópia guardada só é aceita quando confirmada
+   * pelo servidor (fromCache falso): uma leitura parcial, só com o que o aparelho já tinha, faria
+   * responsáveis sumirem da tela (falha vista em 21/10/2026). Sem cópia válida, ou se o ouvinte
+   * falhar, as leituras vão direto ao banco.
+   */
   function acompanharGerais() {
     if (pararGerais) return;
-    /* a primeira leitura não avisa: a tela já leu esses dados ao abrir o espaço */
+    const daServidor = (s) => !s.metadata?.fromCache;
+    const falhou = (erro) => {
+      console.error("Ouvinte geral do Firestore falhou:", erro);
+      pararGerais?.();
+    };
+    /* a primeira leitura confirmada não avisa: a tela já leu esses dados ao abrir o espaço */
     const p1 = responsaveisRef().onSnapshot((s) => {
+      if (!daServidor(s)) return;
       const primeira = !responsaveis;
       responsaveis = new Map(s.docs.map((d) => [d.id, d.data()]));
       if (!primeira) avisarTodos();
-    }, () => {});
+    }, falhou);
     const p2 = calendarioRef().onSnapshot((s) => {
+      if (!daServidor(s)) return;
       const primeira = calendario === undefined;
       calendario = s.exists ? s.data() : null;
       if (!primeira) avisarTodos();
-    }, () => {});
+    }, falhou);
     pararGerais = () => { p1(); p2(); pararGerais = null; responsaveis = null; calendario = undefined; };
   }
 
@@ -220,13 +234,13 @@ export function criarBancoFirestore(db, FieldValue) {
       };
       if (!ouvintes.has(espacoId)) ouvintes.set(espacoId, new Set());
       ouvintes.get(espacoId).add(avisar);
-      const p1 = espacoRef(espacoId).onSnapshot((s) => { espaco = s.exists ? s.data() : null; avisar(); }, () => {});
-      const p2 = acoesRef(espacoId).onSnapshot((s) => { acoes = s.docs.map((d) => d.data()); avisar(); }, () => {});
+      const falhou = (erro) => console.error("Ouvinte do espaço falhou:", erro);
+      const p1 = espacoRef(espacoId).onSnapshot((s) => { espaco = s.exists ? s.data() : null; avisar(); }, falhou);
+      const p2 = acoesRef(espacoId).onSnapshot((s) => { acoes = s.docs.map((d) => d.data()); avisar(); }, falhou);
       return () => {
         p1(); p2();
         ouvintes.get(espacoId)?.delete(avisar);
         if (!ouvintes.get(espacoId)?.size) ouvintes.delete(espacoId);
-        if (!ouvintes.size) pararGerais?.();
       };
     },
   };
