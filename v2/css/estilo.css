@@ -252,8 +252,6 @@ body.so-leitura [data-nova] { display: none; }
 .so-celular { display: none !important; }
 .cabeca-espaco { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
 .cabeca-espaco .tec { margin: 0; }
-.resumo-espaco { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--muted); font-size: .9rem; }
-.resumo-espaco b { color: var(--ink); font-weight: 500; }
 .ferramentas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip {

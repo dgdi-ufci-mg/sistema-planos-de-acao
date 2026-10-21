@@ -89,14 +89,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
   }), ui.ordem);
 
   const faltam = () => linhas.filter((l) => l.semEstimativa).length;
+  /* datas e chance saíram do alto (21/10/2026): vão para a linha do tempo e o cronograma (passos 1.17a e 1.17b);
+     o aviso de previsão incompleta fica sempre à vista, em qualquer modo */
   function cabecaHtml() {
     return `<h1>${esc(espaco.nome)}</h1>
-      <p class="tec">Início em ${dataBr(espaco.inicio)}${espaco.prazoFinal ? ` · prazo final em ${dataBr(espaco.prazoFinal)}` : ""}</p>
-      ${acoes.length ? `<p class="resumo-espaco">
-        <span>Conclusão prevista <b class="mono">${dataBr(cal.dataDeConclusao(sim.p50, 0))}</b></span>
-        <span>Data segura <b class="mono">${dataBr(cal.dataDeConclusao(sim.p80, 0))}</b> <a href="#" class="oque" data-termo="dataSegura">o que é?</a></span>
-        ${sim.chancePrazo == null ? "" : `<span>Chance de cumprir o prazo <b class="mono">${Math.round(sim.chancePrazo * 100)}%</b></span>`}
-      </p>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 

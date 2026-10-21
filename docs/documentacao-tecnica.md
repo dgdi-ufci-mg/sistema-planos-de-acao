@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 65 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 66 da página)
 
 ---
 
@@ -496,6 +496,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 64.3 | Versão 2: na janela da ação, os botões "Reestimar" e "Registrar conclusão" encolhem enquanto o formulário cresce no lugar deles, e o contrário ao cancelar (`trocarSuave`). Abrir e fechar passaram a levar também as folgas, as bordas e o espaço entre itens, para não sobrar salto no fim do movimento. Sem mudança na versão atual |
 | 64.4 | Versão 2: ao salvar uma reestimativa ou uma conclusão, o formulário também encolhe no lugar enquanto os botões (ou "Desfazer conclusão") voltam a crescer, em vez de sumir de uma vez quando a janela se atualiza com o dado gravado. Sem mudança na versão atual |
 | 65 | Versão 2: seletor de modo sempre à esquerda das ferramentas, com ícones em SVG (lista, quadro, planilha); o modo ativo mostra também o nome, e os demais o mostram ao passar o mouse; no celular, só Lista e Quadro. Especificação revista: a aba Visualização sai; cronograma, rede e linha do tempo viram modos interativos do seletor (passo 1.17 dividido em 1.17a, 1.17b e 1.17c); calendário registrado como "a avaliar". Sem mudança na versão atual |
+| 66 | Versão 2: o alto do espaço deixa de mostrar datas e a chance de cumprir o prazo (irão para a linha do tempo e o cronograma); o aviso "Previsão incompleta" fica sempre à vista. Especificação: responsáveis criados no sistema passam a ser de cada espaço (passo 1.14b), menu lateral (1.14c), cadastro provisório de logins (1.14d), linha do tempo com a chance e o gráfico da data final, e a integração com os cadastros da instituição como decisão pendente. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
