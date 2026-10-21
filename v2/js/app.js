@@ -69,7 +69,6 @@ async function atualizarTopo() {
   /* nome de quem entrou: o do responsável ligado ao e-mail no espaço aberto (os responsáveis são de cada espaço) */
   const ligado = usuario && abertoId ? (await tentar(() => storeDe(abertoId).listarResponsaveis(abertoId), [])).find((r) => r.usuario === usuario) : null;
   const aberto = espacos.find((e) => e.id === abertoId);
-  document.title = aberto ? `${aberto.nome} · ${NOME}` : NOME;
   mostrarNavegacao({
     espacos,
     abertoId,

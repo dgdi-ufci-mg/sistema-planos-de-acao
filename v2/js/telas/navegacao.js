@@ -100,7 +100,10 @@ export function mostrarNavegacao(opcoes) {
     <nav class="lateral-espacos" aria-label="Espaços">
       <h2 class="lateral-rotulo">Espaços</h2>
       <ul>${espacos.map((e) => `<li class="espaco-item${e.id === abertoId ? " atual" : ""}">
-          <button type="button" class="espaco-nome" data-espaco="${esc(e.id)}"${e.id === abertoId ? ' aria-current="page"' : ""}>${esc(e.nome)}</button>
+          ${e.id === abertoId
+            /* o espaço aberto não é botão: clicar nele não faria nada */
+            ? `<span class="espaco-nome" aria-current="page">${esc(e.nome)}</span>`
+            : `<button type="button" class="espaco-nome" data-espaco="${esc(e.id)}">${esc(e.nome)}</button>`}
           ${podeConfigurar(e.id) ? `<button type="button" class="espaco-configurar" data-configurar="${esc(e.id)}" aria-label="Configurar ${esc(e.nome)}" title="Configurar este espaço">${ICONES.engrenagem}</button>` : ""}
         </li>`).join("") || '<li class="vazio">Nenhum espaço ainda.</li>'}</ul>
       ${podeCriar ? `<button type="button" class="lateral-acao" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}

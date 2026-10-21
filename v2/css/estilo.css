@@ -235,7 +235,7 @@ body::before {
   flex: 1; min-width: 0; border: 0; background: transparent; text-align: left; padding: 7px 8px; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.espaco-item.atual .espaco-nome { color: var(--accent-ink); font-weight: 700; }
+.espaco-item.atual .espaco-nome { color: var(--accent-ink); font-weight: 700; cursor: default; }
 .espaco-configurar {
   border: 0; background: transparent; padding: 6px; margin-right: 2px; border-radius: var(--raio); cursor: pointer;
   color: var(--muted); display: inline-flex; opacity: 0; transition: opacity var(--mov-rapido);
