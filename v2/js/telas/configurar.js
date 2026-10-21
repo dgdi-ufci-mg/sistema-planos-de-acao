@@ -10,6 +10,7 @@ import { ICONES } from "../icones.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
 import { datasEfetivas } from "../calendario.js";
 import { abrirPainel, avisar } from "./painel.js";
+import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
@@ -50,7 +51,17 @@ export async function abrirConfiguracao({ store, espacoId }) {
   }
 
   /* ---------- desenho ---------- */
+  function marcar() {
+    marcarPendencias(corpo.querySelector('[data-salvar="datas"]'), rascunho.datas, espaco.datasExcluidas, ["data", "motivo"]);
+    marcarPendencias(corpo.querySelector('[data-salvar="documentos"]'), rascunho.documentos, espaco.documentos, ["nome", "data", "identificacao", "link"]);
+  }
+
   function desenhar() {
+    desenharSecoes();
+    marcar();
+  }
+
+  function desenharSecoes() {
     const campos = espaco.camposOpcionais ?? {};
     corpo.innerHTML = `
       <details class="config" data-secao="dados"${aberta("dados")}>
@@ -74,13 +85,13 @@ export async function abrirConfiguracao({ store, espacoId }) {
         ${geraisHtml()}
         <h4>Deste espaço</h4>
         <form class="editor" data-salvar="datas">
-          <div class="linhas-config">${rascunho.datas.map((d, i) => `<div class="linha-config">
+          <div class="linhas-config">${rascunho.datas.map((d, i) => `<div class="linha-config" data-linha-lista="${i}">
             <input type="date" data-lista="datas" data-indice="${i}" data-campo="data" value="${esc(d.data ?? "")}" aria-label="Data">
             <input data-lista="datas" data-indice="${i}" data-campo="motivo" value="${esc(d.motivo ?? "")}" placeholder="Motivo (opcional)" aria-label="Motivo">
             <button type="button" class="tirar" data-tirar="datas" data-indice="${i}" aria-label="Retirar a data">${ICONES.fechar}</button>
           </div>`).join("") || `<p class="vazio">Nenhuma data própria.</p>`}</div>
           <p class="erro" data-erro hidden></p>
-          <div class="botoes"><button class="botao" type="button" data-acrescentar="datas">${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar</button></div>
+          <div class="botoes"><button class="botao" type="button" data-acrescentar="datas">${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar</button>${AVISO_PENDENTE}</div>
         </form>
       </details>
 
@@ -98,7 +109,7 @@ export async function abrirConfiguracao({ store, espacoId }) {
         <summary><h3>Documentos do espaço</h3><span class="n">${rascunho.documentos.length}</span></summary>
         <p class="tec">Por exemplo, o plano aprovado e as revisões, com a identificação no SIPAC/Protocolo e o link.</p>
         <form class="editor" data-salvar="documentos">
-          <div class="linhas-config">${rascunho.documentos.map((doc, i) => `<div class="documento-config">
+          <div class="linhas-config">${rascunho.documentos.map((doc, i) => `<div class="documento-config" data-linha-lista="${i}">
             <input data-lista="documentos" data-indice="${i}" data-campo="nome" value="${esc(doc.nome ?? "")}" placeholder="Nome do documento" aria-label="Nome do documento">
             <div class="campos-lado-a-lado">
               <input type="date" data-lista="documentos" data-indice="${i}" data-campo="data" value="${esc(doc.data ?? "")}" aria-label="Data do documento">
@@ -111,7 +122,7 @@ export async function abrirConfiguracao({ store, espacoId }) {
             </div>
           </div>`).join("") || `<p class="vazio">Nenhum documento.</p>`}</div>
           <p class="erro" data-erro hidden></p>
-          <div class="botoes"><button class="botao" type="button" data-acrescentar="documentos">${ICONES.mais}Documento</button><button class="botao principal" type="submit">Salvar</button></div>
+          <div class="botoes"><button class="botao" type="button" data-acrescentar="documentos">${ICONES.mais}Documento</button><button class="botao principal" type="submit">Salvar</button>${AVISO_PENDENTE}</div>
         </form>
       </details>
 
@@ -197,6 +208,7 @@ export async function abrirConfiguracao({ store, espacoId }) {
       }
       await recarregar();
       if (secao === "datas") rascunho.datas = structuredClone(espaco.datasExcluidas ?? []);
+      if (secao === "documentos") rascunho.documentos = structuredClone(espaco.documentos ?? []);
       desenhar();
       avisar("Configuração salva.");
     } catch (e) {
@@ -208,6 +220,7 @@ export async function abrirConfiguracao({ store, espacoId }) {
   /* ---------- eventos ---------- */
   corpo.addEventListener("input", (e) => {
     const t = e.target;
+    queueMicrotask(marcar);
     if (t.dataset.lista) rascunho[t.dataset.lista][Number(t.dataset.indice)][t.dataset.campo] = t.value;
     else if (t.dataset.etapa != null) rascunho.estrutura[Number(t.dataset.fase)].etapas[Number(t.dataset.etapa)].nome = t.value;
     else if (t.dataset.fase != null) rascunho.estrutura[Number(t.dataset.fase)].nome = t.value;

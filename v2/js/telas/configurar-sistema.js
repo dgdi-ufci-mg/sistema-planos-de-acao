@@ -8,10 +8,12 @@ import { esc } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { feriadosNacionais } from "../feriados.js";
 import { abrirPainel, avisar } from "./painel.js";
+import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
 
 /** @param {{store: object, hoje: string}} opcoes */
 export async function abrirConfiguracaoDoSistema({ store, hoje }) {
-  let rascunho = structuredClone((await store.lerCalendarioGeral()).datasExcluidas);
+  let salvos = (await store.lerCalendarioGeral()).datasExcluidas;
+  let rascunho = structuredClone(salvos);
   const anoAtual = Number(hoje.slice(0, 4));
   let anoFeriados = anoAtual + (Number(hoje.slice(5, 7)) >= 10 ? 1 : 0); // a partir de outubro, sugere o ano seguinte
   let novas = new Set(); // datas acrescentadas pelo botão, destacadas até salvar
@@ -37,23 +39,25 @@ export async function abrirConfiguracaoDoSistema({ store, hoje }) {
         <form class="editor" data-salvar-calendario>
           ${[...porAno].sort(([a], [b]) => a.localeCompare(b)).map(([ano, itens]) => `<details class="ano-calendario"${novas.size || porAno.size === 1 || ano === String(anoFeriados) || ano === "Sem data" ? " open" : ""}>
             <summary>${esc(ano)} <span class="n">${itens.length}</span></summary>
-            <div class="linhas-config">${itens.map(([d, i]) => `<div class="linha-config${novas.has(d.data) ? " recem-acrescentada" : ""}">
+            <div class="linhas-config">${itens.map(([d, i]) => `<div class="linha-config" data-linha-lista="${i}">
               <input type="date" data-indice="${i}" data-campo="data" value="${esc(d.data ?? "")}" aria-label="Data">
               <input data-indice="${i}" data-campo="motivo" value="${esc(d.motivo ?? "")}" placeholder="Motivo" aria-label="Motivo">
               <button type="button" class="tirar" data-tirar="${i}" aria-label="Retirar a data">${ICONES.fechar}</button>
             </div>`).join("")}</div>
           </details>`).join("") || `<p class="vazio">Nenhuma data cadastrada.</p>`}
-          ${novas.size ? `<p class="aviso">Datas sugeridas, destacadas acima. Revise antes de salvar: confira, corrija e acrescente o que faltar, como recessos e pontos facultativos do ano.</p>` : ""}
+          ${novas.size ? `<p class="aviso">Datas sugeridas, destacadas acima. As marcadas com ⚠️ são pontes prováveis. Revise antes de salvar: confira, corrija e acrescente o que faltar, como recessos e pontos facultativos do ano.</p>` : ""}
           <p class="erro" data-erro hidden></p>
-          <div class="botoes"><button class="botao" type="button" data-acrescentar>${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar calendário</button></div>
+          <div class="botoes"><button class="botao" type="button" data-acrescentar>${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar calendário</button>${AVISO_PENDENTE}</div>
         </form>
       </section>
       <p class="tec">Outras configurações gerais, como usuários e permissões, chegam nas próximas fases.</p>`;
+    marcar();
   }
+  const marcar = () => marcarPendencias(corpo.querySelector("[data-salvar-calendario]"), rascunho, salvos, ["data", "motivo"]);
 
   corpo.addEventListener("input", (e) => {
     const i = e.target.dataset.indice;
-    if (i != null) rascunho[Number(i)][e.target.dataset.campo] = e.target.value;
+    if (i != null) { rascunho[Number(i)][e.target.dataset.campo] = e.target.value; marcar(); }
   });
   corpo.addEventListener("change", (e) => { if (e.target.matches("[data-ano]")) anoFeriados = Number(e.target.value); });
   corpo.addEventListener("click", (e) => {
@@ -81,7 +85,8 @@ export async function abrirConfiguracaoDoSistema({ store, hoje }) {
     const erro = corpo.querySelector("[data-erro]");
     try {
       await store.alterarCalendarioGeral(rascunho.map((d) => (d.motivo?.trim() ? { data: d.data, motivo: d.motivo.trim() } : { data: d.data })));
-      rascunho = structuredClone((await store.lerCalendarioGeral()).datasExcluidas);
+      salvos = (await store.lerCalendarioGeral()).datasExcluidas;
+      rascunho = structuredClone(salvos);
       novas = new Set();
       desenhar();
       avisar("Calendário geral salvo.");

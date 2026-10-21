@@ -608,4 +608,6 @@ h3.editavel { padding: 2px 6px; }
 .ano-calendario > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 .ano-calendario > summary .n { font-family: var(--f-dados); font-size: .8rem; color: var(--muted); font-weight: 400; }
 .ano-calendario .linhas-config { margin: 6px 0 10px; }
-.recem-acrescentada input { border-color: var(--warn) !important; background: var(--warn-soft) !important; }
+/* linhas ainda não salvas: destacadas até o Salvar (passo 1.13) */
+.nao-salva input, .documento-config.nao-salva { border-color: var(--warn) !important; background: var(--warn-soft) !important; }
+.pendente { align-self: center; font-size: .82rem; font-weight: 600; color: var(--warn-ink); }
