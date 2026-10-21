@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 72 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 73 da página)
 
 ---
 
@@ -509,6 +509,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 70.1 | Especificação da reescrita: execução em lote dos passos 1.16 a 1.19, com etiqueta por passo no GitHub e diário em `docs/registro-de-execucao.md` (novo). Sem mudança no sistema |
 | 71 | Versão 2, passo 1.17a (primeira versão, em lote): modo "Linha do tempo" no computador, com a conclusão prevista, a data segura, a chance de cumprir o prazo final, as barras da parte dos cenários que termina em cada semana, a curva da chance acumulada e a chance em qualquer data ao passar o mouse. Termo novo no glossário: "Chance de cumprir o prazo". Sem mudança na versão atual |
 | 72 | Versão 2, passo 1.17b (primeira versão, em lote): modo "Cronograma" no computador, com as barras das ações agrupadas por fase e etapa, setas das dependências, ações sem folga em vermelho, hoje e prazo final, aproximação em semanas ou meses, detalhes ao passar o mouse e abertura da ação ao clicar. Termos novos no glossário: "Folga e caminho crítico" e "Cronograma". Sem a comparação com retrato, que depende do passo 1.18. Sem mudança na versão atual |
+| 73 | Versão 2, passo 1.17c (primeira versão, em lote): modo "Rede" (fluxo das ações) no computador, com as ações em cartões arrumados em colunas, na ordem em que podem acontecer, setas das dependências (vermelhas no caminho crítico), destaque de tudo o que vem antes e depois da ação apontada, abertura da ação ao clicar e "Ver tudo". Arrumação própria, sem biblioteca: colunas pela anterior mais distante e ordem que reduz cruzamentos. Termo novo no glossário: "Rede (fluxo das ações)". Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

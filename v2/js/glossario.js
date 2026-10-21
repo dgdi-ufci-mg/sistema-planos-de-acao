@@ -42,4 +42,7 @@ export const GLOSSARIO = [
   { chave: "cronograma", titulo: "Cronograma",
     texto: "Barras das ações no tempo, do início ao fim previsto de cada uma, com setas que mostram de quais ações cada uma depende.",
     tecnico: "diagrama de Gantt" },
+  { chave: "rede", titulo: "Rede (fluxo das ações)",
+    texto: "Desenho das ações como cartões ligados por setas, da esquerda para a direita, na ordem em que podem acontecer. Mostra o que precisa terminar antes de cada ação começar.",
+    tecnico: "diagrama de rede PERT/CPM" },
 ];

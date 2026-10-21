@@ -7,6 +7,7 @@ Diário dos passos feitos em lote (especificação, seção 3.3, "Execução em 
 | Passo | Commit |
 |---|---|
 | 1.17a | `0c896ea` |
+| 1.17b | `b0d2785` |
 
 Em cada passo: o que foi feito, os testes, a conferência na tela e as **decisões provisórias**, tomadas sem consulta e à espera da revisão do responsável.
 
@@ -64,3 +65,25 @@ Os passos 1.16 (histórico) e 1.18 (retratos) criam coleções novas no banco e 
 6. A comparação com retrato (linha fina sob cada barra) fica para depois do passo 1.18.
 
 **Nenhum número mudou de sentido:** as datas e o caminho crítico são os mesmos do cálculo de antes.
+
+## Passo 1.17c — Rede, o fluxo das ações (21/10/2026)
+
+**O que foi feito:** novo modo "Rede" no seletor, só no computador, entre Cronograma e Linha do tempo:
+- cada ação é um cartão com o nome, a data prevista e a folga (ou "Concluída em", ou "Falta estimar"), com a borda na cor da legenda;
+- colunas da esquerda para a direita: cada ação fica logo depois da sua anterior mais distante; dentro da coluna, a ordem reduz os cruzamentos das setas;
+- setas das dependências, em vermelho quando ligam duas ações do caminho crítico sem intervalo entre elas;
+- passando o mouse (ou com o foco do teclado) numa ação, destaca tudo o que vem antes e depois dela; clicando, abre a ação;
+- "Normal" (rolagem) ou "Ver tudo" (reduzida para caber na largura).
+
+**Arquivos:** `js/rede.js` (regras, sem tela), `js/telas/rede.js` (desenho), `js/telas/espaco.js`, `js/icones.js`, `js/glossario.js`, `css/estilo.css`.
+
+**Testes:** 181 testes automáticos passam, incluindo os novos de `testes/rede.test.js`: cada ação aparece uma vez; toda seta vai para a direita; a coluna de cada ação é a seguinte à da anterior mais distante; as setas críticas ligam ações sem folga; a arrumação não cruza mais setas do que a ordem do espaço; dependência circular e espaço vazio não travam o desenho. Conferência no navegador de teste, com o exemplo, nos temas claro e escuro, passando o mouse, em "Ver tudo" e clicando numa ação: sem erros.
+
+**Decisões provisórias:**
+1. Sem filtros nem ordem na rede, como no cronograma.
+2. Sem cartões de "Início" e "Fim": a rede começa nas ações sem anteriores e termina nas que nenhuma outra espera.
+3. Uma seta que pula colunas passa por trás dos cartões do meio (sem desvio). Se incomodar com planos maiores, o próximo ajuste é desviar essas setas.
+4. Cartões de tamanho fixo (240 × 76 pixels), com o nome em até duas linhas; o nome inteiro aparece ao parar o mouse.
+5. Termo novo no glossário: "Rede (fluxo das ações)".
+
+**Nenhum número mudou de sentido:** a rede só desenha as dependências e o caminho crítico já calculados.

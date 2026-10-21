@@ -19,6 +19,7 @@ import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
 import { criarPlanilha } from "./editar-planilha.js";
 import { desenharLinhaDoTempo } from "./linha-do-tempo.js";
 import { desenharCronograma } from "./cronograma.js";
+import { desenharRede } from "./rede.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -55,6 +56,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     pop: null,
     /** aproximação do cronograma: "semanas" ou "meses" */
     escalaCrono: "semanas",
+    /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
+    escalaRede: "normal",
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "" };
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
@@ -156,9 +159,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    */
   const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""], ["planilha", "Planilha", "modoPlanilha", "so-computador"],
     ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
+    ["rede", "Rede", "modoRede", "so-computador"],
     ["linha", "Linha do tempo", "modoLinha", "so-computador"]];
   /** Modos sem filtros nem ordem: mostram o espaço inteiro (no cronograma, as setas ligariam ações escondidas). */
-  const semFiltros = () => ["planilha", "cronograma", "linha"].includes(ui.modo);
+  const semFiltros = () => ["planilha", "cronograma", "rede", "linha"].includes(ui.modo);
   let modoDesenhado = null;
   function modosHtml() {
     const trocou = modoDesenhado !== null && modoDesenhado !== ui.modo;
@@ -376,6 +380,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (ui.modo === "cronograma") {
       desenharCronograma(lista, { espaco, acoes, caminho, cal, hoje, usaFases, usaCodigos, escala: ui.escalaCrono,
         aoMudarEscala: (escala) => { ui.escalaCrono = escala; desenharLista(); } });
+      return;
+    }
+    if (ui.modo === "rede") {
+      desenharRede(lista, { acoes, caminho, linhas, etapaDe, usaCodigos, escala: ui.escalaRede,
+        aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); } });
       return;
     }
     if (ui.modo === "linha") { desenharLinhaDoTempo(lista, { espaco, cal, sim, hoje, temAcoes: acoes.length > 0 }); return; }

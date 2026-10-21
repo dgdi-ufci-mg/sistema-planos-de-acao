@@ -1,6 +1,6 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 a 1.14, 1.14a, 1.14b, 1.14c, 1.15, 1.17a e 1.17b (primeiras versões).
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 a 1.14, 1.14a, 1.14b, 1.14c, 1.15, 1.17a, 1.17b e 1.17c (primeiras versões).
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -726,7 +726,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.17. Modos de visualização interativos, no seletor da aba Ações, só no computador (seção 8.4; revisto em 21/10/2026, no lugar da aba Visualização), em três passos:
 1.17a. ✔ Linha do tempo interativa, com a chance de cumprir o prazo e o gráfico da data final. Primeira versão, feita em lote (21/10/2026; detalhes e decisões provisórias em `docs/registro-de-execucao.md`): modo "Linha do tempo" no seletor, só no computador; regras em `js/linha-do-tempo.js`, com testes; tela em `js/telas/linha-do-tempo.js`.
 1.17b. ✔ Cronograma (Gantt) interativo, com comparação de retrato. Primeira versão, feita em lote (21/10/2026; detalhes em `docs/registro-de-execucao.md`): modo "Cronograma", só no computador, com barras por fase e etapa, setas das dependências, caminho crítico, hoje e prazo final, aproximação em semanas ou meses; regras em `js/cronograma.js`, com testes; tela em `js/telas/cronograma.js`. A comparação com retrato fica para depois do passo 1.18.
-1.17c. Rede (fluxo das ações) interativa.
+1.17c. ✔ Rede (fluxo das ações) interativa. Primeira versão, feita em lote (21/10/2026; detalhes em `docs/registro-de-execucao.md`): modo "Rede", só no computador, com cartões em colunas na ordem em que as ações podem acontecer, setas (vermelhas no caminho crítico), destaque do que vem antes e depois ao passar o mouse e "Ver tudo"; regras em `js/rede.js`, com testes; tela em `js/telas/rede.js`.
 1.18. Retratos manuais.
 1.19. Importação e exportação (planilha e Mermaid), cópia de segurança e restauração.
 1.20. Troca: cópia de segurança, migração dos dados (seção 11) e versão 2 na raiz. Se houver outros usuários nessa época, também aviso prévio e gravação congelada na versão atual durante a migração. Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas; AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.

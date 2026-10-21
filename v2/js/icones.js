@@ -16,6 +16,8 @@ export const ICONES = Object.freeze({
   modoPlanilha: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 14.5h18M9 4v16M15 4v16"/>'),
   /** Cronograma: barras escalonadas no tempo. */
   modoCronograma: svg('<path d="M4 6h8M8 12h9M13 18h7"/>'),
+  /** Rede: caixas ligadas por setas. */
+  modoRede: svg('<rect x="2.5" y="9" width="6" height="6" rx="1.5"/><rect x="15.5" y="3.5" width="6" height="6" rx="1.5"/><rect x="15.5" y="14.5" width="6" height="6" rx="1.5"/><path d="M8.5 12h3.5V6.5h3.5M12 12v5.5h3.5"/>'),
   /** Linha do tempo: eixo com a curva da chance de terminar. */
   modoLinha: svg('<path d="M3 4v16h18"/><path d="M6 17c5 0 6-10 14-11"/>'),
   /** Concluída: visto num círculo. */

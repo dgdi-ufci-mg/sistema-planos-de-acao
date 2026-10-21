@@ -825,3 +825,33 @@ h3.editavel { padding: 2px 6px; }
 .alternador button { position: relative; z-index: 1; padding: 5px 16px; border: 0; background: none; border-radius: 999px; cursor: pointer; font: 600 .88rem var(--f-texto); color: var(--muted); }
 .alternador button[aria-pressed="true"] { color: var(--accent-ink); }
 .alternador:has(button:nth-child(2)[aria-pressed="true"])::before { transform: translateX(100%); }
+
+/* ---------- rede, o fluxo das ações (passo 1.17c) ---------- */
+.rede { background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
+.rede-rolagem { overflow: auto; max-height: calc(100vh - 220px); border-radius: var(--raio); }
+.rede-tamanho { position: relative; }
+.rede-conteudo { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.rede-setas { position: absolute; inset: 0; overflow: visible; }
+.rede-seta { fill: none; stroke: var(--faint); stroke-width: 1.4; transition: opacity var(--mov-rapido) var(--mov-curva), stroke-width var(--mov-rapido); }
+.rede-seta.critica { stroke: var(--crit); stroke-width: 2; }
+#rede-ponta path { fill: var(--faint); }
+#rede-ponta-critica path { fill: var(--crit); }
+.rede-no { position: absolute; transition: opacity var(--mov-rapido) var(--mov-curva); }
+.rede-cartao { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: 2px; padding: 7px 10px 7px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--raio); box-shadow: var(--relevo); cursor: pointer;
+  transition: box-shadow var(--mov-rapido), transform var(--mov-rapido) var(--mov-curva); }
+.rede-no.critica .rede-cartao { border-left-color: var(--crit); }
+.rede-no.concluida .rede-cartao { border-left-color: var(--ok); background: var(--sunk); }
+.rede-no.sem-estimativa .rede-cartao { border-left: 4px dashed var(--warn); }
+.rede-cartao:hover, .rede-cartao:focus-visible { box-shadow: var(--sombra); outline: none; transform: translateY(-1px); }
+.rede-cartao:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.rede-rotulo { font-size: .88rem; font-weight: 600; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.rede-rotulo .codigo { margin-right: 6px; }
+.rede-rodape { display: flex; align-items: center; gap: 4px; font-size: .74rem; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.rede-rodape .icone-atrasada { display: inline-flex; }
+.rede-rodape .icone-atrasada svg { width: 13px; height: 13px; }
+.rede.destacando .rede-no:not(.ligada):not(.apontada) { opacity: .28; }
+.rede.destacando .rede-seta:not(.ligada) { opacity: .12; }
+.rede.destacando .rede-seta.ligada { stroke-width: 2.4; }
+.rede-no.apontada .rede-cartao { box-shadow: 0 0 0 2px var(--ink), var(--sombra); }
+@media (prefers-reduced-motion: reduce) { .rede-cartao, .rede-no, .rede-seta { transition: none; } }
