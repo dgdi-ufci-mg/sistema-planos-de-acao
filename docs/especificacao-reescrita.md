@@ -736,7 +736,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.1. Papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3).
 2.2. Visibilidade: pública, institucional ou restrita.
 2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (espaço órfão).
-2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1).
+2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1). No menu lateral, os espaços passam a ser agrupados por tipo, cada grupo com o nome do tipo no plural ("Planos de Ação", "Projetos", "Quadros de Tarefas"), só para os tipos que existirem; até lá, um grupo só, "Espaços" (decisão do responsável, 21/10/2026).
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
 2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
 2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).

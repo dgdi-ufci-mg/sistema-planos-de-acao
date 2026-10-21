@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 68.2 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 68.3 da página)
 
 ---
 
@@ -502,6 +502,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 68 | Versão 2, passo 1.14c: menu lateral (conta, espaços com engrenagem de configuração, novo espaço, Ajuda e Configurar o sistema), recolhível no computador e por cima no celular (`v2/js/telas/navegacao.js`, no lugar de `topo.js`); barra do topo só com o botão do menu e o nome do espaço; logotipo, nome do sistema e sigla da instituição saem da tela de trabalho (ficam nas boas-vindas, na Ajuda e no ícone da aba). Sem mudança na versão atual |
 | 68.1 | Versão 2: a aba do navegador mostra só o nome do sistema; saiu o aviso "Em construção"; no menu lateral, o espaço aberto deixa de parecer clicável (clicar nele não fazia nada). Sem mudança na versão atual |
 | 68.2 | Versão 2: fonte dos títulos trocada de Barlow Semi Condensed para Manrope (Google Fonts), escolhida pelo responsável entre seis amostras. Sem mudança na versão atual |
+| 68.3 | Especificação da reescrita: no passo 2.4, o menu lateral agrupa os espaços por tipo, com o nome do tipo no plural. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 
