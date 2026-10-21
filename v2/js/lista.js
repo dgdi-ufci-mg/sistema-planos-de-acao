@@ -23,6 +23,8 @@ export function montarLinhas(acoes, caminho, simulacao, calendario, hoje) {
     const c = caminho.porAcao.get(acao.numero);
     const s = simulacao.porAcao.get(acao.numero);
     const concluida = c.situacao === "concluida";
+    /* sem estimativa, as prioridades sairiam de uma duração zero: não são mostradas (passo 1.14a) */
+    const semPrioridade = concluida || !estimativaVigente(acao);
     return {
       acao,
       situacao: c.situacao,
@@ -31,8 +33,8 @@ export function montarLinhas(acoes, caminho, simulacao, calendario, hoje) {
       aPartirDe: c.situacao === "naoLiberada" && acao.naoAntesDe > hoje ? acao.naoAntesDe : null,
       conclusao: concluida ? acao.concluidaEm : calendario.dataDeConclusao(c.conclusao, c.liberacao),
       reprogramacoes: Math.max(0, (acao.estimativas?.length ?? 0) - 1),
-      execucao: concluida ? null : s.prioridadeExecucao,
-      revisao: concluida ? null : s.prioridadeRevisao,
+      execucao: semPrioridade ? null : s.prioridadeExecucao,
+      revisao: semPrioridade ? null : s.prioridadeRevisao,
       vigente: estimativaVigente(acao),
       /** ação ainda sem estimativa: conta como zero dias no cálculo (seção 5.2) */
       semEstimativa: !concluida && !estimativaVigente(acao),

@@ -192,7 +192,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null }) {
     if (valor == null) return `<span class="medidor vazio">—</span>`;
     return `<span class="medidor" title="${titulo}"><span class="barra-medidor"><i style="width:${Math.max(2, Math.round(valor * 100))}%;background:${cor}"></i></span><span class="num">${texto}</span></span>`;
   }
-  const corDe = (l) => (l.situacao === "concluida" ? "var(--ok)" : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
+  const corDe = (l) => (l.situacao === "concluida" ? "var(--ok)" : l.execucao == null ? "var(--neutral)" : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
 
   const FALTA_ESTIMAR = `<span class="falta-estimar">Falta estimar</span>`;
 

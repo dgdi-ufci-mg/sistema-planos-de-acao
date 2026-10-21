@@ -87,3 +87,20 @@ describe("Agrupar com etapas vazias (passo 1.14a)", () => {
     assert.deepEqual(g.fases[0].etapas.map((e) => e.etapa.id), ["e1", "e2"]);
   });
 });
+
+describe("Prioridades da ação sem estimativa (passo 1.14a)", () => {
+  it("não são mostradas", () => {
+    const cal = criarCalendario({ inicio: "2026-10-01", datasExcluidas: [] }, "2026-10-21");
+    const acoes = [
+      { numero: 1, rotulo: "Com", ordem: 1, dependeDe: [], responsaveis: [], estimativas: [{ o: 1, m: 2, p: 3, contaDe: "liberacao", em: "2026-10-01" }] },
+      { numero: 2, rotulo: "Sem", ordem: 2, dependeDe: [], responsaveis: [], estimativas: [] },
+    ];
+    const caminho = caminhoCritico(acoes, cal, { hoje: "2026-10-21" });
+    const sim = { porAcao: new Map([[1, { prioridadeExecucao: 1, prioridadeRevisao: 1 }], [2, { prioridadeExecucao: 1, prioridadeRevisao: 0 }]]) };
+    const [com, sem] = montarLinhas(acoes, caminho, sim, cal, "2026-10-21");
+    assert.equal(com.execucao, 1);
+    assert.equal(sem.execucao, null);
+    assert.equal(sem.revisao, null);
+    assert.equal(sem.semEstimativa, true);
+  });
+});
