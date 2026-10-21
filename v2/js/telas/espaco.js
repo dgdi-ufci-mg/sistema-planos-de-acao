@@ -18,6 +18,7 @@ import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
 import { criarPlanilha } from "./editar-planilha.js";
 import { desenharLinhaDoTempo } from "./linha-do-tempo.js";
+import { desenharCronograma } from "./cronograma.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -52,6 +53,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const ui = { modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false,
     /** painel aberto sob um botão da barra: "filtrar", "ordenar" ou null */
     pop: null,
+    /** aproximação do cronograma: "semanas" ou "meses" */
+    escalaCrono: "semanas",
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "" };
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
@@ -152,9 +155,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * passar o mouse (decisão do responsável, 21/10/2026). No celular, só Lista e Quadro.
    */
   const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""], ["planilha", "Planilha", "modoPlanilha", "so-computador"],
+    ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
     ["linha", "Linha do tempo", "modoLinha", "so-computador"]];
-  /** Modos sem filtros nem ordem: a planilha mostra todas as ações; a linha do tempo, o espaço inteiro. */
-  const semFiltros = () => ui.modo === "planilha" || ui.modo === "linha";
+  /** Modos sem filtros nem ordem: mostram o espaço inteiro (no cronograma, as setas ligariam ações escondidas). */
+  const semFiltros = () => ["planilha", "cronograma", "linha"].includes(ui.modo);
   let modoDesenhado = null;
   function modosHtml() {
     const trocou = modoDesenhado !== null && modoDesenhado !== ui.modo;
@@ -369,6 +373,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const ls = visiveis();
     let corpo;
     if (ui.modo === "planilha") { planilha.desenhar(lista, dadosDaJanela()); return; }
+    if (ui.modo === "cronograma") {
+      desenharCronograma(lista, { espaco, acoes, caminho, cal, hoje, usaFases, usaCodigos, escala: ui.escalaCrono,
+        aoMudarEscala: (escala) => { ui.escalaCrono = escala; desenharLista(); } });
+      return;
+    }
     if (ui.modo === "linha") { desenharLinhaDoTempo(lista, { espaco, cal, sim, hoje, temAcoes: acoes.length > 0 }); return; }
     const rapida = comRapida();
     if (ui.modo === "quadro") corpo = quadroHtml(ls);

@@ -14,6 +14,8 @@ export const ICONES = Object.freeze({
   modoQuadro: svg('<rect x="3" y="4" width="5" height="15" rx="1.5"/><rect x="9.5" y="4" width="5" height="10" rx="1.5"/><rect x="16" y="4" width="5" height="13" rx="1.5"/>'),
   /** Modo Planilha: grade de células. */
   modoPlanilha: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9.5h18M3 14.5h18M9 4v16M15 4v16"/>'),
+  /** Cronograma: barras escalonadas no tempo. */
+  modoCronograma: svg('<path d="M4 6h8M8 12h9M13 18h7"/>'),
   /** Linha do tempo: eixo com a curva da chance de terminar. */
   modoLinha: svg('<path d="M3 4v16h18"/><path d="M6 17c5 0 6-10 14-11"/>'),
   /** Concluída: visto num círculo. */

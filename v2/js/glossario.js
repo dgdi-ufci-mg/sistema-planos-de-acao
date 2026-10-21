@@ -36,4 +36,10 @@ export const GLOSSARIO = [
   { chave: "chancePrazo", titulo: "Chance de cumprir o prazo",
     texto: "Parte dos cenários simulados em que o trabalho termina até o prazo final. Com 70%, de cada 10 cenários, 7 terminam a tempo.",
     tecnico: "proporção de simulações de Monte Carlo com término até o prazo final" },
+  { chave: "folga", titulo: "Folga e caminho crítico",
+    texto: "Folga é quanto uma ação pode atrasar, em dias úteis, sem atrasar o fim do espaço. As ações sem folga formam o caminho crítico: atrasar qualquer uma delas atrasa tudo.",
+    tecnico: "folga total e caminho crítico (CPM)" },
+  { chave: "cronograma", titulo: "Cronograma",
+    texto: "Barras das ações no tempo, do início ao fim previsto de cada uma, com setas que mostram de quais ações cada uma depende.",
+    tecnico: "diagrama de Gantt" },
 ];

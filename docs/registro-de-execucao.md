@@ -1,6 +1,12 @@
 # Registro de execução da versão 2
 
-Diário dos passos feitos em lote (especificação, seção 3.3, "Execução em lote"). Cada passo tem um commit próprio, com a etiqueta `v2-passo-<número>` no GitHub, para voltar exatamente a ele.
+Diário dos passos feitos em lote (especificação, seção 3.3, "Execução em lote"). Cada passo tem um commit próprio, cuja mensagem começa por "Versão 2, passo <número>", para voltar exatamente a ele.
+
+**Etiquetas:** o ambiente de trabalho não tem permissão para enviar etiquetas ao GitHub (recusa do intermediário de rede). As etiquetas `v2-passo-<número>` ficam só na cópia local; a tabela abaixo liga cada passo ao seu commit. Para criá-las no GitHub, basta rodar, numa cópia do repositório: `git tag v2-passo-<número> <commit> && git push --tags`.
+
+| Passo | Commit |
+|---|---|
+| 1.17a | `0c896ea` |
 
 Em cada passo: o que foi feito, os testes, a conferência na tela e as **decisões provisórias**, tomadas sem consulta e à espera da revisão do responsável.
 
@@ -14,7 +20,7 @@ Os passos 1.16 (histórico) e 1.18 (retratos) criam coleções novas no banco e 
 
 ## Passo 1.17a — Linha do tempo (21/10/2026)
 
-**Etiqueta:** `v2-passo-1.17a`.
+**Commit:** `0c896ea`.
 
 **O que foi feito:** novo modo "Linha do tempo" no seletor da barra do topo, só no computador. Mostra três números (conclusão prevista, data segura e prazo final com a chance de cumpri-lo) e um gráfico com:
 - a parte dos cenários simulados que termina em cada semana (barras; depois do prazo final, em vermelho);
@@ -35,3 +41,26 @@ Os passos 1.16 (histórico) e 1.18 (retratos) criam coleções novas no banco e 
 6. Termo novo no glossário: "Chance de cumprir o prazo".
 
 **Nenhum número mudou de sentido:** a conclusão prevista, a data segura e a chance são os mesmos da simulação de antes; a tela só os desenha.
+
+## Passo 1.17b — Cronograma (21/10/2026)
+
+**O que foi feito:** novo modo "Cronograma" no seletor, só no computador, entre Planilha e Linha do tempo:
+- uma linha por ação, agrupadas por fase e etapa (com uma barra-resumo em cada grupo), quando o espaço usa fases;
+- barras do primeiro ao último dia previsto: vermelho sem folga (caminho crítico), verde-azulado com folga, verde concluída, tracejado dourado sem estimativa;
+- setas das dependências; hoje (tracejado) e prazo final (vermelho);
+- aproximação em semanas ou meses; abre com hoje à vista e mantém a rolagem ao redesenhar;
+- passando o mouse numa barra: datas, folga em dias úteis e destaque das ações ligadas; clicando: abre a ação.
+
+**Arquivos:** `js/cronograma.js` (regras, sem tela), `js/telas/cronograma.js` (desenho), `js/telas/espaco.js`, `js/icones.js`, `js/glossario.js`, `css/estilo.css`.
+
+**Testes:** 176 testes automáticos passam, incluindo os novos de `testes/cronograma.test.js`: cada ação aparece uma vez, com o fim igual à conclusão mostrada na lista; nenhuma ação começa antes do fim das anteriores; agrupamento na ordem das fases; ações sem folga iguais às do caminho crítico. Conferência no navegador de teste, com o exemplo, nos temas claro e escuro, nas duas aproximações, passando o mouse e clicando numa ação: sem erros.
+
+**Decisões provisórias:**
+1. Sem filtros nem ordem no cronograma: as setas ligariam ações escondidas. Mostra sempre o espaço inteiro, na ordem do espaço.
+2. Uma ação pode começar no mesmo dia em que a anterior termina, quando a anterior termina no meio do dia (o cálculo usa frações de dia).
+3. Cores: as da legenda acima; a ação sem estimativa aparece como um pequeno retângulo tracejado no dia em que seria liberada.
+4. Duas aproximações (semanas, 18 pixels por dia; meses, 5 pixels por dia). Sem arrastar barras: as datas vêm das estimativas e dependências, e não são editadas no cronograma.
+5. Termos novos no glossário: "Folga e caminho crítico" e "Cronograma" (diagrama de Gantt).
+6. A comparação com retrato (linha fina sob cada barra) fica para depois do passo 1.18.
+
+**Nenhum número mudou de sentido:** as datas e o caminho crítico são os mesmos do cálculo de antes.

@@ -770,3 +770,58 @@ h3.editavel { padding: 2px 6px; }
 .t-ponto { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
 .t-sensor { fill: transparent; cursor: crosshair; }
 .tempo-dica { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: .85rem; padding: 4px 8px; border-radius: var(--raio); white-space: nowrap; box-shadow: var(--sombra); }
+
+/* ---------- cronograma (passo 1.17b) ---------- */
+.crono-ferramentas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 12px; }
+.crono-legendas { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: .85rem; }
+.crono-legenda { display: inline-flex; align-items: center; gap: 6px; }
+.crono-legenda i { width: 18px; height: 8px; border-radius: 3px; display: inline-block; }
+.crono-legenda i.critica, .crono-barra-acao.critica { background: var(--crit); }
+.crono-legenda i.folga, .crono-barra-acao.folga { background: var(--accent); }
+.crono-legenda i.concluida, .crono-barra-acao.concluida { background: var(--ok); }
+.crono { --nomes: 260px; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
+.crono-rolagem { overflow-x: auto; overflow-y: hidden; border-radius: var(--raio); }
+.crono-conteudo { position: relative; }
+.crono-topo { display: flex; height: 40px; border-bottom: 1px solid var(--line); position: relative; }
+.crono-nome { position: sticky; left: 0; z-index: 3; width: var(--nomes); flex: none; background: var(--surface); border-right: 1px solid var(--line);
+  display: flex; align-items: center; gap: 6px; padding: 0 10px; height: 100%; min-width: 0; font-size: .9rem; }
+.crono-nome.topo { color: var(--muted); font-size: .8rem; }
+.crono-nome .rotulo, .crono-nome > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crono-nome[data-abrir-acao] { cursor: pointer; }
+.crono-nome[data-abrir-acao]:hover .rotulo { text-decoration: underline; }
+.crono-nome .icone-atrasada { flex: none; display: inline-flex; }
+.crono-nome .icone-atrasada svg { width: 15px; height: 15px; }
+.crono-escala { position: relative; flex: none; }
+.crono-mes { position: absolute; top: 4px; padding-left: 4px; font: 600 .78rem var(--f-texto); color: var(--ink); white-space: nowrap; }
+.crono-dia { position: absolute; bottom: 4px; padding-left: 3px; font: .7rem var(--f-dados); color: var(--faint); }
+.crono-corpo { position: relative; }
+.crono-trilho { position: absolute; top: 0; bottom: 0; left: var(--nomes); }
+.crono-guia { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
+.crono-guia.mes { background: var(--line); }
+.crono-passado { position: absolute; top: 0; bottom: 0; left: 0; background: color-mix(in srgb, var(--sunk) 70%, transparent); }
+.crono-marca { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px dashed var(--faint); z-index: 1; }
+.crono-marca.prazo { border-left: 2px solid var(--crit); }
+.crono-marca span { position: absolute; bottom: 4px; left: 4px; font-size: .72rem; color: var(--muted); white-space: nowrap; background: var(--surface); padding: 0 3px; border-radius: 3px; }
+.crono-marca.prazo span { color: var(--crit-ink); font-weight: 600; }
+.crono-setas { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1; }
+.crono-seta { fill: none; stroke: var(--faint); stroke-width: 1.2; transition: opacity var(--mov-rapido) var(--mov-curva), stroke var(--mov-rapido); }
+#crono-ponta path { fill: var(--faint); }
+.crono-linha { position: absolute; left: 0; right: 0; height: var(--altura); border-bottom: 1px solid var(--grid); }
+.crono-linha.grupo .crono-nome { font-weight: 600; }
+.crono-linha.grupo.fase { background: color-mix(in srgb, var(--sunk) 80%, transparent); }
+.crono-linha.grupo.fase .crono-nome { background: var(--sunk); font-family: var(--f-titulo); }
+.crono-linha.grupo.etapa .crono-nome { padding-left: 20px; color: var(--muted); font-size: .85rem; }
+.crono-resumo { position: absolute; top: calc(50% - 3px); height: 6px; background: var(--ink); opacity: .55; border-radius: 1px; z-index: 2; }
+.crono-linha:not(.grupo) .crono-nome { padding-left: 30px; }
+.crono-linha .crono-nome { box-shadow: 0 1px 0 var(--grid); } /* cobre as setas que passariam pela borda da linha, sob os nomes */
+.crono-barra-acao { position: absolute; top: 8px; height: calc(var(--altura) - 16px); border: 0; border-radius: 4px; padding: 0; cursor: pointer; z-index: 2;
+  transition: opacity var(--mov-rapido) var(--mov-curva), box-shadow var(--mov-rapido); }
+.crono-barra-acao:hover, .crono-barra-acao:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); outline: none; }
+.crono-barra-acao.sem-estimativa { background: transparent; border: 2px dashed var(--warn); }
+.crono.destacando .crono-barra-acao:not(.ligada) { opacity: .3; }
+.crono.destacando .crono-seta { opacity: .15; }
+.crono.destacando .crono-seta.ligada { opacity: 1; stroke: var(--ink); stroke-width: 1.8; }
+.crono .tempo-dica { white-space: normal; max-width: 320px; line-height: 1.35; z-index: 5; }
+.alternador button { position: relative; z-index: 1; padding: 5px 16px; border: 0; background: none; border-radius: 999px; cursor: pointer; font: 600 .88rem var(--f-texto); color: var(--muted); }
+.alternador button[aria-pressed="true"] { color: var(--accent-ink); }
+.alternador:has(button:nth-child(2)[aria-pressed="true"])::before { transform: translateX(100%); }
