@@ -33,6 +33,12 @@ export function criarBancoLocal() {
   let calendario = null;
   /** Histórico de alterações das ações (passo 1.16): espacoId → registros, só de acréscimo. */
   const historicoPorEspaco = new Map();
+  /** Retratos (passo 1.18): espacoId → (id → {cabecalho, acoes}); só leitura depois de criados. */
+  const retratosPorEspaco = new Map();
+  const retratosDo = (espacoId) => {
+    if (!retratosPorEspaco.has(espacoId)) retratosPorEspaco.set(espacoId, new Map());
+    return retratosPorEspaco.get(espacoId);
+  };
   const historicoDo = (espacoId) => {
     if (!historicoPorEspaco.has(espacoId)) historicoPorEspaco.set(espacoId, []);
     return historicoPorEspaco.get(espacoId);
@@ -169,6 +175,24 @@ export function criarBancoLocal() {
         }
         return { ...extra, estimativas: [...lista.slice(0, -1), estimativa] };
       }, historico);
+    },
+
+    // --- retratos (passo 1.18) ---
+    /** Grava o cabeçalho e as ações do retrato de uma vez. O id não se repete; ninguém altera depois. */
+    async criarRetrato(espacoId, cabecalho, acoes) {
+      exigirEspaco(espacoId);
+      const lista = retratosDo(espacoId);
+      if (lista.has(cabecalho.id)) throw new ErroDeDados("id-ocupado", `Já existe um retrato com o id ${cabecalho.id}.`);
+      lista.set(cabecalho.id, { cabecalho: copia(cabecalho), acoes: copia(acoes) });
+      return cabecalho.id;
+    },
+    /** Cabeçalhos dos retratos do espaço (sem as ações). */
+    async listarRetratos(espacoId) {
+      return [...retratosDo(espacoId).values()].map((r) => copia(r.cabecalho));
+    },
+    async listarAcoesDoRetrato(espacoId, retratoId) {
+      const r = retratosDo(espacoId).get(retratoId);
+      return r ? copia(r.acoes) : [];
     },
 
     // --- histórico de alterações (passo 1.16) ---

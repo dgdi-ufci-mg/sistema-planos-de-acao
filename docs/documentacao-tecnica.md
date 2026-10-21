@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 75 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 76 da página)
 
 ---
 
@@ -512,6 +512,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 73 | Versão 2, passo 1.17c (primeira versão, em lote): modo "Rede" (fluxo das ações) no computador, com as ações em cartões arrumados em colunas, na ordem em que podem acontecer, setas das dependências (vermelhas no caminho crítico), destaque de tudo o que vem antes e depois da ação apontada, abertura da ação ao clicar e "Ver tudo". Arrumação própria, sem biblioteca: colunas pela anterior mais distante e ordem que reduz cruzamentos. Termo novo no glossário: "Rede (fluxo das ações)". Sem mudança na versão atual |
 | 74 | Versão 2, passo 1.19a (primeira versão, em lote): exportação de um espaço para planilha (texto com tabulações, com as datas previstas, a folga e a situação) e em fluxograma Mermaid (fases e etapas como grupos, ações sem folga destacadas), em "Configurar este espaço"; cópia de segurança de todos os espaços, inclusive a lixeira, em arquivo JSON de formato próprio, em "Configurar o sistema". Só leitura. A importação e a restauração ficam no passo 1.19b. Sem mudança na versão atual |
 | 75 | Versão 2, passo 1.16 (primeira versão, em lote): histórico de alterações das ações. Cada alteração grava, na mesma operação, um registro por campo que mudou (quem, quando, valor antigo e novo), em coleção própria e só de acréscimo; na janela da ação, "Histórico de alterações" em frases simples. No Firebase, toda mudança de ação passa a ser feita por transação. Regras do banco novas (`v2/firestore.rules`), a publicar no console antes de juntar à `main`. Cópia de segurança no formato versão 2, com o histórico. Sem mudança na versão atual |
+| 76 | Versão 2, passo 1.18 (primeira versão, em lote): retratos manuais. Em "Configurar este espaço", salvar um retrato com nome e ver a lista, com a conclusão prevista, a data segura e a chance de cada um. O retrato é a cópia integral do espaço, com as ações e os resultados calculados, e não muda depois. No cronograma, "Comparar com" um retrato: linha fina sob cada barra e a diferença no término. Regras do banco novas (`v2/firestore.rules`). A cópia de segurança passa a levar os retratos. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

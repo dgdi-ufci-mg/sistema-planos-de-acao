@@ -10,6 +10,7 @@ import { CAMPOS } from "./modelo.js";
 import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
 import { registrosDaMudanca } from "./historico.js";
+import { montarRetrato } from "./retrato.js";
 
 export { ErroDeDados };
 
@@ -450,6 +451,31 @@ export function criarStore(banco, opcoes = {}) {
       const posicao = (r) => (r.campo ? CAMPOS.acao.indexOf(r.campo) + 1 : 0);
       return (await banco.listarHistorico(espacoId, numero)).sort((a, b) => a.em.localeCompare(b.em) || posicao(a) - posicao(b));
     },
+    // --- retratos (seção 4.4; passo 1.18) ---
+    /**
+     * Salva um retrato manual: a cópia integral do espaço agora, com os resultados calculados.
+     * Só leitura depois de salvo. Devolve o id.
+     */
+    async salvarRetrato(espacoId, nome) {
+      if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Dê um nome ao retrato, como “Plano aprovado”.");
+      const espaco = await store.lerEspaco(espacoId);
+      if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      const { cabecalho, acoes } = montarRetrato({
+        espaco, acoes: await store.listarAcoes(espacoId), responsaveis: await store.listarResponsaveis(espacoId),
+        geral: await store.lerCalendarioGeral(), hoje: hoje(),
+      });
+      const id = novoId();
+      await banco.criarRetrato(espacoId, { id, nome: nome.trim().slice(0, 120), origem: "manual", criadoEm: agora(), criadoPor: usuario, ...cabecalho }, acoes);
+      return id;
+    },
+    /** Retratos do espaço, do mais recente ao mais antigo (só os cabeçalhos). */
+    async listarRetratos(espacoId) {
+      return (await banco.listarRetratos(espacoId)).sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
+    },
+    /** Ações de um retrato, na ordem do espaço naquele momento. */
+    async listarAcoesDoRetrato(espacoId, retratoId) {
+      return (await banco.listarAcoesDoRetrato(espacoId, retratoId)).sort((a, b) => a.ordem - b.ordem);
+    },
     /** Lixeira de um espaço: ações e responsáveis excluídos, os mais recentes primeiro. */
     async listarLixeira(espacoId) {
       const recentes = (campo) => (a, b) => (b[campo] ?? "").localeCompare(a[campo] ?? "");
@@ -470,7 +496,7 @@ export function criarStore(banco, opcoes = {}) {
       const espacos = (await banco.listarEspacos()).sort((a, b) => a.id.localeCompare(b.id));
       return {
         formato: "sextante-copia-de-seguranca",
-        versao: 2, // 2: com o histórico de alterações (passo 1.16)
+        versao: 2, // 2: com o histórico de alterações (passo 1.16) e os retratos (passo 1.18)
         geradaEm: agora(),
         geradaPor: usuario ?? null,
         calendarioGeral: (await banco.lerCalendarioGeral()) ?? null,
@@ -479,6 +505,9 @@ export function criarStore(banco, opcoes = {}) {
           acoes: (await banco.listarAcoes(espaco.id)).sort((a, b) => a.numero - b.numero),
           responsaveis: (await banco.listarResponsaveis(espaco.id)).sort((a, b) => a.id.localeCompare(b.id)),
           historico: (await banco.listarHistoricoDoEspaco(espaco.id)).sort((a, b) => a.em.localeCompare(b.em) || a.id.localeCompare(b.id)),
+          retratos: await Promise.all((await banco.listarRetratos(espaco.id)).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm)).map(async (r) => ({
+            ...r, acoes: (await banco.listarAcoesDoRetrato(espaco.id, r.id)).sort((a, b) => a.numero - b.numero),
+          }))),
         }))),
       };
     },
@@ -488,7 +517,8 @@ export function criarStore(banco, opcoes = {}) {
   const GRAVACOES = ["criarEspaco", "alterarEspaco", "criarAcao", "alterarAcao", "acrescentarResponsavelNaAcao",
     "retirarResponsavelDaAcao", "acrescentarDependencia", "retirarDependencia", "reestimar", "corrigirEstimativa",
     "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral",
-    "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco"];
+    "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco",
+    "salvarRetrato"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

@@ -6,6 +6,7 @@
 // - só quem entrou com e-mail e senha cria e altera;
 // - ninguém apaga: a exclusão é lógica (passo 1.15);
 // - o histórico de alterações só recebe registros novos: ninguém altera nem apaga (passo 1.16);
+// - os retratos só são criados: depois, ninguém altera nem apaga (passo 1.18);
 // - fora destes caminhos, nada.
 rules_version = '2';
 service cloud.firestore {
@@ -29,6 +30,15 @@ service cloud.firestore {
       match /historico/{registroId} {
         allow read: if true;
         allow create: if logado();
+      }
+      // retratos (passo 1.18): cabeçalho e ações, só leitura depois de criados
+      match /retratos/{retratoId} {
+        allow read: if true;
+        allow create: if logado();
+        match /acoes/{numero} {
+          allow read: if true;
+          allow create: if logado();
+        }
       }
     }
     match /sistema/calendario {

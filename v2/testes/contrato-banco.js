@@ -161,5 +161,16 @@ export function testarContratoDoBanco(nome, criarBanco) {
       assert.equal((await banco.listarHistoricoDoEspaco("p1")).length, 3);
       assert.deepEqual(await banco.listarHistorico("p1", 2), []);
     });
+
+    it("retrato: grava cabeçalho e ações de uma vez, sem repetir o id (passo 1.18)", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarRetrato("p1", { id: "r1", nome: "Base", criadoEm: "2026-10-21T00:00:00Z" }, [acao(1), acao(2)]);
+      await assert.rejects(banco.criarRetrato("p1", { id: "r1", nome: "Outro" }, []), { codigo: "id-ocupado" });
+      await assert.rejects(banco.criarRetrato("nao-existe", { id: "r2", nome: "X" }, []), { codigo: "nao-encontrado" });
+      assert.deepEqual((await banco.listarRetratos("p1")).map((r) => r.nome), ["Base"]);
+      assert.deepEqual((await banco.listarAcoesDoRetrato("p1", "r1")).map((a) => a.numero).sort(), [1, 2]);
+      assert.deepEqual(await banco.listarAcoesDoRetrato("p1", "r9"), []);
+    });
   });
 }

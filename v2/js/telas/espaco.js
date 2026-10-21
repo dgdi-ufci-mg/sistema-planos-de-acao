@@ -56,6 +56,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     pop: null,
     /** aproximação do cronograma: "semanas" ou "meses" */
     escalaCrono: "semanas",
+    /** comparação do cronograma com um retrato (passo 1.18): lista (null: a carregar), escolhido e datas dele */
+    retratos: null, comparar: null, base: null,
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
     escalaRede: "normal",
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
@@ -379,7 +381,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (ui.modo === "planilha") { planilha.desenhar(lista, dadosDaJanela()); return; }
     if (ui.modo === "cronograma") {
       desenharCronograma(lista, { espaco, acoes, caminho, cal, hoje, usaFases, usaCodigos, escala: ui.escalaCrono,
-        aoMudarEscala: (escala) => { ui.escalaCrono = escala; desenharLista(); } });
+        aoMudarEscala: (escala) => { ui.escalaCrono = escala; desenharLista(); },
+        retratos: ui.retratos, comparar: ui.comparar, base: ui.base, aoComparar: compararCom });
+      if (ui.retratos === null) carregarRetratos();
       return;
     }
     if (ui.modo === "rede") {
@@ -508,7 +512,35 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (painelOpcoes?.isConnected) preencherOpcoes();
   }
 
+  /* ---------- retratos para o cronograma (passo 1.18) ---------- */
+  let carregandoRetratos = false;
+  async function carregarRetratos() {
+    if (carregandoRetratos) return;
+    carregandoRetratos = true;
+    try {
+      ui.retratos = await store.listarRetratos(espacoId);
+    } catch {
+      ui.retratos = [];
+    }
+    carregandoRetratos = false;
+    if (ui.modo === "cronograma") desenharLista();
+  }
+  async function compararCom(id) {
+    ui.comparar = id;
+    ui.base = null;
+    if (id) {
+      try {
+        ui.base = new Map((await store.listarAcoesDoRetrato(espacoId, id)).map((a) => [a.numero, { inicio: a.liberacaoPrevista, fim: a.conclusaoPrevista }]));
+      } catch (e) {
+        ui.comparar = null;
+        avisar(e.message);
+      }
+    }
+    if (ui.modo === "cronograma") desenharLista();
+  }
+
   function mudarModo(modo) {
+    if (modo === "cronograma") ui.retratos = null; // relê a lista: pode haver retrato novo
     if (modo === "quadro" && ui.situacao !== "atrasada") ui.situacao = "todas"; // no quadro, as colunas já separam as situações
     mudar("modo", modo);
   }

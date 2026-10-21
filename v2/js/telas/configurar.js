@@ -3,7 +3,7 @@
  * menu do espaço, com dados e datas, datas excluídas, fases e etapas, campos opcionais,
  * documentos e a semente da simulação (visível, mas fixa). Cada seção é gravada pelo seu botão
  * Salvar; os campos opcionais, na hora. Exportação (passo 1.19a): copiar para planilha e copiar
- * o fluxograma em Mermaid. Retratos e importação entram nos passos 1.18 e 1.19b.
+ * o fluxograma em Mermaid. Retratos (passo 1.18): salvar e listar. Importação: passo 1.19b.
  */
 import { ligarSecoesSuaves } from "./movimento.js";
 import { criarTelaResponsaveis } from "./responsaveis.js";
@@ -34,6 +34,8 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   let geral = await store.lerCalendarioGeral();
   let acoes = await store.listarAcoes(espacoId);
   let responsaveis = await store.listarResponsaveis(espacoId);
+  /** retratos do espaço (passo 1.18), do mais recente ao mais antigo */
+  let retratos = await store.listarRetratos(espacoId).catch(() => []);
   /** responsáveis do espaço (seção 4.5): a mesma tela de antes, agora numa seção deste painel */
   const telaResponsaveis = criarTelaResponsaveis({ store });
   const meus = () => (store.usuario ? responsaveis.filter((r) => r.usuario === store.usuario).map((r) => r.id) : null);
@@ -163,6 +165,17 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <p class="tec">Fixos desde a criação do espaço, para que qualquer pessoa obtenha os mesmos resultados ao refazer o cálculo.</p>
       </details>
 
+      <details class="config" data-secao="retratos"${aberta("retratos")}>
+        <summary><h3>Retratos</h3><span class="n">${retratos.length}</span></summary>
+        <p class="tec">Um retrato guarda o espaço como está agora, com as datas calculadas, para comparar depois com o andamento real.
+          Por exemplo: "Plano aprovado", ou uma revisão do plano. Depois de salvo, ninguém altera.</p>
+        ${store.podeGravar ? `<div class="linha-config">
+          <input data-nome-retrato maxlength="120" placeholder="Nome do retrato, como “Plano aprovado”" aria-label="Nome do retrato">
+          <button class="botao principal" type="button" data-salvar-retrato>Salvar retrato</button>
+        </div>` : ""}
+        <div data-lista-retratos>${retratosHtml()}</div>
+      </details>
+
       <details class="config" data-secao="exportar"${aberta("exportar")}>
         <summary><h3>Exportar</h3></summary>
         <p class="tec">Copia as ações deste espaço, com as datas previstas, a folga e a situação, prontas para colar no Google Planilhas ou no Excel.</p>
@@ -172,8 +185,20 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <textarea class="texto-exportado" data-exportado rows="6" readonly hidden aria-label="Texto exportado"></textarea>
       </details>
 
-      <p class="tec">Retratos e importação chegam nos próximos passos. A cópia de segurança de todos os espaços fica em "Configurar o sistema".</p>
+      <p class="tec">A importação chega num próximo passo. A cópia de segurança de todos os espaços fica em "Configurar o sistema".</p>
       ${store.podeGravar ? '<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>' : ""}`;
+  }
+
+  /** Lista dos retratos: nome, quando, quem e o resultado naquele momento. */
+  function retratosHtml() {
+    if (!retratos.length) return `<p class="vazio">Nenhum retrato salvo.</p>`;
+    const quem = (email) => responsaveis.find((r) => r.usuario === email)?.nome ?? email ?? "Sem login";
+    const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return `<ul class="retratos">${retratos.map((r) => `<li>
+      <b>${esc(r.nome)}</b>
+      <span class="tec">${esc(quando(r.criadoEm))} · ${esc(quem(r.criadoPor))}</span>
+      <span>Conclusão prevista <span class="mono">${dataBr(r.resumo.conclusaoPrevista)}</span> · data segura <span class="mono">${dataBr(r.resumo.dataSegura)}</span>${r.resumo.chancePrazo == null ? "" : ` · ${Math.round(r.resumo.chancePrazo * 100)}% de chance de cumprir o prazo`}</span>
+    </li>`).join("")}</ul>`;
   }
 
   /** Datas do calendário geral a partir do início do espaço, cada uma com a opção de desconsiderar. */
@@ -311,6 +336,23 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     const t = e.target.closest("button");
     if (!t || t.disabled) return;
     if (t.dataset.comAcoes) { tirarComAcoes(t); return; }
+    if (t.dataset.salvarRetrato != null) {
+      const campo = corpo.querySelector("[data-nome-retrato]");
+      t.disabled = true;
+      try {
+        await store.salvarRetrato(espacoId, campo.value);
+        retratos = await store.listarRetratos(espacoId);
+        campo.value = "";
+        corpo.querySelector("[data-lista-retratos]").innerHTML = retratosHtml();
+        corpo.querySelector('[data-secao="retratos"] > summary .n').textContent = String(retratos.length);
+        avisar("Retrato salvo. Compare com ele no cronograma.");
+      } catch (falha) {
+        avisar(falha.message);
+      } finally {
+        t.disabled = false;
+      }
+      return;
+    }
     if (t.dataset.exportar) {
       const dados = { espaco, acoes, responsaveis, geral, hoje: hojeLocal() };
       const planilha = t.dataset.exportar === "planilha";
@@ -347,6 +389,9 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         : campos;
       alvo[alvo.length - (t.dataset.acrescentar === "documentos" ? 4 : t.dataset.acrescentar === "datas" ? 2 : 1)]?.focus();
     }
+  });
+  corpo.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && e.target.matches("[data-nome-retrato]")) { e.preventDefault(); corpo.querySelector("[data-salvar-retrato]")?.click(); }
   });
   corpo.addEventListener("submit", (e) => {
     if (!e.target.dataset.salvar) return; // o formulário dos responsáveis grava por conta própria

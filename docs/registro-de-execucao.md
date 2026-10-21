@@ -10,6 +10,7 @@ Diário dos passos feitos em lote (especificação, seção 3.3, "Execução em 
 | 1.17b | `b0d2785` |
 | 1.17c | `273c153` |
 | 1.19a | `0a39614` |
+| 1.16 | `bb3635d` (branch `passos-1.16-1.18`) |
 
 Em cada passo: o que foi feito, os testes, a conferência na tela e as **decisões provisórias**, tomadas sem consulta e à espera da revisão do responsável.
 
@@ -164,3 +165,24 @@ Os registros vão como estão no banco, sem tradução: o dicionário de dados (
 6. Na janela, o autor aparece pelo nome do responsável ligado ao e-mail; sem ligação, pelo e-mail; sem login (exemplo), "Sem login".
 
 **Observado e não corrigido (fora do passo):** no "Histórico de estimativas" da janela da ação, a data, o autor e o selo "vigente" de cada item aparecem em linhas separadas, porque o item é uma coluna flexível. Problema de aparência anterior a este passo; fica para correção à parte, se o responsável quiser.
+
+## Passo 1.18 — Retratos manuais (21/10/2026, na branch `passos-1.16-1.18`)
+
+**Por que na mesma branch:** os retratos ficam em `espacos/{id}/retratos`, coleção nova que também exige regras novas do Firestore. As regras da branch já cobrem o histórico e os retratos: uma publicação só no console.
+
+**O que foi feito:**
+- "Configurar este espaço" ganhou a seção **Retratos**: um campo para o nome e "Salvar retrato" (Enter também salva); abaixo, a lista dos retratos, do mais recente ao mais antigo, com quando, quem e o resultado naquele momento (conclusão prevista, data segura e chance de cumprir o prazo).
+- O retrato é a cópia integral da seção 4.4: o espaço com todos os campos, as datas excluídas que valiam, os responsáveis citados, a semente, o número de cenários, a versão do cálculo e o resumo; e um registro por ação ativa, com todos os campos e os valores calculados (situação, atrasada, liberação e conclusão previstas, folga e as duas prioridades). O cabeçalho e as ações são gravados numa transação: o retrato aparece inteiro ou não aparece. Depois, ninguém altera.
+- No **cronograma**, "Comparar com" lista os retratos do espaço. Escolhido um, cada barra ganha uma linha fina embaixo, com as datas da ação no retrato; passando o mouse, a dica diz quantos dias úteis o término mudou ("Termina 17 dias úteis depois"). Ação criada depois do retrato não tem linha.
+- Cópia de segurança (formato versão 2): cada espaço leva também os retratos, cada um com as suas ações.
+
+**Arquivos:** `js/retrato.js` (montagem, sem banco), `js/dados.js` (`salvarRetrato`, `listarRetratos`, `listarAcoesDoRetrato`), `js/banco/local.js`, `js/banco/firestore.js`, `js/telas/configurar.js`, `js/telas/cronograma.js`, `js/telas/espaco.js`, `css/estilo.css`, `firestore.rules`.
+
+**Testes:** 212 testes automáticos passam, incluindo `testes/retrato.test.js` (nos dois bancos: campos exatamente os do dicionário; refazer o cálculo só com o retrato dá a mesma conclusão prevista, data segura e chance; o retrato não muda quando o espaço muda; nome obrigatório; ordem; entra na cópia de segurança; recusado sem login) e o novo teste de contrato dos bancos (gravação de uma vez, id sem repetir). No navegador de teste, com o exemplo: salvar "Plano aprovado", reestimar uma ação para mais tempo e comparar no cronograma: linhas do retrato sob as barras e a diferença certa na dica; sem erros.
+
+**Decisões provisórias:**
+1. Qualquer pessoa com login salva retratos (a especificação fala em administrador do espaço; os papéis chegam no passo 2.1).
+2. Não há excluir retrato: os manuais também ficam (a especificação só proíbe excluir os automáticos; excluir um manual pode entrar depois, se o responsável quiser).
+3. A comparação fica no cronograma. Na linha do tempo e na lista, ainda não.
+4. Linha do retrato em cinza, fina, sob a barra; legenda "No retrato".
+5. A lista de retratos do cronograma é lida ao entrar no modo; um retrato salvo com o cronograma aberto aparece ao voltar a ele.

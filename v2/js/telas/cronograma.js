@@ -3,7 +3,7 @@
  * Barras das ações no tempo, com as dependências em setas, agrupadas por fase e etapa.
  * Interativo: passar o mouse numa barra mostra as datas e a folga e destaca as ligações;
  * clicar abre a ação; dois níveis de aproximação (semanas e meses).
- * A comparação com um retrato (linha fina sob cada barra) depende dos retratos (passo 1.18).
+ * Comparação com um retrato (passo 1.18): linha fina sob cada barra, com as datas do retrato.
  * Só no computador (o seletor esconde o modo no celular).
  */
 import { montarCronograma } from "../cronograma.js";
@@ -22,17 +22,23 @@ const ALTURA = 34;
 /**
  * @param {HTMLElement} alvo
  * @param {{espaco: object, acoes: object[], caminho: object, cal: object, hoje: string, usaFases: boolean,
- *   usaCodigos: boolean, escala: string, aoMudarEscala: (escala: string) => void}} dados
+ *   usaCodigos: boolean, escala: string, aoMudarEscala: (escala: string) => void,
+ *   retratos?: object[]|null, comparar?: string|null, base?: Map<number, {inicio: string, fim: string}>|null,
+ *   aoComparar?: (id: string|null) => void}} dados
+ *   retratos: cabeçalhos dos retratos do espaço (null: ainda carregando); comparar: id do retrato escolhido;
+ *   base: datas de cada ação no retrato escolhido
  */
-export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, usaFases, usaCodigos, escala, aoMudarEscala }) {
+export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, usaFases, usaCodigos, escala, aoMudarEscala,
+  retratos = null, comparar = null, base = null, aoComparar = () => {} }) {
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. O cronograma aparece quando houver ações.</p>`;
     return;
   }
   const { linhas, inicio, fim } = montarCronograma(acoes, caminho, cal, { estrutura: espaco.estrutura, usaFases });
   const prazo = espaco.prazoFinal ?? null;
-  const de = somar([inicio, hoje].sort()[0], -3);
-  const ate = somar([fim, prazo ?? fim, hoje].sort().at(-1), 10);
+  const datasBase = base ? [...base.values()].flatMap((b) => [b.inicio, b.fim]) : [];
+  const de = somar([inicio, hoje, ...datasBase].sort()[0], -3);
+  const ate = somar([fim, prazo ?? fim, hoje, ...datasBase].sort().at(-1), 10);
   const px = (ESCALAS.find(([v]) => v === escala) ?? ESCALAS[0])[2];
   const largura = Math.ceil(dias(de, ate) * px);
   const x = (iso) => dias(de, iso) * px;
@@ -76,6 +82,7 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
         ${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>
         ${b.atrasada ? `<span class="icone-atrasada" title="Atrasada">${ICONES.atrasada}</span>` : ""}
       </div>
+      ${base?.has(a.numero) ? `<i class="crono-base" style="left:calc(var(--nomes) + ${x(base.get(a.numero).inicio)}px);width:${Math.max(3, x(somar(base.get(a.numero).fim, 1)) - x(base.get(a.numero).inicio))}px"></i>` : ""}
       <button type="button" class="crono-barra-acao ${classe}" data-abrir-acao data-dica-numero="${a.numero}"
         style="left:calc(var(--nomes) + ${x0}px);width:${semEstimativa ? 12 : Math.max(4, x1 - x0)}px" aria-label="${esc(a.rotulo)}: ${dataBr(b.inicio)} a ${dataBr(b.fim)}"></button>
     </div>`;
@@ -105,7 +112,13 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
 
   const legenda = `<span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
     <span class="crono-legenda"><i class="folga"></i>Com folga</span>
-    <span class="crono-legenda"><i class="concluida"></i>Concluída</span>`;
+    <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
+    ${base ? `<span class="crono-legenda"><i class="base"></i>No retrato</span>` : ""}`;
+  const retratoEscolhido = retratos?.find((r) => r.id === comparar);
+  const comparacao = retratos?.length ? `<label class="crono-comparar"><span>Comparar com</span>
+      <select data-comparar aria-label="Comparar com um retrato"><option value="">Nenhum retrato</option>
+        ${retratos.map((r) => `<option value="${esc(r.id)}"${r.id === comparar ? " selected" : ""}>${esc(r.nome)} (${dataBr(r.criadoEm.slice(0, 10))})</option>`).join("")}
+      </select></label>` : "";
 
   /* ao redesenhar (mudança nos dados ou na aproximação), mantém a rolagem; na primeira vez, abre perto de hoje */
   const anterior = alvo.querySelector("[data-rolagem]");
@@ -116,6 +129,7 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
       <div class="alternador" role="group" aria-label="Aproximação">
         ${ESCALAS.map(([v, nome]) => `<button type="button" data-escala="${v}" aria-pressed="${v === escala}">${nome}</button>`).join("")}
       </div>
+      ${comparacao}
       <div class="crono-legendas">${legenda}</div>
     </div>
     <div class="crono" style="--altura:${ALTURA}px">
@@ -149,6 +163,9 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
     const b = e.target.closest("[data-escala]");
     if (b && b.dataset.escala !== escala) aoMudarEscala(b.dataset.escala);
   };
+  alvo.querySelector(".crono-ferramentas").onchange = (e) => {
+    if (e.target.matches("[data-comparar]")) aoComparar(e.target.value || null);
+  };
   const limpar = () => {
     caixa.classList.remove("destacando");
     for (const el of caixa.querySelectorAll(".ligada")) el.classList.remove("ligada");
@@ -170,7 +187,12 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
       : b.duracao === 0 ? "Falta estimar"
       : b.critica ? "Sem folga: atrasar esta ação atrasa o fim do espaço"
       : `Folga de ${b.folga} ${plural(b.folga, "dia útil", "dias úteis")}`;
-    dica.innerHTML = `<b>${esc(b.acao.rotulo)}</b><br><span class="mono">${dataBr(b.inicio)} → ${dataBr(b.fim)}</span><br>${situacao}`;
+    const naBase = base?.get(numero);
+    const diferenca = naBase ? cal.diasUteisAte(b.fim) - cal.diasUteisAte(naBase.fim) : 0;
+    const noRetrato = !base ? "" : naBase
+      ? `<br>No retrato “${esc(retratoEscolhido?.nome ?? "")}”: <span class="mono">${dataBr(naBase.inicio)} → ${dataBr(naBase.fim)}</span>. ${diferenca > 0 ? `Termina ${diferenca} ${plural(diferenca, "dia útil", "dias úteis")} depois` : diferenca < 0 ? `Termina ${-diferenca} ${plural(-diferenca, "dia útil", "dias úteis")} antes` : "Mesmo término"}.`
+      : "<br>Ação criada depois do retrato.";
+    dica.innerHTML = `<b>${esc(b.acao.rotulo)}</b><br><span class="mono">${dataBr(b.inicio)} → ${dataBr(b.fim)}</span><br>${situacao}${noRetrato}`;
     dica.hidden = false;
     const r = alvoBarra.getBoundingClientRect();
     const c = caixa.getBoundingClientRect();

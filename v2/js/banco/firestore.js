@@ -9,6 +9,7 @@
  *   espacos/{id}/acoes/{numero}     ação
  *   espacos/{id}/responsaveis/{id}  responsável do espaço (seção 4.5)
  *   espacos/{id}/historico/{id}     histórico de alterações das ações (seção 4.2.1), só de acréscimo
+ *   espacos/{id}/retratos/{id}      retrato (seção 4.4): cabeçalho; as ações em .../acoes/{numero}
  *   sistema/calendario              calendário geral
  *
  * Recebe o Firestore já iniciado (`db`, API compat), para os testes
@@ -51,6 +52,7 @@ export function criarBancoFirestore(db) {
   const acaoRef = (espacoId, numero) => acoesRef(espacoId).doc(String(numero));
   const responsaveisRef = (espacoId) => espacoRef(espacoId).collection("responsaveis");
   const historicoRef = (espacoId) => espacoRef(espacoId).collection("historico");
+  const retratosRef = (espacoId) => espacoRef(espacoId).collection("retratos");
 
   /** Na mesma transação da mudança, grava os registros do histórico (um não existe sem o outro). */
   const registrar = (t, espacoId, historico, antes, depois) => {
@@ -184,6 +186,28 @@ export function criarBancoFirestore(db) {
         }
         return { ...extra, estimativas: [...lista.slice(0, -1), estimativa] };
       }, historico);
+    },
+
+    // --- retratos (passo 1.18) ---
+    /**
+     * Cabeçalho e ações numa transação: o retrato aparece inteiro ou não aparece. As ações ficam
+     * em documentos próprios, para um espaço grande não passar do limite de 1 MB por documento (seção 4.4).
+     */
+    async criarRetrato(espacoId, cabecalho, acoes) {
+      const ref = retratosRef(espacoId).doc(cabecalho.id);
+      await db.runTransaction(async (t) => {
+        if (!(await t.get(espacoRef(espacoId))).exists) throw new ErroDeDados("nao-encontrado", `Espaço ${espacoId} não encontrado.`);
+        if ((await t.get(ref)).exists) throw new ErroDeDados("id-ocupado", `Já existe um retrato com o id ${cabecalho.id}.`);
+        t.set(ref, copia(cabecalho));
+        for (const a of acoes) t.set(ref.collection("acoes").doc(String(a.numero)), copia(a));
+      });
+      return cabecalho.id;
+    },
+    async listarRetratos(espacoId) {
+      return (await retratosRef(espacoId).get()).docs.map((d) => d.data());
+    },
+    async listarAcoesDoRetrato(espacoId, retratoId) {
+      return (await retratosRef(espacoId).doc(retratoId).collection("acoes").get()).docs.map((d) => d.data());
     },
 
     // --- histórico de alterações (passo 1.16) ---
