@@ -6,68 +6,47 @@
  * a ação; "Ver tudo" reduz o desenho para caber na largura da tela.
  * Só no computador (o seletor esconde o modo no celular).
  */
-import { montarRede } from "../rede.js";
+import { montarRede, caminhoDaSeta, MEDIDAS } from "../rede.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
-
-const LARGURA = 240;
-const ALTURA = 76;
-const VAO_X = 64;
-const VAO_Y = 18;
-const MARGEM = 16;
 
 /**
  * @param {HTMLElement} alvo
  * @param {{acoes: object[], caminho: object, linhas: object[], etapaDe: Map<string, string>, identificador: (acao: object) => string,
- *   escala: string, aoMudarEscala: (escala: string) => void}} dados
- *   linhas: as linhas da lista (lista.js), para as datas e situações já calculadas
+ *   donos: (acao: object) => string, situacao: (linha: object) => string, escala: string, aoMudarEscala: (escala: string) => void}} dados
+ *   linhas: as linhas da lista (lista.js), para as datas e situações já calculadas;
+ *   donos e situacao: o mesmo desenho dos cartões do quadro (22/10/2026)
  */
-export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, escala, aoMudarEscala }) {
+export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, donos, situacao, escala, aoMudarEscala }) {
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
     return;
   }
-  const { colunas, arestas } = montarRede(acoes, caminho);
+  const { pos, arestas, largura, altura } = montarRede(acoes, caminho);
   const linhaDe = new Map(linhas.map((l) => [l.acao.numero, l]));
-  const maior = Math.max(...colunas.map((c) => c.length));
-  const largura = MARGEM * 2 + colunas.length * LARGURA + (colunas.length - 1) * VAO_X;
-  const altura = MARGEM * 2 + maior * ALTURA + (maior - 1) * VAO_Y;
 
-  /* posição de cada cartão: colunas centradas na vertical */
-  const pos = new Map();
-  colunas.forEach((col, c) => {
-    const sobra = (maior - col.length) * (ALTURA + VAO_Y) / 2;
-    col.forEach((n, i) => pos.set(n, { x: MARGEM + c * (LARGURA + VAO_X), y: MARGEM + sobra + i * (ALTURA + VAO_Y) }));
-  });
-
+  /* cartões no padrão do quadro (22/10/2026): situação e nome, etapa, responsáveis e data */
   const cartoes = acoes.map((a) => {
     const { x, y } = pos.get(a.numero);
     const l = linhaDe.get(a.numero);
     const c = caminho.porAcao.get(a.numero);
     const classe = l.situacao === "concluida" ? "concluida" : l.semEstimativa ? "sem-estimativa" : c.critica ? "critica" : "folga";
-    const rodape = l.situacao === "concluida" ? `Concluída em ${dataBr(l.conclusao)}`
-      : l.semEstimativa ? "Falta estimar"
-      : `Até ${dataBr(l.conclusao)} · ${c.critica ? "sem folga" : `folga ${Math.round(c.folga)} ${plural(Math.round(c.folga), "dia", "dias")}`}`;
-    return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${LARGURA}px;height:${ALTURA}px" data-numero="${a.numero}">
+    const data = l.situacao === "concluida" ? `Concluída ${dataBr(l.conclusao)}`
+      : l.semEstimativa ? "Falta estimar" : `Até ${dataBr(l.conclusao)}`;
+    const folga = l.situacao === "concluida" || l.semEstimativa ? ""
+      : c.critica ? "sem folga" : `folga ${Math.round(c.folga)} ${plural(Math.round(c.folga), "dia", "dias")}`;
+    return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}">
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         title="${esc(etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo)}">
-        <span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span>
-        <span class="rede-rodape">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}<span class="mono">${rodape}</span></span>
+        <span class="rede-topo">${situacao(l)}<span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
+        <span class="rede-base"><span class="donos">${donos(a)}</span>
+          <span class="rede-data${l.atrasada ? " atrasada" : ""}"><span class="mono">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}${data}</span>${folga ? `<small>${folga}</small>` : ""}</span></span>
       </div>
     </div>`;
   }).join("");
 
-  const setas = arestas.map(({ de, para, critica }) => {
-    const a = pos.get(de);
-    const b = pos.get(para);
-    const x1 = a.x + LARGURA;
-    const y1 = a.y + ALTURA / 2;
-    const x2 = b.x - 2;
-    const y2 = b.y + ALTURA / 2;
-    const meio = Math.min(VAO_X * 0.75, (x2 - x1) / 2);
-    return `<path class="rede-seta${critica ? " critica" : ""}" data-de="${de}" data-para="${para}"
-      d="M${x1},${y1} C${x1 + meio},${y1} ${x2 - meio},${y2} ${x2},${y2}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>`;
-  }).join("");
+  const setas = arestas.map(({ de, para, critica, pontos }) => `<path class="rede-seta${critica ? " critica" : ""}" data-de="${de}" data-para="${para}"
+      d="${caminhoDaSeta(pontos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>`).join("");
 
   const anterior = alvo.querySelector("[data-rede-rolagem]");
   const rolagemAnterior = anterior ? [anterior.scrollLeft, anterior.scrollTop] : null;
@@ -104,7 +83,9 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   const rolagem = alvo.querySelector("[data-rede-rolagem]");
   const tamanho = alvo.querySelector("[data-tamanho]");
   const conteudo = alvo.querySelector("[data-conteudo]");
-  const fator = escala === "tudo" ? Math.min(1, (rolagem.clientWidth - 2) / largura) : 1;
+  /* "Ver tudo": cabe na largura e na altura da área (22/10/2026) */
+  const alturaUtil = parseFloat(getComputedStyle(rolagem).maxHeight) || rolagem.clientHeight;
+  const fator = escala === "tudo" ? Math.min(1, (rolagem.clientWidth - 2) / largura, (alturaUtil - 2) / altura) : 1;
   conteudo.style.transform = fator < 1 ? `scale(${fator})` : "";
   tamanho.style.width = `${largura * fator}px`;
   tamanho.style.height = `${altura * fator}px`;

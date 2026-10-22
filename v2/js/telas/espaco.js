@@ -593,6 +593,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }
     if (ui.modo === "rede") {
       desenharRede(lista, { acoes, caminho, linhas, etapaDe, identificador: idHtml, escala: ui.escalaRede,
+        donos: (a) => donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus }),
+        situacao: (l) => (l.situacao === "liberada" ? "" : `<span class="${SITUACOES[l.situacao].classe}" title="${SITUACOES[l.situacao].texto}">${ICONES[SITUACOES[l.situacao].icone]}</span>`),
         aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); } });
       return;
     }

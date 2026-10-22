@@ -649,7 +649,7 @@ Reúne o cadastro, o acompanhamento e as previsões por ação, como na planilha
 
 - **Linha do tempo:** do início do espaço ao prazo final, com hoje, a conclusão prevista, a data segura (P80) e o prazo final, este com a chance de cumprir o prazo; interativa. Recebe também o gráfico "Em que data o trabalho pode terminar" (resultado da simulação), por responder à mesma pergunta (decisão do responsável, 21/10/2026). O desenho previsto antes (eixo fino com as datas junto das marcas e faixa entre a conclusão prevista e a data segura) serve de ponto de partida, não de regra.
 - **Cronograma** (*Termo técnico: Gantt*): barras das ações no tempo, com as dependências, e opção de comparar com um retrato (linha fina sob cada barra).
-- **Rede** ("Fluxo das ações"; *Termo técnico: diagrama de rede PERT/CPM*).
+- **Rede** ("Fluxo das ações"; *Termo técnico: diagrama de rede PERT/CPM*) *Revista em 22/10/2026 (pedido do responsável):* desenho em camadas, como o do Mermaid (Sugiyama), sem setas sobre os cartões e com poucos cruzamentos; cartões no padrão do quadro, com a borda colorida pela folga.
 - **Fora das visualizações** (decisão do responsável, 21/10/2026): o alto do espaço não mostra mais datas nem a chance, que ficam na linha do tempo e no cronograma. O aviso "Previsão incompleta" continua sempre à vista, em qualquer modo.
 - **Calendário: a avaliar, sem compromisso.** Faz sentido sobretudo com datas fixas (data-limite, Fase 2); com as datas previstas pelo PERT, que mudam a cada recálculo, o calendário "se mexeria sozinho" e confundiria. Se for feito, aparece também no celular, ao lado de Lista e Quadro.
 
