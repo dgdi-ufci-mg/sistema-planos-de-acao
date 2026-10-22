@@ -93,7 +93,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     usaCodigos,
   });
 
-  const agrupado = () => usaFases && ui.ordem === "espaco" && ui.modo === "lista";
+  /* separadores de fases e etapas em qualquer ordenação: a ordem escolhida vale dentro de cada etapa.
+     Só somem ao desligar "Fases e etapas" em Campos opcionais (decisão do responsável, 22/10/2026) */
+  const agrupado = () => usaFases && ui.modo === "lista";
   const ativos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0);
   const visiveis = () => ordenar(filtrar(linhas, {
     situacao: ui.situacao, responsavel: ui.responsavel, minhas: ui.minhas ? meus : undefined,
@@ -432,8 +434,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       corpo = niveisHtml() + corpo;
     } else {
       corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ações. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ação".</p>`)
-        + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "")
-        + (usaFases && ls.length ? `<p class="tec">Em "Ordem do espaço", as ações aparecem separadas por fases e etapas.</p>` : "");
+        + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
     }
     lista.innerHTML = corpo;
     if (agrupado()) marcarNivel();

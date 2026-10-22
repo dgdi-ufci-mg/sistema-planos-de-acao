@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 82 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 83 da página)
 
 ---
 
@@ -526,6 +526,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 81.2 | Versão 2: a seção "Importar de planilha" de "Configurar este espaço" passa a se chamar "Importar ações de planilha" (pedido do responsável). Sem mudança na versão atual |
 | 81.3 | Versão 2: na seção Responsáveis, "Importar de planilha" passa a se chamar "Importar responsáveis de planilha" (pedido do responsável). Sem mudança na versão atual |
 | 82 | Versão 2: acima da lista agrupada, "Mostrar até: Fases · Etapas · Ações" recolhe de uma vez todas as fases, só as etapas ou nada (pedido do responsável, 22/10/2026). Substitui o botão "Recolher fases / Expandir tudo", que tinha ficado escondido no painel de ordenação depois da mudança da barra do topo. No computador e no celular. Sem mudança na versão atual |
+| 83 | Versão 2: os separadores de fases e etapas da lista ficam em qualquer ordenação (antes, só em "Ordem do espaço"); a ordem escolhida vale dentro de cada etapa. Só somem ao desligar "Fases e etapas" em Campos opcionais (decisão do responsável, 22/10/2026). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
