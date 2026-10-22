@@ -367,6 +367,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     input.focus({ preventScroll: true });
   }
 
+  /**
+   * Dias úteis que faltam para a conclusão prevista, em vez da data (22/10/2026, decisão do responsável);
+   * na atrasada, há quantos dias úteis a previsão venceu. A data aparece ao parar o mouse e na janela da ação.
+   */
+  function prazoTexto(l) {
+    if (l.atrasada) {
+      const n = Math.max(1, cal.diasUteisAte(hoje) - cal.diasUteisAte(l.vencidaEm));
+      return `Venceu há ${n} ${plural(n, "dia útil", "dias úteis")}`;
+    }
+    const n = Math.max(0, cal.diasUteisAte(l.conclusao) - cal.diasUteisAte(hoje));
+    return n === 0 ? "Conclui hoje" : `${plural(n, "Falta", "Faltam")} ${n} ${plural(n, "dia útil", "dias úteis")}`;
+  }
+
   function linhaHtml(l) {
     const a = l.acao;
     const s = SITUACOES[l.situacao];
@@ -381,7 +394,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <div class="donos">${donos}</div>
         ${l.situacao === "concluida" ? `<div class="conc"></div>` /* concluída: sem data na lista, que é minimalista (22/10/2026) */
           : `<div class="conc"><span class="mlab">Conclusão prevista</span>${l.semEstimativa ? FALTA_ESTIMAR
-          : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}${nota ? `<small>${nota}</small>` : ""}</div>`}
+          : `<span class="data${l.atrasada ? " atrasada" : ""}" title="${l.atrasada ? `Venceu em ${dataBr(l.vencidaEm)}` : `Conclusão prevista em ${dataBr(l.conclusao)}`}">${prazoTexto(l)}</span>`}${nota ? `<small>${nota}</small>` : ""}</div>`}
         <div class="ex"><span class="mlab">Prioridade de execução</span>${medidor(l.execucao, "Prioridade de execução", "var(--calor)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>
         <div class="rv"><span class="mlab">Prioridade de revisão</span>${medidor(l.revisao, `Responde por ${revisao} da incerteza do prazo final`, "var(--accent)", revisao)}</div>
         <span class="seta">${ICONES.seguir}</span>

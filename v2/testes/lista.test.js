@@ -35,6 +35,8 @@ describe("Lista de ações", async () => {
   it("ação atrasada termina, no mínimo, amanhã (regra do prazo vencido)", () => {
     const l = linhas.find((x) => x.atrasada);
     assert.ok(l.conclusao >= hoje);
+    assert.ok(l.vencidaEm < hoje, "a atrasada guarda o dia em que a previsão venceu");
+    assert.ok(linhas.filter((x) => !x.atrasada).every((x) => x.vencidaEm === null));
   });
 
   it("filtra por situação, carimbo e responsável", () => {

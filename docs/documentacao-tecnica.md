@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 85 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 86 da página)
 
 ---
 
@@ -530,6 +530,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 83.1 | Versão 2: "Mostrar até" passa para a mesma linha do alerta de ações atrasadas, à direita (pedido do responsável); no celular, sem o rótulo "Mostrar até", para caber. Sem mudança na versão atual |
 | 84 | Versão 2: os cartões da lista e do quadro perdem a faixa colorida à esquerda, que repetia a prioridade já mostrada na barra (pedido do responsável). Sem mudança na versão atual |
 | 85 | Versão 2: na lista, a ação concluída não mostra mais a data de conclusão (pedido do responsável: a lista é minimalista). A data continua na janela da ação. Sem mudança na versão atual |
+| 86 | Versão 2: na lista, no lugar da data da conclusão prevista, os dias úteis que faltam ("Faltam 6 dias úteis", "Conclui hoje"); na atrasada, "Venceu há N dias úteis", em vermelho (decisões do responsável, 22/10/2026). A data aparece ao parar o mouse e na janela da ação. O cálculo guarda o dia em que a previsão da atrasada venceu (`vencidaEm`, valor calculado, fora do banco). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

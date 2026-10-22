@@ -29,6 +29,8 @@ export function montarLinhas(acoes, caminho, simulacao, calendario, hoje) {
       acao,
       situacao: c.situacao,
       atrasada: Boolean(c.atrasada),
+      /** atrasada: dia em que a conclusão prevista venceu */
+      vencidaEm: c.atrasada ? c.vencidaEm : null,
       /** data mínima ainda por vir, para "a partir de" */
       aPartirDe: c.situacao === "naoLiberada" && acao.naoAntesDe > hoje ? acao.naoAntesDe : null,
       conclusao: concluida ? acao.concluidaEm : calendario.dataDeConclusao(c.conclusao, c.liberacao),

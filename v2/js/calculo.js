@@ -112,6 +112,7 @@ export function caminhoCritico(acoes, calendario, { hoje } = {}) {
       /* sem estimativa não há prazo para vencer: "Falta estimar", e não "Atrasada" (seção 5.2) */
       r.atrasada = noPassado && !semEstimativa;
       if (noPassado) {
+        r.vencidaEm = calendario.dataDeConclusao(r.conclusao, r.liberacao); // dia em que a previsão venceu
         r.conclusao = indiceDeHoje + 1; // nada termina no passado: termina, no mínimo, hoje
         r.regraDoPassado = !semEstimativa; // o aviso "prazo vencido sem reestimativa" só vale com estimativa
       }

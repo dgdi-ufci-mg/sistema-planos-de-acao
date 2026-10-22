@@ -341,7 +341,7 @@ body.so-leitura [data-nova] { display: none; }
 .lista { display: flex; flex-direction: column; gap: 8px; }
 .linha {
   display: grid; align-items: center; gap: 12px; padding: 10px 14px 10px 18px;
-  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.15fr) minmax(0, .95fr) minmax(0, .95fr) minmax(0, 1.05fr) minmax(0, 1.05fr) 18px;
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.1fr) minmax(0, .8fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 18px;
 }
 .item { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); overflow: hidden; transition: box-shadow .18s, transform .18s; }
 .item:hover { box-shadow: var(--sombra); transform: translateY(-1px); }
@@ -372,7 +372,7 @@ body.so-leitura [data-nova] { display: none; }
   height: 24px; display: inline-flex; align-items: center; padding: 0 7px; border-radius: 6px; white-space: nowrap; cursor: default;
   background: var(--sunk); border: 1px solid var(--line); color: var(--muted); font-size: .72rem; font-weight: 700; letter-spacing: .03em;
 }
-.conc .data { font-family: var(--f-dados); font-size: .88rem; font-variant-numeric: tabular-nums; display: block; }
+.conc .data { font-size: .9rem; font-weight: 500; display: block; line-height: 1.25; } /* dias que faltam, em texto (22/10/2026) */
 .conc .data.atrasada { color: var(--crit-ink); font-weight: 500; }
 .conc small { display: block; font-size: .74rem; color: var(--warn-ink); }
 .item.feita .conc small { color: var(--muted); }
