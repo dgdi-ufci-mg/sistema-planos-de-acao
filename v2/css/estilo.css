@@ -179,7 +179,9 @@ body::before {
 /* ---------- barra do topo e menu lateral (passo 1.14c) ---------- */
 :root { --largura-lateral: 264px; }
 /* o nome do espaço fica no centro do espaço livre entre o botão do menu e as ferramentas */
-.topo-linha { display: grid; grid-template-columns: minmax(0, 1fr) auto; } /* o botão do menu saiu da barra (22/10/2026) */
+/* três colunas (22/10/2026): ferramentas à esquerda, nome do espaço no meio, Nova ação à direita */
+.topo-linha { display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); }
+.topo-linha > .topo-titulo { grid-column: 2; grid-row: 1; }
 .topo-linha > .botao-lateral { justify-self: start; }
 .botao-lateral {
   border: 0; background: transparent; color: var(--ink); width: 36px; height: 36px; border-radius: var(--raio);
@@ -291,10 +293,13 @@ body.so-leitura [data-nova] { display: none; }
 .cabeca-espaco { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; }
 .cabeca-espaco .tec { margin: 0; }
 /* ferramentas na barra do topo (21/10/2026): modo, Filtrar, Ordenar e Nova ação */
-.topo-acoes { justify-self: end; display: flex; align-items: center; gap: 6px; position: relative; min-width: 0; }
-.topo-acoes .modos { padding: 2px; }
-.topo-acoes .modo { padding: 4px 8px; }
-.topo-acoes .botao.principal { padding: 5px 12px; }
+.topo-acoes { display: contents; }
+.topo-esquerda { grid-column: 1; grid-row: 1; justify-self: start; display: flex; align-items: center; gap: 6px; position: relative; min-width: 0; }
+.topo-direita { grid-column: 3; grid-row: 1; justify-self: end; display: flex; align-items: center; }
+.topo-esquerda .popover { left: 0; right: auto; }
+.topo-direita .botao.principal { padding: 5px 12px; }
+.topo-esquerda .modos { padding: 2px; }
+.topo-esquerda .modo { padding: 4px 8px; }
 .icone-barra {
   position: relative; border: 0; background: transparent; color: var(--ink); width: 34px; height: 34px; border-radius: var(--raio);
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex: none;
@@ -401,7 +406,6 @@ body.so-leitura [data-nova] { display: none; }
 .barra-icone.tempo { color: var(--muted); }
 .barra-icone.execucao { color: var(--execucao); }
 .barra-icone.revisao { color: var(--laranja); }
-.barras button { display: inline-flex; align-items: center; gap: 5px; }
 .legenda .barra-icone { vertical-align: -3px; margin: 0 2px 0 4px; }
 .nota-reprog { width: 100%; font-size: .72rem; color: var(--warn-ink); }
 /* prazo: número com seta, "d úteis" embaixo, pequeno e cinza (22/10/2026) */
@@ -935,18 +939,19 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .importar-responsaveis > summary { cursor: pointer; font-weight: 600; color: var(--accent-ink); }
 
 /* ---------- mostrar até: fases, etapas ou ações (22/10/2026) ---------- */
-.niveis { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin: 0 0 8px; font-size: .85rem; }
-.niveis-rotulo { color: var(--muted); margin-right: 4px; }
-.niveis button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: 600 .82rem var(--f-texto); padding: 4px 12px; border-radius: 999px; cursor: pointer;
-  transition: background var(--mov-rapido), color var(--mov-rapido); }
-.niveis button:hover { color: var(--ink); }
-.niveis button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
-@media (prefers-reduced-motion: reduce) { .niveis button { transition: none; } }
+/* "Barra" e "Mostrar até" no padrão do seletor de modo (22/10/2026) */
+.controle-rotulado { display: inline-flex; align-items: center; gap: 6px; }
+.niveis-rotulo { color: var(--muted); font-size: .82rem; }
+.cabeca-linha .modos { padding: 2px; }
+.cabeca-linha .modo { padding: 4px 8px; font-size: .84rem; }
+.cabeca-linha .modo[aria-pressed="true"] { padding-right: 11px; }
+.modos.niveis .modo-nome { display: inline-block; }
+.modos.niveis .modo { padding: 4px 11px; }
+.modos.barras .modo[aria-pressed="true"] { gap: 5px; }
 .cabeca-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; min-height: 30px; }
-.cabeca-linha .alerta-atrasadas { margin: 0; }
-.cabeca-linha .niveis { margin: 0; }
-.cabeca-controles { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: flex-end; margin-left: auto; }
-@media (max-width: 640px) { .niveis-rotulo { display: none; } .niveis button { padding: 4px 9px; } .barras button:not([data-barra="nenhuma"]) .barra-nome { display: none; } } /* no celular, as barras só pelo símbolo */ /* no celular, cabe na linha do alerta */
+.cabeca-linha .alerta-atrasadas { margin: 0 0 0 auto; }
+.cabeca-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+@media (max-width: 640px) { .niveis-rotulo { display: none; } .cabeca-linha .modo { padding: 4px 7px; } .modos.barras .modo-nome { display: none !important; } } /* no celular, as barras só pelo símbolo */
 
 /* ---------- prazo como barra (22/10/2026): verde para a direita (faltam), vermelho para a esquerda (venceu) ---------- */
 .prazo-barra { display: flex; align-items: center; gap: 8px; width: 100%; }

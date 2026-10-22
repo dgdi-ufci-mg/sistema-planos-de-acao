@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 90.1 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 91 da página)
 
 ---
 
@@ -539,6 +539,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 89 | Versão 2: cada cartão da lista e do quadro mostra uma só barra, à escolha em "Barra: Tempo restante · Execução · Revisão · Nenhuma" (pedido do responsável), com símbolo próprio à esquerda (cronômetro, raio, lupa) e cor própria (verde/vermelho; violeta, nova variável `--execucao` nos três blocos de cores; laranja). A barra da prioridade de execução deixa de ser vermelha. Na janela da ação, as barras usam as mesmas cores. Legenda atualizada. Sem mudança na versão atual |
 | 90 | Versão 2: na lista, o ícone da situação passa a uma coluna estreita logo à direita dos nomes, e os avisos pequenos ("a partir de", "Falta estimar", reprogramações) vão para baixo do nome. Responsáveis com duas letras também no nome único ("Hebert" → "HE"), lado a lado, e todos os que couberem na largura do cartão, com "+N" só quando faltar espaço; a conta é refeita quando a janela muda de tamanho (pedido do responsável). Sem mudança na versão atual |
 | 90.1 | Versão 2: o botão do menu lateral sai da barra do topo e fica fixo, como no Todoist (pedido do responsável): com o menu aberto, dentro dele, no canto superior direito; recolhido, na extremidade esquerda da tela. No celular, com a gaveta aberta, também vai para dentro dela. Sem mudança na versão atual |
+| 91 | Versão 2: nova arrumação da barra do topo do espaço (pedido do responsável): seletor de modo, Filtrar e Ordenar à esquerda; nome do espaço no meio; Nova ação à direita. Na linha de baixo, "Barra" e "Mostrar até" ganham o mesmo desenho do seletor de modo (botões agrupados numa cápsula; na Barra, só o símbolo, com o nome no escolhido; "Nenhuma" ganhou símbolo próprio) e ficam à esquerda; o alerta de ações atrasadas vai para a direita. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

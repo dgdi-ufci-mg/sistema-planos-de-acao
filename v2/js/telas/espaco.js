@@ -108,12 +108,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
      o aviso de previsão incompleta fica sempre à vista, em qualquer modo */
   function cabecaHtml() {
     const atrasadas = linhas.filter((l) => l.atrasada).length;
-    /* alerta de atrasadas e "Mostrar até" na mesma linha (22/10/2026, pedido do responsável) */
+    /* "Barra" e "Mostrar até" à esquerda, alerta de atrasadas à direita, na mesma linha (22/10/2026, pedido do responsável) */
     const alerta = atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
         ? `Mostrando só ${plural(atrasadas, "a ação atrasada", `as ${atrasadas} ações atrasadas`)}. <u>Mostrar todas</u>`
         : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : "";
     const comPrioridade = ui.modo === "lista" || ui.modo === "quadro";
-    return `${alerta || agrupado() || comPrioridade ? `<div class="cabeca-linha">${alerta || "<span></span>"}<div class="cabeca-controles">${comPrioridade ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div></div>` : ""}
+    return `${alerta || agrupado() || comPrioridade ? `<div class="cabeca-linha"><div class="cabeca-controles">${comPrioridade ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -221,22 +221,22 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["tempo", "Tempo restante", "barraTempo"],
     ["execucao", "Prioridade de execução", "barraExecucao"],
     ["revisao", "Prioridade de revisão", "barraRevisao"],
-    ["nenhuma", "Nenhuma", null],
+    ["nenhuma", "Nenhuma", "barraNenhuma"],
   ];
-  const barrasHtml = () => `<div class="niveis barras" role="group" aria-label="Barra mostrada nos cartões">
-      <span class="niveis-rotulo">Barra</span>
-      ${BARRAS.map(([v, nome, icone]) => `<button type="button" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}">${icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : ""}<span class="barra-nome">${{ tempo: "Tempo restante", execucao: "Execução", revisao: "Revisão", nenhuma: "Nenhuma" }[v]}</span></button>`).join("")}
-    </div>`;
+  /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
+  const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Execução", revisao: "Revisão", nenhuma: "Nenhuma" };
+  const barrasHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Barra</span><div class="modos barras" role="group" aria-label="Barra mostrada nos cartões">
+      ${BARRAS.map(([v, nome, icone]) => `<button type="button" class="modo" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}"><span class="barra-icone ${v}">${ICONES[icone]}</span><span class="modo-nome" aria-hidden="true">${NOMES_BARRA[v]}</span></button>`).join("")}
+    </div></div>`;
   function mostrarBarra(v) {
     ui.barra = v;
     try { localStorage.setItem("sextante.barra", v); } catch { /* sem armazenamento */ }
     cabeca.innerHTML = cabecaHtml();
     desenharLista();
   }
-  const niveisHtml = () => `<div class="niveis" role="group" aria-label="Mostrar até">
-      <span class="niveis-rotulo">Mostrar até</span>
-      ${NIVEIS.map(([v, nome]) => `<button type="button" data-nivel="${v}" aria-pressed="false">${nome}</button>`).join("")}
-    </div>`;
+  const niveisHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Mostrar até</span><div class="modos niveis" role="group" aria-label="Mostrar até">
+      ${NIVEIS.map(([v, nome]) => `<button type="button" class="modo" data-nivel="${v}" aria-pressed="false"><span class="modo-nome">${nome}</span></button>`).join("")}
+    </div></div>`;
   function marcarNivel() {
     const atual = nivelAtual();
     for (const b of alvo.querySelectorAll("[data-nivel]")) b.setAttribute("aria-pressed", String(b.dataset.nivel === atual));
@@ -292,17 +292,20 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function desenharFerramentas({ abriu = false } = {}) {
     const planilha = semFiltros();
     const nf = filtrosAtivos();
+    /* modo, Filtrar e Ordenar à esquerda; o nome do espaço no meio; Nova ação à direita (22/10/2026, pedido do responsável) */
     ferramentas.innerHTML = `
-      <div class="so-computador">${modosHtml()}</div>
-      ${planilha ? "" : `
-      <button class="icone-barra so-computador" type="button" data-pop="filtrar" aria-label="Filtrar" title="Filtrar" aria-expanded="${ui.pop === "filtrar"}">
-        ${ICONES.funil}${nf ? `<span class="contador">${nf}</span>` : ""}</button>
-      <button class="icone-barra so-computador" type="button" data-pop="ordenar" aria-label="Ordenar" title="Ordenar" aria-expanded="${ui.pop === "ordenar"}">
-        ${ICONES.ordenar}${ui.ordem !== "espaco" ? '<span class="ponto" aria-hidden="true"></span>' : ""}</button>`}
-      <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
-        ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
-      <button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ação</button>
-      ${planilha ? "" : popoverHtml()}`;
+      <div class="topo-esquerda">
+        <div class="so-computador">${modosHtml()}</div>
+        ${planilha ? "" : `
+        <button class="icone-barra so-computador" type="button" data-pop="filtrar" aria-label="Filtrar" title="Filtrar" aria-expanded="${ui.pop === "filtrar"}">
+          ${ICONES.funil}${nf ? `<span class="contador">${nf}</span>` : ""}</button>
+        <button class="icone-barra so-computador" type="button" data-pop="ordenar" aria-label="Ordenar" title="Ordenar" aria-expanded="${ui.pop === "ordenar"}">
+          ${ICONES.ordenar}${ui.ordem !== "espaco" ? '<span class="ponto" aria-hidden="true"></span>' : ""}</button>`}
+        <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
+          ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
+        ${planilha ? "" : popoverHtml()}
+      </div>
+      <div class="topo-direita"><button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ação</button></div>`;
     modoDesenhado = ui.modo;
     legenda.hidden = !ui.legenda || planilha;
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));

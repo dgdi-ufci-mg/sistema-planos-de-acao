@@ -25,6 +25,8 @@ export const ICONES = Object.freeze({
   /** Barra da prioridade de execução: raio. */
   barraExecucao: svg('<path d="M13 2.5 5 13.5h6l-1 8 8-11h-6z"/>'),
   /** Barra da prioridade de revisão: lupa. */
+  /** Barra: nenhuma (círculo cortado). */
+  barraNenhuma: svg('<circle cx="12" cy="12" r="8.5"/><path d="m6 18 12-12"/>'),
   barraRevisao: svg('<circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/>'),
   /** Concluída: visto num círculo. */
   concluida: svg('<circle cx="12" cy="12" r="9.5"/><path d="m8 12.5 2.7 2.7L16 9.8"/>'),
