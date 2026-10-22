@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 88 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 88.1 da página)
 
 ---
 
@@ -535,6 +535,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 87.1 | Versão 2: a barra da prioridade de execução passa a ser sempre vermelha, sem a matiz de cinza para vermelho (pedido do responsável), na lista, no quadro e na janela da ação. Sem mudança na versão atual |
 | 87.2 | Versão 2: na lista, a ação não liberada fica só com o cadeado, sem o texto "Não liberada" (pedido do responsável); o texto aparece ao parar o mouse. Sem mudança na versão atual |
 | 88 | Versão 2: na lista, o prazo vira barra (decisão do responsável): verde para a direita com os dias úteis que faltam, vermelha para a esquerda com há quantos dias a previsão venceu, numa escala única do espaço (do mais vencido ao que mais falta), com o zero marcado; o número fica ao lado, pequeno. Substitui o número com seta. Sem mudança na versão atual |
+| 88.1 | Versão 2: no computador, o botão do menu lateral passa a usar o ícone de barra lateral (retângulo com uma divisão à esquerda, como no Jira, no Todoist e no Planner), no lugar das três linhas, que ficam só no celular, onde o menu é uma gaveta (pedido do responsável). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
