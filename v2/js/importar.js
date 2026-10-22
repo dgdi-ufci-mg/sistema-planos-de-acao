@@ -92,7 +92,12 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     if (r.tipo === "ignorada") { r.avisos.push(`Já existe no espaço (“${existente.rotulo}”).`); return r; }
 
     if (rotulo && (!existente || rotulo !== existente.rotulo)) r.campos.rotulo = rotulo;
-    if (codigo !== undefined && usaCodigos && codigo !== existente?.codigo) r.campos.codigo = codigo;
+    if (codigo !== undefined && usaCodigos && codigo !== existente?.codigo) {
+      const dona = acoes.find((a) => a.codigo === codigo && a.numero !== existente?.numero);
+      if (!/^[A-Z0-9]{2,8}$/.test(codigo)) r.avisos.push(`Código “${codigo}” inválido (use de 2 a 8 letras ou números): fica de fora.`);
+      else if (dona) r.avisos.push(`O código ${codigo} já é de outra ação (“${dona.rotulo}”): fica de fora.`);
+      else r.campos.codigo = codigo;
+    }
     const descricao = celula(c, "descricao");
     if (descricao && descricao !== existente?.descricao) r.campos.descricao = descricao;
     const etapa = etapaDe(celula(c, "fase"), celula(c, "etapa"));
@@ -126,6 +131,16 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     return r;
   });
 
+  /* nomes e códigos repetidos dentro da própria planilha */
+  const novasOuAtualizadas = linhas.filter((l) => l.tipo === "nova" || l.tipo === "atualiza");
+  novasOuAtualizadas.forEach((l, i) => {
+    const anterior = novasOuAtualizadas.slice(0, i);
+    const mesmoNome = l.tipo === "nova" && anterior.find((x) => x.tipo === "nova" && normalizar(x.rotulo) === normalizar(l.rotulo));
+    if (mesmoNome) l.avisos.push(`A linha ${mesmoNome.linha} tem o mesmo nome: serão duas ações iguais, e uma dependência que cite esse nome liga à linha ${mesmoNome.linha}.`);
+    const mesmoCodigo = l.campos.codigo && anterior.find((x) => x.campos.codigo === l.campos.codigo);
+    if (mesmoCodigo) { l.avisos.push(`O código ${l.campos.codigo} já está na linha ${mesmoCodigo.linha}: fica de fora.`); delete l.campos.codigo; }
+  });
+
   /* segunda passada: dependências, que podem citar ações existentes ou outras linhas da planilha */
   const validas = linhas.filter((l) => l.tipo === "nova" || l.tipo === "atualiza" || l.tipo === "ignorada");
   const refDe = (parte) => {
@@ -143,6 +158,23 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     if (porNome) return porNome.numero != null ? { numero: porNome.numero } : { linha: porNome.linha }; // linha nova: o número sai na gravação
     return null;
   };
+  /* grafo das dependências (quem depende de quem), para recusar ciclos ainda na conferência:
+     ações existentes por "n<número>", linhas novas por "l<linha>" */
+  const no = (ref) => (ref.numero != null ? `n${ref.numero}` : `l${ref.linha}`);
+  const grafo = new Map(acoes.map((a) => [`n${a.numero}`, new Set((a.dependeDe ?? []).map((d) => `n${d}`))]));
+  const alcanca = (de, ate) => {
+    const vistos = new Set();
+    const pilha = [de];
+    while (pilha.length) {
+      const x = pilha.pop();
+      if (x === ate) return true;
+      if (vistos.has(x)) continue;
+      vistos.add(x);
+      pilha.push(...(grafo.get(x) ?? []));
+    }
+    return false;
+  };
+  const nomeDaRef = (ref) => (ref.numero != null ? `“${acoes.find((a) => a.numero === ref.numero)?.rotulo ?? ref.numero}”` : `a linha ${ref.linha}`);
   for (const l of linhas) {
     if ((l.tipo !== "nova" && l.tipo !== "atualiza") || !l.dependeDeTexto) continue;
     const refs = [];
@@ -152,6 +184,26 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
       else if ((ref.numero != null && ref.numero === l.numero) || ref.linha === l.linha) l.avisos.push("Uma ação não pode depender dela mesma.");
       else if (!refs.some((x) => x.numero === ref.numero && x.linha === ref.linha)) refs.push(ref);
     }
+    l.refs = refs;
+  }
+  /* as dependências de cada linha substituem as atuais; na ordem da planilha, a que fecharia um ciclo fica de fora */
+  for (const l of linhas) {
+    if (!l.refs) continue;
+    const eu = l.numero != null ? `n${l.numero}` : `l${l.linha}`;
+    grafo.set(eu, new Set());
+    l.refs = l.refs.filter((ref) => {
+      if (alcanca(no(ref), eu)) {
+        l.avisos.push(`Depender de ${nomeDaRef(ref)} criaria um ciclo (ela já depende desta, direta ou indiretamente): fica de fora.`);
+        return false;
+      }
+      grafo.get(eu).add(no(ref));
+      return true;
+    });
+  }
+  for (const l of linhas) {
+    if (!l.refs) continue;
+    const refs = l.refs;
+    delete l.refs;
     const atuais = l.existente?.dependeDe ?? [];
     const iguais = refs.every((r) => r.numero != null) && JSON.stringify(refs.map((r) => r.numero).sort()) === JSON.stringify([...atuais].sort());
     if (!iguais) l.campos.dependeDe = refs;

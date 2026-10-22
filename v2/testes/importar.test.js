@@ -101,4 +101,29 @@ describe("Importação por planilha (passo 1.19b)", () => {
     assert.equal(planejarImportacao({ texto: "Fase\tEtapa\nx\ty", ...(await contexto(store, id)), modo: "criar" }).erro, "Falta a coluna com o nome da ação (título “Ação”).");
     assert.match(planejarImportacao({ texto: "Ação", ...(await contexto(store, id)), modo: "criar" }).erro, /Cole a linha de títulos/);
   });
+
+  it("ciclos, códigos inválidos ou repetidos e nomes repetidos aparecem na conferência, e a gravação não falha", async () => {
+    const { store, id } = await exemplo();
+    await store.alterarEspaco(id, { camposOpcionais: { ...(await store.lerEspaco(id)).camposOpcionais, codigos: true } });
+    const lev = (await store.listarAcoes(id)).find((a) => a.codigo === "LEV");
+    const texto = ["Número\tCódigo\tAção\tDepende de",
+      "\tAA\tAção A\tAção B",
+      "\tAA\tAção B\tAção A",
+      "\tx\tAção C\t",
+      "\tLIC\tAção D\t",
+      "\t\tAção A\t",
+      `${lev.numero}\tLEV\t${lev.rotulo}\tLAN`].join("\n");
+    const plano = planejarImportacao({ texto, ...(await contexto(store, id)), modo: "atualizar" });
+    const [a, b, c, d, e, f] = plano.linhas;
+    assert.deepEqual(a.avisos, []);
+    assert.ok(b.avisos.some((x) => x.includes("ciclo")), "ciclo entre linhas novas");
+    assert.ok(b.avisos.some((x) => x.includes("já está na linha 2")), "código repetido na planilha");
+    assert.ok(c.avisos.some((x) => x.includes("inválido")));
+    assert.ok(d.avisos.some((x) => x.includes("já é de outra ação")));
+    assert.ok(e.avisos.some((x) => x.includes("mesmo nome")));
+    assert.ok(f.avisos.some((x) => x.includes("ciclo")), "ciclo com ações existentes");
+    const r = await store.importarAcoes(id, plano);
+    assert.deepEqual(r.falhas, []);
+    assert.equal(r.criadas, 5);
+  });
 });
