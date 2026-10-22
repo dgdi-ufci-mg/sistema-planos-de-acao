@@ -814,13 +814,11 @@ Decisões aceitas para seguir em frente, mas que o responsável pediu para **rea
 
 Tomadas sem consulta durante a execução em lote (seção 3.3), à espera do "sim" ou do "não" do responsável. Ao decidir, o item sai desta lista: aprovado, vira regra da seção correspondente; recusado, vira correção. O diário técnico (`docs/registro-de-execucao.md`) guarda os detalhes de cada passo.
 
-**Já aprovadas pelo responsável (22/10/2026):** eixo da linha do tempo (do início do espaço, ou de hoje, se for antes, até a última data simulada ou o prazo final, com uma semana de folga); termo "Chance de cumprir o prazo" no glossário; aviso de falta de conexão na barra do topo.
+**Já aprovadas pelo responsável (22/10/2026):**
+- Linha do tempo (passo 1.17a): eixo do início do espaço (ou de hoje, se for antes) até a última data simulada ou o prazo final, com uma semana de folga; barras por semana, de segunda a domingo; em cada cenário, o trabalho termina no dia útil em que a última ação acaba (a mesma regra da conclusão prevista); faixa do cartão "Prazo final" vermelha quando a chance é menor que 50%; modo só no computador; termo "Chance de cumprir o prazo" no glossário.
+- Aviso de falta de conexão na barra do topo, inclusive para a rede ligada sem internet.
 
-**Linha do tempo (passo 1.17a)**
-1. As barras contam semanas de segunda a domingo: cada barra começa numa segunda-feira.
-2. Em cada cenário simulado, o trabalho termina no dia útil em que a última ação acaba (a mesma regra da conclusão prevista), para os números do gráfico baterem com os do resto do sistema.
-3. A faixa do cartão "Prazo final" fica vermelha quando a chance de cumprir o prazo é menor que 50%.
-4. Só no computador: no celular, o gráfico não cabe, e o botão do modo não aparece (como na planilha).
+Os itens abaixo mantêm a numeração original (1 a 4, da linha do tempo, já aprovados).
 
 **Cronograma (passo 1.17b)**
 5. Sem filtros nem ordem: mostra sempre o espaço inteiro, na ordem do espaço, porque as setas ligariam ações escondidas.
