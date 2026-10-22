@@ -907,3 +907,12 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .falhas-importacao li { color: var(--crit-ink); }
 .importar-responsaveis { margin-top: 12px; border-top: 1px solid var(--grid); padding-top: 10px; }
 .importar-responsaveis > summary { cursor: pointer; font-weight: 600; color: var(--accent-ink); }
+
+/* ---------- mostrar até: fases, etapas ou ações (22/10/2026) ---------- */
+.niveis { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin: 0 0 8px; font-size: .85rem; }
+.niveis-rotulo { color: var(--muted); margin-right: 4px; }
+.niveis button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: 600 .82rem var(--f-texto); padding: 4px 12px; border-radius: 999px; cursor: pointer;
+  transition: background var(--mov-rapido), color var(--mov-rapido); }
+.niveis button:hover { color: var(--ink); }
+.niveis button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .niveis button { transition: none; } }

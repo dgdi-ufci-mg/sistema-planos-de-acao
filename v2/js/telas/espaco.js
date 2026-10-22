@@ -185,8 +185,38 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${ORDENS.map(([v, t]) => `<option value="${v}"${ui.ordem === v ? " selected" : ""}>${t}</option>`).join("")}
       </select>`}`;
   }
-  const botaoRecolherHtml = () => agrupado()
-    ? `<button class="botao discreto" type="button" data-recolher-tudo>${ui.recolhidos.size ? "Expandir tudo" : "Recolher fases"}</button>` : "";
+  /**
+   * Até onde abrir a lista agrupada (22/10/2026, pedido do responsável): só as fases, até as etapas,
+   * ou tudo, até as ações. Fica acima da lista, à vista, no computador e no celular.
+   */
+  const NIVEIS = [["fases", "Fases"], ["etapas", "Etapas"], ["acoes", "Ações"]];
+  const idsDe = (nivel) => [...lista.querySelectorAll(`.grupo.${nivel}`)].map((g) => g.dataset.grupo);
+  function nivelAtual() {
+    const [fases, etapas] = [idsDe("fase"), idsDe("etapa")];
+    if (!ui.recolhidos.size) return "acoes";
+    if (fases.length && fases.every((id) => ui.recolhidos.has(id))) return "fases";
+    if (fases.every((id) => !ui.recolhidos.has(id)) && etapas.length && etapas.every((id) => ui.recolhidos.has(id))) return "etapas";
+    return null;
+  }
+  const niveisHtml = () => `<div class="niveis" role="group" aria-label="Mostrar até">
+      <span class="niveis-rotulo">Mostrar até</span>
+      ${NIVEIS.map(([v, nome]) => `<button type="button" data-nivel="${v}" aria-pressed="false">${nome}</button>`).join("")}
+    </div>`;
+  function marcarNivel() {
+    const atual = nivelAtual();
+    for (const b of lista.querySelectorAll("[data-nivel]")) b.setAttribute("aria-pressed", String(b.dataset.nivel === atual));
+  }
+  function mostrarAte(nivel) {
+    ui.recolhidos.clear();
+    if (nivel === "fases") for (const id of idsDe("fase")) ui.recolhidos.add(id);
+    if (nivel === "etapas") for (const id of idsDe("etapa")) ui.recolhidos.add(id);
+    for (const g of lista.querySelectorAll(".grupo")) {
+      const fechado = ui.recolhidos.has(g.dataset.grupo);
+      g.classList.toggle("fechado", fechado);
+      g.querySelector(":scope > .grupo-cabeca").setAttribute("aria-expanded", String(!fechado));
+    }
+    marcarNivel();
+  }
 
   /** Filtros ativos (situação, responsável, "Minhas ações"), para o número no funil. */
   const filtrosAtivos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0);
@@ -218,7 +248,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (ui.pop === "ordenar") {
       return `<div class="popover" data-popover role="dialog" aria-label="Ordenar">
         <h3>Ordenar por</h3><div class="opcoes-lista">${ordensHtml()}</div>
-        ${agrupado() ? `<div class="botoes">${botaoRecolherHtml()}</div>` : ""}
       </div>`;
     }
     return "";
@@ -255,7 +284,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const ordem = t.closest("[data-ordem]");
     if (ordem) return mudar("ordem", ordem.dataset.ordem);
     if (t.closest("[data-limpar-filtros]")) { ui.responsavel = ""; ui.minhas = false; return mudar("situacao", "todas"); }
-    if (t.closest("[data-recolher-tudo]")) return recolherOuExpandirTudo();
     if (t.closest("[data-opcoes]")) return abrirOpcoes();
     if (t.closest("[data-nova]")) { ui.pop = null; desenharFerramentas(); return abrirNova(); }
   }
@@ -401,12 +429,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         etapas.map(({ etapa, linhas: daEtapa }) => grupoHtml("etapa", etapa.id, etapa.nome, daEtapa,
           daEtapa.map(linhaHtml).join("") + (rapida ? rapidaHtml(etapa.id, etapa.id, ` em ${etapa.nome}`) : ""))).join(""))).join("")
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
+      corpo = niveisHtml() + corpo;
     } else {
       corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ações. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ação".</p>`)
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "")
         + (usaFases && ls.length ? `<p class="tec">Em "Ordem do espaço", as ações aparecem separadas por fases e etapas.</p>` : "");
     }
     lista.innerHTML = corpo;
+    if (agrupado()) marcarNivel();
     restaurarRapida();
     if (animar && !reduzirMovimento()) animarMudanca(antes);
   }
@@ -552,18 +582,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     secao.classList.toggle("fechado", fechar);
     secao.querySelector(":scope > .grupo-cabeca").setAttribute("aria-expanded", String(!fechar));
     desenharFerramentas();
-  }
-
-  function recolherOuExpandirTudo() {
-    if (ui.recolhidos.size) ui.recolhidos.clear();
-    else for (const s of lista.querySelectorAll(".grupo.fase")) ui.recolhidos.add(s.dataset.grupo);
-    for (const s of lista.querySelectorAll(".grupo")) {
-      const fechado = ui.recolhidos.has(s.dataset.grupo);
-      s.classList.toggle("fechado", fechado);
-      s.querySelector(":scope > .grupo-cabeca").setAttribute("aria-expanded", String(!fechado));
-    }
-    desenharFerramentas();
-    if (painelOpcoes?.isConnected) preencherOpcoes();
+    marcarNivel();
   }
 
   /* ---------- celular: painel "Filtros e ordem" ---------- */
@@ -573,7 +592,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <section class="opcoes">${modosHtml()}</section>
       ${semFiltros() ? "" : `<section class="opcoes"><h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div></section>
       <section class="opcoes">${controlesHtml()}</section>`}
-      ${agrupado() ? `<section>${botaoRecolherHtml()}</section>` : ""}
       ${ativos() ? `<section><button class="botao discreto" type="button" data-limpar>Limpar filtros e ordem</button></section>` : ""}`;
   }
   function abrirOpcoes() {
@@ -585,7 +603,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       if (modo) mudarModo(modo.dataset.modo);
       const filtro = e.target.closest("[data-filtro]");
       if (filtro) mudar("situacao", filtro.dataset.filtro);
-      if (e.target.closest("[data-recolher-tudo]")) recolherOuExpandirTudo();
       if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.situacao = "todas"; mudar("ordem", "espaco"); }
     });
   }
@@ -602,7 +619,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (filtro) return mudar("situacao", filtro.dataset.filtro);
     const grupo = t.closest("[data-alternar-grupo]");
     if (grupo) return alternarGrupo(grupo.dataset.alternarGrupo);
-    if (t.closest("[data-recolher-tudo]")) return recolherOuExpandirTudo();
+    const nivel = t.closest("[data-nivel]");
+    if (nivel) return mostrarAte(nivel.dataset.nivel);
     if (t.closest("[data-nova]")) return abrirNova();
     const item = t.closest("[data-abrir-acao]");
     if (item) return abrirJanela(Number(item.closest("[data-numero]").dataset.numero));

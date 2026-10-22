@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 81.3 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 82 da página)
 
 ---
 
@@ -525,6 +525,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 81.1 | Versão 2, importação de ações por planilha: "Depende de" passa a reconhecer os códigos das próprias linhas da planilha, mesmo com "Códigos das ações" desligado (antes, só os códigos de ações já existentes), e procura o código antes do número, para códigos só de algarismos. O código importado é guardado (escondido enquanto o campo estiver desligado). Corrige a importação da planilha da PI². Sem mudança na versão atual |
 | 81.2 | Versão 2: a seção "Importar de planilha" de "Configurar este espaço" passa a se chamar "Importar ações de planilha" (pedido do responsável). Sem mudança na versão atual |
 | 81.3 | Versão 2: na seção Responsáveis, "Importar de planilha" passa a se chamar "Importar responsáveis de planilha" (pedido do responsável). Sem mudança na versão atual |
+| 82 | Versão 2: acima da lista agrupada, "Mostrar até: Fases · Etapas · Ações" recolhe de uma vez todas as fases, só as etapas ou nada (pedido do responsável, 22/10/2026). Substitui o botão "Recolher fases / Expandir tudo", que tinha ficado escondido no painel de ordenação depois da mudança da barra do topo. No computador e no celular. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
