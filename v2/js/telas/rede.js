@@ -51,7 +51,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, usaCodigos
     return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${LARGURA}px;height:${ALTURA}px" data-numero="${a.numero}">
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         title="${esc(etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo)}">
-        <span class="rede-rotulo">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}${esc(a.rotulo)}</span>
+        <span class="rede-rotulo">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span data-editar="rotulo">${esc(a.rotulo)}</span></span>
         <span class="rede-rodape">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}<span class="mono">${rodape}</span></span>
       </div>
     </div>`;

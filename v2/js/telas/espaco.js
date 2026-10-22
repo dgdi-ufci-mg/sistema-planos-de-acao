@@ -15,6 +15,7 @@ import { abrirPainel, avisar } from "./painel.js";
 import { surgir } from "./movimento.js";
 import { donosHtml, ajustarDonos } from "./pessoas.js";
 import { GLOSSARIO } from "../glossario.js";
+import { editarTexto, escolherParticipantes } from "./edicao-no-lugar.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
 import { criarPlanilha } from "./editar-planilha.js";
@@ -154,7 +155,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function montar() {
     comAcoes = true;
     painelAcoes.innerHTML = `
-        <div class="legenda" data-legenda hidden>${legendaHtml()}</div>
+        <div class="legenda" data-legenda hidden>${legendaHtml(store.podeGravar)}</div>
         <div class="lista" data-lista></div>
         <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`;
     ferramentas = barra;
@@ -502,11 +503,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="sit">${sit}</div>
-        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : ""].join("")}</div>
-        ${c.descricao ? `<div class="desc">${esc(a.descricao ?? "")}</div>` : ""}
-        ${c.participantes ? `<div class="donos">${donos}</div>` : ""}
+        ${c.descricao ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
+        ${c.participantes ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras ? barraHtml(l) : ""}
       </div>
     </div>`;
@@ -614,9 +615,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const arrastavel = l.situacao !== "naoLiberada";
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
-        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
+        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
         ${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}
-        <div class="cartao-base"><div class="donos">${donos}</div>${l.semEstimativa ? FALTA_ESTIMAR : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}</div>
+        <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div>${l.semEstimativa ? FALTA_ESTIMAR : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}</div>
         ${l.situacao === "concluida" ? "" : barraHtml(l)}
       </div>
     </article>`;
@@ -768,6 +769,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   };
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;
+    if (t.closest("[data-editando]")) return; // clique dentro do campo em edição
+    /* Alt+clique num campo editável: edita ali mesmo (22/10/2026) */
+    const campo = e.altKey && store.podeGravar ? t.closest("[data-editar]") : null;
+    if (campo) { e.preventDefault(); return editarNoLugar(campo); }
     const filtro = t.closest("[data-filtro]");
     if (filtro) return mudar("situacao", filtro.dataset.filtro);
     const grupo = t.closest("[data-alternar-grupo]");
@@ -807,12 +812,54 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     });
   }
 
+  /* ---------- edição no lugar: Alt+clique no nome, na descrição ou nos participantes (22/10/2026) ---------- */
+  /** campo de texto em edição: os redesenhos esperam o fim, para não apagar o que se digita */
+  let editando = false;
+  let redesenharDepois = false;
+  function editarNoLugar(campo) {
+    const no = campo.closest("[data-numero]");
+    const numero = Number(no.dataset.numero);
+    const acao = acoes.find((a) => a.numero === numero);
+    if (!acao) return;
+    const tipo = campo.dataset.editar;
+    if (tipo === "responsaveis") {
+      return escolherParticipantes(campo, {
+        responsaveis, marcados: acao.responsaveis, tons: espaco.tons,
+        aoMudar: (id, ligado) => (ligado ? store.acrescentarResponsavelNaAcao(espacoId, numero, id) : store.retirarResponsavelDaAcao(espacoId, numero, id)),
+      });
+    }
+    const arrastavel = no.getAttribute("draggable") === "true";
+    if (arrastavel) no.setAttribute("draggable", "false"); // no quadro, arrastar não pode roubar a seleção do texto
+    editando = true;
+    editarTexto(campo, {
+      valor: tipo === "rotulo" ? acao.rotulo : acao.descricao ?? "",
+      multilinha: tipo === "descricao",
+      aoGravar: (novo) => {
+        if (tipo === "rotulo" && !novo) throw new Error("Informe o nome da ação.");
+        return store.alterarAcao(espacoId, numero, { [tipo]: novo });
+      },
+      aoTerminar: () => {
+        if (arrastavel) no.setAttribute("draggable", "true");
+        editando = false;
+        if (redesenharDepois) { redesenharDepois = false; desenhar(); }
+      },
+    });
+  }
+  /* com Alt pressionado, os campos editáveis ficam marcados */
+  const marcarAlt = (e) => {
+    const ligar = e.type === "keydown" && e.key === "Alt" && store.podeGravar && ["lista", "quadro", "rede"].includes(ui.modo);
+    document.body.classList.toggle("alt-edicao", ligar);
+  };
+  document.addEventListener("keydown", marcarAlt);
+  document.addEventListener("keyup", marcarAlt);
+  addEventListener("blur", marcarAlt);
+
   /* ---------- acompanhamento: cada mudança no banco recalcula e redesenha ---------- */
   let fila = Promise.resolve();
   const parar = store.acompanharEspaco(espacoId, (dados) => {
     fila = fila.then(async () => {
       derivar(dados, dados.responsaveis, await store.lerCalendarioGeral());
-      desenhar();
+      if (editando) redesenharDepois = true; else desenhar();
       janela?.atualizar(dadosDaJanela());
       novaJanela?.atualizar(dadosDaJanela());
     }).catch((e) => avisar(e.message));
@@ -824,6 +871,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.removeEventListener("keydown", fecharPop);
     document.removeEventListener("click", fecharColunas);
     document.removeEventListener("keydown", fecharColunas);
+    document.removeEventListener("keydown", marcarAlt);
+    document.removeEventListener("keyup", marcarAlt);
+    removeEventListener("blur", marcarAlt);
+    document.body.classList.remove("alt-edicao");
+    document.querySelector(".escolher-participantes")?.remove();
     document.removeEventListener("sextante:alternar-legenda", alternarLegenda);
     barra.innerHTML = "";
     barra.onclick = null;
@@ -832,8 +884,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   };
 }
 
-function legendaHtml() {
+function legendaHtml(podeEditar) {
   return `<div class="legenda-itens">
+    ${podeEditar ? "<span><b>Alt+clique</b> no nome, na descrição ou nos participantes de uma ação edita ali mesmo, sem abrir a ação (na lista, no quadro e na rede).</span>" : ""}
     <span>Barra, à escolha: <span class="barra-icone tempo">${ICONES.barraTempo}</span>tempo restante (verde: faltam dias; vermelho: venceu)
       · <span class="barra-icone execucao">${ICONES.barraExecucao}</span><a href="#" class="oque" data-termo="exec">índice de criticidade</a>
       · <span class="barra-icone revisao">${ICONES.barraRevisao}</span><a href="#" class="oque" data-termo="rev">contribuição para a variância</a></span>

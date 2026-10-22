@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 95 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 96 da página)
 
 ---
 
@@ -544,6 +544,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 93 | Versão 2: na lista, o ícone da situação (cadeado ou conclusão) passa para antes do nome. Novo botão **Colunas** na segunda linha: nome e situação ficam fixos; Descrição (texto inteiro), Participantes e Barras entram e saem, e a escolha fica lembrada no aparelho (`sextante.colunas`). A opção "Nenhuma" saiu do seletor Barra: quem não quer barra desliga a coluna Barras, e o seletor some junto (decisões do responsável). A Descrição só é oferecida quando o espaço usa esse campo. Sem mudança na versão atual |
 | 94 | Versão 2: volta dos nomes técnicos no seletor Barra (revisão de decisão do responsável): "Índice de criticidade" e "Contribuição para a variância". Na lista, com uma dessas barras, a linha de cada etapa aberta mostra, sobre a coluna das barras, o nome e o que ele representa; passar o mouse no nome abre uma caixa com a explicação do glossário, e clicar leva a "Entenda os termos", cujos verbetes ganharam a equação (seções 15.2 e 15.3 da especificação). Em lista estreita, a legenda desce para baixo do nome da etapa. Sem mudança na versão atual |
 | 95 | Versão 2: "Índice de criticidade" e "Contribuição para a variância" substituem "prioridade de execução" e "prioridade de revisão" em todo o sistema (ordens, legenda, cartões, janela da ação e glossário), por decisão do responsável; os nomes simples ficam no glossário. Os verbetes ganharam a fonte primária com link permanente: Van Slyke (1963), com texto completo público no DTIC, e Williams (1992), com resumo público. Referências também na lista de referências. Sem mudança na versão atual |
+| 96 | Versão 2: **edição no lugar** (pedido do responsável). Na lista, no quadro e na rede, quem pode gravar edita com **Alt+clique** o nome (Enter grava, Esc cancela), a descrição (lista, com a coluna ligada; Ctrl+Enter grava) e os participantes (lista e quadro: lista de caixas de marcar que grava a cada marca), sem abrir a janela da ação. Com Alt pressionado, os campos editáveis ficam contornados. Enquanto um texto está em edição, os redesenhos esperam o fim. Código em `js/telas/edicao-no-lugar.js`; a dica entrou na Legenda. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
