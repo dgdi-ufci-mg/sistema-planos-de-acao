@@ -14,6 +14,7 @@ import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lis
 import { abrirPainel, avisar } from "./painel.js";
 import { surgir } from "./movimento.js";
 import { donosHtml, ajustarDonos } from "./pessoas.js";
+import { GLOSSARIO } from "../glossario.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
 import { criarPlanilha } from "./editar-planilha.js";
@@ -235,11 +236,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    */
   const BARRAS = [
     ["tempo", "Tempo restante", "barraTempo"],
-    ["execucao", "Prioridade de execução", "barraExecucao"],
-    ["revisao", "Prioridade de revisão", "barraRevisao"],
+    ["execucao", "Índice de criticidade (prioridade de execução)", "barraExecucao"],
+    ["revisao", "Contribuição para a variância (prioridade de revisão)", "barraRevisao"],
   ];
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
-  const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Execução", revisao: "Revisão" };
+  const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a variância" }; /* nomes técnicos de volta (22/10/2026) */
   const barrasHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Barra</span><div class="modos barras" role="group" aria-label="Barra mostrada nos cartões">
       ${BARRAS.map(([v, nome, icone]) => `<button type="button" class="modo" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}"><span class="barra-icone ${v}">${ICONES[icone]}</span><span class="modo-nome" aria-hidden="true">${NOMES_BARRA[v]}</span></button>`).join("")}
     </div></div>`;
@@ -511,6 +512,24 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     </div>`;
   }
 
+  /**
+   * Legenda da barra na linha da etapa aberta, sobre a coluna das barras (22/10/2026, pedido do
+   * responsável): nome técnico, o que representa, caixa de explicação ao passar o mouse e link para
+   * o glossário, com a equação.
+   */
+  const LEGENDA_BARRA = {
+    execucao: ["exec", "quanto cada dia de atraso adia o fim"],
+    revisao: ["rev", "parte da incerteza do prazo final"],
+  };
+  function legendaBarraHtml() {
+    const leg = LEGENDA_BARRA[ui.barra];
+    if (!leg || ui.modo !== "lista" || !colunas().barras) return "";
+    const [chave, curto] = leg;
+    const termo = GLOSSARIO.find((t) => t.chave === chave);
+    return `<div class="legenda-barra"><span class="legenda-barra-texto">
+        <span class="barra-icone ${ui.barra}">${ICONES[BARRAS.find(([v]) => v === ui.barra)[2]]}</span>
+        <span class="dica-termo"><a href="#" class="oque" data-termo="${chave}">${NOMES_BARRA[ui.barra]}</a><span class="caixa-dica" role="tooltip">${termo.texto} <i>Clique para ver como é calculado.</i></span></span>: ${curto}</span></div>`;
+  }
   function grupoHtml(nivel, id, titulo, ls, miolo) {
     const r = resumir(ls);
     const fechado = ui.recolhidos.has(id);
@@ -518,6 +537,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ? `${r.total} ${plural(r.total, "ação", "ações")} · ${r.concluidas} ${plural(r.concluidas, "concluída", "concluídas")}${r.atrasadas ? ` · <span class="grupo-atrasadas">${r.atrasadas} ${plural(r.atrasadas, "atrasada", "atrasadas")}</span>` : ""} · ${r.concluidas === r.total ? "concluído em" : "termina em"} <span class="mono">${dataBr(r.termina)}</span>`
       : "Nenhuma ação";
     return `<section class="grupo ${nivel}${fechado ? " fechado" : ""}" data-grupo="${esc(id)}">
+      ${nivel === "etapa" ? legendaBarraHtml() : ""}
       <button class="grupo-cabeca" type="button" aria-expanded="${!fechado}" data-alternar-grupo="${esc(id)}">
         <span class="grupo-seta">${ICONES.seguir}</span><span class="grupo-titulo">${esc(titulo)}</span>
         <span class="grupo-info"><span class="grupo-resumo">${resumo}</span>

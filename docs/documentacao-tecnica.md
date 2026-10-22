@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 93 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 94 da página)
 
 ---
 
@@ -542,6 +542,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 91 | Versão 2: nova arrumação da barra do topo do espaço (pedido do responsável): seletor de modo, Filtrar e Ordenar à esquerda; nome do espaço no meio; Nova ação à direita. Na linha de baixo, "Barra" e "Mostrar até" ganham o mesmo desenho do seletor de modo (botões agrupados numa cápsula; na Barra, só o símbolo, com o nome no escolhido; "Nenhuma" ganhou símbolo próprio) e ficam à esquerda; o alerta de ações atrasadas vai para a direita. Sem mudança na versão atual |
 | 92 | Versão 2: os participantes de cada ação aparecem em ordem alfabética do nome, da esquerda para a direita, na lista e no quadro (pedido do responsável). Sem mudança na versão atual |
 | 93 | Versão 2: na lista, o ícone da situação (cadeado ou conclusão) passa para antes do nome. Novo botão **Colunas** na segunda linha: nome e situação ficam fixos; Descrição (texto inteiro), Participantes e Barras entram e saem, e a escolha fica lembrada no aparelho (`sextante.colunas`). A opção "Nenhuma" saiu do seletor Barra: quem não quer barra desliga a coluna Barras, e o seletor some junto (decisões do responsável). A Descrição só é oferecida quando o espaço usa esse campo. Sem mudança na versão atual |
+| 94 | Versão 2: volta dos nomes técnicos no seletor Barra (revisão de decisão do responsável): "Índice de criticidade" e "Contribuição para a variância". Na lista, com uma dessas barras, a linha de cada etapa aberta mostra, sobre a coluna das barras, o nome e o que ele representa; passar o mouse no nome abre uma caixa com a explicação do glossário, e clicar leva a "Entenda os termos", cujos verbetes ganharam a equação (seções 15.2 e 15.3 da especificação). Em lista estreita, a legenda desce para baixo do nome da etapa. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

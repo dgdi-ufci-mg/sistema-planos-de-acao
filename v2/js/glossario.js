@@ -15,10 +15,16 @@ export const GLOSSARIO = [
     texto: "A data prevista de conclusão, pela estimativa mais recente, já passou. Uma reestimativa tira o carimbo e fica registrada no histórico." },
   { chave: "exec", titulo: "Prioridade de execução",
     texto: "Quanto um atraso nesta ação atrasa a conclusão prevista. Por exemplo, com 70%, cada dia de atraso nesta ação atrasa a conclusão em cerca de 0,7 dia. Considera só o prazo final; outros motivos de prioridade ficam a critério da equipe.",
-    tecnico: "índice de criticidade" },
+    tecnico: "índice de criticidade",
+    /* equação (22/10/2026, pedido do responsável); fundamento na seção 15.2 da especificação */
+    formula: `<p class="formula">CI<sub>i</sub> = (1/K) · Σ<sub>k</sub> 𝟙<sub>i</sub><sup>(k)</sup></p>
+      <p>K é o número de cenários simulados; 𝟙<sub>i</sub><sup>(k)</sup> vale 1 quando a ação <i>i</i> está no caminho crítico do cenário <i>k</i> e 0 quando não está. Num cenário, um dia a mais numa ação do caminho crítico adia a conclusão em um dia; nas demais, não adia. Por isso a média, CI<sub>i</sub>, é o efeito esperado de cada dia de atraso na ação.</p>` },
   { chave: "rev", titulo: "Prioridade de revisão do planejamento",
     texto: "Quanto da incerteza do prazo final vem desta ação. Por exemplo, 18% quer dizer que esta ação responde por 18% da incerteza; as parcelas de todas as ações somam 100%. Quanto maior, mais vale revisar as estimativas, dividir a ação ou reduzir riscos.",
-    tecnico: "contribuição para a variância do prazo" },
+    tecnico: "contribuição para a variância do prazo",
+    /* equação (22/10/2026, pedido do responsável); fundamento na seção 15.3 da especificação */
+    formula: `<p class="formula">r<sub>i</sub> = Cov(d<sub>i</sub>, T) / (σ<sub>i</sub> · σ<sub>T</sub>)<br>q<sub>i</sub> = max(r<sub>i</sub>, 0)²<br>CV<sub>i</sub> = q<sub>i</sub> / Σ<sub>j</sub> q<sub>j</sub></p>
+      <p>Nos cenários simulados, d<sub>i</sub> é a duração da ação <i>i</i> e T, a duração do espaço inteiro; σ<sub>i</sub> e σ<sub>T</sub> são os desvios-padrão delas. O quadrado da correlação, r<sub>i</sub>², é a parte da variância do prazo explicada pela ação; correlações negativas, que só vêm de ruído, contam como zero. A divisão pela soma das ações não concluídas faz as parcelas somarem 100%.</p>` },
   { chave: "prazo", titulo: "Prazo de uma ação",
     texto: "É contado em dias úteis, da liberação até a conclusão, incluindo o tempo até alguém começar. A data de início real não é registrada." },
   { chave: "naoAntesDe", titulo: "Não começa antes de",

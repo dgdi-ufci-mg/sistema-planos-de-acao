@@ -281,6 +281,9 @@ body.so-leitura [data-nova] { display: none; }
 .termo h4 { margin: 0 0 4px; display: flex; align-items: center; gap: 6px; font-size: 1rem; }
 .termo.destacado { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .termo .tec { display: block; margin-top: 4px; }
+.termo-formula { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: .92rem; }
+.termo-formula p { margin: 6px 0 0; }
+.formula { font-family: var(--f-dados); background: var(--sunk); padding: 6px 10px; border-radius: 6px; line-height: 1.9; overflow-x: auto; }
 .oque { font-size: .78rem; font-weight: 400; }
 .aviso-curto {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 60;
@@ -424,6 +427,24 @@ body.so-leitura [data-nova] { display: none; }
   width: 100%; border-radius: 8px; padding: 6px 8px;
 }
 .grupo-cabeca:hover { background: var(--grid); }
+/* legenda da barra na linha da etapa aberta, sobre a coluna das barras (22/10/2026) */
+.grupo.etapa { display: grid; grid-template-columns: minmax(0, 1fr); }
+.grupo.etapa > .grupo-cabeca, .grupo.etapa > .legenda-barra { grid-area: 1 / 1; }
+.grupo.etapa > .grupo-corpo { grid-row: 2; }
+.legenda-barra { display: grid; grid-template-columns: var(--colunas); column-gap: 12px; align-items: center; padding: 0 15px 0 31px; pointer-events: none;
+  z-index: 1; transition: opacity .2s ease .06s, visibility 0s; }
+.grupo.etapa.fechado > .legenda-barra { opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s .2s; }
+.legenda-barra-texto { grid-column: -2 / -1; position: relative; display: block; font-size: .78rem; color: var(--muted); line-height: 1.35; }
+.legenda-barra .barra-icone { vertical-align: -2px; margin-right: 4px; }
+.legenda-barra .barra-icone .icone { width: 14px; height: 14px; }
+.dica-termo { pointer-events: auto; }
+.dica-termo .oque { font-weight: 600; }
+.caixa-dica { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; width: 300px; max-width: 80vw; padding: 10px 12px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sombra); color: var(--ink); font-size: .84rem; line-height: 1.45;
+  opacity: 0; visibility: hidden; transition: opacity var(--mov-rapido), visibility 0s var(--mov-rapido); }
+.caixa-dica i { display: block; margin-top: 6px; color: var(--muted); font-style: normal; font-size: .78rem; }
+.dica-termo:hover .caixa-dica, .dica-termo:focus-within .caixa-dica { opacity: 1; visibility: visible; transition: opacity var(--mov-rapido) .15s, visibility 0s .15s; }
+@media (prefers-reduced-motion: reduce) { .legenda-barra, .caixa-dica { transition: none !important; } }
 .grupo-cabeca:focus-visible { outline: 2px solid var(--accent); }
 .grupo-seta { display: flex; color: var(--muted); transition: transform .2s; transform: rotate(90deg); }
 .grupo.fechado > .grupo-cabeca .grupo-seta { transform: none; }
@@ -491,6 +512,11 @@ body.so-leitura [data-nova] { display: none; }
   .grupo-info { flex-wrap: nowrap; flex: none; gap: 8px; }
   .grupo-progresso { width: 44px; }
   .grupo.etapa > .grupo-corpo > .grupo-dentro { padding-left: 4px; }
+  /* lista estreita: a legenda da barra desce para baixo do nome da etapa */
+  .grupo.etapa > .legenda-barra { grid-area: auto; grid-row: 2; display: block; padding: 0 8px 6px 36px; }
+  .grupo.etapa.fechado > .legenda-barra { display: none; }
+  .grupo.etapa > .grupo-corpo { grid-row: 3; }
+  .caixa-dica { left: 0; right: auto; }
 }
 
 /* ---------- janela da ação (passo 1.7) ---------- */
