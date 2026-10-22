@@ -58,7 +58,12 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   alvo.innerHTML = `
     <div class="crono-ferramentas">
       <div class="alternador" role="group" aria-label="Tamanho">
-        ${[["normal", "Normal"], ["tudo", "Ver tudo"]].map(([v, nome]) => `<button type="button" data-escala="${v}" aria-pressed="${v === escala}">${nome}</button>`).join("")}
+        ${[["normal", "Normal"], ["tudo", "Ver tudo"]].map(([v, nome]) => `<button type="button" data-escala="${v}" aria-pressed="${v === escala && !alvo.dataset.redeZoom}">${nome}</button>`).join("")}
+      </div>
+      <div class="zoom-rede" role="group" aria-label="Zoom">
+        <button type="button" class="icone-barra" data-zoom-passo="-1" title="Afastar (Ctrl + rolar)" aria-label="Afastar">−</button>
+        <span class="zoom-valor" data-zoom-valor aria-live="polite"></span>
+        <button type="button" class="icone-barra" data-zoom-passo="1" title="Aproximar (Ctrl + rolar)" aria-label="Aproximar">+</button>
       </div>
       <div class="crono-legendas">
         <span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
@@ -83,24 +88,73 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
         </div>
       </div>
     </div>
-    <p class="tec">Da esquerda para a direita, na ordem em que as ações podem acontecer. Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>`;
+    <p class="tec">Da esquerda para a direita, na ordem em que as ações podem acontecer. Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la. Ctrl + rolar o mouse aproxima e afasta; arraste o fundo para mover a rede. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>`;
 
-  /* ---------- tamanho: "Ver tudo" reduz para caber na largura ---------- */
+  /* ---------- tamanho e zoom (22/10/2026): Ctrl + rolar aproxima e afasta, em volta do cursor, como
+     nos quadros infinitos; arrastar o fundo move a rede. "Normal" é 100%; "Ver tudo" cabe na área ---------- */
   const rolagem = alvo.querySelector("[data-rede-rolagem]");
   const tamanho = alvo.querySelector("[data-tamanho]");
   const conteudo = alvo.querySelector("[data-conteudo]");
-  /* "Ver tudo": cabe na largura e na altura da área (22/10/2026) */
-  const alturaUtil = parseFloat(getComputedStyle(rolagem).maxHeight) || rolagem.clientHeight;
-  const fator = escala === "tudo" ? Math.min(1, (rolagem.clientWidth - 2) / largura, (alturaUtil - 2) / altura) : 1;
-  conteudo.style.transform = fator < 1 ? `scale(${fator})` : "";
-  tamanho.style.width = `${largura * fator}px`;
-  tamanho.style.height = `${altura * fator}px`;
+  const valor = alvo.querySelector("[data-zoom-valor]");
+  const MIN = 0.2;
+  const MAX = 2.5;
+  const alturaUtil = rolagem.clientHeight;
+  const caber = () => Math.min(1, (rolagem.clientWidth - 2) / largura, (alturaUtil - 2) / altura);
+  let fator = alvo.dataset.redeZoom ? Number(alvo.dataset.redeZoom) : escala === "tudo" ? caber() : 1;
+  const aplicar = (novo, cx = rolagem.clientWidth / 2, cy = rolagem.clientHeight / 2) => {
+    novo = Math.min(MAX, Math.max(MIN, novo));
+    const px = (rolagem.scrollLeft + cx) / fator; // ponto da rede sob o cursor
+    const py = (rolagem.scrollTop + cy) / fator;
+    fator = novo;
+    conteudo.style.transform = fator !== 1 ? `scale(${fator})` : "";
+    tamanho.style.width = `${largura * fator}px`;
+    tamanho.style.height = `${altura * fator}px`;
+    rolagem.scrollLeft = px * fator - cx;
+    rolagem.scrollTop = py * fator - cy;
+    valor.textContent = `${Math.round(fator * 100)}%`;
+  };
+  const zoomLivre = (novo, cx, cy) => {
+    aplicar(novo, cx, cy);
+    alvo.dataset.redeZoom = String(fator);
+    for (const b of alvo.querySelectorAll("[data-escala]")) b.setAttribute("aria-pressed", "false");
+  };
+  aplicar(fator, 0, 0);
   if (rolagemAnterior && escala === alvo.dataset.redeEscala) [rolagem.scrollLeft, rolagem.scrollTop] = rolagemAnterior;
   alvo.dataset.redeEscala = escala;
 
+  rolagem.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey && !e.metaKey) return; // sem Ctrl, rola normalmente
+    e.preventDefault();
+    const r = rolagem.getBoundingClientRect();
+    zoomLivre(fator * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  /* arrastar o fundo (fora dos cartões) move a rede */
+  rolagem.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || e.target.closest("[data-rede-no]")) return;
+    const inicio = { x: e.clientX, y: e.clientY, l: rolagem.scrollLeft, t: rolagem.scrollTop };
+    rolagem.setPointerCapture(e.pointerId);
+    rolagem.classList.add("arrastando");
+    const mover = (ev) => { rolagem.scrollLeft = inicio.l - (ev.clientX - inicio.x); rolagem.scrollTop = inicio.t - (ev.clientY - inicio.y); };
+    const soltar = () => {
+      rolagem.classList.remove("arrastando");
+      rolagem.removeEventListener("pointermove", mover);
+      rolagem.removeEventListener("pointerup", soltar);
+      rolagem.removeEventListener("pointercancel", soltar);
+    };
+    rolagem.addEventListener("pointermove", mover);
+    rolagem.addEventListener("pointerup", soltar);
+    rolagem.addEventListener("pointercancel", soltar);
+  });
+
   alvo.querySelector(".crono-ferramentas").onclick = (e) => {
+    const z = e.target.closest("[data-zoom-passo]");
+    if (z) return zoomLivre(fator * (Number(z.dataset.zoomPasso) > 0 ? 1.2 : 1 / 1.2));
     const b = e.target.closest("[data-escala]");
-    if (b && b.dataset.escala !== escala) aoMudarEscala(b.dataset.escala);
+    if (!b) return;
+    delete alvo.dataset.redeZoom;
+    if (b.dataset.escala !== escala) return aoMudarEscala(b.dataset.escala);
+    aplicar(escala === "tudo" ? caber() : 1);
+    for (const x of alvo.querySelectorAll("[data-escala]")) x.setAttribute("aria-pressed", String(x === b));
   };
 
   /* ---------- destaque: tudo o que vem antes e depois da ação apontada ---------- */

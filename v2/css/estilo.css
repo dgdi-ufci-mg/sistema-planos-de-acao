@@ -900,8 +900,14 @@ h3.editavel { padding: 2px 6px; }
 
 /* ---------- rede, o fluxo das ações (passo 1.17c) ---------- */
 .rede { background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
-.rede-rolagem { overflow: auto; max-height: calc(100vh - 220px); border-radius: var(--raio); }
+.rede-rolagem { overflow: auto; height: max(320px, calc(100vh - 230px)); overscroll-behavior: contain; border-radius: var(--raio); }
 .rede-tamanho { position: relative; }
+.rede-rolagem { cursor: grab; }
+.rede-rolagem.arrastando { cursor: grabbing; user-select: none; }
+.rede-rolagem .rede-cartao { cursor: pointer; }
+.zoom-rede { display: inline-flex; align-items: center; gap: 2px; border: 1px solid var(--line); border-radius: 999px; padding: 1px; background: var(--surface); }
+.zoom-rede .icone-barra { width: 28px; height: 28px; font-size: 1.1rem; font-weight: 600; border-radius: 999px; }
+.zoom-valor { min-width: 44px; text-align: center; font: .8rem var(--f-dados); color: var(--muted); }
 .rede-conteudo { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .rede-setas { position: absolute; inset: 0; overflow: visible; }
 /* marcos das etapas (22/10/2026): faixas verticais com o nome no alto, como os milestones do Bizagi */
