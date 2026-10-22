@@ -455,6 +455,118 @@ export function criarStore(banco, opcoes = {}) {
       const posicao = (r) => (r.campo ? CAMPOS.acao.indexOf(r.campo) + 1 : 0);
       return (await banco.listarHistorico(espacoId, numero)).sort((a, b) => a.em.localeCompare(b.em) || posicao(a) - posicao(b));
     },
+    // --- restauração da cópia de segurança (passo 1.19b) ---
+    /**
+     * Confere uma cópia de segurança sem gravar nada e devolve o resumo, ou recusa com o motivo.
+     * @returns {{espacos: number, acoes: number, responsaveis: number, retratos: number, registros: number, geradaEm: string}}
+     */
+    conferirCopia(copia) {
+      if (copia?.formato !== "sextante-copia-de-seguranca" || ![1, 2].includes(copia.versao) || !Array.isArray(copia.espacos)) {
+        throw new ErroDeDados("copia-invalida", "Este arquivo não é uma cópia de segurança do sistema.");
+      }
+      const resumo = { espacos: 0, acoes: 0, responsaveis: 0, retratos: 0, registros: 0, geradaEm: copia.geradaEm };
+      for (const e of copia.espacos) {
+        if (!e?.espaco?.id || !Array.isArray(e.acoes) || !Array.isArray(e.responsaveis)) {
+          throw new ErroDeDados("copia-invalida", "A cópia de segurança está incompleta ou danificada.");
+        }
+        recusarDesconhecidos(e.espaco, "espaco");
+        for (const a of e.acoes) recusarDesconhecidos(a, "acao");
+        for (const r of e.responsaveis) recusarDesconhecidos(r, "responsavel");
+        resumo.espacos++;
+        resumo.acoes += e.acoes.length;
+        resumo.responsaveis += e.responsaveis.length;
+        resumo.retratos += e.retratos?.length ?? 0;
+        resumo.registros += e.historico?.length ?? 0;
+      }
+      return resumo;
+    },
+    /**
+     * Restaura a cópia de segurança, exatamente como estava (ids, números, lixeira, histórico e retratos).
+     * Só num banco sem nenhum espaço, nem na lixeira: nunca mistura nem sobrescreve dados.
+     */
+    async restaurarCopia(copia) {
+      const resumo = store.conferirCopia(copia);
+      if ((await banco.listarEspacos()).length) {
+        throw new ErroDeDados("banco-com-dados", "A restauração só é feita num banco sem nenhum espaço, para não misturar nem sobrescrever dados.");
+      }
+      if (copia.calendarioGeral && !(await banco.lerCalendarioGeral())) await banco.gravarCalendarioGeral(copia.calendarioGeral);
+      for (const e of copia.espacos) {
+        const id = e.espaco.id;
+        await banco.criarEspaco(id, e.espaco);
+        for (const r of e.responsaveis) await banco.criarResponsavel(id, r.id, r);
+        for (const a of e.acoes) await banco.criarAcao(id, a);
+        if (e.historico?.length) await banco.gravarHistorico(id, e.historico);
+        for (const { acoes, ...cabecalho } of e.retratos ?? []) await banco.criarRetrato(id, cabecalho, acoes ?? []);
+      }
+      return resumo;
+    },
+
+    // --- importação por planilha (passo 1.19b) ---
+    /**
+     * Grava o plano conferido (js/importar.js): cria as fases e etapas que faltam, cria as ações novas,
+     * atualiza as existentes e, por fim, acerta as dependências (que podem citar ações recém-criadas).
+     * Cada ação é gravada pelas operações comuns, com validação e histórico. Uma linha que falhe não
+     * impede as outras; o resultado diz quais falharam e por quê.
+     * @returns {Promise<{criadas: number, atualizadas: number, falhas: {linha: number, mensagem: string}[]}>}
+     */
+    async importarAcoes(espacoId, plano) {
+      const falhas = [];
+      const tentar = async (linha, f) => { try { await f(); return true; } catch (e) { falhas.push({ linha, mensagem: e.message }); return false; } };
+      /* fases e etapas novas */
+      const idDaNova = [];
+      if (plano.etapasNovas.length) {
+        const espaco = await store.lerEspaco(espacoId);
+        const estrutura = structuredClone(espaco.estrutura ?? []);
+        for (const { fase, etapa } of plano.etapasNovas) {
+          let f = estrutura.find((x) => x.nome.trim().toLowerCase() === fase.trim().toLowerCase());
+          if (!f) { f = { id: novoId(), nome: fase, etapas: [] }; estrutura.push(f); }
+          const e = { id: novoId(), nome: etapa };
+          f.etapas.push(e);
+          idDaNova.push(e.id);
+        }
+        await store.alterarEspaco(espacoId, { estrutura, camposOpcionais: { ...(espaco.camposOpcionais ?? {}), fasesEtapas: true } });
+      }
+      const etapaId = (ref) => (ref == null ? undefined : ref.id ?? idDaNova[ref.nova]);
+      const numeroDaLinha = new Map();
+      let criadas = 0;
+      let atualizadas = 0;
+      for (const l of plano.linhas) {
+        const { rotulo, codigo, descricao, etapa, naoAntesDe, responsaveis: resp, estimativa } = l.campos;
+        const comuns = {
+          ...(codigo ? { codigo } : {}), ...(descricao ? { descricao } : {}), ...(etapa ? { etapa: etapaId(etapa) } : {}),
+          ...(naoAntesDe !== undefined ? { naoAntesDe } : {}), ...(resp ? { responsaveis: resp } : {}),
+        };
+        if (l.tipo === "nova") {
+          await tentar(l.linha, async () => {
+            const numero = await store.criarAcao(espacoId, {
+              rotulo, ...comuns,
+              ...(estimativa ? { estimativas: [{ em: hoje(), por: usuario, ...estimativa, contaDe: "liberacao" }] } : {}),
+            });
+            numeroDaLinha.set(l.linha, numero);
+            criadas++;
+          });
+        } else if (l.tipo === "atualiza") {
+          const ok = await tentar(l.linha, async () => {
+            const campos = { ...(rotulo ? { rotulo } : {}), ...comuns };
+            if (Object.keys(campos).length) await store.alterarAcao(espacoId, l.numero, campos);
+            if (estimativa) await store.corrigirEstimativa(espacoId, l.numero, estimativa);
+          });
+          if (ok) atualizadas++;
+        }
+      }
+      /* dependências, depois de todas as ações existirem */
+      for (const l of plano.linhas) {
+        if (!l.campos.dependeDe || (l.tipo !== "nova" && l.tipo !== "atualiza")) continue;
+        const numero = l.tipo === "nova" ? numeroDaLinha.get(l.linha) : l.numero;
+        if (numero == null) continue;
+        const desejadas = l.campos.dependeDe.map((r) => r.numero ?? numeroDaLinha.get(r.linha)).filter((n) => n != null);
+        const atuais = (await banco.lerAcao(espacoId, numero))?.dependeDe ?? [];
+        for (const n of atuais.filter((x) => !desejadas.includes(x))) await tentar(l.linha, () => store.retirarDependencia(espacoId, numero, n));
+        for (const n of desejadas.filter((x) => !atuais.includes(x))) await tentar(l.linha, () => store.acrescentarDependencia(espacoId, numero, n));
+      }
+      return { criadas, atualizadas, falhas };
+    },
+
     // --- retratos (seção 4.4; passo 1.18) ---
     /**
      * Salva um retrato manual: a cópia integral do espaço agora, com os resultados calculados.
@@ -522,7 +634,7 @@ export function criarStore(banco, opcoes = {}) {
     "retirarResponsavelDaAcao", "acrescentarDependencia", "retirarDependencia", "reestimar", "corrigirEstimativa",
     "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral",
     "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco",
-    "salvarRetrato"];
+    "salvarRetrato", "importarAcoes", "restaurarCopia"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

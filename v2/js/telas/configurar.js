@@ -3,14 +3,17 @@
  * menu do espaço, com dados e datas, datas excluídas, fases e etapas, campos opcionais,
  * documentos e a semente da simulação (visível, mas fixa). Cada seção é gravada pelo seu botão
  * Salvar; os campos opcionais, na hora. Exportação (passo 1.19a): copiar para planilha e copiar
- * o fluxograma em Mermaid. Retratos (passo 1.18): salvar e listar. Importação: passo 1.19b.
+ * o fluxograma em Mermaid. Retratos (passo 1.18): salvar e listar. Importar de planilha (passo 1.19b):
+ * colar, conferir e gravar.
  */
 import { ligarSecoesSuaves } from "./movimento.js";
 import { criarTelaResponsaveis } from "./responsaveis.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
-import { datasEfetivas } from "../calendario.js";
+import { datasEfetivas, criarCalendario } from "../calendario.js";
+import { caminhoCritico } from "../calculo.js";
+import { planejarImportacao } from "../importar.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { excluirEtapas, excluirEspaco } from "./exclusao.js";
 import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
@@ -176,6 +179,21 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <div data-lista-retratos>${retratosHtml()}</div>
       </details>
 
+      ${store.podeGravar ? `<details class="config" data-secao="importar"${aberta("importar")}>
+        <summary><h3>Importar de planilha</h3></summary>
+        <p class="tec">Selecione as linhas no Google Planilhas ou no Excel, incluindo a linha de títulos, copie e cole abaixo.
+          Colunas reconhecidas: Ação (obrigatória), Número, Código, Fase, Etapa, Descrição, Depende de, Otimista, Mais provável,
+          Pessimista e Responsáveis. É o mesmo formato de "Copiar para planilha"; as demais colunas são ignoradas.</p>
+        <textarea class="texto-exportado" data-importar-texto rows="6" aria-label="Linhas coladas da planilha"></textarea>
+        <div class="opcoes-importar" role="radiogroup" aria-label="Ações que já existem">
+          <label><input type="radio" name="modo-importar" value="criar" checked> Só criar ações novas</label>
+          <label><input type="radio" name="modo-importar" value="atualizar"> Também atualizar as que já existem</label>
+        </div>
+        <p class="tec">Uma ação já existe quando tem o mesmo número, o mesmo código ou o mesmo nome. Ao atualizar, célula vazia não muda nada.</p>
+        <div class="botoes"><button class="botao" type="button" data-conferir-importacao>Conferir</button></div>
+        <div data-previa-importacao></div>
+      </details>` : ""}
+
       <details class="config" data-secao="exportar"${aberta("exportar")}>
         <summary><h3>Exportar</h3></summary>
         <p class="tec">Copia as ações deste espaço, com as datas previstas, a folga e a situação, prontas para colar no Google Planilhas ou no Excel.</p>
@@ -185,8 +203,58 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <textarea class="texto-exportado" data-exportado rows="6" readonly hidden aria-label="Texto exportado"></textarea>
       </details>
 
-      <p class="tec">A importação chega num próximo passo. A cópia de segurança de todos os espaços fica em "Configurar o sistema".</p>
+      <p class="tec">A cópia de segurança de todos os espaços, e a restauração dela, ficam em "Configurar o sistema".</p>
       ${store.podeGravar ? '<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>' : ""}`;
+  }
+
+  /* ---------- importar de planilha (passo 1.19b) ---------- */
+  let plano = null;
+  const NOMES_DOS_CAMPOS = { rotulo: "nome", codigo: "código", descricao: "descrição", etapa: "etapa", naoAntesDe: "“não começa antes de”",
+    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências" };
+  function conferirImportacao() {
+    const texto = corpo.querySelector("[data-importar-texto]").value;
+    const modo = corpo.querySelector('[name="modo-importar"]:checked').value;
+    const hoje = hojeLocal();
+    const cal = criarCalendario({ ...espaco, datasExcluidas: datasEfetivas(espaco, geral) }, hoje);
+    const caminho = caminhoCritico(acoes, cal, { hoje });
+    plano = planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, modo, situacaoDe: (n) => caminho.porAcao.get(n).situacao });
+    corpo.querySelector("[data-previa-importacao]").innerHTML = previaHtml();
+  }
+  function previaHtml() {
+    if (!plano) return "";
+    if (plano.erro) return `<p class="erro">${esc(plano.erro)}</p>`;
+    const conta = (t) => plano.linhas.filter((l) => l.tipo === t).length;
+    const [novas, atualiza] = [conta("nova"), conta("atualiza")];
+    const oQue = (l) => l.tipo === "nova" ? "Nova ação"
+      : l.tipo === "atualiza" ? `Atualiza: ${Object.keys(l.campos).map((c) => NOMES_DOS_CAMPOS[c] ?? c).join(", ")}`
+      : l.tipo === "erro" ? `Fica de fora: ${esc(l.erro)}` : "Fica como está";
+    return `<div class="previa-importacao">
+      <p><b>${novas} ${plural(novas, "ação nova", "ações novas")}</b> e <b>${atualiza} ${plural(atualiza, "atualização", "atualizações")}</b>.
+        ${plano.etapasNovas.length ? `Etapas novas, criadas na importação: ${plano.etapasNovas.map((e) => esc(`${e.fase} · ${e.etapa}`)).join("; ")}.` : ""}
+        ${plano.ignoradas.length ? `<span class="tec">Colunas ignoradas: ${plano.ignoradas.map(esc).join(", ")}.</span>` : ""}</p>
+      <ul>${plano.linhas.map((l) => `<li class="${l.tipo}">
+        <span class="tec">Linha ${l.linha}</span> <b>${esc(l.rotulo || "(sem nome)")}</b>
+        <span>${oQue(l)}</span>
+        ${l.avisos.filter((a) => a !== "Sem mudança.").map((a) => `<span class="aviso-linha">${esc(a)}</span>`).join("")}
+      </li>`).join("")}</ul>
+      <div class="botoes"><button class="botao principal" type="button" data-importar${novas + atualiza ? "" : " disabled"}>Importar</button></div>
+    </div>`;
+  }
+  async function importar(botao) {
+    botao.disabled = true;
+    try {
+      const r = await store.importarAcoes(espacoId, plano);
+      await recarregar();
+      plano = null;
+      rascunho.estrutura = structuredClone(espaco.estrutura ?? []); // a importação pode ter criado etapas
+      desenhar();
+      corpo.querySelector("[data-previa-importacao]").innerHTML = r.falhas.length
+        ? `<p class="erro">Algumas linhas não foram gravadas:</p><ul class="falhas-importacao">${r.falhas.map((f) => `<li>Linha ${f.linha}: ${esc(f.mensagem)}</li>`).join("")}</ul>` : "";
+      avisar(`Importação concluída: ${r.criadas} ${plural(r.criadas, "ação criada", "ações criadas")} e ${r.atualizadas} ${plural(r.atualizadas, "atualizada", "atualizadas")}.`);
+    } catch (falha) {
+      botao.disabled = false;
+      avisar(falha.message);
+    }
   }
 
   /** Lista dos retratos: nome, quando, quem e o resultado naquele momento. */
@@ -353,6 +421,8 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       }
       return;
     }
+    if (t.dataset.conferirImportacao != null) { conferirImportacao(); return; }
+    if (t.dataset.importar != null) { importar(t); return; }
     if (t.dataset.exportar) {
       const dados = { espaco, acoes, responsaveis, geral, hoje: hojeLocal() };
       const planilha = t.dataset.exportar === "planilha";

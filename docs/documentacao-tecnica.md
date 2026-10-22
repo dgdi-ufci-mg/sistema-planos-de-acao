@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 79.2 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 80 da página)
 
 ---
 
@@ -519,6 +519,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 79 | Versão 2: o aviso "Sem conexão" passa a perceber também a rede ligada sem internet, a falha mais comum (pedido do responsável, 22/10/2026). O sistema sonda o próprio site a cada 10 segundos, com um pedido pequeno e sem cache (`js/conexao.js`); duas sondas seguidas sem resposta declaram a queda (em até uns 15 segundos), e, sem conexão, sonda a cada 5 segundos para perceber a volta. Sem rede no aparelho, o aviso continua imediato. Sem mudança na versão atual |
 | 79.1 | Especificação da reescrita: as decisões provisórias da execução em lote passam para a seção 14.1 ("Pontos para reavaliação"), com as já aprovadas pelo responsável; o diário técnico aponta para lá. Sem mudança no sistema |
 | 79.2 | Especificação da reescrita, seção 14.1: aprovadas pelo responsável as quatro decisões provisórias da linha do tempo (passo 1.17a). Sem mudança no sistema |
+| 80 | Versão 2, passo 1.19b: importar de planilha, em "Configurar este espaço", com a escolha entre só criar ações novas ou também atualizar as existentes e a conferência linha a linha antes de gravar; restaurar uma cópia de segurança, em "Configurar o sistema" e pelas boas-vindas, só num banco vazio. A importação por Mermaid foi cancelada pelo responsável. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

@@ -18,7 +18,7 @@ import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
 import { mostrarNavegacao } from "./telas/navegacao.js";
 import { mostrarAjuda } from "./telas/ajuda.js";
-import { avisar } from "./telas/painel.js";
+import { avisar, fecharPainel } from "./telas/painel.js";
 import { abrirConfiguracao } from "./telas/configurar.js";
 import { abrirConfiguracaoDoSistema } from "./telas/configurar-sistema.js";
 import { abrirEntrar, abrirTrocarSenha } from "./telas/acesso.js";
@@ -93,7 +93,7 @@ async function atualizarTopo() {
       aoRestaurarEspaco: () => atualizarTopo(),
     }),
     aoAjuda: () => ajuda(),
-    aoSistema: () => abrirConfiguracaoDoSistema({ store, hoje }),
+    aoSistema: () => sistema(),
     aoEntrar: entrar,
     aoTrocarSenha: () => abrirTrocarSenha({ acesso }),
     aoSair: () => tentar(async () => { await acesso.sair(); avisar("Você saiu."); }),
@@ -101,6 +101,12 @@ async function atualizarTopo() {
 }
 
 const entrar = () => abrirEntrar({ acesso });
+/** "Configurar o sistema"; depois de restaurar uma cópia, reabre o sistema pelo começo. */
+const sistema = (foco = null) => abrirConfiguracaoDoSistema({ store, hoje, foco, aoRestaurar: async () => {
+  fecharPainel();
+  const [primeiro] = await tentar(() => store.listarEspacos(), []);
+  if (!primeiro || !(await abrirEspaco(primeiro.id))) boasVindas();
+} });
 
 /* ---------- sem conexão (22/10/2026) ----------
  * No banco compartilhado, sem internet as alterações não podem ser gravadas. Um aviso fixo na barra
@@ -194,6 +200,9 @@ function boasVindas({ comFormulario = false } = {}) {
     comFormulario,
     podeCriar: store.podeGravar,
     aoEntrar: entrar,
+    /* banco vazio: oferece restaurar uma cópia de segurança (passo 1.19b) */
+    aoRestaurar: () => sistema("copia"),
+    verificarVazio: async () => !(await tentar(async () => (await store.listarEspacos()).length + (await store.listarEspacosExcluidos()).length, 1)),
   });
   atualizarTopo();
   window.scrollTo(0, 0);

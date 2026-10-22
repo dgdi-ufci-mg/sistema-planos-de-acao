@@ -200,6 +200,11 @@ export function criarBancoLocal() {
     async listarHistorico(espacoId, numero) {
       return historicoDo(espacoId).filter((r) => r.chave === numero).map(copia);
     },
+    /** Registros já prontos, vindos de uma cópia de segurança (restauração, passo 1.19b). */
+    async gravarHistorico(espacoId, registros) {
+      exigirEspaco(espacoId);
+      historicoDo(espacoId).push(...copia(registros));
+    },
     /** Todos os registros do espaço (cópia de segurança). */
     async listarHistoricoDoEspaco(espacoId) {
       return historicoDo(espacoId).map(copia);

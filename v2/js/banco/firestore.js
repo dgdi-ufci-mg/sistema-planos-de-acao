@@ -216,6 +216,14 @@ export function criarBancoFirestore(db) {
       const s = await historicoRef(espacoId).where("chave", "==", numero).get();
       return s.docs.map((d) => d.data()); // o Store ordena
     },
+    /** Registros já prontos, vindos de uma cópia de segurança (restauração, passo 1.19b), em lotes de 400. */
+    async gravarHistorico(espacoId, registros) {
+      for (let i = 0; i < registros.length; i += 400) {
+        await db.runTransaction(async (t) => {
+          for (const r of registros.slice(i, i + 400)) t.set(historicoRef(espacoId).doc(r.id), copia(r));
+        });
+      }
+    },
     /** Todos os registros do espaço (cópia de segurança). */
     async listarHistoricoDoEspaco(espacoId) {
       return (await historicoRef(espacoId).get()).docs.map((d) => d.data()).sort((a, b) => a.em.localeCompare(b.em));

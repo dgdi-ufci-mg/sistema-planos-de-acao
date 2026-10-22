@@ -1,7 +1,7 @@
 /**
  * Tela de boas-vindas (especificação, passo 1.4): para quem ainda não tem espaço.
- * Oferece criar um espaço e ver o exemplo. A restauração de uma cópia de
- * segurança entra aqui no passo 1.19, junto com a cópia.
+ * Oferece criar um espaço e ver o exemplo; com o banco vazio, também restaurar
+ * uma cópia de segurança (passo 1.19b).
  */
 import { NOME, INSTITUICAO } from "../identidade.js";
 import { ICONES } from "../icones.js";
@@ -19,7 +19,8 @@ const hojeIso = () => {
  *   podeCriar: falso sem login, e o botão de criar vira "Entrar para criar um espaço";
  *   aoCancelar: com o formulário sozinho, "Cancelar" volta para onde a pessoa estava.
  */
-export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false, podeCriar = true, aoEntrar, aoCancelar }) {
+export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false, podeCriar = true, aoEntrar, aoCancelar,
+  aoRestaurar = null, verificarVazio = async () => false }) {
   /* "Novo espaço" (menu lateral): só o formulário, sem o quadro de boas-vindas */
   const soFormulario = comFormulario && podeCriar;
   alvo.innerHTML = `
@@ -34,6 +35,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
           : '<button class="botao principal" type="button" data-acao="entrar">Entrar para criar um espaço</button>'}
         <button class="botao" type="button" data-acao="exemplo">Ver um exemplo</button>
       </div>
+      <p class="tec" data-restaurar-copia hidden>Tem uma cópia de segurança? <a href="#" data-acao="restaurar">Restaurar uma cópia de segurança</a></p>
     </section>
     <section class="cartao" data-formulario hidden>
       <h2>Novo espaço de planejamento</h2>
@@ -68,6 +70,9 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
     mostrarErro("");
   });
   alvo.querySelector('[data-acao="exemplo"]').addEventListener("click", () => aoVerExemplo());
+  alvo.querySelector('[data-acao="restaurar"]').addEventListener("click", (e) => { e.preventDefault(); aoRestaurar?.(); });
+  /* só com login e banco vazio */
+  if (aoRestaurar && podeCriar && !soFormulario) verificarVazio().then((vazio) => { alvo.querySelector("[data-restaurar-copia]").hidden = !vazio; });
   formulario.querySelector("form").addEventListener("submit", async (evento) => {
     evento.preventDefault();
     const dados = Object.fromEntries(new FormData(evento.target));
