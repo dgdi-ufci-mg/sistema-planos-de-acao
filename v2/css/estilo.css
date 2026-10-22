@@ -436,7 +436,7 @@ body.so-leitura [data-nova] { display: none; }
 .legenda-barra { display: grid; grid-template-columns: var(--colunas); column-gap: 12px; align-items: center; padding: 0 15px 0 31px; pointer-events: none;
   z-index: 1; transition: opacity .2s ease .06s, visibility 0s; }
 .grupo.etapa.fechado > .legenda-barra { opacity: 0; visibility: hidden; transition: opacity .2s ease, visibility 0s .2s; }
-.legenda-barra-texto { grid-column: -2 / -1; position: relative; display: block; font-size: .78rem; color: var(--muted); line-height: 1.35; }
+.legenda-barra-texto { grid-column: -2 / -1; margin-right: -15px; position: relative; display: block; font-size: .78rem; color: var(--muted); line-height: 1.35; }
 .legenda-barra .barra-icone { vertical-align: -2px; margin-right: 4px; }
 .legenda-barra .barra-icone .icone { width: 14px; height: 14px; }
 .dica-termo { pointer-events: auto; }
@@ -465,6 +465,9 @@ body.so-leitura [data-nova] { display: none; }
 /* recolhido também some para o teclado e o leitor de tela, depois da animação */
 .grupo.fechado > .grupo-corpo { grid-template-rows: 0fr; visibility: hidden; transition: grid-template-rows .26s ease, visibility 0s .26s; }
 .grupo-dentro { overflow: hidden; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+/* aberto, depois da animação, o conteúdo pode passar da borda: a caixa de explicação da legenda não fica cortada (22/10/2026) */
+.grupo:not(.fechado) > .grupo-corpo > .grupo-dentro { animation: soltar-grupo 0s .3s forwards; }
+@keyframes soltar-grupo { to { overflow: visible; } }
 .grupo.fase > .grupo-corpo > .grupo-dentro { padding-left: 14px; border-left: 2px solid var(--grid); margin-left: 16px; }
 .grupo.etapa > .grupo-corpo > .grupo-dentro { padding: 2px 0 10px 12px; }
 .grupo.fase { margin-bottom: 6px; }

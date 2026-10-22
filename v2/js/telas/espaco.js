@@ -519,6 +519,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * o glossário, com a equação.
    */
   const LEGENDA_BARRA = {
+    tempo: ["tempoRestante", "dias úteis até a conclusão; em vermelho, desde que venceu"],
     execucao: ["exec", "quanto cada dia de atraso adia o fim"],
     revisao: ["rev", "parte da incerteza do prazo final"],
   };
@@ -529,7 +530,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const termo = GLOSSARIO.find((t) => t.chave === chave);
     return `<div class="legenda-barra"><span class="legenda-barra-texto">
         <span class="barra-icone ${ui.barra}">${ICONES[BARRAS.find(([v]) => v === ui.barra)[2]]}</span>
-        <span class="dica-termo"><a href="#" class="oque" data-termo="${chave}">${NOMES_BARRA[ui.barra]}</a><span class="caixa-dica" role="tooltip">${termo.texto} <i>Clique para ver como é calculado.</i></span></span>: ${curto}</span></div>`;
+        <span class="dica-termo"><a href="#" class="oque" data-termo="${chave}">${NOMES_BARRA[ui.barra]}</a><span class="caixa-dica" role="tooltip">${termo.texto} <i>${termo.formula ? "Clique para ver como é calculado." : "Clique para ver no glossário."}</i></span></span>: ${curto}</span></div>`;
   }
   function grupoHtml(nivel, id, titulo, ls, miolo) {
     const r = resumir(ls);
@@ -887,7 +888,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 function legendaHtml(podeEditar) {
   return `<div class="legenda-itens">
     ${podeEditar ? "<span><b>Alt+clique</b> no nome, na descrição ou nos participantes de uma ação edita ali mesmo, sem abrir a ação (na lista, no quadro e na rede).</span>" : ""}
-    <span>Barra, à escolha: <span class="barra-icone tempo">${ICONES.barraTempo}</span>tempo restante (verde: faltam dias; vermelho: venceu)
+    <span>Barra, à escolha: <span class="barra-icone tempo">${ICONES.barraTempo}</span><a href="#" class="oque" data-termo="tempoRestante">tempo restante</a> (verde: faltam dias úteis; vermelho: venceu)
       · <span class="barra-icone execucao">${ICONES.barraExecucao}</span><a href="#" class="oque" data-termo="exec">índice de criticidade</a>
       · <span class="barra-icone revisao">${ICONES.barraRevisao}</span><a href="#" class="oque" data-termo="rev">contribuição para a variância</a></span>
     <span class="simbolos">
