@@ -24,9 +24,11 @@ export function seloHtml(r, { tons, meus } = {}) {
 /**
  * Responsáveis de uma ação: pessoas sobrepostas (até três, depois "+N") e, em seguida, unidades.
  * Com `todos`, desenha todas as pessoas; a tela esconde as que não couberem (ajustarDonos).
+ * Em ordem alfabética do nome, da esquerda para a direita (22/10/2026, pedido do responsável).
  */
+const porNome = (a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
 export function donosHtml(lista, contexto = {}) {
-  const { pessoas, unidades } = separar(lista);
+  const { pessoas, unidades } = separar([...lista].sort(porNome));
   if (contexto.todos) {
     return (pessoas.length ? `<span class="pessoas">${pessoas.map((p) => seloHtml(p, contexto)).join("")}</span>` : "")
       + unidades.map((u) => seloHtml(u, contexto)).join("");
