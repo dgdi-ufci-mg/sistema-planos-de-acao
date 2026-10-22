@@ -281,6 +281,8 @@ body.so-leitura [data-nova] { display: none; }
 .termo h4 { margin: 0 0 4px; display: flex; align-items: center; gap: 6px; font-size: 1rem; }
 .termo.destacado { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .termo .tec { display: block; margin-top: 4px; }
+.termo-fonte { margin: 8px 0 0; font-size: .82rem; color: var(--muted); overflow-wrap: anywhere; }
+.termo-fonte b { display: block; color: var(--ink); font-size: .92rem; margin-bottom: 2px; }
 .termo-formula { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); font-size: .92rem; }
 .termo-formula p { margin: 6px 0 0; }
 .formula { font-family: var(--f-dados); background: var(--sunk); padding: 6px 10px; border-radius: 6px; line-height: 1.9; overflow-x: auto; }

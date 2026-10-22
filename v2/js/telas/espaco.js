@@ -36,8 +36,8 @@ const BOTOES_DE_FILTRO = [
 ];
 const ORDENS = [
   ["espaco", "Ordem do espaço"],
-  ["execucao", "Prioridade de execução"],
-  ["revisao", "Prioridade de revisão"],
+  ["execucao", "Índice de criticidade"],
+  ["revisao", "Contribuição para a variância"],
   ["conclusao", "Conclusão prevista"],
 ];
 const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -236,8 +236,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    */
   const BARRAS = [
     ["tempo", "Tempo restante", "barraTempo"],
-    ["execucao", "Índice de criticidade (prioridade de execução)", "barraExecucao"],
-    ["revisao", "Contribuição para a variância (prioridade de revisão)", "barraRevisao"],
+    ["execucao", "Índice de criticidade", "barraExecucao"],
+    ["revisao", "Contribuição para a variância", "barraRevisao"],
   ];
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
   const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a variância" }; /* nomes técnicos de volta (22/10/2026) */
@@ -484,8 +484,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (ui.barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : prazoHtml(l);
     else if (ui.barra === "revisao") {
       const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
-      conteudo = medidor(l.revisao, `Prioridade de revisão: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
-    } else conteudo = medidor(l.execucao, "Prioridade de execução", "var(--execucao)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`);
+      conteudo = medidor(l.revisao, `Contribuição para a variância: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
+    } else conteudo = medidor(l.execucao, "Índice de criticidade", "var(--execucao)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`);
     return `<div class="pr">${simbolo}${conteudo}</div>`;
   }
 
@@ -835,8 +835,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 function legendaHtml() {
   return `<div class="legenda-itens">
     <span>Barra, à escolha: <span class="barra-icone tempo">${ICONES.barraTempo}</span>tempo restante (verde: faltam dias; vermelho: venceu)
-      · <span class="barra-icone execucao">${ICONES.barraExecucao}</span><a href="#" class="oque" data-termo="exec">prioridade de execução</a>
-      · <span class="barra-icone revisao">${ICONES.barraRevisao}</span><a href="#" class="oque" data-termo="rev">prioridade de revisão</a></span>
+      · <span class="barra-icone execucao">${ICONES.barraExecucao}</span><a href="#" class="oque" data-termo="exec">índice de criticidade</a>
+      · <span class="barra-icone revisao">${ICONES.barraRevisao}</span><a href="#" class="oque" data-termo="rev">contribuição para a variância</a></span>
     <span class="simbolos">
       <span><span class="icone-concluida">${ICONES.concluida}</span>Concluída</span>
       <span><span class="icone-liberada">${ICONES.liberada}</span>Liberada</span>

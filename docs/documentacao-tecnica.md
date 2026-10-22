@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 94 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 95 da página)
 
 ---
 
@@ -543,6 +543,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 92 | Versão 2: os participantes de cada ação aparecem em ordem alfabética do nome, da esquerda para a direita, na lista e no quadro (pedido do responsável). Sem mudança na versão atual |
 | 93 | Versão 2: na lista, o ícone da situação (cadeado ou conclusão) passa para antes do nome. Novo botão **Colunas** na segunda linha: nome e situação ficam fixos; Descrição (texto inteiro), Participantes e Barras entram e saem, e a escolha fica lembrada no aparelho (`sextante.colunas`). A opção "Nenhuma" saiu do seletor Barra: quem não quer barra desliga a coluna Barras, e o seletor some junto (decisões do responsável). A Descrição só é oferecida quando o espaço usa esse campo. Sem mudança na versão atual |
 | 94 | Versão 2: volta dos nomes técnicos no seletor Barra (revisão de decisão do responsável): "Índice de criticidade" e "Contribuição para a variância". Na lista, com uma dessas barras, a linha de cada etapa aberta mostra, sobre a coluna das barras, o nome e o que ele representa; passar o mouse no nome abre uma caixa com a explicação do glossário, e clicar leva a "Entenda os termos", cujos verbetes ganharam a equação (seções 15.2 e 15.3 da especificação). Em lista estreita, a legenda desce para baixo do nome da etapa. Sem mudança na versão atual |
+| 95 | Versão 2: "Índice de criticidade" e "Contribuição para a variância" substituem "prioridade de execução" e "prioridade de revisão" em todo o sistema (ordens, legenda, cartões, janela da ação e glossário), por decisão do responsável; os nomes simples ficam no glossário. Os verbetes ganharam a fonte primária com link permanente: Van Slyke (1963), com texto completo público no DTIC, e Williams (1992), com resumo público. Referências também na lista de referências. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
@@ -553,7 +554,8 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 ## 11. Referências
 
 - VAN SLYKE, R. M. Monte Carlo methods and the PERT problem. *Operations Research*, v. 11, n. 5, 1963.
-- WILLIAMS, T. M. Criticality in stochastic networks. *Journal of the Operational Research Society*, v. 43, n. 4, 1992.
+- VAN SLYKE, R. M. Monte Carlo methods and the PERT problem. *Operations Research*, v. 11, n. 5, p. 839–860, 1963. DOI: [10.1287/opre.11.5.839](https://doi.org/10.1287/opre.11.5.839). Texto completo (relatório técnico, Universidade da Califórnia em Berkeley): [DTIC AD0412731](https://apps.dtic.mil/sti/pdfs/AD0412731.pdf). (Fonte primária do índice de criticidade: probabilidade de a ação estar no caminho mais longo.)
+- WILLIAMS, T. M. Criticality in stochastic networks. *Journal of the Operational Research Society*, v. 43, n. 4, p. 353–357, 1992. DOI: [10.1057/jors.1992.50](https://doi.org/10.1057/jors.1992.50) (resumo público).
 - LIPKE, W. Schedule is different. *The Measurable News*, 2003.
 - PROJECT MANAGEMENT INSTITUTE. *Practice Standard for Project Risk Management*. 2009.
 - VANHOUCKE, M. Using activity sensitivity and network topology information to monitor project time performance. *Omega*, v. 38, n. 5, 2010.

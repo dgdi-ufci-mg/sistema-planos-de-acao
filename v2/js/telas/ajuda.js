@@ -24,7 +24,9 @@ export function mostrarAjuda({ foco, aoVerExemplo }) {
           <h4>${t.icone ? `<span class="${CLASSE_DO_ICONE[t.icone]}">${ICONES[t.icone]}</span>` : ""}${t.titulo}</h4>
           <p>${t.texto}</p>
           ${t.tecnico ? `<span class="tec">Termo técnico: ${t.tecnico}</span>` : ""}
+          ${t.simples ? `<span class="tec">Em palavras simples: ${t.simples}</span>` : ""}
           ${t.formula ? `<div class="termo-formula"><b>Como é calculado</b>${t.formula}</div>` : ""}
+          ${t.referencia ? `<p class="termo-fonte"><b>Fonte</b> ${t.referencia}</p>` : ""}
         </div>`).join("")}
       <p class="tec">O manual completo entra aqui quando for refeito.</p>
     </section>`);
