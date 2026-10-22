@@ -139,6 +139,7 @@ function validarTipo({ tipo, usuario }) {
 export function criarStore(banco, opcoes = {}) {
   const agora = opcoes.agora ?? (() => new Date().toISOString());
   let usuario = opcoes.usuario ?? null;
+  let conectado = true;
   const novoId = opcoes.novoId ?? (() => globalThis.crypto.randomUUID());
   const hoje = opcoes.hoje ?? hojeLocal;
   const carimbo = () => ({ alteradaEm: agora(), alteradaPor: usuario });
@@ -180,7 +181,10 @@ export function criarStore(banco, opcoes = {}) {
     definirUsuario(email) { usuario = email ?? null; },
     get usuario() { return usuario; },
     /** Se este Store aceita gravações agora. */
-    get podeGravar() { return !opcoes.exigirLogin || Boolean(usuario); },
+    get podeGravar() { return conectado && (!opcoes.exigirLogin || Boolean(usuario)); },
+    /** Conexão com a internet (só importa no banco compartilhado): sem ela, as gravações são recusadas com aviso. */
+    definirConexao(sim) { conectado = Boolean(sim); },
+    get conectado() { return conectado; },
 
     // --- espaços ---
     /** Cria um espaço. Semente e número de simulações ficam fixos daqui em diante. */
@@ -522,6 +526,7 @@ export function criarStore(banco, opcoes = {}) {
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {
+      if (!conectado) throw new ErroDeDados("sem-conexao", "Sem conexão com a internet. A alteração não foi gravada; tente de novo quando a conexão voltar.");
       if (!store.podeGravar) throw new ErroDeDados("sem-login", "Entre com seu e-mail e senha para fazer alterações.");
       return operacao(...args);
     };

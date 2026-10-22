@@ -216,3 +216,20 @@ describe("Store: login (passo 1.14)", () => {
     assert.equal((await store.listarEspacos()).length, 1); // leitura continua livre
   });
 });
+
+describe("Store sem conexão (22/10/2026)", () => {
+  it("recusa gravações com aviso claro e volta a gravar quando a conexão volta", async () => {
+    const { criarStore } = await import("../js/dados.js");
+    const { criarBancoLocal } = await import("../js/banco/local.js");
+    const store = criarStore(criarBancoLocal(), { usuario: "ana@ufci.edu.br", exigirLogin: true });
+    const id = await store.criarEspaco({ nome: "E", inicio: "2026-10-01" });
+    store.definirConexao(false);
+    assert.equal(store.podeGravar, false);
+    await assert.rejects(store.criarAcao(id, { rotulo: "X" }), { codigo: "sem-conexao" });
+    assert.equal((await store.listarAcoes(id)).length, 0); // leitura continua
+    store.definirConexao(true);
+    assert.equal(store.podeGravar, true);
+    await store.criarAcao(id, { rotulo: "X" });
+    assert.equal((await store.listarAcoes(id)).length, 1);
+  });
+});

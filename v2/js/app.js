@@ -101,6 +101,22 @@ async function atualizarTopo() {
 
 const entrar = () => abrirEntrar({ acesso });
 
+/* ---------- sem conexão (22/10/2026) ----------
+ * No banco compartilhado, sem internet as alterações não podem ser gravadas. Um aviso fixo na barra
+ * do topo (visível em qualquer ponto da página) avisa enquanto durar; os botões de criar e excluir
+ * somem; e o Store recusa gravações com uma mensagem clara. O exemplo, na memória, continua livre. */
+const avisoConexao = document.querySelector("[data-sem-conexao]");
+function atualizarConexao({ avisarVolta = false } = {}) {
+  if (!acesso) return; // sem banco compartilhado, nada a avisar
+  const on = navigator.onLine;
+  store.definirConexao(on);
+  avisoConexao.hidden = on;
+  document.body.classList.toggle("sem-conexao", !on && abertoId !== exemploId);
+  if (on && avisarVolta) avisar("Conexão restabelecida. As alterações voltam a ser gravadas.");
+}
+window.addEventListener("offline", () => atualizarConexao());
+window.addEventListener("online", () => atualizarConexao({ avisarVolta: true }));
+
 /** Depois de excluir o espaço aberto: abre outro, se houver, ou as boas-vindas. */
 async function espacoExcluido() {
   esquecer();
@@ -145,6 +161,7 @@ async function abrirEspaco(id) {
     chave = nova;
   });
   pararEspaco = () => { pararTela(); pararTopo(); };
+  atualizarConexao();
   await atualizarTopo();
   window.scrollTo(0, 0);
   return true;
@@ -199,6 +216,7 @@ async function partida() {
     store = criarStore(criarBancoLocal());
   }
   if (!acesso) return abrirInicio();
+  atualizarConexao();
 
   /* a primeira resposta do login abre o sistema; as seguintes (entrar, sair) refazem a tela aberta */
   let primeira = true;
