@@ -810,6 +810,49 @@ Decisões aceitas para seguir em frente, mas que o responsável pediu para **rea
 3. **Distribuição beta-PERT (seção 5.2).** Adotada por coerência com a fórmula das datas, por ser padrão de mercado e fácil de explicar. Crítica conhecida: concentra os sorteios perto do mais provável e dá pouco peso aos extremos, o que pode deixar a previsão otimista. Alternativas: a triangular, mais pessimista com os mesmos três pontos (na PI², 74% contra 89,5% de chance de cumprir o prazo); ou tratar o otimista e o pessimista como "10% e 90% de chance", e não como limites absolutos, o que engorda as caudas. A reavaliar: comparar previsões e conclusões reais quando houver histórico.
 4. **Durações independentes entre ações (seção 5.7).** A simulação supõe que o prazo de uma ação não influencia o das outras. Na prática, uma mesma causa (falta de pessoal, greve, troca de gestão) atrasa várias ações juntas, e ignorar isso deixa o resultado otimista; costuma ser o efeito mais forte. Alternativas, em ordem de complexidade: correlação entre ações de uma mesma etapa ou responsável; causas comuns modeladas explicitamente (*Termo técnico: risk drivers*). A reavaliar com o sistema em uso. A correção principal do otimismo continua prevista na previsão por classe de referência, com o histórico real da instituição.
 
+### 14.1 Decisões provisórias da execução em lote (21 e 22/10/2026)
+
+Tomadas sem consulta durante a execução em lote (seção 3.3), à espera do "sim" ou do "não" do responsável. Ao decidir, o item sai desta lista: aprovado, vira regra da seção correspondente; recusado, vira correção. O diário técnico (`docs/registro-de-execucao.md`) guarda os detalhes de cada passo.
+
+**Já aprovadas pelo responsável (22/10/2026):** eixo da linha do tempo (do início do espaço, ou de hoje, se for antes, até a última data simulada ou o prazo final, com uma semana de folga); termo "Chance de cumprir o prazo" no glossário; aviso de falta de conexão na barra do topo.
+
+**Linha do tempo (passo 1.17a)**
+1. As barras contam semanas de segunda a domingo: cada barra começa numa segunda-feira.
+2. Em cada cenário simulado, o trabalho termina no dia útil em que a última ação acaba (a mesma regra da conclusão prevista), para os números do gráfico baterem com os do resto do sistema.
+3. A faixa do cartão "Prazo final" fica vermelha quando a chance de cumprir o prazo é menor que 50%.
+4. Só no computador: no celular, o gráfico não cabe, e o botão do modo não aparece (como na planilha).
+
+**Cronograma (passo 1.17b)**
+5. Sem filtros nem ordem: mostra sempre o espaço inteiro, na ordem do espaço, porque as setas ligariam ações escondidas.
+6. Uma ação pode começar no mesmo dia em que a anterior termina, quando a anterior termina no meio do dia (o cálculo usa frações de dia).
+7. Cores: vermelho sem folga, verde-azulado com folga, verde concluída; ação sem estimativa como um pequeno retângulo tracejado.
+8. Duas aproximações, semanas e meses. Sem arrastar barras: as datas vêm das estimativas e das dependências.
+
+**Rede (passo 1.17c)**
+9. Sem filtros nem ordem, como no cronograma.
+10. Sem cartões de "Início" e "Fim".
+11. Uma seta que pula colunas passa por trás dos cartões do meio, sem desvio.
+12. Cartões de tamanho fixo, com o nome em até duas linhas; o nome inteiro aparece ao parar o mouse.
+
+**Exportação e cópia de segurança (passo 1.19a)**
+13. O passo 1.19 foi dividido em 1.19a (só leitura) e 1.19b (importação e restauração, que gravam).
+14. Exportar fica em "Configurar este espaço"; a cópia de segurança, de todos os espaços, em "Configurar o sistema".
+15. Planilha por cópia (colar), sem gerar arquivo .xlsx; colunas como no diário técnico; sem as prioridades calculadas.
+16. Nome do arquivo da cópia: nome do sistema, "copia" e a data.
+
+**Histórico de alterações (passo 1.16)**
+17. Um registro por campo alterado; nas listas (dependências, responsáveis, estimativas), a lista inteira antes e depois.
+18. Só as ações têm histórico (seção 16.4); o espaço e os responsáveis, não.
+19. A correção de estimativa também entra no histórico de alterações.
+20. A seção começa recolhida na janela da ação; o autor aparece pelo nome do responsável ligado ao e-mail.
+
+**Retratos (passo 1.18)**
+21. Qualquer pessoa com login salva retratos, até existirem os papéis (passo 2.1).
+22. Não há como excluir retrato, nem os manuais.
+23. A comparação com retrato fica só no cronograma, com uma linha cinza fina sob cada barra.
+
+**Já combinado para o passo 1.19b:** na importação, quem importa escolhe entre atualizar as ações que já existem ou só criar novas (responsável, 22/10/2026).
+
 ## 15. Fundamentos matemáticos dos indicadores por ação
 
 Esta seção registra as fórmulas, as hipóteses e as razões de cada escolha, para revisão por especialistas. As decisões foram discutidas com o responsável em 16/10/2026, inclusive à luz da conversa "Schedule Sensitivity Index".

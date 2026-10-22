@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 79 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 79.1 da página)
 
 ---
 
@@ -517,6 +517,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 77 | Versão 2: aviso de falta de conexão (decisão do responsável, 22/10/2026). Sem internet, aparece na barra do topo, visível em qualquer ponto da página, o aviso "Sem conexão. As alterações não serão gravadas até a internet voltar."; os botões de criar, salvar retrato e excluir somem, e qualquer tentativa de gravar recebe uma mensagem clara. Quando a conexão volta, o aviso some e aparece "Conexão restabelecida". O espaço de exemplo, que fica na memória, continua editável. Detecção pelo navegador (`navigator.onLine`): uma rede sem saída para a internet não é percebida. Sem mudança na versão atual |
 | 78 | Versão 2: o modo celular (botão (+), seletor de modos escondido, painéis que sobem de baixo) passa a valer só até 640 px de largura, e não mais até 820 px; janelas médias de computador ficam no modo computador. Os cartões da lista passam a ficar em duas linhas pela largura da própria lista (consulta de contêiner, até 820 px), e não da janela: com o menu lateral aberto numa janela média, a lista também se arruma. Sem mudança na versão atual |
 | 79 | Versão 2: o aviso "Sem conexão" passa a perceber também a rede ligada sem internet, a falha mais comum (pedido do responsável, 22/10/2026). O sistema sonda o próprio site a cada 10 segundos, com um pedido pequeno e sem cache (`js/conexao.js`); duas sondas seguidas sem resposta declaram a queda (em até uns 15 segundos), e, sem conexão, sonda a cada 5 segundos para perceber a volta. Sem rede no aparelho, o aviso continua imediato. Sem mudança na versão atual |
+| 79.1 | Especificação da reescrita: as decisões provisórias da execução em lote passam para a seção 14.1 ("Pontos para reavaliação"), com as já aprovadas pelo responsável; o diário técnico aponta para lá. Sem mudança no sistema |
 
 ### Notas de implementação recentes
 

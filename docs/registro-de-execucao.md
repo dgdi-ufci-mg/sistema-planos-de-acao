@@ -13,7 +13,7 @@ Diário dos passos feitos em lote (especificação, seção 3.3, "Execução em 
 | 1.16 | `bb3635d` (branch `passos-1.16-1.18`) |
 | 1.18 | `59ed650` (branch `passos-1.16-1.18`) |
 
-Em cada passo: o que foi feito, os testes, a conferência na tela e as **decisões provisórias**, tomadas sem consulta e à espera da revisão do responsável.
+Em cada passo: o que foi feito, os testes, a conferência na tela e as **decisões provisórias**, tomadas sem consulta. **A lista oficial das decisões provisórias, com o que já foi aprovado, está na seção 14.1 da especificação (`docs/especificacao-reescrita.md`);** este diário é só o registro técnico.
 
 A conferência no site publicado fica com o responsável: o ambiente de trabalho não acessa o endereço do GitHub Pages, e a conferência é feita com os testes automáticos e no navegador de teste (Playwright e Chromium, com um Firebase falso; nada é gravado no banco real).
 
