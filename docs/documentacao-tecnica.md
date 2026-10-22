@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 81 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 81.1 da página)
 
 ---
 
@@ -522,6 +522,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 80 | Versão 2, passo 1.19b: importar de planilha, em "Configurar este espaço", com a escolha entre só criar ações novas ou também atualizar as existentes e a conferência linha a linha antes de gravar; restaurar uma cópia de segurança, em "Configurar o sistema" e pelas boas-vindas, só num banco vazio. A importação por Mermaid foi cancelada pelo responsável. Sem mudança na versão atual |
 | 80.1 | Versão 2, importação por planilha: a conferência passa a avisar, antes de gravar, também a dependência que criaria um ciclo, o código inválido ou já usado e o nome repetido na planilha (antes, os dois primeiros só apareciam como falha na gravação). Sem mudança na versão atual |
 | 81 | Versão 2, passo 1.14d, com a importação de responsáveis: em "Configurar este espaço" > Responsáveis > "Importar de planilha", cadastro de responsáveis em lote, com a conferência antes de gravar; quem tem e-mail é pessoa e ganha a conta de acesso, criada sem tirar da sessão quem está cadastrando, com um e-mail do Firebase para a pessoa definir a própria senha. Sem e-mail, o tipo precisa vir na planilha. Provisório até os papéis: qualquer pessoa com login cria contas. Sem mudança na versão atual |
+| 81.1 | Versão 2, importação de ações por planilha: "Depende de" passa a reconhecer os códigos das próprias linhas da planilha, mesmo com "Códigos das ações" desligado (antes, só os códigos de ações já existentes), e procura o código antes do número, para códigos só de algarismos. O código importado é guardado (escondido enquanto o campo estiver desligado). Corrige a importação da planilha da PI². Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

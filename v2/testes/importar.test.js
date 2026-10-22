@@ -126,4 +126,23 @@ describe("Importação por planilha (passo 1.19b)", () => {
     assert.deepEqual(r.falhas, []);
     assert.equal(r.criadas, 5);
   });
+
+  it("planilha como a da PI²: dependências pelos códigos, com o campo de códigos desligado, inclusive códigos só de algarismos", async () => {
+    const store = criarStore(criarBancoLocal(), { usuario: "ana@ufci.edu.br", hoje: () => HOJE });
+    const id = await store.criarEspaco({ nome: "PI²", inicio: "2026-09-01" });
+    const texto = ["Código\tAção\tPredecessores\tOtimista\tMais provável\tPessimista",
+      "VRA\tImplantar infraestrutura\t\t10\t15\t30",
+      "VCT\tIntegrar segurança\tVRA\t10\t15\t30",
+      "001\tAção de código numérico\tVRA, VCT\t1\t2\t3",
+      "R9G\tImplantar o Metabase\t001\t1\t2\t3"].join("\n");
+    const plano = planejarImportacao({ texto, ...(await contexto(store, id)), modo: "criar" });
+    assert.deepEqual(plano.linhas.flatMap((l) => l.avisos), []);
+    const r = await store.importarAcoes(id, plano);
+    assert.deepEqual(r.falhas, []);
+    const acoes = await store.listarAcoes(id);
+    const deps = (cod) => acoes.find((a) => a.codigo === cod).dependeDe.map((n) => acoes.find((a) => a.numero === n).codigo).sort();
+    assert.deepEqual(deps("VCT"), ["VRA"]);
+    assert.deepEqual(deps("001"), ["VCT", "VRA"]);
+    assert.deepEqual(deps("R9G"), ["001"]);
+  });
 });

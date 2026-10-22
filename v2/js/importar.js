@@ -16,12 +16,12 @@ import { lerColagem, lerData, lerResponsaveis } from "./planilha.js";
 /** Títulos aceitos para cada coluna (sem acentos, minúsculas). */
 const TITULOS = {
   numero: ["numero", "no", "n", "#"],
-  codigo: ["codigo"],
+  codigo: ["codigo", "cod", "id", "sigla da acao"],
   fase: ["fase"],
   etapa: ["etapa"],
   rotulo: ["acao", "rotulo", "nome", "nome da acao"],
   descricao: ["descricao"],
-  dependeDe: ["depende de", "dependencias", "anteriores", "predecessores", "depende"],
+  dependeDe: ["depende de", "dependencias", "anteriores", "predecessores", "predecessoras", "predecessor", "depende"],
   o: ["otimista", "melhor caso"],
   m: ["mais provavel"],
   p: ["pessimista", "pior caso"],
@@ -60,7 +60,6 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     return { linhas: [], etapasNovas: [], ignoradas, erro: "Falta a coluna com o nome da ação (título “Ação”)." };
   }
   const celula = (linha, c) => (mapa[c] == null ? undefined : String(linha[mapa[c]] ?? "").trim());
-  const usaCodigos = espaco.camposOpcionais?.codigos === true;
 
   /* fases e etapas: as que existem, por nome; as que faltam serão criadas */
   const etapas = (espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => ({ fase: f.nome, etapa: e.nome, id: e.id })));
@@ -80,7 +79,7 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     const rotulo = celula(c, "rotulo") ?? "";
     const numeroTexto = celula(c, "numero");
     const codigo = celula(c, "codigo")?.toUpperCase() || undefined;
-    const r = { linha: n, rotulo, avisos: [], campos: {}, numeroPlanilha: numeroTexto || null };
+    const r = { linha: n, rotulo, avisos: [], campos: {}, numeroPlanilha: numeroTexto || null, codigoPlanilha: codigo ?? null };
     if (!rotulo && !numeroTexto && !codigo) return { ...r, tipo: "erro", erro: "Linha sem o nome da ação." };
     const existente = (numeroTexto && acoes.find((a) => String(a.numero) === numeroTexto))
       ?? (codigo && acoes.find((a) => a.codigo === codigo))
@@ -92,7 +91,9 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     if (r.tipo === "ignorada") { r.avisos.push(`Já existe no espaço (“${existente.rotulo}”).`); return r; }
 
     if (rotulo && (!existente || rotulo !== existente.rotulo)) r.campos.rotulo = rotulo;
-    if (codigo !== undefined && usaCodigos && codigo !== existente?.codigo) {
+    /* o código é guardado mesmo com "Códigos das ações" desligado (fica escondido, como no exemplo):
+       serve às dependências da própria planilha e aparece se o campo for ligado */
+    if (codigo !== undefined && codigo !== existente?.codigo) {
       const dona = acoes.find((a) => a.codigo === codigo && a.numero !== existente?.numero);
       if (!/^[A-Z0-9]{2,8}$/.test(codigo)) r.avisos.push(`Código “${codigo}” inválido (use de 2 a 8 letras ou números): fica de fora.`);
       else if (dona) r.avisos.push(`O código ${codigo} já é de outra ação (“${dona.rotulo}”): fica de fora.`);
@@ -145,15 +146,19 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
   const validas = linhas.filter((l) => l.tipo === "nova" || l.tipo === "atualiza" || l.tipo === "ignorada");
   const refDe = (parte) => {
     const p = parte.trim();
+    /* primeiro, o código: da própria planilha (mesmo com o campo desligado) ou de uma ação do espaço.
+       Vem antes do número porque há códigos só de algarismos, como "001" (ajuste de 22/10/2026) */
+    const cod = p.toUpperCase();
+    const daPlanilhaPorCodigo = validas.find((l) => l.codigoPlanilha === cod);
+    if (daPlanilhaPorCodigo) return daPlanilhaPorCodigo.numero != null ? { numero: daPlanilhaPorCodigo.numero } : { linha: daPlanilhaPorCodigo.linha };
+    const porCodigo = acoes.find((a) => a.codigo === cod);
+    if (porCodigo) return { numero: porCodigo.numero };
     if (/^\d+$/.test(p)) {
       if (validas.some((l) => l.numero === Number(p)) || acoes.some((a) => a.numero === Number(p))) return { numero: Number(p) };
       /* número que só existe na planilha (por exemplo, ao levar ações para um espaço novo): a linha com esse número */
       const daPlanilha = validas.find((l) => l.numeroPlanilha === p && l.numero == null);
       if (daPlanilha) return { linha: daPlanilha.linha };
     }
-    const cod = p.toUpperCase();
-    const porCodigo = acoes.find((a) => a.codigo === cod);
-    if (porCodigo) return { numero: porCodigo.numero };
     const porNome = validas.find((l) => normalizar(l.rotulo) === normalizar(p)) ?? acoes.find((a) => normalizar(a.rotulo) === normalizar(p));
     if (porNome) return porNome.numero != null ? { numero: porNome.numero } : { linha: porNome.linha }; // linha nova: o número sai na gravação
     return null;
@@ -211,6 +216,7 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
   for (const l of linhas) {
     delete l.dependeDeTexto;
     delete l.numeroPlanilha;
+    delete l.codigoPlanilha;
     if (l.tipo === "atualiza" && !Object.keys(l.campos).length) { l.tipo = "ignorada"; l.avisos.push("Sem mudança."); }
   }
   return { linhas, etapasNovas, ignoradas, erro: null };
