@@ -6,7 +6,7 @@ import { carregarExemplo } from "../js/exemplo.js";
 import { criarCalendario } from "../js/calendario.js";
 import { caminhoCritico } from "../js/calculo.js";
 import { readFileSync } from "node:fs";
-import { montarRede, MEDIDAS } from "../js/rede.js";
+import { montarRede, caminhoDaSeta, MEDIDAS } from "../js/rede.js";
 
 const HOJE = "2026-10-20";
 async function exemplo() {
@@ -73,38 +73,64 @@ describe("Rede (passo 1.17c)", () => {
     assert.deepEqual(montarRede([], { porAcao: new Map() }).colunas, []);
   });
 
-  /* 22/10/2026: desenho sem sobreposição, conferido no exemplo e na PI² real */
+  /* 22/10/2026: desenho sem sobreposição, com raias e setas em ângulo reto, conferido no exemplo e na PI² real */
   const pi2 = () => {
     const dados = JSON.parse(readFileSync(new URL("./dados/pi2-fase1.json", import.meta.url), "utf8"));
     const ids = new Map(dados.tasks.map((t, i) => [t.id, i + 1]));
-    return dados.tasks.sort((a, b) => a.order - b.order).map((t) => ({ numero: ids.get(t.id), dependeDe: t.preds.map((p) => ids.get(p)) }));
+    const etapas = [...new Set(dados.tasks.sort((a, b) => a.order - b.order).map((t) => t.stage))];
+    return {
+      acoes: dados.tasks.map((t) => ({ numero: ids.get(t.id), etapa: t.stage, dependeDe: t.preds.map((p) => ids.get(p)) })),
+      raias: etapas.map((e) => ({ id: e, nome: e })),
+    };
   };
-  for (const [nome, carregar] of [["exemplo", async () => (await exemplo()).acoes], ["PI²", async () => pi2()]]) {
-    it(`${nome}: cartões não se sobrepõem e nenhuma seta passa por cima de um cartão`, async () => {
-      const acoes = await carregar();
-      const r = montarRede(acoes, { porAcao: new Map() });
+  const casos = [
+    ["exemplo", async () => { const { acoes } = await exemplo(); return { acoes, raias: [...new Set(acoes.map((a) => a.etapa))].map((e) => ({ id: e, nome: e })) }; }],
+    ["PI²", async () => pi2()],
+    ["exemplo sem raias", async () => ({ acoes: (await exemplo()).acoes, raias: null })],
+  ];
+  for (const [nome, carregar] of casos) {
+    it(`${nome}: cartões sem sobreposição, nas suas raias; setas em ângulo reto, sem passar por cima de cartões`, async () => {
+      const { acoes, raias } = await carregar();
+      const r = montarRede(acoes, { porAcao: new Map() }, raias ? { raias, raiaDe: (a) => a.etapa } : {});
       const caixas = [...r.pos].map(([n, p]) => ({ n, ...p }));
       for (const a of caixas) for (const b of caixas) {
         if (a.n >= b.n) continue;
         const separadas = a.x + MEDIDAS.largura <= b.x || b.x + MEDIDAS.largura <= a.x || a.y + MEDIDAS.altura <= b.y || b.y + MEDIDAS.altura <= a.y;
         assert.ok(separadas, `cartões ${a.n} e ${b.n}`);
       }
-      for (const ar of r.arestas) {
-        /* trechos dentro de colunas (pares de pontos de passagem): horizontais, fora da altura de qualquer cartão daquela coluna */
-        for (let i = 1; i + 1 < ar.pontos.length - 1; i += 2) {
-          const [[x0, y], [x1, y1]] = [ar.pontos[i], ar.pontos[i + 1]];
-          assert.equal(y, y1);
-          for (const c of caixas) {
-            if (c.x !== x0) continue;
-            assert.ok(y < c.y || y > c.y + MEDIDAS.altura, `seta ${ar.de}→${ar.para} cruza o cartão ${c.n}`);
-          }
-          assert.equal(x1 - x0, MEDIDAS.largura);
+      if (raias) {
+        assert.equal(r.raias.length, new Set(acoes.map((a) => a.etapa)).size);
+        for (const a of acoes) {
+          const faixa = r.raias.find((x) => x.id === a.etapa);
+          const p = r.pos.get(a.numero);
+          assert.ok(p.y >= faixa.y && p.y + MEDIDAS.altura <= faixa.y + faixa.altura, `ação ${a.numero} fora da raia`);
         }
-        /* saída à direita da anterior e chegada à esquerda da seguinte */
+      }
+      for (const ar of r.arestas) {
         assert.equal(ar.pontos[0][0], r.pos.get(ar.de).x + MEDIDAS.largura);
         assert.equal(ar.pontos.at(-1)[0], r.pos.get(ar.para).x);
+        for (let k = 0; k + 1 < ar.pontos.length; k++) {
+          const [[x0, y0], [x1, y1]] = [ar.pontos[k], ar.pontos[k + 1]];
+          assert.ok(x0 === x1 || y0 === y1, `seta ${ar.de}→${ar.para} não está em ângulo reto`);
+          for (const c of caixas) {
+            const dentroX = Math.max(x0, x1) > c.x + 0.5 && Math.min(x0, x1) < c.x + MEDIDAS.largura - 0.5;
+            const dentroY = Math.max(y0, y1) > c.y + 0.5 && Math.min(y0, y1) < c.y + MEDIDAS.altura - 0.5;
+            assert.ok(!(dentroX && dentroY), `seta ${ar.de}→${ar.para} passa pelo cartão ${c.n}`);
+          }
+        }
       }
       assert.ok(r.largura > 0 && r.altura > 0);
     });
   }
+
+  it("seta que cruza outra ganha um salto no ponto de cruzamento", () => {
+    /* 1→4 e 2→3 se cruzam obrigatoriamente quando 1 fica acima de 2 e 4 abaixo de 3 */
+    const acoes = [{ numero: 1, dependeDe: [] }, { numero: 2, dependeDe: [] }, { numero: 3, dependeDe: [2] }, { numero: 4, dependeDe: [1, 3] }, { numero: 5, dependeDe: [1] }];
+    const r = montarRede(acoes, { porAcao: new Map() });
+    for (const ar of r.arestas) for (const [sx, sy] of ar.saltos) {
+      const outra = r.arestas.find((o) => o !== ar && o.pontos.some((p, k) => k > 0 && p[0] === sx && o.pontos[k - 1][0] === sx));
+      assert.ok(outra, `salto em ${sx},${sy} sem seta vertical`);
+    }
+    assert.match(caminhoDaSeta([[0, 0], [100, 0]], [[50, 0]]), /A4,4 0 0 1 54,0/);
+  });
 });

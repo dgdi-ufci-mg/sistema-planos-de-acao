@@ -13,16 +13,20 @@ import { ICONES } from "../icones.js";
 /**
  * @param {HTMLElement} alvo
  * @param {{acoes: object[], caminho: object, linhas: object[], etapaDe: Map<string, string>, identificador: (acao: object) => string,
- *   donos: (acao: object) => string, situacao: (linha: object) => string, escala: string, aoMudarEscala: (escala: string) => void}} dados
+ *   donos: (acao: object) => string, situacao: (linha: object) => string,
+ *   raias: {id: string, nome: string, titulo?: string}[]|null, escala: string, aoMudarEscala: (escala: string) => void}} dados
  *   linhas: as linhas da lista (lista.js), para as datas e situações já calculadas;
  *   donos e situacao: o mesmo desenho dos cartões do quadro (22/10/2026)
  */
-export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, donos, situacao, escala, aoMudarEscala }) {
+export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, donos, situacao, raias: etapas = null, escala, aoMudarEscala }) {
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
     return;
   }
-  const { pos, arestas, largura, altura } = montarRede(acoes, caminho);
+  const { pos, arestas, raias, largura, altura } = montarRede(acoes, caminho, etapas ? { raias: etapas, raiaDe: (a) => a.etapa } : {});
+  /* raias: uma por etapa, como no Bizagi (22/10/2026) */
+  const raiasHtml = etapas ? raias.map((r, i) => `<div class="rede-raia${i % 2 ? " par" : ""}${i === raias.length - 1 ? " ultima" : ""}" style="top:${r.y}px;height:${r.altura}px;width:${largura - MEDIDAS.margem * 2}px;left:${MEDIDAS.margem}px" title="${esc(r.titulo)}">
+      <span class="rede-raia-nome"><span>${esc(r.nome)}</span></span></div>`).join("") : "";
   const linhaDe = new Map(linhas.map((l) => [l.acao.numero, l]));
 
   /* cartões no padrão do quadro (22/10/2026): situação e nome, etapa, responsáveis e data */
@@ -45,8 +49,8 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     </div>`;
   }).join("");
 
-  const setas = arestas.map(({ de, para, critica, pontos }) => `<path class="rede-seta${critica ? " critica" : ""}" data-de="${de}" data-para="${para}"
-      d="${caminhoDaSeta(pontos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>`).join("");
+  const setas = arestas.map(({ de, para, critica, pontos, saltos }) => `<path class="rede-seta${critica ? " critica" : ""}" data-de="${de}" data-para="${para}"
+      d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>`).join("");
 
   const anterior = alvo.querySelector("[data-rede-rolagem]");
   const rolagemAnterior = anterior ? [anterior.scrollLeft, anterior.scrollTop] : null;
@@ -65,6 +69,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
       <div class="rede-rolagem" data-rede-rolagem>
         <div class="rede-tamanho" data-tamanho>
           <div class="rede-conteudo" data-conteudo style="width:${largura}px;height:${altura}px">
+            ${raiasHtml}
             <svg class="rede-setas" width="${largura}" height="${altura}" aria-hidden="true">
               <defs>
                 <marker id="rede-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
