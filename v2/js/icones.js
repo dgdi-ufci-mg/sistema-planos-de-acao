@@ -20,6 +20,12 @@ export const ICONES = Object.freeze({
   modoRede: svg('<rect x="2.5" y="9" width="6" height="6" rx="1.5"/><rect x="15.5" y="3.5" width="6" height="6" rx="1.5"/><rect x="15.5" y="14.5" width="6" height="6" rx="1.5"/><path d="M8.5 12h3.5V6.5h3.5M12 12v5.5h3.5"/>'),
   /** Linha do tempo: eixo com a curva da chance de terminar. */
   modoLinha: svg('<path d="M3 4v16h18"/><path d="M6 17c5 0 6-10 14-11"/>'),
+  /** Barra do tempo restante: cronômetro (22/10/2026). */
+  barraTempo: svg('<circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 3h5M12 3v3"/>'),
+  /** Barra da prioridade de execução: raio. */
+  barraExecucao: svg('<path d="M13 2.5 5 13.5h6l-1 8 8-11h-6z"/>'),
+  /** Barra da prioridade de revisão: lupa. */
+  barraRevisao: svg('<circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/>'),
   /** Concluída: visto num círculo. */
   concluida: svg('<circle cx="12" cy="12" r="9.5"/><path d="m8 12.5 2.7 2.7L16 9.8"/>'),
   /** Liberada: cadeado aberto. */

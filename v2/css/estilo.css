@@ -14,6 +14,7 @@
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
   --warn: #F2B04A; --warn-soft: #FEF1D8; --warn-ink: #8A5E10;
   --laranja: #F47216; --dourado-claro: #FBCA78; --neutral: #B7B0A7;
+  --execucao: #6D28D9; /* barra da prioridade de execução: destaque forte, sem ser vermelho (22/10/2026) */
   --sombra: 0 10px 30px rgba(22, 63, 58, .16);
   --relevo: 0 1px 2px rgba(22, 63, 58, .06), 0 2px 6px rgba(22, 63, 58, .06);
   /* barra do topo: vidro ao rolar; da cor do fundo no topo da página */
@@ -49,6 +50,7 @@
     --ok: #8FC68E; --ok-soft: #1B3320; --ok-ink: #A9D6A9;
     --warn: #FBCA78; --warn-soft: #3A2B12; --warn-ink: #FFD58F;
     --laranja: #F47216; --dourado-claro: #FBCA78; --neutral: #55625F;
+    --execucao: #A78BFA;
     --sombra: 0 10px 30px rgba(0, 0, 0, .5);
     --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
     --barra: color-mix(in srgb, var(--bg) 30%, transparent);
@@ -75,6 +77,7 @@
   --ok: #8FC68E; --ok-soft: #1B3320; --ok-ink: #A9D6A9;
   --warn: #FBCA78; --warn-soft: #3A2B12; --warn-ink: #FFD58F;
   --laranja: #F47216; --dourado-claro: #FBCA78; --neutral: #55625F;
+  --execucao: #A78BFA;
   --sombra: 0 10px 30px rgba(0, 0, 0, .5);
   --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
   --barra: color-mix(in srgb, var(--bg) 30%, transparent);
@@ -341,7 +344,7 @@ body.so-leitura [data-nova] { display: none; }
 .lista { display: flex; flex-direction: column; gap: 8px; }
 .linha {
   display: grid; align-items: center; gap: 12px; padding: 10px 14px 10px 18px;
-  grid-template-columns: minmax(0, 2.6fr) minmax(0, .9fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.3fr); /* 22/10/2026: uma prioridade só, sem seta */
+  grid-template-columns: minmax(0, 2.6fr) minmax(0, 1fr) minmax(0, .9fr) minmax(0, 1.7fr); /* 22/10/2026: uma barra só, à escolha */
 }
 .item { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); overflow: hidden; transition: box-shadow .18s, transform .18s; }
 .item:hover { box-shadow: var(--sombra); transform: translateY(-1px); }
@@ -385,7 +388,18 @@ body.so-leitura [data-nova] { display: none; }
 /* rótulo pequeno sobre a data e as barras, no lugar de um cabeçalho de tabela */
 .mlab { display: block; font-size: .74rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ação concluída: as barras de prioridade, sem uso, não aparecem */
-.lista.sem-prioridade .linha { grid-template-columns: minmax(0, 2.6fr) minmax(0, .9fr) minmax(0, .9fr) minmax(0, 1fr); }
+.lista.sem-prioridade .linha { grid-template-columns: minmax(0, 2.6fr) minmax(0, 1fr) minmax(0, .9fr); }
+/* barra escolhida, com o símbolo à esquerda (22/10/2026) */
+.pr { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pr .medidor, .pr .prazo-barra { flex: 1; min-width: 0; }
+.barra-icone { display: inline-flex; flex: none; }
+.barra-icone .icone { width: 16px; height: 16px; }
+.barra-icone.tempo { color: var(--muted); }
+.barra-icone.execucao { color: var(--execucao); }
+.barra-icone.revisao { color: var(--laranja); }
+.barras button { display: inline-flex; align-items: center; gap: 5px; }
+.legenda .barra-icone { vertical-align: -3px; margin: 0 2px 0 4px; }
+.nota-reprog { width: 100%; font-size: .72rem; color: var(--warn-ink); }
 /* prazo: número com seta, "d úteis" embaixo, pequeno e cinza (22/10/2026) */
 .prazo { display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
 .prazo-num { font: 600 1.05rem var(--f-dados); font-variant-numeric: tabular-nums; color: var(--ink); display: inline-flex; align-items: baseline; gap: 2px; }
@@ -455,12 +469,13 @@ body.so-leitura [data-nova] { display: none; }
    numa janela média, com o menu lateral aberto, a lista também fica estreita (22/10/2026). */
 .lista { container-type: inline-size; }
 @container (max-width: 820px) {
-  .linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "s d" "o o" "p p"; gap: 8px 12px; padding: 12px 14px 12px 16px; }
+  .linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "s o" "p p"; gap: 8px 12px; padding: 12px 14px 12px 16px; }
   .linha > .acao-nome { grid-area: a; } .linha > .sit { grid-area: s; } .linha > .conc { grid-area: d; text-align: right; }
   .linha > .donos { grid-area: o; } .linha > .pr { grid-area: p; }
   .item.feita .pr { display: none; }
   .conc .prazo-barra { max-width: 180px; margin-left: auto; }
-  .item.feita .linha, .lista.sem-prioridade .linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "s d" "o o"; }
+  .item.feita .linha, .lista.sem-prioridade .linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "s o"; }
+  .linha > .donos { justify-content: flex-end; }
   .grupo.fase > .grupo-corpo > .grupo-dentro { padding-left: 6px; margin-left: 6px; }
   /* recolhido no celular: só a barrinha de progresso e o relógio, se houver atraso, na linha do nome */
   .grupo-cabeca { flex-wrap: nowrap; }
@@ -928,7 +943,7 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .cabeca-linha .alerta-atrasadas { margin: 0; }
 .cabeca-linha .niveis { margin: 0; }
 .cabeca-controles { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: flex-end; margin-left: auto; }
-@media (max-width: 640px) { .niveis-rotulo { display: none; } .niveis button { padding: 4px 9px; } } /* no celular, cabe na linha do alerta */
+@media (max-width: 640px) { .niveis-rotulo { display: none; } .niveis button { padding: 4px 9px; } .barras button:not([data-barra="nenhuma"]) .barra-nome { display: none; } } /* no celular, as barras só pelo símbolo */ /* no celular, cabe na linha do alerta */
 
 /* ---------- prazo como barra (22/10/2026): verde para a direita (faltam), vermelho para a esquerda (venceu) ---------- */
 .prazo-barra { display: flex; align-items: center; gap: 8px; width: 100%; }

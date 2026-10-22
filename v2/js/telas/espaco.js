@@ -56,8 +56,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     pop: null,
     /** aproximação do cronograma: "semanas" ou "meses" */
     escalaCrono: "semanas",
-    /** prioridade mostrada nos cartões: "execucao", "revisao" ou "nenhuma" (lembrada neste aparelho) */
-    prioridade: (() => { try { return localStorage.getItem("sextante.prioridade") || "execucao"; } catch { return "execucao"; } })(),
+    /** barra mostrada nos cartões: "tempo", "execucao", "revisao" ou "nenhuma" (lembrada neste aparelho) */
+    barra: (() => { try { return localStorage.getItem("sextante.barra") || "tempo"; } catch { return "tempo"; } })(),
     /** comparação do cronograma com um retrato (passo 1.18): lista (null: a carregar), escolhido e datas dele */
     retratos: null, comparar: null, base: null,
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
@@ -113,7 +113,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ? `Mostrando só ${plural(atrasadas, "a ação atrasada", `as ${atrasadas} ações atrasadas`)}. <u>Mostrar todas</u>`
         : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : "";
     const comPrioridade = ui.modo === "lista" || ui.modo === "quadro";
-    return `${alerta || agrupado() || comPrioridade ? `<div class="cabeca-linha">${alerta || "<span></span>"}<div class="cabeca-controles">${comPrioridade ? prioridadesHtml() : ""}${agrupado() ? niveisHtml() : ""}</div></div>` : ""}
+    return `${alerta || agrupado() || comPrioridade ? `<div class="cabeca-linha">${alerta || "<span></span>"}<div class="cabeca-controles">${comPrioridade ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div></div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -205,14 +205,24 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (fases.every((id) => !ui.recolhidos.has(id)) && etapas.length && etapas.every((id) => ui.recolhidos.has(id))) return "etapas";
     return null;
   }
-  const PRIORIDADES = [["execucao", "Execução"], ["revisao", "Revisão"], ["nenhuma", "Nenhuma"]];
-  const prioridadesHtml = () => `<div class="niveis" role="group" aria-label="Prioridade mostrada">
-      <span class="niveis-rotulo">Prioridade</span>
-      ${PRIORIDADES.map(([v, nome]) => `<button type="button" data-prioridade="${v}" aria-pressed="${ui.prioridade === v}">${nome}</button>`).join("")}
+  /**
+   * Barra dos cartões (22/10/2026, decisão do responsável): uma só, à escolha, cada uma com o seu
+   * símbolo e a sua cor: tempo restante (verde/vermelho), prioridade de execução (violeta) e
+   * prioridade de revisão (laranja); ou nenhuma.
+   */
+  const BARRAS = [
+    ["tempo", "Tempo restante", "barraTempo"],
+    ["execucao", "Prioridade de execução", "barraExecucao"],
+    ["revisao", "Prioridade de revisão", "barraRevisao"],
+    ["nenhuma", "Nenhuma", null],
+  ];
+  const barrasHtml = () => `<div class="niveis barras" role="group" aria-label="Barra mostrada nos cartões">
+      <span class="niveis-rotulo">Barra</span>
+      ${BARRAS.map(([v, nome, icone]) => `<button type="button" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}">${icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : ""}<span class="barra-nome">${{ tempo: "Tempo restante", execucao: "Execução", revisao: "Revisão", nenhuma: "Nenhuma" }[v]}</span></button>`).join("")}
     </div>`;
-  function mostrarPrioridade(v) {
-    ui.prioridade = v;
-    try { localStorage.setItem("sextante.prioridade", v); } catch { /* sem armazenamento */ }
+  function mostrarBarra(v) {
+    ui.barra = v;
+    try { localStorage.setItem("sextante.barra", v); } catch { /* sem armazenamento */ }
     cabeca.innerHTML = cabecaHtml();
     desenharLista();
   }
@@ -408,16 +418,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <span class="prazo-num">${n}</span></span>`;
   }
 
-  /** Prioridade mostrada no cartão: a de execução, a de revisão ou nenhuma (escolha de quem vê). */
-  function prioridadeHtml(l) {
-    if (ui.prioridade === "revisao") {
+  /** A barra escolhida, com o símbolo à esquerda (22/10/2026). */
+  function barraHtml(l) {
+    if (ui.barra === "nenhuma") return "";
+    const [, nome, icone] = BARRAS.find(([v]) => v === ui.barra);
+    const simbolo = `<span class="barra-icone ${ui.barra}" title="${nome}" aria-hidden="true">${ICONES[icone]}</span>`;
+    if (l.situacao === "concluida") return `<div class="pr"></div>`;
+    let conteudo;
+    if (ui.barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : prazoHtml(l);
+    else if (ui.barra === "revisao") {
       const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
-      return `<div class="pr">${medidor(l.revisao, `Prioridade de revisão: responde por ${revisao} da incerteza do prazo final`, "var(--accent)", revisao)}</div>`;
-    }
-    if (ui.prioridade === "execucao") {
-      return `<div class="pr">${medidor(l.execucao, "Prioridade de execução", "var(--crit)" /* só vermelho, sem matiz de cinza (22/10/2026) */, l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>`;
-    }
-    return "";
+      conteudo = medidor(l.revisao, `Prioridade de revisão: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
+    } else conteudo = medidor(l.execucao, "Prioridade de execução", "var(--execucao)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`);
+    return `<div class="pr">${simbolo}${conteudo}</div>`;
   }
 
   function linhaHtml(l) {
@@ -432,10 +445,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
-        <div class="sit">${sit}${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}</div>
+        <div class="sit">${sit}${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}${l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${nota ? `<small class="nota-reprog">${nota}</small>` : ""}</div>
         <div class="donos">${donos}</div>
-        <div class="conc">${l.situacao === "concluida" ? "" : l.semEstimativa ? FALTA_ESTIMAR : prazoHtml(l)}${nota ? `<small>${nota}</small>` : ""}</div>
-        ${l.situacao === "concluida" ? (ui.prioridade === "nenhuma" ? "" : `<div class="pr"></div>`) : prioridadeHtml(l)}
+        ${barraHtml(l)}
       </div>
     </div>`;
   }
@@ -490,7 +502,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
     }
     lista.innerHTML = corpo;
-    lista.classList.toggle("sem-prioridade", ui.prioridade === "nenhuma");
+    lista.classList.toggle("sem-prioridade", ui.barra === "nenhuma");
     if (agrupado()) marcarNivel();
     restaurarRapida();
     if (animar && !reduzirMovimento()) animarMudanca(antes);
@@ -523,7 +535,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
         ${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}
         <div class="cartao-base"><div class="donos">${donos}</div>${l.semEstimativa ? FALTA_ESTIMAR : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}</div>
-        ${l.situacao === "concluida" ? "" : prioridadeHtml(l)}
+        ${l.situacao === "concluida" ? "" : barraHtml(l)}
       </div>
     </article>`;
   }
@@ -676,8 +688,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (grupo) return alternarGrupo(grupo.dataset.alternarGrupo);
     const nivel = t.closest("[data-nivel]");
     if (nivel) return mostrarAte(nivel.dataset.nivel);
-    const prio = t.closest("[data-prioridade]");
-    if (prio) return mostrarPrioridade(prio.dataset.prioridade);
+    const barra = t.closest("[data-barra]");
+    if (barra) return mostrarBarra(barra.dataset.barra);
     if (t.closest("[data-nova]")) return abrirNova();
     const item = t.closest("[data-abrir-acao]");
     if (item) return abrirJanela(Number(item.closest("[data-numero]").dataset.numero));
@@ -731,9 +743,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
 function legendaHtml() {
   return `<div class="legenda-itens">
-    <span>Cor à esquerda: menos prioritária <span class="gradiente" aria-hidden="true"></span> mais prioritária</span>
-    <span><span class="amostra-ok" aria-hidden="true"></span> concluída</span>
-    <span>Barras: <a href="#" class="oque" data-termo="exec">prioridade de execução</a> e <a href="#" class="oque" data-termo="rev">prioridade de revisão</a></span>
+    <span>Barra, à escolha: <span class="barra-icone tempo">${ICONES.barraTempo}</span>tempo restante (verde: faltam dias; vermelho: venceu)
+      · <span class="barra-icone execucao">${ICONES.barraExecucao}</span><a href="#" class="oque" data-termo="exec">prioridade de execução</a>
+      · <span class="barra-icone revisao">${ICONES.barraRevisao}</span><a href="#" class="oque" data-termo="rev">prioridade de revisão</a></span>
     <span class="simbolos">
       <span><span class="icone-concluida">${ICONES.concluida}</span>Concluída</span>
       <span><span class="icone-liberada">${ICONES.liberada}</span>Liberada</span>
