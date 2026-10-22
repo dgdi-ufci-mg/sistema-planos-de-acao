@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 87 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 87.1 da página)
 
 ---
 
@@ -532,6 +532,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 85 | Versão 2: na lista, a ação concluída não mostra mais a data de conclusão (pedido do responsável: a lista é minimalista). A data continua na janela da ação. Sem mudança na versão atual |
 | 86 | Versão 2: na lista, no lugar da data da conclusão prevista, os dias úteis que faltam ("Faltam 6 dias úteis", "Conclui hoje"); na atrasada, "Venceu há N dias úteis", em vermelho (decisões do responsável, 22/10/2026). A data aparece ao parar o mouse e na janela da ação. O cálculo guarda o dia em que a previsão da atrasada venceu (`vencidaEm`, valor calculado, fora do banco). Sem mudança na versão atual |
 | 87 | Versão 2: lista menos carregada (pedido do responsável). Situação só pelo ícone, e a liberada sem marca; sem o carimbo "Atrasada", a seta do canto e os rótulos repetidos; prazo como número com seta (↑ faltam, ↓ venceu, em vermelho; zero sem seta, em cor neutra) e "d úteis" pequeno embaixo. Escolha "Prioridade: Execução · Revisão · Nenhuma" acima da lista e do quadro, lembrada no aparelho. Sem mudança na versão atual |
+| 87.1 | Versão 2: a barra da prioridade de execução passa a ser sempre vermelha, sem a matiz de cinza para vermelho (pedido do responsável), na lista, no quadro e na janela da ação. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

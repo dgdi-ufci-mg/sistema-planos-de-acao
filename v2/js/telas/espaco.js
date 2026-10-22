@@ -412,7 +412,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       return `<div class="pr">${medidor(l.revisao, `Prioridade de revisão: responde por ${revisao} da incerteza do prazo final`, "var(--accent)", revisao)}</div>`;
     }
     if (ui.prioridade === "execucao") {
-      return `<div class="pr">${medidor(l.execucao, "Prioridade de execução", "var(--calor)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>`;
+      return `<div class="pr">${medidor(l.execucao, "Prioridade de execução", "var(--crit)" /* só vermelho, sem matiz de cinza (22/10/2026) */, l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>`;
     }
     return "";
   }

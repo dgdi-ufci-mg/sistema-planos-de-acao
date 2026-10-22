@@ -94,7 +94,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         <div><dt>Situação</dt><dd class="sit"><span class="${sitClasse}">${ICONES[sitIcone]}</span>${sitTexto}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
         <div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>
         ${l.situacao === "concluida" || l.execucao == null ? "" : `
-          <div><dt>Prioridade de execução <a href="#" class="oque" data-termo="exec">o que é?</a></dt><dd>${barra(l.execucao, "var(--calor)", `${Math.round(l.execucao * 100)}%`)}</dd></div>
+          <div><dt>Prioridade de execução <a href="#" class="oque" data-termo="exec">o que é?</a></dt><dd>${barra(l.execucao, "var(--crit)", `${Math.round(l.execucao * 100)}%`)}</dd></div>
           <div><dt>Prioridade de revisão <a href="#" class="oque" data-termo="rev">o que é?</a></dt><dd>${barra(l.revisao, "var(--accent)", revisao)}</dd></div>`}
       </dl>
 
