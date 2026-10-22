@@ -179,7 +179,7 @@ body::before {
 /* ---------- barra do topo e menu lateral (passo 1.14c) ---------- */
 :root { --largura-lateral: 264px; }
 /* o nome do espaço fica no centro do espaço livre entre o botão do menu e as ferramentas */
-.topo-linha { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+.topo-linha { display: grid; grid-template-columns: minmax(0, 1fr) auto; } /* o botão do menu saiu da barra (22/10/2026) */
 .topo-linha > .botao-lateral { justify-self: start; }
 .botao-lateral {
   border: 0; background: transparent; color: var(--ink); width: 36px; height: 36px; border-radius: var(--raio);
@@ -960,3 +960,22 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 /* botão do menu lateral: ícone de barra lateral no computador, três linhas no celular (22/10/2026) */
 .icone-lateral-cel { display: none; }
 @media (max-width: 899px) { .icone-lateral-pc { display: none; } .icone-lateral-cel { display: block; } }
+
+/* botão do menu lateral (22/10/2026, como no Todoist): fora da barra do topo, fixo. Com o menu aberto,
+   fica dentro dele, no canto superior direito; recolhido (ou no celular, com a gaveta fechada), vai
+   para a extremidade esquerda da tela, e a barra do topo abre espaço para ele */
+.botao-lateral {
+  position: fixed; z-index: 40; top: calc(6px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px));
+  transition: left var(--mov) var(--mov-curva), background-color var(--mov-rapido);
+}
+.topo-linha { padding-left: 40px; }
+@media (min-width: 900px) {
+  body:not(.lateral-recolhida) .botao-lateral { left: calc(var(--largura-lateral) - 46px); top: calc(10px + env(safe-area-inset-top, 0px)); }
+  body:not(.lateral-recolhida) .topo-linha { padding-left: 0; }
+  .lateral-conta { margin-right: 40px; }
+}
+@media (max-width: 899px) {
+  body.lateral-aberta .botao-lateral { z-index: 46; left: calc(min(300px, 86vw) - 46px); top: calc(10px + env(safe-area-inset-top, 0px)); }
+  body.lateral-aberta .lateral-conta { margin-right: 40px; }
+}
+@media (prefers-reduced-motion: reduce) { .botao-lateral { transition: none; } }
