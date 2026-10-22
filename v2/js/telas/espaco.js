@@ -106,9 +106,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
      o aviso de previsão incompleta fica sempre à vista, em qualquer modo */
   function cabecaHtml() {
     const atrasadas = linhas.filter((l) => l.atrasada).length;
-    return `${atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
+    /* alerta de atrasadas e "Mostrar até" na mesma linha (22/10/2026, pedido do responsável) */
+    const alerta = atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
         ? `Mostrando só ${plural(atrasadas, "a ação atrasada", `as ${atrasadas} ações atrasadas`)}. <u>Mostrar todas</u>`
-        : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : ""}
+        : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : "";
+    return `${alerta || agrupado() ? `<div class="cabeca-linha">${alerta || "<span></span>"}${agrupado() ? niveisHtml() : ""}</div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -206,7 +208,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     </div>`;
   function marcarNivel() {
     const atual = nivelAtual();
-    for (const b of lista.querySelectorAll("[data-nivel]")) b.setAttribute("aria-pressed", String(b.dataset.nivel === atual));
+    for (const b of alvo.querySelectorAll("[data-nivel]")) b.setAttribute("aria-pressed", String(b.dataset.nivel === atual));
   }
   function mostrarAte(nivel) {
     ui.recolhidos.clear();
@@ -431,7 +433,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         etapas.map(({ etapa, linhas: daEtapa }) => grupoHtml("etapa", etapa.id, etapa.nome, daEtapa,
           daEtapa.map(linhaHtml).join("") + (rapida ? rapidaHtml(etapa.id, etapa.id, ` em ${etapa.nome}`) : ""))).join(""))).join("")
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
-      corpo = niveisHtml() + corpo;
     } else {
       corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ações. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ação".</p>`)
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");

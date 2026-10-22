@@ -916,3 +916,7 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .niveis button:hover { color: var(--ink); }
 .niveis button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); border-color: var(--accent); }
 @media (prefers-reduced-motion: reduce) { .niveis button { transition: none; } }
+.cabeca-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; min-height: 30px; }
+.cabeca-linha .alerta-atrasadas { margin: 0; }
+.cabeca-linha .niveis { margin: 0 0 0 auto; }
+@media (max-width: 640px) { .niveis-rotulo { display: none; } .niveis button { padding: 4px 9px; } } /* no celular, cabe na linha do alerta */
