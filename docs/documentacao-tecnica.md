@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 97 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 98 da página)
 
 ---
 
@@ -546,6 +546,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 95 | Versão 2: "Índice de criticidade" e "Contribuição para a variância" substituem "prioridade de execução" e "prioridade de revisão" em todo o sistema (ordens, legenda, cartões, janela da ação e glossário), por decisão do responsável; os nomes simples ficam no glossário. Os verbetes ganharam a fonte primária com link permanente: Van Slyke (1963), com texto completo público no DTIC, e Williams (1992), com resumo público. Referências também na lista de referências. Sem mudança na versão atual |
 | 96 | Versão 2: **edição no lugar** (pedido do responsável). Na lista, no quadro e na rede, quem pode gravar edita com **Alt+clique** o nome (Enter grava, Esc cancela), a descrição (lista, com a coluna ligada; Ctrl+Enter grava) e os participantes (lista e quadro: lista de caixas de marcar que grava a cada marca), sem abrir a janela da ação. Com Alt pressionado, os campos editáveis ficam contornados. Enquanto um texto está em edição, os redesenhos esperam o fim. Código em `js/telas/edicao-no-lugar.js`; a dica entrou na Legenda. Sem mudança na versão atual |
 | 97 | Versão 2: a legenda sobre a coluna das barras, na linha da etapa aberta, vale também para o **tempo restante** (pedido do responsável): "dias úteis até a conclusão; em vermelho, desde que venceu", com caixa de explicação e novo verbete no glossário (dias úteis até a conclusão prevista ou desde ela, quando já passou). Para a caixa não ficar cortada, o conteúdo da fase aberta deixa de esconder o que passa da borda depois da animação de abrir. Sem mudança na versão atual |
+| 98 | Versão 2: o menu "Colunas" vira **Exibir** (símbolo de olho) e passa a valer também no quadro, na rede e no cronograma. Nele, o **identificador** antes do nome: nenhum, número (#1) ou código (só se o espaço usa códigos), nunca os dois, por servirem ao mesmo fim (decisão do responsável). Ação ainda sem código mostra o número. Padrão: código nos espaços que usam códigos; nenhum nos demais. A escolha fica guardada no aparelho (`sextante.identificador`); usar ou não códigos continua em "Configurar este espaço". O identificador fica na mesma linha do nome, só na exibição. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

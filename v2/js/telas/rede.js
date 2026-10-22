@@ -18,11 +18,11 @@ const MARGEM = 16;
 
 /**
  * @param {HTMLElement} alvo
- * @param {{acoes: object[], caminho: object, linhas: object[], etapaDe: Map<string, string>, usaCodigos: boolean,
+ * @param {{acoes: object[], caminho: object, linhas: object[], etapaDe: Map<string, string>, identificador: (acao: object) => string,
  *   escala: string, aoMudarEscala: (escala: string) => void}} dados
  *   linhas: as linhas da lista (lista.js), para as datas e situações já calculadas
  */
-export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, usaCodigos, escala, aoMudarEscala }) {
+export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, escala, aoMudarEscala }) {
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
     return;
@@ -51,7 +51,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, usaCodigos
     return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${LARGURA}px;height:${ALTURA}px" data-numero="${a.numero}">
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         title="${esc(etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo)}">
-        <span class="rede-rotulo">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span data-editar="rotulo">${esc(a.rotulo)}</span></span>
+        <span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span>
         <span class="rede-rodape">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}<span class="mono">${rodape}</span></span>
       </div>
     </div>`;

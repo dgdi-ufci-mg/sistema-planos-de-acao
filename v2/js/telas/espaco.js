@@ -74,6 +74,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /** colunas opcionais da lista (22/10/2026), lembradas neste aparelho; nome e situação são fixos */
     colunas: { descricao: false, participantes: true, barras: true, ...lerColunas() },
     colunasAberto: false,
+    /** identificador antes do nome (22/10/2026): "nenhum", "numero" (#1) ou "codigo"; null: o padrão do espaço */
+    identificador: lembrado("sextante.identificador", null),
     /** comparação do cronograma com um retrato (passo 1.18): lista (null: a carregar), escolhido e datas dele */
     retratos: null, comparar: null, base: null,
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
@@ -131,7 +133,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : "";
     const naLista = ui.modo === "lista";
     const comBarra = ui.modo === "quadro" || (naLista && colunas().barras);
-    return `${alerta || agrupado() || naLista || comBarra ? `<div class="cabeca-linha"><div class="cabeca-controles">${naLista ? colunasHtml() : ""}${comBarra ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
+    const comExibir = ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
+    return `${alerta || agrupado() || comExibir || comBarra ? `<div class="cabeca-linha"><div class="cabeca-controles">${comExibir ? colunasHtml() : ""}${comBarra ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -252,14 +255,39 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const usaDescricao = () => espaco.camposOpcionais?.descricao !== false;
   const colunas = () => ({ ...ui.colunas, descricao: ui.colunas.descricao && usaDescricao() });
   const OPCOES_COLUNAS = [["descricao", "Descrição"], ["participantes", "Participantes"], ["barras", "Barras"]];
+  /**
+   * Identificador antes do nome (22/10/2026, decisão do responsável): o número (#1) ou o código,
+   * nunca os dois, porque servem ao mesmo fim. O código só existe se o espaço usa códigos; ação
+   * ainda sem código mostra o número. Vale na lista, no quadro, na rede e no cronograma.
+   */
+  const identificador = () => {
+    const escolhido = ui.identificador ?? (usaCodigos ? "codigo" : "nenhum");
+    return escolhido === "codigo" && !usaCodigos ? "nenhum" : escolhido;
+  };
+  const idHtml = (a) => {
+    const modo = identificador();
+    if (modo === "codigo" && a.codigo) return `<span class="codigo">${esc(a.codigo)}</span>`;
+    return modo === "nenhum" ? "" : `<span class="codigo">#${a.numero}</span>`;
+  };
+  const OPCOES_ID = [["nenhum", "Nenhum"], ["numero", "Número (#1)"], ["codigo", "Código"]];
+  /* menu "Exibir" (antes "Colunas", 22/10/2026): identificador e, na lista, as colunas */
   const colunasHtml = () => `<details class="menu-colunas" data-colunas-menu${ui.colunasAberto ? " open" : ""}>
-      <summary class="botao-colunas" title="Colunas" aria-label="Colunas">${ICONES.colunas}<span class="colunas-nome">Colunas</span></summary>
-      <div class="popover colunas-popover" role="group" aria-label="Colunas mostradas">
-        <h3>Colunas</h3>
+      <summary class="botao-colunas" title="Exibir" aria-label="Exibir">${ICONES.olho}<span class="colunas-nome">Exibir</span></summary>
+      <div class="popover colunas-popover" role="group" aria-label="O que exibir">
+        <h3>Identificador</h3>
+        ${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos).map(([v, nome]) => `<label><input type="radio" name="identificador" data-identificador="${v}"${identificador() === v ? " checked" : ""}> ${nome}</label>`).join("")}
+        ${ui.modo === "lista" ? `<h3>Colunas</h3>
         <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
-        ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || usaDescricao()).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}
+        ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || usaDescricao()).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}` : ""}
       </div>
     </details>`;
+  function mudarIdentificador(v) {
+    ui.identificador = v;
+    try { localStorage.setItem("sextante.identificador", v); } catch { /* sem armazenamento */ }
+    ui.colunasAberto = true;
+    cabeca.innerHTML = cabecaHtml();
+    desenharLista();
+  }
   function mudarColuna(v, ligada) {
     ui.colunas = { ...ui.colunas, [v]: ligada };
     try { localStorage.setItem("sextante.colunas", JSON.stringify(ui.colunas)); } catch { /* sem armazenamento */ }
@@ -503,7 +531,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="sit">${sit}</div>
-        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : ""].join("")}</div>
         ${c.descricao ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
@@ -557,14 +585,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     let corpo;
     if (ui.modo === "planilha") { planilha.desenhar(lista, dadosDaJanela()); return; }
     if (ui.modo === "cronograma") {
-      desenharCronograma(lista, { espaco, acoes, caminho, cal, hoje, usaFases, usaCodigos, escala: ui.escalaCrono,
+      desenharCronograma(lista, { espaco, acoes, caminho, cal, hoje, usaFases, identificador: idHtml, escala: ui.escalaCrono,
         aoMudarEscala: (escala) => { ui.escalaCrono = escala; desenharLista(); },
         retratos: ui.retratos, comparar: ui.comparar, base: ui.base, aoComparar: compararCom });
       if (ui.retratos === null) carregarRetratos();
       return;
     }
     if (ui.modo === "rede") {
-      desenharRede(lista, { acoes, caminho, linhas, etapaDe, usaCodigos, escala: ui.escalaRede,
+      desenharRede(lista, { acoes, caminho, linhas, etapaDe, identificador: idHtml, escala: ui.escalaRede,
         aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); } });
       return;
     }
@@ -616,7 +644,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const arrastavel = l.situacao !== "naoLiberada";
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
-        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
+        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
         ${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}
         <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div>${l.semEstimativa ? FALTA_ESTIMAR : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}</div>
         ${l.situacao === "concluida" ? "" : barraHtml(l)}
@@ -767,6 +795,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   alvo.onchange = (e) => {
     const coluna = e.target.dataset?.coluna;
     if (coluna) mudarColuna(coluna, e.target.checked);
+    const id = e.target.dataset?.identificador;
+    if (id) mudarIdentificador(id);
   };
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;

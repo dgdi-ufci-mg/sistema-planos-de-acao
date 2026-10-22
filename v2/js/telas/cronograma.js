@@ -22,13 +22,13 @@ const ALTURA = 34;
 /**
  * @param {HTMLElement} alvo
  * @param {{espaco: object, acoes: object[], caminho: object, cal: object, hoje: string, usaFases: boolean,
- *   usaCodigos: boolean, escala: string, aoMudarEscala: (escala: string) => void,
+ *   identificador: (acao: object) => string, escala: string, aoMudarEscala: (escala: string) => void,
  *   retratos?: object[]|null, comparar?: string|null, base?: Map<number, {inicio: string, fim: string}>|null,
  *   aoComparar?: (id: string|null) => void}} dados
  *   retratos: cabeçalhos dos retratos do espaço (null: ainda carregando); comparar: id do retrato escolhido;
  *   base: datas de cada ação no retrato escolhido
  */
-export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, usaFases, usaCodigos, escala, aoMudarEscala,
+export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, usaFases, identificador, escala, aoMudarEscala,
   retratos = null, comparar = null, base = null, aoComparar = () => {} }) {
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. O cronograma aparece quando houver ações.</p>`;
@@ -79,7 +79,7 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
     const classe = b.situacao === "concluida" ? "concluida" : semEstimativa ? "sem-estimativa" : b.critica ? "critica" : "folga";
     return `<div class="crono-linha" style="top:${y}px" data-numero="${a.numero}">
       <div class="crono-nome" role="button" tabindex="0" data-abrir-acao>
-        ${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>
+        ${identificador(a)}<span class="rotulo">${esc(a.rotulo)}</span>
         ${b.atrasada ? `<span class="icone-atrasada" title="Atrasada">${ICONES.atrasada}</span>` : ""}
       </div>
       ${base?.has(a.numero) ? `<i class="crono-base" style="left:calc(var(--nomes) + ${x(base.get(a.numero).inicio)}px);width:${Math.max(3, x(somar(base.get(a.numero).fim, 1)) - x(base.get(a.numero).inicio))}px"></i>` : ""}
