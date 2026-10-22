@@ -3,7 +3,7 @@
  * menu do espaço, com dados e datas, datas excluídas, fases e etapas, campos opcionais,
  * documentos e a semente da simulação (visível, mas fixa). Cada seção é gravada pelo seu botão
  * Salvar; os campos opcionais, na hora. Exportação (passo 1.19a): copiar para planilha e copiar
- * o fluxograma em Mermaid. Retratos (passo 1.18): salvar e listar. Importar de planilha (passo 1.19b):
+ * o fluxograma em Mermaid. Retratos (passo 1.18): salvar e listar. Importar ações de planilha (passo 1.19b):
  * colar, conferir e gravar.
  */
 import { ligarSecoesSuaves } from "./movimento.js";
@@ -190,7 +190,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       </details>
 
       ${store.podeGravar ? `<details class="config" data-secao="importar"${aberta("importar")}>
-        <summary><h3>Importar de planilha</h3></summary>
+        <summary><h3>Importar ações de planilha</h3></summary>
         <p class="tec">Selecione as linhas no Google Planilhas ou no Excel, incluindo a linha de títulos, copie e cole abaixo.
           Colunas reconhecidas: Ação (obrigatória), Número, Código, Fase, Etapa, Descrição, Depende de, Otimista, Mais provável,
           Pessimista e Responsáveis. É o mesmo formato de "Copiar para planilha"; as demais colunas são ignoradas.</p>
