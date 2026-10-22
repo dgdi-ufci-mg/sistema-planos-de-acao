@@ -341,7 +341,7 @@ body.so-leitura [data-nova] { display: none; }
 .lista { display: flex; flex-direction: column; gap: 8px; }
 .linha {
   display: grid; align-items: center; gap: 12px; padding: 10px 14px 10px 18px;
-  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.1fr) minmax(0, .8fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) 18px;
+  grid-template-columns: minmax(0, 2.6fr) minmax(0, .9fr) minmax(0, .9fr) minmax(0, 1fr) minmax(0, 1.3fr); /* 22/10/2026: uma prioridade só, sem seta */
 }
 .item { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); overflow: hidden; transition: box-shadow .18s, transform .18s; }
 .item:hover { box-shadow: var(--sombra); transform: translateY(-1px); }
@@ -374,7 +374,7 @@ body.so-leitura [data-nova] { display: none; }
 }
 .conc .data { font-size: .9rem; font-weight: 500; display: block; line-height: 1.25; } /* dias que faltam, em texto (22/10/2026) */
 .conc .data.atrasada { color: var(--crit-ink); font-weight: 500; }
-.conc small { display: block; font-size: .74rem; color: var(--warn-ink); }
+.conc small { display: block; font-size: .72rem; color: var(--warn-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item.feita .conc small { color: var(--muted); }
 .medidor { display: flex; align-items: center; gap: 8px; }
 .barra-medidor { flex: 1; height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; min-width: 40px; }
@@ -385,7 +385,14 @@ body.so-leitura [data-nova] { display: none; }
 /* rótulo pequeno sobre a data e as barras, no lugar de um cabeçalho de tabela */
 .mlab { display: block; font-size: .74rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* ação concluída: as barras de prioridade, sem uso, não aparecem */
-.item.feita .ex, .item.feita .rv { visibility: hidden; }
+.lista.sem-prioridade .linha { grid-template-columns: minmax(0, 2.6fr) minmax(0, .9fr) minmax(0, .9fr) minmax(0, 1fr); }
+/* prazo: número com seta, "d úteis" embaixo, pequeno e cinza (22/10/2026) */
+.prazo { display: inline-flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+.prazo-num { font: 600 1.05rem var(--f-dados); font-variant-numeric: tabular-nums; color: var(--ink); display: inline-flex; align-items: baseline; gap: 2px; }
+.prazo-seta { font-size: .85em; }
+.prazo.vencido .prazo-num { color: var(--crit-ink); }
+.prazo.zero .prazo-num { color: var(--muted); }
+.prazo-un { font-size: .7rem; color: var(--faint); }
 .lista-vazia { padding: 24px; text-align: center; color: var(--muted); margin: 0; }
 .lista > .tec { margin: 4px 0 0; }
 
@@ -448,11 +455,12 @@ body.so-leitura [data-nova] { display: none; }
    numa janela média, com o menu lateral aberto, a lista também fica estreita (22/10/2026). */
 .lista { container-type: inline-size; }
 @container (max-width: 820px) {
-  .linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "s d" "o o" "e r"; gap: 8px 12px; padding: 12px 14px 12px 16px; }
+  .linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "s d" "o o" "p p"; gap: 8px 12px; padding: 12px 14px 12px 16px; }
   .linha > .acao-nome { grid-area: a; } .linha > .sit { grid-area: s; } .linha > .conc { grid-area: d; text-align: right; }
-  .linha > .donos { grid-area: o; } .linha > .ex { grid-area: e; } .linha > .rv { grid-area: r; } .linha > .seta { display: none; }
-  .item.feita .ex, .item.feita .rv { display: none; }
-  .item.feita .linha { grid-template-areas: "a a" "s d" "o o"; }
+  .linha > .donos { grid-area: o; } .linha > .pr { grid-area: p; }
+  .item.feita .pr { display: none; }
+  .conc .prazo { align-items: flex-end; }
+  .item.feita .linha, .lista.sem-prioridade .linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "s d" "o o"; }
   .grupo.fase > .grupo-corpo > .grupo-dentro { padding-left: 6px; margin-left: 6px; }
   /* recolhido no celular: só a barrinha de progresso e o relógio, se houver atraso, na linha do nome */
   .grupo-cabeca { flex-wrap: nowrap; }
@@ -918,5 +926,6 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 @media (prefers-reduced-motion: reduce) { .niveis button { transition: none; } }
 .cabeca-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; min-height: 30px; }
 .cabeca-linha .alerta-atrasadas { margin: 0; }
-.cabeca-linha .niveis { margin: 0 0 0 auto; }
+.cabeca-linha .niveis { margin: 0; }
+.cabeca-controles { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: flex-end; margin-left: auto; }
 @media (max-width: 640px) { .niveis-rotulo { display: none; } .niveis button { padding: 4px 9px; } } /* no celular, cabe na linha do alerta */

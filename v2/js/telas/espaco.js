@@ -56,6 +56,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     pop: null,
     /** aproximação do cronograma: "semanas" ou "meses" */
     escalaCrono: "semanas",
+    /** prioridade mostrada nos cartões: "execucao", "revisao" ou "nenhuma" (lembrada neste aparelho) */
+    prioridade: (() => { try { return localStorage.getItem("sextante.prioridade") || "execucao"; } catch { return "execucao"; } })(),
     /** comparação do cronograma com um retrato (passo 1.18): lista (null: a carregar), escolhido e datas dele */
     retratos: null, comparar: null, base: null,
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
@@ -110,7 +112,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const alerta = atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
         ? `Mostrando só ${plural(atrasadas, "a ação atrasada", `as ${atrasadas} ações atrasadas`)}. <u>Mostrar todas</u>`
         : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : "";
-    return `${alerta || agrupado() ? `<div class="cabeca-linha">${alerta || "<span></span>"}${agrupado() ? niveisHtml() : ""}</div>` : ""}
+    const comPrioridade = ui.modo === "lista" || ui.modo === "quadro";
+    return `${alerta || agrupado() || comPrioridade ? `<div class="cabeca-linha">${alerta || "<span></span>"}<div class="cabeca-controles">${comPrioridade ? prioridadesHtml() : ""}${agrupado() ? niveisHtml() : ""}</div></div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -201,6 +204,17 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (fases.length && fases.every((id) => ui.recolhidos.has(id))) return "fases";
     if (fases.every((id) => !ui.recolhidos.has(id)) && etapas.length && etapas.every((id) => ui.recolhidos.has(id))) return "etapas";
     return null;
+  }
+  const PRIORIDADES = [["execucao", "Execução"], ["revisao", "Revisão"], ["nenhuma", "Nenhuma"]];
+  const prioridadesHtml = () => `<div class="niveis" role="group" aria-label="Prioridade mostrada">
+      <span class="niveis-rotulo">Prioridade</span>
+      ${PRIORIDADES.map(([v, nome]) => `<button type="button" data-prioridade="${v}" aria-pressed="${ui.prioridade === v}">${nome}</button>`).join("")}
+    </div>`;
+  function mostrarPrioridade(v) {
+    ui.prioridade = v;
+    try { localStorage.setItem("sextante.prioridade", v); } catch { /* sem armazenamento */ }
+    cabeca.innerHTML = cabecaHtml();
+    desenharLista();
   }
   const niveisHtml = () => `<div class="niveis" role="group" aria-label="Mostrar até">
       <span class="niveis-rotulo">Mostrar até</span>
@@ -368,36 +382,57 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
 
   /**
-   * Dias úteis que faltam para a conclusão prevista, em vez da data (22/10/2026, decisão do responsável);
-   * na atrasada, há quantos dias úteis a previsão venceu. A data aparece ao parar o mouse e na janela da ação.
+   * Prazo no cartão da lista (22/10/2026, decisões do responsável): o número de dias úteis, com seta
+   * para cima quando ainda faltam e para baixo quando a previsão já venceu (em vermelho); zero, sem
+   * seta e em cor neutra. "d úteis" fica embaixo, pequeno e cinza. A data aparece ao parar o mouse.
    */
-  function prazoTexto(l) {
+  function prazoHtml(l) {
+    let n;
+    let classe;
+    let titulo;
     if (l.atrasada) {
-      const n = Math.max(1, cal.diasUteisAte(hoje) - cal.diasUteisAte(l.vencidaEm));
-      return `Venceu há ${n} ${plural(n, "dia útil", "dias úteis")}`;
+      n = Math.max(1, cal.diasUteisAte(hoje) - cal.diasUteisAte(l.vencidaEm));
+      classe = "vencido";
+      titulo = `Venceu há ${n} ${plural(n, "dia útil", "dias úteis")}, em ${dataBr(l.vencidaEm)}`;
+    } else {
+      n = Math.max(0, cal.diasUteisAte(l.conclusao) - cal.diasUteisAte(hoje));
+      classe = n ? "faltam" : "zero";
+      titulo = n ? `${plural(n, "Falta", "Faltam")} ${n} ${plural(n, "dia útil", "dias úteis")}: conclusão prevista em ${dataBr(l.conclusao)}` : "Conclusão prevista para hoje";
     }
-    const n = Math.max(0, cal.diasUteisAte(l.conclusao) - cal.diasUteisAte(hoje));
-    return n === 0 ? "Conclui hoje" : `${plural(n, "Falta", "Faltam")} ${n} ${plural(n, "dia útil", "dias úteis")}`;
+    const seta = classe === "vencido" ? "↓" : classe === "faltam" ? "↑" : "";
+    return `<span class="prazo ${classe}" title="${titulo}" aria-label="${titulo}">
+      <span class="prazo-num">${seta ? `<span class="prazo-seta" aria-hidden="true">${seta}</span>` : ""}${n}</span>
+      <span class="prazo-un">${plural(n, "d útil", "d úteis")}</span></span>`;
+  }
+
+  /** Prioridade mostrada no cartão: a de execução, a de revisão ou nenhuma (escolha de quem vê). */
+  function prioridadeHtml(l) {
+    if (ui.prioridade === "revisao") {
+      const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
+      return `<div class="pr">${medidor(l.revisao, `Prioridade de revisão: responde por ${revisao} da incerteza do prazo final`, "var(--accent)", revisao)}</div>`;
+    }
+    if (ui.prioridade === "execucao") {
+      return `<div class="pr">${medidor(l.execucao, "Prioridade de execução", "var(--calor)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>`;
+    }
+    return "";
   }
 
   function linhaHtml(l) {
     const a = l.acao;
     const s = SITUACOES[l.situacao];
     const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus });
-    const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
     const nota = l.situacao !== "concluida" && l.reprogramacoes
       ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";
+    /* situação só com o ícone; liberada é o normal e fica sem marca (22/10/2026) */
+    const sit = l.situacao === "liberada" ? ""
+      : `<span class="${s.classe}" title="${s.texto}" aria-label="${s.texto}">${ICONES[s.icone]}</span>${l.situacao === "naoLiberada" ? `<span>${s.texto}</span>` : ""}`;
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
-        <div class="sit"><span class="${s.classe}">${ICONES[s.icone]}</span><span>${s.texto}</span>${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</div>
+        <div class="sit">${sit}${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}</div>
         <div class="donos">${donos}</div>
-        ${l.situacao === "concluida" ? `<div class="conc"></div>` /* concluída: sem data na lista, que é minimalista (22/10/2026) */
-          : `<div class="conc"><span class="mlab">Conclusão prevista</span>${l.semEstimativa ? FALTA_ESTIMAR
-          : `<span class="data${l.atrasada ? " atrasada" : ""}" title="${l.atrasada ? `Venceu em ${dataBr(l.vencidaEm)}` : `Conclusão prevista em ${dataBr(l.conclusao)}`}">${prazoTexto(l)}</span>`}${nota ? `<small>${nota}</small>` : ""}</div>`}
-        <div class="ex"><span class="mlab">Prioridade de execução</span>${medidor(l.execucao, "Prioridade de execução", "var(--calor)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`)}</div>
-        <div class="rv"><span class="mlab">Prioridade de revisão</span>${medidor(l.revisao, `Responde por ${revisao} da incerteza do prazo final`, "var(--accent)", revisao)}</div>
-        <span class="seta">${ICONES.seguir}</span>
+        <div class="conc">${l.situacao === "concluida" ? "" : l.semEstimativa ? FALTA_ESTIMAR : prazoHtml(l)}${nota ? `<small>${nota}</small>` : ""}</div>
+        ${l.situacao === "concluida" ? (ui.prioridade === "nenhuma" ? "" : `<div class="pr"></div>`) : prioridadeHtml(l)}
       </div>
     </div>`;
   }
@@ -452,6 +487,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
     }
     lista.innerHTML = corpo;
+    lista.classList.toggle("sem-prioridade", ui.prioridade === "nenhuma");
     if (agrupado()) marcarNivel();
     restaurarRapida();
     if (animar && !reduzirMovimento()) animarMudanca(antes);
@@ -484,7 +520,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
         ${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}
         <div class="cartao-base"><div class="donos">${donos}</div>${l.semEstimativa ? FALTA_ESTIMAR : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}</div>
-        ${l.execucao == null ? "" : medidor(l.execucao, "Prioridade de execução", "var(--calor)", `${Math.round(l.execucao * 100)}%`)}
+        ${l.situacao === "concluida" ? "" : prioridadeHtml(l)}
       </div>
     </article>`;
   }
@@ -637,6 +673,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (grupo) return alternarGrupo(grupo.dataset.alternarGrupo);
     const nivel = t.closest("[data-nivel]");
     if (nivel) return mostrarAte(nivel.dataset.nivel);
+    const prio = t.closest("[data-prioridade]");
+    if (prio) return mostrarPrioridade(prio.dataset.prioridade);
     if (t.closest("[data-nova]")) return abrirNova();
     const item = t.closest("[data-abrir-acao]");
     if (item) return abrirJanela(Number(item.closest("[data-numero]").dataset.numero));
