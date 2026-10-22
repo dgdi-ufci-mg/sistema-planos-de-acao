@@ -127,7 +127,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <summary><h3>Responsáveis</h3><span class="n">${responsaveis.length}</span></summary>
         <div class="responsaveis-do-espaco" data-responsaveis></div>
         ${store.podeGravar ? `<details class="importar-responsaveis" data-sub="importar-responsaveis"${abertas.has("importar-responsaveis") ? " open" : ""}>
-          <summary>Importar de planilha</summary>
+          <summary>Importar responsáveis de planilha</summary>
           <p class="tec">Cole as linhas com a linha de títulos: Nome (obrigatório), Tipo, Sigla, Setor e E-mail. Com e-mail, é uma pessoa e
             ganha a conta de acesso: o sistema manda a ela um e-mail para definir a própria senha. Sem e-mail, informe o tipo (pessoa ou unidade).
             ${criarConta ? "" : "<b>Neste espaço, as contas de acesso não são criadas</b> (o exemplo fica só no navegador)."}</p>
