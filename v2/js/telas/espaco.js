@@ -425,7 +425,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";
     /* situação só com o ícone; liberada é o normal e fica sem marca (22/10/2026) */
     const sit = l.situacao === "liberada" ? ""
-      : `<span class="${s.classe}" title="${s.texto}" aria-label="${s.texto}">${ICONES[s.icone]}</span>${l.situacao === "naoLiberada" ? `<span>${s.texto}</span>` : ""}`;
+      : `<span class="${s.classe}" title="${s.texto}" aria-label="${s.texto}">${ICONES[s.icone]}</span>`; // só o ícone, também na não liberada
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
