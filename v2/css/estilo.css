@@ -349,7 +349,7 @@ body.so-leitura [data-nova] { display: none; }
 .lista { display: flex; flex-direction: column; gap: 8px; }
 .linha {
   display: grid; align-items: center; gap: 12px; padding: 10px 14px 10px 18px;
-  grid-template-columns: minmax(0, 2.6fr) 20px minmax(0, 1.5fr) minmax(0, 1.6fr); /* 22/10/2026: ícone da situação estreito, ao lado do nome; uma barra só */
+  grid-template-columns: var(--colunas, 18px minmax(0, 2.4fr) minmax(0, 1.5fr) minmax(0, 1.6fr)); /* 22/10/2026: ícone da situação antes do nome; colunas à escolha */
 }
 .item { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); overflow: hidden; transition: box-shadow .18s, transform .18s; }
 .item:hover { box-shadow: var(--sombra); transform: translateY(-1px); }
@@ -392,10 +392,9 @@ body.so-leitura [data-nova] { display: none; }
 .seta { color: var(--muted); display: flex; }
 /* rótulo pequeno sobre a data e as barras, no lugar de um cabeçalho de tabela */
 .mlab { display: block; font-size: .74rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* ação concluída: as barras de prioridade, sem uso, não aparecem */
-.lista.sem-prioridade .linha { grid-template-columns: minmax(0, 2.6fr) 20px minmax(0, 2fr); }
 .linha .donos { flex-wrap: nowrap; overflow: hidden; }
-.linha .sit { justify-content: center; }
+.linha .sit { justify-content: center; margin-right: -4px; } /* colado ao nome */
+.linha .desc { font-size: .86rem; color: var(--muted); white-space: pre-line; overflow-wrap: anywhere; line-height: 1.35; }
 .acao-nome .tec, .acao-nome .falta-estimar, .acao-nome .nota-reprog { margin-top: 2px; }
 .acao-nome .falta-estimar { align-self: flex-start; }
 /* barra escolhida, com o símbolo à esquerda (22/10/2026) */
@@ -477,12 +476,13 @@ body.so-leitura [data-nova] { display: none; }
    numa janela média, com o menu lateral aberto, a lista também fica estreita (22/10/2026). */
 .lista { container-type: inline-size; }
 @container (max-width: 820px) {
-  .linha { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "a s" "o o" "p p"; gap: 8px 12px; padding: 12px 14px 12px 16px; }
-  .linha > .acao-nome { grid-area: a; } .linha > .sit { grid-area: s; } .linha > .conc { grid-area: d; text-align: right; }
-  .linha > .donos { grid-area: o; } .linha > .pr { grid-area: p; }
+  /* lista estreita: o ícone à esquerda do nome e as colunas escolhidas empilhadas abaixo dele */
+  .linha { grid-template-columns: 18px minmax(0, 1fr); gap: 8px 10px; padding: 12px 14px 12px 14px; }
+  .linha > * { grid-column: 2; }
+  .linha > .sit { grid-column: 1; grid-row: 1; }
+  .linha > .acao-nome { grid-row: 1; }
   .item.feita .pr { display: none; }
   .conc .prazo-barra { max-width: 180px; margin-left: auto; }
-  .item.feita .linha, .lista.sem-prioridade .linha { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "a s" "o o"; }
   .grupo.fase > .grupo-corpo > .grupo-dentro { padding-left: 6px; margin-left: 6px; }
   /* recolhido no celular: só a barrinha de progresso e o relógio, se houver atraso, na linha do nome */
   .grupo-cabeca { flex-wrap: nowrap; }
@@ -951,6 +951,18 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .cabeca-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; min-height: 30px; }
 .cabeca-linha .alerta-atrasadas { margin: 0 0 0 auto; }
 .cabeca-controles { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+/* menu de colunas da lista (22/10/2026) */
+.menu-colunas { position: relative; }
+.botao-colunas { list-style: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 5px 11px; border: 1px solid var(--line); border-radius: 999px;
+  background: var(--sunk); color: var(--muted); font-size: .84rem; font-weight: 600; transition: color var(--mov-rapido), background-color var(--mov-rapido); }
+.botao-colunas::-webkit-details-marker { display: none; }
+.botao-colunas:hover, .menu-colunas[open] .botao-colunas { color: var(--ink); background: var(--surface); }
+.botao-colunas:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.botao-colunas .icone { width: 17px; height: 17px; }
+.colunas-popover { left: 0; right: auto; width: 220px; gap: 8px; }
+.colunas-popover label { display: flex; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; }
+.colunas-popover label.fixa { color: var(--muted); cursor: default; }
+@media (max-width: 640px) { .colunas-nome { display: none; } .botao-colunas { padding: 5px 8px; } }
 @media (max-width: 640px) { .niveis-rotulo { display: none; } .cabeca-linha .modo { padding: 4px 7px; } .modos.barras .modo-nome { display: none !important; } } /* no celular, as barras só pelo símbolo */
 
 /* ---------- prazo como barra (22/10/2026): verde para a direita (faltam), vermelho para a esquerda (venceu) ---------- */

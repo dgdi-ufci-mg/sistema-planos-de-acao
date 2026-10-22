@@ -50,20 +50,35 @@ const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").ma
  *   barra: lugar das ferramentas na barra do topo
  * @returns {() => void} para de acompanhar (ao trocar de espaço)
  */
+function lembrado(chave, padrao) {
+  try { return localStorage.getItem(chave) || padrao; } catch { return padrao; }
+}
+/* "Nenhuma" saiu do seletor de barra (22/10/2026): quem a usava fica com a coluna Barras desligada */
+function lerColunas() {
+  let guardadas = null;
+  try { guardadas = JSON.parse(localStorage.getItem("sextante.colunas") || "null"); } catch { /* sem armazenamento */ }
+  if (guardadas && typeof guardadas === "object") return guardadas;
+  return lembrado("sextante.barra", "") === "nenhuma" ? { barras: false } : {};
+}
+
 export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra }) {
   const ui = { modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false,
     /** painel aberto sob um botão da barra: "filtrar", "ordenar" ou null */
     pop: null,
     /** aproximação do cronograma: "semanas" ou "meses" */
     escalaCrono: "semanas",
-    /** barra mostrada nos cartões: "tempo", "execucao", "revisao" ou "nenhuma" (lembrada neste aparelho) */
-    barra: (() => { try { return localStorage.getItem("sextante.barra") || "tempo"; } catch { return "tempo"; } })(),
+    /** barra mostrada nos cartões: "tempo", "execucao" ou "revisao" (lembrada neste aparelho) */
+    barra: lembrado("sextante.barra", "tempo"),
+    /** colunas opcionais da lista (22/10/2026), lembradas neste aparelho; nome e situação são fixos */
+    colunas: { descricao: false, participantes: true, barras: true, ...lerColunas() },
+    colunasAberto: false,
     /** comparação do cronograma com um retrato (passo 1.18): lista (null: a carregar), escolhido e datas dele */
     retratos: null, comparar: null, base: null,
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
     escalaRede: "normal",
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "" };
+  if (!["tempo", "execucao", "revisao"].includes(ui.barra)) ui.barra = "tempo";
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
   let janela = null;
   /** janela "Nova ação" aberta: fica aberta entre criações e recebe as mudanças do banco */
@@ -112,8 +127,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const alerta = atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
         ? `Mostrando só ${plural(atrasadas, "a ação atrasada", `as ${atrasadas} ações atrasadas`)}. <u>Mostrar todas</u>`
         : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : "";
-    const comPrioridade = ui.modo === "lista" || ui.modo === "quadro";
-    return `${alerta || agrupado() || comPrioridade ? `<div class="cabeca-linha"><div class="cabeca-controles">${comPrioridade ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
+    const naLista = ui.modo === "lista";
+    const comBarra = ui.modo === "quadro" || (naLista && colunas().barras);
+    return `${alerta || agrupado() || naLista || comBarra ? `<div class="cabeca-linha"><div class="cabeca-controles">${naLista ? colunasHtml() : ""}${comBarra ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -215,19 +231,47 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /**
    * Barra dos cartões (22/10/2026, decisão do responsável): uma só, à escolha, cada uma com o seu
    * símbolo e a sua cor: tempo restante (verde/vermelho), prioridade de execução (violeta) e
-   * prioridade de revisão (laranja); ou nenhuma.
+   * prioridade de revisão (laranja). Sem barra: desligue a coluna Barras (22/10/2026).
    */
   const BARRAS = [
     ["tempo", "Tempo restante", "barraTempo"],
     ["execucao", "Prioridade de execução", "barraExecucao"],
     ["revisao", "Prioridade de revisão", "barraRevisao"],
-    ["nenhuma", "Nenhuma", "barraNenhuma"],
   ];
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
-  const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Execução", revisao: "Revisão", nenhuma: "Nenhuma" };
+  const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Execução", revisao: "Revisão" };
   const barrasHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Barra</span><div class="modos barras" role="group" aria-label="Barra mostrada nos cartões">
       ${BARRAS.map(([v, nome, icone]) => `<button type="button" class="modo" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}"><span class="barra-icone ${v}">${ICONES[icone]}</span><span class="modo-nome" aria-hidden="true">${NOMES_BARRA[v]}</span></button>`).join("")}
     </div></div>`;
+  /**
+   * Colunas da lista (22/10/2026, pedido do responsável): nome e situação ficam sempre; descrição,
+   * participantes e barras entram e saem por um menu. A descrição só aparece se o espaço a usa.
+   */
+  const usaDescricao = () => espaco.camposOpcionais?.descricao !== false;
+  const colunas = () => ({ ...ui.colunas, descricao: ui.colunas.descricao && usaDescricao() });
+  const OPCOES_COLUNAS = [["descricao", "Descrição"], ["participantes", "Participantes"], ["barras", "Barras"]];
+  const colunasHtml = () => `<details class="menu-colunas" data-colunas-menu${ui.colunasAberto ? " open" : ""}>
+      <summary class="botao-colunas" title="Colunas" aria-label="Colunas">${ICONES.colunas}<span class="colunas-nome">Colunas</span></summary>
+      <div class="popover colunas-popover" role="group" aria-label="Colunas mostradas">
+        <h3>Colunas</h3>
+        <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
+        ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || usaDescricao()).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}
+      </div>
+    </details>`;
+  function mudarColuna(v, ligada) {
+    ui.colunas = { ...ui.colunas, [v]: ligada };
+    try { localStorage.setItem("sextante.colunas", JSON.stringify(ui.colunas)); } catch { /* sem armazenamento */ }
+    ui.colunasAberto = true;
+    cabeca.innerHTML = cabecaHtml();
+    desenharLista();
+  }
+  /* clique fora do menu de colunas, ou Esc, fecha o menu */
+  const fecharColunas = (e) => {
+    const menu = alvo.querySelector("[data-colunas-menu][open]");
+    if (!menu || (e.type === "keydown" ? e.key !== "Escape" : e.composedPath().includes(menu))) return;
+    menu.open = false;
+    ui.colunasAberto = false;
+  };
   function mostrarBarra(v) {
     ui.barra = v;
     try { localStorage.setItem("sextante.barra", v); } catch { /* sem armazenamento */ }
@@ -335,6 +379,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   };
   document.addEventListener("click", fecharPop);
   document.addEventListener("keydown", fecharPop);
+  document.addEventListener("click", fecharColunas);
+  document.addEventListener("keydown", fecharColunas);
   /* legenda: item do menu lateral (passo 1.14c) */
   const alternarLegenda = () => { ui.legenda = !ui.legenda; desenharFerramentas(); };
   document.addEventListener("sextante:alternar-legenda", alternarLegenda);
@@ -430,7 +476,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /** A barra escolhida, com o símbolo à esquerda (22/10/2026). */
   function barraHtml(l) {
-    if (ui.barra === "nenhuma") return "";
     const [, nome, icone] = BARRAS.find(([v]) => v === ui.barra);
     const simbolo = `<span class="barra-icone ${ui.barra}" title="${nome}" aria-hidden="true">${ICONES[icone]}</span>`;
     if (l.situacao === "concluida") return `<div class="pr"></div>`;
@@ -452,14 +497,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* situação só com o ícone; liberada é o normal e fica sem marca (22/10/2026) */
     const sit = l.situacao === "liberada" ? ""
       : `<span class="${s.classe}" title="${s.texto}" aria-label="${s.texto}">${ICONES[s.icone]}</span>`; // só o ícone, também na não liberada
+    const c = colunas();
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
-        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
-          /* avisos pequenos sob o nome; o ícone da situação fica numa coluna estreita ao lado (22/10/2026) */
-          [l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : ""].join("")}</div>
         <div class="sit">${sit}</div>
-        <div class="donos">${donos}</div>
-        ${barraHtml(l)}
+        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+          /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
+          [l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : ""].join("")}</div>
+        ${c.descricao ? `<div class="desc">${esc(a.descricao ?? "")}</div>` : ""}
+        ${c.participantes ? `<div class="donos">${donos}</div>` : ""}
+        ${c.barras ? barraHtml(l) : ""}
       </div>
     </div>`;
   }
@@ -514,7 +561,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
     }
     lista.innerHTML = corpo;
-    lista.classList.toggle("sem-prioridade", ui.barra === "nenhuma");
+    const c = colunas();
+    lista.style.setProperty("--colunas", ["18px", "minmax(0, 2.4fr)", c.descricao && "minmax(0, 2.4fr)",
+      c.participantes && "minmax(0, 1.5fr)", c.barras && "minmax(0, 1.6fr)"].filter(Boolean).join(" "));
     ajustarDonos(lista);
     if (agrupado()) marcarNivel();
     restaurarRapida();
@@ -693,6 +742,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
 
   /* ---------- eventos ---------- */
+  alvo.onchange = (e) => {
+    const coluna = e.target.dataset?.coluna;
+    if (coluna) mudarColuna(coluna, e.target.checked);
+  };
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;
     const filtro = t.closest("[data-filtro]");
@@ -703,6 +756,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (nivel) return mostrarAte(nivel.dataset.nivel);
     const barra = t.closest("[data-barra]");
     if (barra) return mostrarBarra(barra.dataset.barra);
+    const resumoColunas = t.closest(".botao-colunas");
+    if (resumoColunas) { ui.colunasAberto = !resumoColunas.parentElement.open; return; }
     if (t.closest("[data-nova]")) return abrirNova();
     const item = t.closest("[data-abrir-acao]");
     if (item) return abrirJanela(Number(item.closest("[data-numero]").dataset.numero));
@@ -747,10 +802,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     janela?.fechar();
     document.removeEventListener("click", fecharPop);
     document.removeEventListener("keydown", fecharPop);
+    document.removeEventListener("click", fecharColunas);
+    document.removeEventListener("keydown", fecharColunas);
     document.removeEventListener("sextante:alternar-legenda", alternarLegenda);
     barra.innerHTML = "";
     barra.onclick = null;
     barra.onchange = null;
+    alvo.onchange = null;
   };
 }
 
