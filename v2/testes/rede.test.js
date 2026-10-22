@@ -80,33 +80,36 @@ describe("Rede (passo 1.17c)", () => {
     const etapas = [...new Set(dados.tasks.sort((a, b) => a.order - b.order).map((t) => t.stage))];
     return {
       acoes: dados.tasks.map((t) => ({ numero: ids.get(t.id), etapa: t.stage, dependeDe: t.preds.map((p) => ids.get(p)) })),
-      raias: etapas.map((e) => ({ id: e, nome: e })),
+      marcos: etapas.map((e) => ({ id: e, nome: e })),
     };
   };
   const casos = [
-    ["exemplo", async () => { const { acoes } = await exemplo(); return { acoes, raias: [...new Set(acoes.map((a) => a.etapa))].map((e) => ({ id: e, nome: e })) }; }],
+    ["exemplo", async () => { const { acoes } = await exemplo(); return { acoes, marcos: [...new Set(acoes.map((a) => a.etapa))].map((e) => ({ id: e, nome: e })) }; }],
     ["PI²", async () => pi2()],
-    ["exemplo sem raias", async () => ({ acoes: (await exemplo()).acoes, raias: null })],
+    ["exemplo sem marcos", async () => ({ acoes: (await exemplo()).acoes, marcos: null })],
   ];
   for (const [nome, carregar] of casos) {
-    it(`${nome}: cartões sem sobreposição, nas suas raias; setas em ângulo reto, sem passar por cima de cartões`, async () => {
-      const { acoes, raias } = await carregar();
-      const r = montarRede(acoes, { porAcao: new Map() }, raias ? { raias, raiaDe: (a) => a.etapa } : {});
+    it(`${nome}: cartões sem sobreposição, nos seus marcos; setas em ângulo reto, sem passar por cima de cartões`, async () => {
+      const { acoes, marcos } = await carregar();
+      const r = montarRede(acoes, { porAcao: new Map() }, marcos ? { marcos, marcoDe: (a) => a.etapa } : {});
       const caixas = [...r.pos].map(([n, p]) => ({ n, ...p }));
       for (const a of caixas) for (const b of caixas) {
         if (a.n >= b.n) continue;
         const separadas = a.x + MEDIDAS.largura <= b.x || b.x + MEDIDAS.largura <= a.x || a.y + MEDIDAS.altura <= b.y || b.y + MEDIDAS.altura <= a.y;
         assert.ok(separadas, `cartões ${a.n} e ${b.n}`);
       }
-      if (raias) {
-        assert.equal(r.raias.length, new Set(acoes.map((a) => a.etapa)).size);
+      if (marcos) {
+        assert.equal(r.marcos.length, new Set(acoes.map((a) => a.etapa)).size);
+        r.marcos.forEach((m, i) => { if (i) assert.ok(m.x >= r.marcos[i - 1].x + r.marcos[i - 1].largura - 0.5, "marcos fora de ordem"); });
         for (const a of acoes) {
-          const faixa = r.raias.find((x) => x.id === a.etapa);
+          const faixa = r.marcos.find((x) => x.id === a.etapa);
           const p = r.pos.get(a.numero);
-          assert.ok(p.y >= faixa.y && p.y + MEDIDAS.altura <= faixa.y + faixa.altura, `ação ${a.numero} fora da raia`);
+          assert.ok(p.x >= faixa.x && p.x + MEDIDAS.largura <= faixa.x + faixa.largura, `ação ${a.numero} fora do marco`);
+          assert.ok(p.y >= MEDIDAS.margem + MEDIDAS.cabecaMarco, `ação ${a.numero} sobre o nome do marco`);
         }
       }
       for (const ar of r.arestas) {
+        if (ar.volta) continue;
         assert.equal(ar.pontos[0][0], r.pos.get(ar.de).x + MEDIDAS.largura);
         assert.equal(ar.pontos.at(-1)[0], r.pos.get(ar.para).x);
         for (let k = 0; k + 1 < ar.pontos.length; k++) {
@@ -132,5 +135,15 @@ describe("Rede (passo 1.17c)", () => {
       assert.ok(outra, `salto em ${sx},${sy} sem seta vertical`);
     }
     assert.match(caminhoDaSeta([[0, 0], [100, 0]], [[50, 0]]), /A4,4 0 0 1 54,0/);
+  });
+
+  it("seta para uma etapa anterior passa por baixo de tudo", () => {
+    const acoes = [{ numero: 1, etapa: "A", dependeDe: [2] }, { numero: 2, etapa: "B", dependeDe: [] }];
+    const r = montarRede(acoes, { porAcao: new Map() }, { marcos: [{ id: "A", nome: "A" }, { id: "B", nome: "B" }], marcoDe: (a) => a.etapa });
+    assert.ok(r.pos.get(1).x < r.pos.get(2).x);
+    const [seta] = r.arestas;
+    assert.equal(seta.volta, true);
+    const fundo = Math.max(...[...r.pos.values()].map((p) => p.y + MEDIDAS.altura));
+    assert.ok(seta.pontos.some(([, y]) => y > fundo));
   });
 });

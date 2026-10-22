@@ -1,11 +1,13 @@
 /**
  * Rede do espaço, "Fluxo das ações" (especificação, seção 8.4; passo 1.17c): regras, sem tela.
  *
- * Desenho em camadas, o mesmo método do Mermaid (Sugiyama), com raias e setas em ângulo reto,
+ * Desenho em camadas, o mesmo método do Mermaid (Sugiyama), com marcos e setas em ângulo reto,
  * como no Bizagi (revisto em 22/10/2026, a pedido do responsável):
- * 1. Colunas: cada ação fica na coluna seguinte à da sua anterior mais distante. Ação sem
- *    anteriores vai para junto da primeira seguinte, para encurtar setas.
- * 2. Raias: uma faixa horizontal por etapa, na ordem do espaço; cada ação fica na raia da sua etapa.
+ * 1. Marcos (milestones): uma faixa vertical por etapa, da esquerda para a direita, na ordem do
+ *    espaço; cada ação fica no marco da sua etapa. Dentro do marco, cada ação fica na coluna seguinte
+ *    à da sua anterior mais distante; ação sem anteriores vai para junto da primeira seguinte, sem
+ *    sair do seu marco. Seta para uma etapa anterior (que volta) passa por baixo de tudo.
+ * 2. (Antes, raias horizontais; trocadas pelos marcos, como no Bizagi.)
  * 3. Setas longas ganham pontos de passagem nas colunas do meio, cada um com o seu lugar na coluna
  *    (na raia de onde a seta sai): a seta passa entre os cartões, nunca por cima deles.
  * 4. Ordem dentro da coluna e da raia: média da posição dos vizinhos, em passadas para a frente e
@@ -21,17 +23,17 @@
 /** Medidas padrão do desenho, em pixels. */
 export const MEDIDAS = Object.freeze({
   largura: 240, altura: 100, vaoX: 64, vaoY: 20, vaoSeta: 14, margem: 16,
-  trilha: 10, cabecaRaia: 44, folgaRaia: 18, salto: 4,
+  trilha: 10, cabecaMarco: 36, folgaRaia: 18, salto: 4, divisa: 14,
 });
 
 /**
  * @param {object[]} acoes ações ativas, na ordem do espaço
  * @param {{porAcao: Map}} caminho resultado de caminhoCritico
- * @param {{raias?: {id: string, nome: string, titulo?: string}[], raiaDe?: (acao: object) => string|null,
- *   medidas?: Partial<typeof MEDIDAS>}} [opcoes] raias: as etapas, na ordem; sem raias, uma faixa só, sem cerca
+ * @param {{marcos?: {id: string, nome: string, titulo?: string}[], marcoDe?: (acao: object) => string|null,
+ *   medidas?: Partial<typeof MEDIDAS>}} [opcoes] marcos: as etapas, na ordem; sem marcos, uma faixa só, sem cerca
  * @returns {{colunas: number[][], coluna: Map<number, number>, pos: Map<number, {x: number, y: number}>,
  *   arestas: {de: number, para: number, critica: boolean, pontos: number[][], saltos: number[][]}[],
- *   raias: {id: string, nome: string, titulo: string, y: number, altura: number}[], largura: number, altura: number}}
+ *   marcos: {id: string, nome: string, titulo: string, x: number, largura: number}[], largura: number, altura: number}}
  *   pos: canto superior esquerdo de cada cartão; pontos: linha em ângulo reto, da saída à chegada;
  *   saltos: pontos onde a seta salta sobre outra
  */
@@ -42,43 +44,63 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   const seguintes = new Map(acoes.map((a) => [a.numero, []]));
   for (const [n, ds] of anteriores) for (const d of ds) seguintes.get(d).push(n);
 
-  /* ---------- 1. colunas ---------- */
-  const coluna = new Map();
-  const visitando = new Set();
-  const colunaDe = (n) => {
-    if (coluna.has(n)) return coluna.get(n);
-    if (visitando.has(n)) return 0;
-    visitando.add(n);
-    const c = Math.max(-1, ...anteriores.get(n).map(colunaDe)) + 1;
-    visitando.delete(n);
-    coluna.set(n, c);
-    return c;
-  };
-  for (const a of acoes) colunaDe(a.numero);
-  for (const a of acoes) {
-    const segs = seguintes.get(a.numero).filter((s) => coluna.get(s) > coluna.get(a.numero));
-    if (!anteriores.get(a.numero).length && segs.length) coluna.set(a.numero, Math.min(...segs.map((s) => coluna.get(s))) - 1);
-  }
-  const total = acoes.length ? Math.max(...coluna.values()) + 1 : 0;
-
-  /* ---------- 2. raias ---------- */
-  const comRaias = Array.isArray(opcoes.raias);
-  const pedidas = comRaias ? opcoes.raias : [];
-  const indiceDaRaia = new Map(pedidas.map((r, i) => [r.id, i]));
-  const SEM = pedidas.length;
-  const raiaDaAcao = new Map(acoes.map((a) => {
-    const id = comRaias ? opcoes.raiaDe?.(a) : null;
-    return [a.numero, indiceDaRaia.has(id) ? indiceDaRaia.get(id) : SEM];
+  /* ---------- 1. marcos e colunas ---------- */
+  const comMarcos = Array.isArray(opcoes.marcos);
+  const pedidos = comMarcos ? opcoes.marcos : [];
+  const indiceDoMarco = new Map(pedidos.map((m, i) => [m.id, i]));
+  const SEM_MARCO = pedidos.length;
+  const marcoDaAcao = new Map(acoes.map((a) => {
+    const id = comMarcos ? opcoes.marcoDe?.(a) : null;
+    return [a.numero, comMarcos ? (indiceDoMarco.has(id) ? indiceDoMarco.get(id) : SEM_MARCO) : 0];
   }));
+  const coluna = new Map();
+  const faixas = []; // por marco: {m, inicio, fim}
+  let proxima = 0;
+  for (let m = 0; m <= (comMarcos ? SEM_MARCO : 0); m++) {
+    const doMarco = acoes.filter((a) => marcoDaAcao.get(a.numero) === m);
+    if (!doMarco.length) continue;
+    const inicio = proxima;
+    const visitando = new Set();
+    const colunaDe = (n) => {
+      if (coluna.has(n)) return coluna.get(n);
+      if (visitando.has(n)) return inicio;
+      visitando.add(n);
+      /* só contam anteriores de marcos anteriores ou do mesmo; os de marcos seguintes viram setas que voltam */
+      const ants = anteriores.get(n).filter((d) => marcoDaAcao.get(d) < m || (marcoDaAcao.get(d) === m));
+      const c = Math.max(inicio, ...ants.map((d) => (marcoDaAcao.get(d) === m ? colunaDe(d) : coluna.get(d)) + 1));
+      visitando.delete(n);
+      coluna.set(n, c);
+      return c;
+    };
+    for (const a of doMarco) colunaDe(a.numero);
+    const fim = Math.max(...doMarco.map((a) => coluna.get(a.numero)));
+    /* ação sem anteriores: logo antes da primeira seguinte, sem sair do marco */
+    for (const a of doMarco) {
+      if (anteriores.get(a.numero).length) continue;
+      const segs = seguintes.get(a.numero).filter((x) => marcoDaAcao.get(x) === m && coluna.get(x) > coluna.get(a.numero));
+      if (segs.length) coluna.set(a.numero, Math.max(coluna.get(a.numero), Math.min(...segs.map((x) => coluna.get(x))) - 1));
+      else if (seguintes.get(a.numero).some((x) => marcoDaAcao.get(x) > m)) coluna.set(a.numero, fim);
+    }
+    faixas.push({ m, inicio, fim });
+    proxima = fim + 1;
+  }
+  const total = proxima;
+  const marcoDaColuna = [];
+  for (const f of faixas) for (let c = f.inicio; c <= f.fim; c++) marcoDaColuna[c] = f.m;
+
+  /* uma faixa só para a ordem e a altura (as raias deram lugar aos marcos) */
+  const raiaDaAcao = new Map(acoes.map((a) => [a.numero, 0]));
+  const SEM = 0;
 
   /* ---------- 3. arestas e pontos de passagem ---------- */
   const arestas = [];
+  const voltam = []; // setas para uma coluna à esquerda (etapa anterior ou ciclo): passam por baixo
   for (const a of acoes) {
     for (const d of anteriores.get(a.numero)) {
-      if (coluna.get(d) >= coluna.get(a.numero)) continue; // num ciclo, a seta que volta fica de fora
       const x = caminho.porAcao.get(d);
       const y = caminho.porAcao.get(a.numero);
-      arestas.push({ de: d, para: a.numero, critica: Boolean(x?.critica && y?.critica && Math.abs(x.conclusao - y.liberacao) < 1e-6) });
+      const seta = { de: d, para: a.numero, critica: Boolean(x?.critica && y?.critica && Math.abs(x.conclusao - y.liberacao) < 1e-6) };
+      (coluna.get(d) >= coluna.get(a.numero) ? voltam : arestas).push(seta);
     }
   }
   const camadas = Array.from({ length: total }, () => []);
@@ -201,10 +223,30 @@ export function montarRede(acoes, caminho, opcoes = {}) {
       for (let c = total - 1; c >= 0; c--) relaxar(c, r);
     }
   }
+  /* setas longas retas: os pontos de passagem de uma seta vão para uma altura só, quando cabem
+     entre os vizinhos de coluna; de preferência, a da ação de onde a seta sai (ou a de chegada) */
+  for (let volta = 0; volta < 2; volta++) {
+    for (const ar of arestas) {
+      const pontos = ar.cadeia.slice(1, -1);
+      if (!pontos.length) continue;
+      let min = -Infinity;
+      let max = Infinity;
+      for (const p of pontos) {
+        const col = camadas[Number(p.split(":")[1])].filter((it) => raia(it) === raia(p));
+        const i = col.indexOf(p);
+        if (i > 0) min = Math.max(min, centro.get(col[i - 1]) + separacao(col[i - 1], p));
+        if (i + 1 < col.length) max = Math.min(max, centro.get(col[i + 1]) - separacao(p, col[i + 1]));
+      }
+      if (min > max) continue;
+      const preferidas = [centro.get(ar.de), centro.get(ar.para), centro.get(pontos[0])];
+      const y = preferidas.find((v) => v >= min && v <= max) ?? Math.min(max, Math.max(min, preferidas[0]));
+      for (const p of pontos) centro.set(p, y);
+    }
+  }
   /* empilha as raias; cada uma com folga em cima e embaixo */
   const raias = [];
   const topoDaRaia = [];
-  let yRaia = M.margem;
+  let yRaia = M.margem + (comMarcos ? M.cabecaMarco : 0);
   for (let r = 0; r < nRaias; r++) {
     const itens = [...centro].filter(([it]) => raia(it) === r);
     if (!itens.length) continue;
@@ -212,8 +254,7 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     const base = Math.max(...itens.map(([it, y]) => y + alturaDe(it) / 2));
     const altura = base - topo + 2 * M.folgaRaia;
     topoDaRaia[r] = yRaia + M.folgaRaia - topo;
-    const info = r < SEM ? pedidas[r] : { id: "", nome: "Sem etapa" };
-    raias.push({ id: info.id, nome: info.nome, titulo: info.titulo ?? info.nome, y: yRaia, altura });
+    raias.push({ y: yRaia, altura });
     yRaia += altura;
   }
   const yDe = (it) => topoDaRaia[raia(it)] + centro.get(it);
@@ -263,7 +304,9 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     }
     return ordem;
   };
-  const larguraDoVao = pedidosNoVao.map((pedidos) => {
+  /* vão entre dois marcos: mais largo, com a divisa à esquerda dos trilhos */
+  const divisa = (c) => (comMarcos && marcoDaColuna[c] !== marcoDaColuna[c + 1] ? M.divisa * 2 : 0);
+  const larguraDoVao = pedidosNoVao.map((pedidos, c) => {
     const descem = (p) => (p.yb > p.ya ? -p.ya : p.ya);
     const opcoes = [
       melhorarOrdem([...pedidos].sort((p, q) => descem(p) - descem(q))),
@@ -272,13 +315,13 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     ];
     const ordem = opcoes.reduce((a, b) => (custoTotal(b) < custoTotal(a) ? b : a));
     ordem.forEach((p, i) => { p.ar.trilhos[p.k] = { i, n: ordem.length }; });
-    return Math.max(M.vaoX, (ordem.length + 1) * M.trilha + 24);
+    return Math.max(M.vaoX, (ordem.length + 1) * M.trilha + 24) + divisa(c);
   });
   const xDaColuna = [];
-  let x = M.margem + (comRaias ? M.cabecaRaia : 0);
+  let x = M.margem + (comMarcos ? M.divisa : 0);
   for (let c = 0; c < total; c++) { xDaColuna.push(x); x += M.largura + (larguraDoVao[c] ?? 0); }
-  const largura = (total ? xDaColuna[total - 1] + M.largura : x) + M.margem;
-  const xDoTrilho = (c, { i, n }) => xDaColuna[c] + M.largura + larguraDoVao[c] / 2 + (i - (n - 1) / 2) * M.trilha;
+  const largura = (total ? xDaColuna[total - 1] + M.largura : x) + M.margem + (comMarcos ? M.divisa : 0);
+  const xDoTrilho = (c, { i, n }) => xDaColuna[c] + M.largura + divisa(c) + (larguraDoVao[c] - divisa(c)) / 2 + (i - (n - 1) / 2) * M.trilha;
 
   const pos = new Map(acoes.map((a) => [a.numero, { x: xDaColuna[coluna.get(a.numero)], y: yDe(a.numero) - M.altura / 2 }]));
   for (const ar of arestas) {
@@ -294,6 +337,29 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     ar.pontos = pontos.map(([px, py]) => [Math.round(px * 10) / 10, Math.round(py * 10) / 10]);
   }
   for (const ar of arestas) { delete ar.cadeia; delete ar.ys; delete ar.trilhos; }
+
+  /* setas que voltam: saem pela direita, descem até um corredor abaixo de tudo, voltam e sobem até a ação */
+  let fundo = yRaia;
+  voltam.forEach((ar, i) => {
+    const a = pos.get(ar.de);
+    const b = pos.get(ar.para);
+    const y = yRaia + 12 + i * M.trilha;
+    fundo = y + 12;
+    const xs = a.x + M.largura + 6 + (i % 3) * 3;
+    const xe = b.x - 8 - (i % 3) * 3;
+    ar.pontos = [[a.x + M.largura, a.y + M.altura / 2], [xs, a.y + M.altura / 2], [xs, y], [xe, y], [xe, b.y + M.altura / 2], [b.x, b.y + M.altura / 2]]
+      .map(([px, py]) => [Math.round(px * 10) / 10, Math.round(py * 10) / 10]);
+    ar.volta = true;
+    arestas.push(ar);
+  });
+
+  /* marcos: do meio do vão anterior ao meio do vão seguinte (na divisa) */
+  const marcos = comMarcos ? faixas.map((f) => {
+    const esq = f.inicio === 0 ? M.margem : xDaColuna[f.inicio - 1] + M.largura + M.divisa;
+    const dir = f.fim === total - 1 ? largura - M.margem : xDaColuna[f.fim] + M.largura + M.divisa;
+    const info = f.m < SEM_MARCO ? pedidos[f.m] : { id: "", nome: "Sem etapa" };
+    return { id: info.id, nome: info.nome, titulo: info.titulo ?? info.nome, x: esq, largura: dir - esq };
+  }) : [];
 
   /* ---------- saltos: a horizontal salta sobre a vertical que a cruza ---------- */
   const horizontais = [];
@@ -319,9 +385,9 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     coluna,
     pos,
     arestas,
-    raias,
+    marcos,
     largura,
-    altura: (raias.length ? yRaia : 0) + M.margem,
+    altura: (acoes.length ? fundo : 0) + M.margem,
   };
 }
 
