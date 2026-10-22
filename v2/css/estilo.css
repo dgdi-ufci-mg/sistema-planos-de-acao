@@ -905,3 +905,5 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .previa-importacao li.erro { border-left-color: var(--crit); }
 .aviso-linha { color: var(--warn-ink); font-size: .85rem; }
 .falhas-importacao li { color: var(--crit-ink); }
+.importar-responsaveis { margin-top: 12px; border-top: 1px solid var(--grid); padding-top: 10px; }
+.importar-responsaveis > summary { cursor: pointer; font-weight: 600; color: var(--accent-ink); }

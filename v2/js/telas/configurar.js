@@ -14,6 +14,7 @@ import { VERSAO_CALCULO } from "../simulacao.js";
 import { datasEfetivas, criarCalendario } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
 import { planejarImportacao } from "../importar.js";
+import { planejarResponsaveis } from "../importar-responsaveis.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { excluirEtapas, excluirEspaco } from "./exclusao.js";
 import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
@@ -32,7 +33,7 @@ const DESLIGADOS_POR_PADRAO = new Set(["codigos"]);
 const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[chave] === true : campos?.[chave] !== false);
 
 /** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void}} opcoes */
-export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () => {} }) {
+export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () => {}, criarConta = null }) {
   let espaco = await store.lerEspaco(espacoId);
   let geral = await store.lerCalendarioGeral();
   let acoes = await store.listarAcoes(espacoId);
@@ -65,7 +66,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   const abertas = new Set(["dados"]);
   const aberta = (secao) => (abertas.has(secao) ? " open" : "");
   corpo.addEventListener("toggle", (e) => {
-    const secao = e.target.dataset?.secao;
+    const secao = e.target.dataset?.secao ?? e.target.dataset?.sub;
     if (secao) e.target.open ? abertas.add(secao) : abertas.delete(secao);
   }, true);
 
@@ -125,6 +126,15 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       <details class="config" data-secao="responsaveis"${aberta("responsaveis")}>
         <summary><h3>Responsáveis</h3><span class="n">${responsaveis.length}</span></summary>
         <div class="responsaveis-do-espaco" data-responsaveis></div>
+        ${store.podeGravar ? `<details class="importar-responsaveis" data-sub="importar-responsaveis"${abertas.has("importar-responsaveis") ? " open" : ""}>
+          <summary>Importar de planilha</summary>
+          <p class="tec">Cole as linhas com a linha de títulos: Nome (obrigatório), Tipo, Sigla, Setor e E-mail. Com e-mail, é uma pessoa e
+            ganha a conta de acesso: o sistema manda a ela um e-mail para definir a própria senha. Sem e-mail, informe o tipo (pessoa ou unidade).
+            ${criarConta ? "" : "<b>Neste espaço, as contas de acesso não são criadas</b> (o exemplo fica só no navegador)."}</p>
+          <textarea class="texto-exportado" data-responsaveis-texto rows="5" aria-label="Linhas coladas da planilha"></textarea>
+          <div class="botoes"><button class="botao" type="button" data-conferir-responsaveis>Conferir</button></div>
+          <div data-previa-responsaveis></div>
+        </details>` : ""}
       </details>
 
       ${ligado(campos, "fasesEtapas") ? estruturaHtml() : ""}
@@ -205,6 +215,48 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
 
       <p class="tec">A cópia de segurança de todos os espaços, e a restauração dela, ficam em "Configurar o sistema".</p>
       ${store.podeGravar ? '<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>' : ""}`;
+  }
+
+  /* ---------- importar responsáveis, com as contas de acesso (passos 1.14d e 1.19b) ---------- */
+  let planoResp = null;
+  function conferirResponsaveis() {
+    planoResp = planejarResponsaveis({ texto: corpo.querySelector("[data-responsaveis-texto]").value, responsaveis });
+    corpo.querySelector("[data-previa-responsaveis]").innerHTML = previaResponsaveisHtml();
+  }
+  function previaResponsaveisHtml() {
+    if (planoResp.erro) return `<p class="erro">${esc(planoResp.erro)}</p>`;
+    const conta = (t) => planoResp.linhas.filter((l) => l.tipo === t).length;
+    const contas = planoResp.linhas.filter((l) => l.conta && l.tipo !== "erro").length;
+    const oQue = (l) => l.tipo === "novo" ? `Novo: ${l.dados.tipo}${l.conta && criarConta ? ", com conta de acesso" : ""}`
+      : l.tipo === "liga" ? "Liga o e-mail" : l.tipo === "erro" ? `Fica de fora: ${esc(l.erro)}` : "Fica como está";
+    const ok = conta("novo") + conta("liga") + (criarConta ? contas : 0);
+    return `<div class="previa-importacao">
+      <p><b>${conta("novo")} ${plural(conta("novo"), "responsável novo", "responsáveis novos")}</b>${criarConta ? ` e <b>${contas} ${plural(contas, "conta de acesso", "contas de acesso")}</b> a criar ou conferir` : ""}.
+        ${planoResp.ignoradas.length ? `<span class="tec">Colunas ignoradas: ${planoResp.ignoradas.map(esc).join(", ")}.</span>` : ""}</p>
+      <ul>${planoResp.linhas.map((l) => `<li class="${l.tipo === "novo" ? "nova" : l.tipo === "liga" ? "atualiza" : l.tipo}">
+        <span class="tec">Linha ${l.linha}</span> <b>${esc(l.nome || "(sem nome)")}</b><span>${oQue(l)}</span>
+        ${l.avisos.map((a) => `<span class="aviso-linha">${esc(a)}</span>`).join("")}</li>`).join("")}</ul>
+      <div class="botoes"><button class="botao principal" type="button" data-importar-responsaveis${ok ? "" : " disabled"}>Importar</button></div>
+    </div>`;
+  }
+  async function importarResponsaveis(botao) {
+    botao.disabled = true;
+    try {
+      const r = await store.importarResponsaveis(espacoId, planoResp, { criarConta });
+      planoResp = null;
+      responsaveis = await store.listarResponsaveis(espacoId);
+      desenharResponsaveis();
+      corpo.querySelector("[data-responsaveis-texto]").value = "";
+      corpo.querySelector("[data-previa-responsaveis]").innerHTML = r.falhas.length
+        ? `<p class="erro">Algumas linhas não foram gravadas:</p><ul class="falhas-importacao">${r.falhas.map((f) => `<li>Linha ${f.linha}: ${esc(f.mensagem)}</li>`).join("")}</ul>` : "";
+      avisar([`${r.criados} ${plural(r.criados, "responsável cadastrado", "responsáveis cadastrados")}`,
+        r.ligados ? `${r.ligados} ${plural(r.ligados, "e-mail ligado", "e-mails ligados")}` : "",
+        r.contasCriadas ? `${r.contasCriadas} ${plural(r.contasCriadas, "conta criada (a pessoa recebe um e-mail para definir a senha)", "contas criadas (cada pessoa recebe um e-mail para definir a senha)")}` : "",
+        r.contasExistentes ? `${r.contasExistentes} ${plural(r.contasExistentes, "conta já existia", "contas já existiam")}` : ""].filter(Boolean).join("; ") + ".");
+    } catch (falha) {
+      botao.disabled = false;
+      avisar(falha.message);
+    }
   }
 
   /* ---------- importar de planilha (passo 1.19b) ---------- */
@@ -422,6 +474,8 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       return;
     }
     if (t.dataset.conferirImportacao != null) { conferirImportacao(); return; }
+    if (t.dataset.conferirResponsaveis != null) { conferirResponsaveis(); return; }
+    if (t.dataset.importarResponsaveis != null) { importarResponsaveis(t); return; }
     if (t.dataset.importar != null) { importar(t); return; }
     if (t.dataset.exportar) {
       const dados = { espaco, acoes, responsaveis, geral, hoje: hojeLocal() };

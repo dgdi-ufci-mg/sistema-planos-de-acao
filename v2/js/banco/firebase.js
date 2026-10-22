@@ -19,6 +19,9 @@ function carregarScript(url) {
   });
 }
 
+/** Senha longa e aleatória, nunca mostrada nem guardada: a pessoa define a dela pelo e-mail do Firebase. */
+const senhaSorteada = () => [...crypto.getRandomValues(new Uint8Array(24))].map((b) => b.toString(36).padStart(2, "0")).join("");
+
 /** Mensagens para os erros de login do Firebase. */
 const ERROS = {
   "auth/invalid-credential": "E-mail ou senha incorretos.",
@@ -31,6 +34,8 @@ const ERROS = {
   "auth/user-disabled": "Este usuário foi desativado. Procure o administrador.",
   "auth/weak-password": "A senha nova precisa ter pelo menos 6 caracteres.",
   "auth/requires-recent-login": "Por segurança, saia e entre de novo antes de trocar a senha.",
+  "auth/operation-not-allowed": "A criação de contas está desligada no Firebase (Authentication > Método de login > E-mail/senha).",
+  "auth/admin-restricted-operation": "A criação de contas pelo sistema está bloqueada no Firebase.",
 };
 const traduzir = (e) => (!e?.code && e instanceof Error ? e : new Error(ERROS[e?.code] ?? `Não foi possível concluir: ${e?.message ?? e}`));
 const protegido = (f) => async (...args) => {
@@ -53,6 +58,8 @@ export async function conectarFirebase(config) {
   const auth = firebase.auth(app);
   try { await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); } catch { /* segue com o padrão */ }
 
+  /** Instância à parte, só para criar contas (passo 1.14d). */
+  let cadastro = null;
   const acesso = {
     /** Avisa o e-mail de quem entrou (ou null) agora e a cada entrada ou saída. */
     aoMudarUsuario: (f) => auth.onAuthStateChanged((u) => f(u?.email?.toLowerCase() ?? null)),
@@ -70,6 +77,26 @@ export async function conectarFirebase(config) {
       await u.updatePassword(nova);
     }),
     redefinirSenha: protegido((email) => auth.sendPasswordResetEmail(email.trim())),
+    /**
+     * Cria a conta de acesso de um e-mail (passo 1.14d, provisório). A conta é criada numa segunda
+     * instância do Firebase, sem guardar sessão, para quem está logado continuar logado. A senha
+     * é sorteada e descartada na hora: o Firebase manda à pessoa um e-mail para ela definir a própria.
+     * Devolve "criada" ou "existente" (a conta já existia; nada é enviado).
+     */
+    criarConta: protegido(async (email) => {
+      cadastro ??= firebase.initializeApp(config, "cadastro-de-contas");
+      const a = firebase.auth(cadastro);
+      try { await a.setPersistence(firebase.auth.Auth.Persistence.NONE); } catch { /* segue com o padrão */ }
+      a.languageCode = "pt-BR";
+      try {
+        await a.createUserWithEmailAndPassword(email.trim().toLowerCase(), senhaSorteada());
+      } catch (e) {
+        if (e?.code === "auth/email-already-in-use") return "existente";
+        throw e;
+      }
+      try { await a.sendPasswordResetEmail(email.trim().toLowerCase()); } finally { await a.signOut(); }
+      return "criada";
+    }),
   };
   return { banco: criarBancoFirestore(db), acesso };
 }

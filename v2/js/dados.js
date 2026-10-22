@@ -501,6 +501,30 @@ export function criarStore(banco, opcoes = {}) {
       return resumo;
     },
 
+    // --- importação de responsáveis, com as contas de acesso (passos 1.14d e 1.19b) ---
+    /**
+     * Grava o plano conferido (js/importar-responsaveis.js): cria os responsáveis novos e liga os e-mails.
+     * `criarConta(email)`, quando há banco compartilhado, cria a conta de acesso (devolve "criada" ou
+     * "existente"); sem ela (exemplo, memória), as contas ficam de fora. Uma linha que falhe não impede as outras.
+     */
+    async importarResponsaveis(espacoId, plano, { criarConta = null } = {}) {
+      const r = { criados: 0, ligados: 0, contasCriadas: 0, contasExistentes: 0, falhas: [] };
+      for (const l of plano.linhas) {
+        try {
+          if (l.tipo === "novo") { await store.criarResponsavel(espacoId, l.dados); r.criados++; }
+          else if (l.tipo === "liga") { await store.alterarResponsavel(espacoId, l.id, { usuario: l.usuario }); r.ligados++; }
+          else if (l.tipo !== "ignorada") continue;
+          const email = l.dados?.usuario ?? l.usuario ?? (l.conta ? (await banco.listarResponsaveis(espacoId)).find((x) => x.id === l.id)?.usuario : null);
+          if (l.conta && email && criarConta) {
+            if ((await criarConta(email)) === "criada") r.contasCriadas++; else r.contasExistentes++;
+          }
+        } catch (e) {
+          r.falhas.push({ linha: l.linha, mensagem: e.message });
+        }
+      }
+      return r;
+    },
+
     // --- importação por planilha (passo 1.19b) ---
     /**
      * Grava o plano conferido (js/importar.js): cria as fases e etapas que faltam, cria as ações novas,
@@ -634,7 +658,7 @@ export function criarStore(banco, opcoes = {}) {
     "retirarResponsavelDaAcao", "acrescentarDependencia", "retirarDependencia", "reestimar", "corrigirEstimativa",
     "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral",
     "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco",
-    "salvarRetrato", "importarAcoes", "restaurarCopia"];
+    "salvarRetrato", "importarAcoes", "restaurarCopia", "importarResponsaveis"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

@@ -140,7 +140,7 @@ export const FieldValueFalso = {
 /**
  * Auth falso. `usuarios`: e-mail → senha (valores de teste, nunca senhas reais).
  */
-export function criarAuthFalso(usuarios = {}) {
+export function criarAuthFalso(usuarios = {}, enviados = []) {
   const ouvintes = new Set();
   const avisar = () => { for (const f of ouvintes) f(auth.currentUser); };
   const erro = (code) => Object.assign(new Error(code), { code });
@@ -170,7 +170,20 @@ export function criarAuthFalso(usuarios = {}) {
       avisar();
     },
     async signOut() { auth.currentUser = null; avisar(); },
-    async sendPasswordResetEmail(email) { if (!email.includes("@")) throw erro("auth/invalid-email"); },
+    async sendPasswordResetEmail(email) {
+      if (!email.includes("@")) throw erro("auth/invalid-email");
+      enviados.push(email);
+    },
+    async createUserWithEmailAndPassword(email, senha) {
+      await null;
+      if (!email.includes("@")) throw erro("auth/invalid-email");
+      if (email in usuarios) throw erro("auth/email-already-in-use");
+      usuarios[email] = senha;
+      auth.currentUser = usuario(email);
+      avisar();
+    },
+    /** Só para os testes: e-mails de redefinição de senha "enviados". */
+    _enviados: enviados,
   };
   return auth;
 }
@@ -181,8 +194,14 @@ export function criarFirebaseFalso({ usuarios = {}, exigirLogin = true } = {}) {
   const db = criarFirestoreFalso({ auth, exigirLogin });
   const firestore = () => db;
   firestore.FieldValue = FieldValueFalso;
-  const authFn = () => auth;
+  /* cada instância (app) tem a sua sessão, com os mesmos usuários, como no SDK */
+  const outras = new Map();
+  const authFn = (app) => {
+    if (!app?.name || app.name === "[DEFAULT]") return auth;
+    if (!outras.has(app.name)) outras.set(app.name, criarAuthFalso(usuarios, auth._enviados));
+    return outras.get(app.name);
+  };
   authFn.EmailAuthProvider = { credential: (email, senha) => ({ email, senha }) };
-  authFn.Auth = { Persistence: { LOCAL: "local" } };
-  return { initializeApp: (config) => ({ options: config }), firestore, auth: authFn, _db: db, _auth: auth };
+  authFn.Auth = { Persistence: { LOCAL: "local", NONE: "none" } };
+  return { initializeApp: (config, name = "[DEFAULT]") => ({ options: config, name }), firestore, auth: authFn, _db: db, _auth: auth, _usuarios: usuarios };
 }

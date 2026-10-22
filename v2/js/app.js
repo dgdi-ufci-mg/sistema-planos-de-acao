@@ -83,7 +83,8 @@ async function atualizarTopo() {
     /* a engrenagem de outro espaço abre esse espaço antes de configurar */
     aoConfigurar: async (id) => {
       if (id !== abertoId && !(await abrirEspaco(id))) return;
-      abrirConfiguracao({ store: storeDe(id), espacoId: id, aoExcluirEspaco: espacoExcluido });
+      /* contas de acesso só no banco compartilhado; no exemplo, nunca */
+      abrirConfiguracao({ store: storeDe(id), espacoId: id, aoExcluirEspaco: espacoExcluido, criarConta: id !== exemploId && acesso ? acesso.criarConta : null });
     },
     aoNovo: () => boasVindas({ comFormulario: true }),
     comLegenda: Boolean(abertoId),
