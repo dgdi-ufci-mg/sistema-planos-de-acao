@@ -23,6 +23,7 @@ import { abrirConfiguracao } from "./telas/configurar.js";
 import { abrirConfiguracaoDoSistema } from "./telas/configurar-sistema.js";
 import { abrirEntrar, abrirTrocarSenha } from "./telas/acesso.js";
 import { abrirLixeira } from "./telas/lixeira.js";
+import { criarVigiaDeConexao, sondaDoSite } from "./conexao.js";
 
 document.title = NOME;
 
@@ -104,18 +105,29 @@ const entrar = () => abrirEntrar({ acesso });
 /* ---------- sem conexão (22/10/2026) ----------
  * No banco compartilhado, sem internet as alterações não podem ser gravadas. Um aviso fixo na barra
  * do topo (visível em qualquer ponto da página) avisa enquanto durar; os botões de criar e excluir
- * somem; e o Store recusa gravações com uma mensagem clara. O exemplo, na memória, continua livre. */
+ * somem; e o Store recusa gravações com uma mensagem clara. O exemplo, na memória, continua livre.
+ * A queda é percebida pelo vigia (js/conexao.js): sem rede no aparelho, na hora; com a rede ligada
+ * mas sem internet, em até uns 15 segundos, pelas sondas ao próprio site. */
 const avisoConexao = document.querySelector("[data-sem-conexao]");
-function atualizarConexao({ avisarVolta = false } = {}) {
+let conectado = true;
+function atualizarConexao() {
   if (!acesso) return; // sem banco compartilhado, nada a avisar
-  const on = navigator.onLine;
-  store.definirConexao(on);
-  avisoConexao.hidden = on;
-  document.body.classList.toggle("sem-conexao", !on && abertoId !== exemploId);
-  if (on && avisarVolta) avisar("Conexão restabelecida. As alterações voltam a ser gravadas.");
+  store.definirConexao(conectado);
+  avisoConexao.hidden = conectado;
+  document.body.classList.toggle("sem-conexao", !conectado && abertoId !== exemploId);
 }
-window.addEventListener("offline", () => atualizarConexao());
-window.addEventListener("online", () => atualizarConexao({ avisarVolta: true }));
+const vigia = criarVigiaDeConexao({
+  sondar: sondaDoSite(new URL("config.js", location.href).href),
+  temRede: () => navigator.onLine,
+  aoMudar: (on) => {
+    conectado = on;
+    atualizarConexao();
+    if (on && acesso) avisar("Conexão restabelecida. As alterações voltam a ser gravadas.");
+  },
+});
+window.addEventListener("offline", () => vigia.verificar());
+window.addEventListener("online", () => vigia.verificar());
+document.addEventListener("visibilitychange", () => { if (!document.hidden) vigia.verificar(); });
 
 /** Depois de excluir o espaço aberto: abre outro, se houver, ou as boas-vindas. */
 async function espacoExcluido() {
@@ -216,7 +228,7 @@ async function partida() {
     store = criarStore(criarBancoLocal());
   }
   if (!acesso) return abrirInicio();
-  atualizarConexao();
+  vigia.verificar();
 
   /* a primeira resposta do login abre o sistema; as seguintes (entrar, sair) refazem a tela aberta */
   let primeira = true;
