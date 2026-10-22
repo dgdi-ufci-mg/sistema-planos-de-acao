@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 77 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 78 da página)
 
 ---
 
@@ -515,6 +515,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 76 | Versão 2, passo 1.18 (primeira versão, em lote): retratos manuais. Em "Configurar este espaço", salvar um retrato com nome e ver a lista, com a conclusão prevista, a data segura e a chance de cada um. O retrato é a cópia integral do espaço, com as ações e os resultados calculados, e não muda depois. No cronograma, "Comparar com" um retrato: linha fina sob cada barra e a diferença no término. Regras do banco novas (`v2/firestore.rules`). A cópia de segurança passa a levar os retratos. Sem mudança na versão atual |
 | 76.1 | Versão 2: no "Histórico de estimativas" da janela da ação, a data, o autor e o selo "vigente" voltam a ficar na mesma linha (antes, cada um numa linha). Sem mudança na versão atual |
 | 77 | Versão 2: aviso de falta de conexão (decisão do responsável, 22/10/2026). Sem internet, aparece na barra do topo, visível em qualquer ponto da página, o aviso "Sem conexão. As alterações não serão gravadas até a internet voltar."; os botões de criar, salvar retrato e excluir somem, e qualquer tentativa de gravar recebe uma mensagem clara. Quando a conexão volta, o aviso some e aparece "Conexão restabelecida". O espaço de exemplo, que fica na memória, continua editável. Detecção pelo navegador (`navigator.onLine`): uma rede sem saída para a internet não é percebida. Sem mudança na versão atual |
+| 78 | Versão 2: o modo celular (botão (+), seletor de modos escondido, painéis que sobem de baixo) passa a valer só até 640 px de largura, e não mais até 820 px; janelas médias de computador ficam no modo computador. Os cartões da lista passam a ficar em duas linhas pela largura da própria lista (consulta de contêiner, até 820 px), e não da janela: com o menu lateral aberto numa janela média, a lista também se arruma. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 
