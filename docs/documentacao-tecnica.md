@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 83.1 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 84 da página)
 
 ---
 
@@ -528,6 +528,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 82 | Versão 2: acima da lista agrupada, "Mostrar até: Fases · Etapas · Ações" recolhe de uma vez todas as fases, só as etapas ou nada (pedido do responsável, 22/10/2026). Substitui o botão "Recolher fases / Expandir tudo", que tinha ficado escondido no painel de ordenação depois da mudança da barra do topo. No computador e no celular. Sem mudança na versão atual |
 | 83 | Versão 2: os separadores de fases e etapas da lista ficam em qualquer ordenação (antes, só em "Ordem do espaço"); a ordem escolhida vale dentro de cada etapa. Só somem ao desligar "Fases e etapas" em Campos opcionais (decisão do responsável, 22/10/2026). Sem mudança na versão atual |
 | 83.1 | Versão 2: "Mostrar até" passa para a mesma linha do alerta de ações atrasadas, à direita (pedido do responsável); no celular, sem o rótulo "Mostrar até", para caber. Sem mudança na versão atual |
+| 84 | Versão 2: os cartões da lista e do quadro perdem a faixa colorida à esquerda, que repetia a prioridade já mostrada na barra (pedido do responsável). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

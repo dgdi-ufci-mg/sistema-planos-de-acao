@@ -346,7 +346,7 @@ body.so-leitura [data-nova] { display: none; }
 .item { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); overflow: hidden; transition: box-shadow .18s, transform .18s; }
 .item:hover { box-shadow: var(--sombra); transform: translateY(-1px); }
 .linha { cursor: pointer; position: relative; }
-.linha::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--calor); }
+/* sem faixa colorida à esquerda dos cartões (22/10/2026, pedido do responsável): a prioridade já está na barra */
 .acao-nome { display: flex; flex-direction: column; min-width: 0; }
 .acao-nome .codigo { font-family: var(--f-dados); font-size: .8rem; color: var(--muted); }
 .acao-nome .rotulo { font-weight: 600; line-height: 1.3; }
