@@ -319,7 +319,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <h4>Histórico de estimativas</h4>
       <p class="tec">Original: ${diasUteis(resumo.original)} · ${resumo.reprogramacoes} ${plural(resumo.reprogramacoes, "reprogramação", "reprogramações")}${resumo.reprogramacoes || andou ? ` · o término ${andou > 0 ? `atrasou ${diasUteis(andou)}` : andou < 0 ? `adiantou ${diasUteis(-andou)}` : "não mudou"}` : ""}</p>
       <ol>${lista.map((e, i) => `<li${i === lista.length - 1 ? ' class="vigente"' : ""}>
-        <span class="mono">${dataBr(e.em)}</span>${e.por ? ` · ${esc(nomeDe(e.por))}` : ""}${i === lista.length - 1 ? ` <span class="selo-vigente">vigente</span>` : ""}
+        <span class="historico-quem"><span class="mono">${dataBr(e.em)}</span>${e.por ? ` · ${esc(nomeDe(e.por))}` : ""}${i === lista.length - 1 ? ` <span class="selo-vigente">vigente</span>` : ""}</span>
         <span>${decimal(e.o)} · ${decimal(e.m)} · ${decimal(e.p)} → <b>${diasUteis(duracaoPert(e))}</b> ${e.contaDe === "data" ? `a partir de ${dataBr(e.em)}` : "da liberação"}</span>
         ${e.motivo ? `<span class="tec">Motivo: ${esc(e.motivo)}</span>` : ""}
       </li>`).join("")}</ol>
