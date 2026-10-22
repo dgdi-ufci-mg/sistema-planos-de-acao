@@ -459,7 +459,7 @@ body.so-leitura [data-nova] { display: none; }
   .linha > .acao-nome { grid-area: a; } .linha > .sit { grid-area: s; } .linha > .conc { grid-area: d; text-align: right; }
   .linha > .donos { grid-area: o; } .linha > .pr { grid-area: p; }
   .item.feita .pr { display: none; }
-  .conc .prazo { align-items: flex-end; }
+  .conc .prazo-barra { max-width: 180px; margin-left: auto; }
   .item.feita .linha, .lista.sem-prioridade .linha { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "a a" "s d" "o o"; }
   .grupo.fase > .grupo-corpo > .grupo-dentro { padding-left: 6px; margin-left: 6px; }
   /* recolhido no celular: só a barrinha de progresso e o relógio, se houver atraso, na linha do nome */
@@ -929,3 +929,13 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .cabeca-linha .niveis { margin: 0; }
 .cabeca-controles { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: flex-end; margin-left: auto; }
 @media (max-width: 640px) { .niveis-rotulo { display: none; } .niveis button { padding: 4px 9px; } } /* no celular, cabe na linha do alerta */
+
+/* ---------- prazo como barra (22/10/2026): verde para a direita (faltam), vermelho para a esquerda (venceu) ---------- */
+.prazo-barra { display: flex; align-items: center; gap: 8px; width: 100%; }
+.prazo-trilho { position: relative; flex: 1; height: 8px; border-radius: 4px; background: var(--grid); overflow: hidden; }
+.prazo-zero { position: absolute; top: -2px; bottom: -2px; width: 2px; margin-left: -1px; background: var(--muted); }
+.prazo-valor { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.prazo-barra.faltam .prazo-valor { background: var(--ok); }
+.prazo-barra.vencido .prazo-valor { background: var(--crit); }
+.prazo-num { font: .76rem var(--f-dados); color: var(--faint); width: 30px; text-align: right; font-variant-numeric: tabular-nums; }
+.prazo-barra.vencido .prazo-num { color: var(--crit-ink); }

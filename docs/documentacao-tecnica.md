@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 87.2 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 88 da página)
 
 ---
 
@@ -534,6 +534,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 87 | Versão 2: lista menos carregada (pedido do responsável). Situação só pelo ícone, e a liberada sem marca; sem o carimbo "Atrasada", a seta do canto e os rótulos repetidos; prazo como número com seta (↑ faltam, ↓ venceu, em vermelho; zero sem seta, em cor neutra) e "d úteis" pequeno embaixo. Escolha "Prioridade: Execução · Revisão · Nenhuma" acima da lista e do quadro, lembrada no aparelho. Sem mudança na versão atual |
 | 87.1 | Versão 2: a barra da prioridade de execução passa a ser sempre vermelha, sem a matiz de cinza para vermelho (pedido do responsável), na lista, no quadro e na janela da ação. Sem mudança na versão atual |
 | 87.2 | Versão 2: na lista, a ação não liberada fica só com o cadeado, sem o texto "Não liberada" (pedido do responsável); o texto aparece ao parar o mouse. Sem mudança na versão atual |
+| 88 | Versão 2: na lista, o prazo vira barra (decisão do responsável): verde para a direita com os dias úteis que faltam, vermelha para a esquerda com há quantos dias a previsão venceu, numa escala única do espaço (do mais vencido ao que mais falta), com o zero marcado; o número fica ao lado, pequeno. Substitui o número com seta. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

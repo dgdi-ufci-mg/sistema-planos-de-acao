@@ -382,27 +382,30 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
 
   /**
-   * Prazo no cartão da lista (22/10/2026, decisões do responsável): o número de dias úteis, com seta
-   * para cima quando ainda faltam e para baixo quando a previsão já venceu (em vermelho); zero, sem
-   * seta e em cor neutra. "d úteis" fica embaixo, pequeno e cinza. A data aparece ao parar o mouse.
+   * Prazo no cartão da lista como barra (22/10/2026, decisão do responsável): dias úteis que faltam
+   * (verde, para a direita) ou há quantos dias a previsão venceu (vermelho, para a esquerda), numa
+   * escala única do espaço: do mais vencido ao que mais falta, com o zero marcado. O número fica ao
+   * lado, pequeno; a data aparece ao parar o mouse.
    */
+  function diasDoPrazo(l) {
+    if (l.situacao === "concluida" || l.semEstimativa) return null;
+    if (l.atrasada) return -Math.max(1, cal.diasUteisAte(hoje) - cal.diasUteisAte(l.vencidaEm));
+    return Math.max(0, cal.diasUteisAte(l.conclusao) - cal.diasUteisAte(hoje));
+  }
   function prazoHtml(l) {
-    let n;
-    let classe;
-    let titulo;
-    if (l.atrasada) {
-      n = Math.max(1, cal.diasUteisAte(hoje) - cal.diasUteisAte(l.vencidaEm));
-      classe = "vencido";
-      titulo = `Venceu há ${n} ${plural(n, "dia útil", "dias úteis")}, em ${dataBr(l.vencidaEm)}`;
-    } else {
-      n = Math.max(0, cal.diasUteisAte(l.conclusao) - cal.diasUteisAte(hoje));
-      classe = n ? "faltam" : "zero";
-      titulo = n ? `${plural(n, "Falta", "Faltam")} ${n} ${plural(n, "dia útil", "dias úteis")}: conclusão prevista em ${dataBr(l.conclusao)}` : "Conclusão prevista para hoje";
-    }
-    const seta = classe === "vencido" ? "↓" : classe === "faltam" ? "↑" : "";
-    return `<span class="prazo ${classe}" title="${titulo}" aria-label="${titulo}">
-      <span class="prazo-num">${seta ? `<span class="prazo-seta" aria-hidden="true">${seta}</span>` : ""}${n}</span>
-      <span class="prazo-un">${plural(n, "d útil", "d úteis")}</span></span>`;
+    const n = diasDoPrazo(l);
+    const valores = linhas.map(diasDoPrazo).filter((x) => x != null);
+    const min = Math.min(0, ...valores);
+    const max = Math.max(0, ...valores);
+    const faixa = max - min || 1;
+    const zero = ((0 - min) / faixa) * 100;
+    const largura = (Math.abs(n) / faixa) * 100;
+    const titulo = n < 0 ? `Venceu há ${-n} ${plural(-n, "dia útil", "dias úteis")}, em ${dataBr(l.vencidaEm)}`
+      : n > 0 ? `${plural(n, "Falta", "Faltam")} ${n} ${plural(n, "dia útil", "dias úteis")}: conclusão prevista em ${dataBr(l.conclusao)}`
+      : "Conclusão prevista para hoje";
+    return `<span class="prazo-barra ${n < 0 ? "vencido" : n > 0 ? "faltam" : "zero"}" title="${titulo}" aria-label="${titulo}">
+      <span class="prazo-trilho">${min < 0 ? `<i class="prazo-zero" style="left:${zero}%"></i>` : ""}${n ? `<i class="prazo-valor" style="left:${n < 0 ? zero - largura : zero}%;width:${Math.max(1.5, largura)}%"></i>` : ""}</span>
+      <span class="prazo-num">${n}</span></span>`;
   }
 
   /** Prioridade mostrada no cartão: a de execução, a de revisão ou nenhuma (escolha de quem vê). */
