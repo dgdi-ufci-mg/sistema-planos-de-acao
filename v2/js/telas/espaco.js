@@ -13,7 +13,7 @@ import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
 import { abrirPainel, avisar } from "./painel.js";
 import { surgir } from "./movimento.js";
-import { donosHtml } from "./pessoas.js";
+import { donosHtml, ajustarDonos } from "./pessoas.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
 import { criarPlanilha } from "./editar-planilha.js";
@@ -142,6 +142,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`;
     ferramentas = barra;
     lista = painelAcoes.querySelector("[data-lista]");
+    /* refaz quantas pessoas cabem em cada cartão quando a largura ou a altura da lista muda (janela, grupos abertos) */
+    let pendenteDonos = false;
+    new ResizeObserver(() => {
+      if (pendenteDonos) return;
+      pendenteDonos = true;
+      requestAnimationFrame(() => { pendenteDonos = false; ajustarDonos(lista); });
+    }).observe(lista);
     legenda = painelAcoes.querySelector("[data-legenda]");
     ligarRapida();
     /* propriedades, e não addEventListener: a barra é a mesma para todos os espaços */
@@ -436,7 +443,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function linhaHtml(l) {
     const a = l.acao;
     const s = SITUACOES[l.situacao];
-    const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus });
+    const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus, todos: true });
     const nota = l.situacao !== "concluida" && l.reprogramacoes
       ? `${l.reprogramacoes} ${plural(l.reprogramacoes, "reprogramação", "reprogramações")}` : "";
     /* situação só com o ícone; liberada é o normal e fica sem marca (22/10/2026) */
@@ -444,8 +451,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       : `<span class="${s.classe}" title="${s.texto}" aria-label="${s.texto}">${ICONES[s.icone]}</span>`; // só o ícone, também na não liberada
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
-        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
-        <div class="sit">${sit}${l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : ""}${l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${nota ? `<small class="nota-reprog">${nota}</small>` : ""}</div>
+        <div class="acao-nome">${usaCodigos && a.codigo ? `<span class="codigo">${esc(a.codigo)}</span>` : ""}<span class="rotulo">${esc(a.rotulo)}</span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+          /* avisos pequenos sob o nome; o ícone da situação fica numa coluna estreita ao lado (22/10/2026) */
+          [l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : ""].join("")}</div>
+        <div class="sit">${sit}</div>
         <div class="donos">${donos}</div>
         ${barraHtml(l)}
       </div>
@@ -503,6 +512,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }
     lista.innerHTML = corpo;
     lista.classList.toggle("sem-prioridade", ui.barra === "nenhuma");
+    ajustarDonos(lista);
     if (agrupado()) marcarNivel();
     restaurarRapida();
     if (animar && !reduzirMovimento()) animarMudanca(antes);

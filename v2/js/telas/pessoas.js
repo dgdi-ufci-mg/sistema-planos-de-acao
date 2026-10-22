@@ -21,13 +21,49 @@ export function seloHtml(r, { tons, meus } = {}) {
   return `<span class="avatar${meus?.includes(r.id) ? " eu" : ""}" style="--tom:var(--tom-${tom});--tom-texto:var(--tom-${tom}-texto)" title="${esc(r.nome)}" role="img" aria-label="${esc(r.nome)}">${esc(iniciais(r.nome))}</span>`;
 }
 
-/** Responsáveis de uma ação: pessoas sobrepostas (até três, depois "+N") e, em seguida, unidades. */
+/**
+ * Responsáveis de uma ação: pessoas sobrepostas (até três, depois "+N") e, em seguida, unidades.
+ * Com `todos`, desenha todas as pessoas; a tela esconde as que não couberem (ajustarDonos).
+ */
 export function donosHtml(lista, contexto = {}) {
   const { pessoas, unidades } = separar(lista);
+  if (contexto.todos) {
+    return (pessoas.length ? `<span class="pessoas">${pessoas.map((p) => seloHtml(p, contexto)).join("")}</span>` : "")
+      + unidades.map((u) => seloHtml(u, contexto)).join("");
+  }
   const visiveis = pessoas.length > PESSOAS_JUNTAS ? pessoas.slice(0, PESSOAS_JUNTAS - 1) : pessoas;
   const resto = pessoas.slice(visiveis.length);
   const nomes = esc(resto.map((p) => p.nome).join(", "));
   const mais = resto.length ? `<span class="avatar mais" title="${nomes}" role="img" aria-label="Mais ${resto.length}: ${nomes}">+${resto.length}</span>` : "";
   return (pessoas.length ? `<span class="pessoas">${visiveis.map((p) => seloHtml(p, contexto)).join("")}${mais}</span>` : "")
     + unidades.map((u) => seloHtml(u, contexto)).join("");
+}
+
+/**
+ * Mostra todas as pessoas que couberem na largura de cada `.donos` dentro de `raiz`; as que não
+ * couberem viram "+N" no fim (22/10/2026: com uma barra só, sobra espaço nos cartões).
+ */
+export function ajustarDonos(raiz) {
+  for (const caixa of raiz.querySelectorAll(".donos")) {
+    const grupo = caixa.querySelector(".pessoas");
+    if (!grupo) continue;
+    grupo.querySelector(".avatar.mais")?.remove();
+    const selos = [...grupo.querySelectorAll(".avatar")];
+    for (const s of selos) s.hidden = false;
+    if (caixa.scrollWidth <= caixa.clientWidth + 1) continue;
+    const mais = document.createElement("span");
+    mais.className = "avatar mais";
+    mais.setAttribute("role", "img");
+    grupo.append(mais);
+    let escondidos = 0;
+    while (escondidos < selos.length - 1) {
+      escondidos++;
+      selos[selos.length - escondidos].hidden = true;
+      const nomes = selos.slice(selos.length - escondidos).map((s) => s.title).join(", ");
+      mais.textContent = `+${escondidos}`;
+      mais.title = nomes;
+      mais.setAttribute("aria-label", `Mais ${escondidos}: ${nomes}`);
+      if (caixa.scrollWidth <= caixa.clientWidth + 1) break;
+    }
+  }
 }

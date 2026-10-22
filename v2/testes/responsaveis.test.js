@@ -11,7 +11,8 @@ describe("Responsáveis na tela", () => {
     assert.equal(iniciais("Ana Souza"), "AS");
     assert.equal(iniciais("Ana Maria de Souza"), "AS");
     assert.equal(iniciais("  joão   da silva "), "JS");
-    assert.equal(iniciais("Ana"), "A");
+    assert.equal(iniciais("Ana"), "AN");
+    assert.equal(iniciais("Hebert"), "HE");
     assert.equal(iniciais("Ênio Ávila"), "ÊÁ");
     assert.equal(iniciais(""), "?");
   });

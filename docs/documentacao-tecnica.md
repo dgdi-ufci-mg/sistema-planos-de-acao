@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 21/10/2026 (versão 89 da página)
+**Última atualização deste documento:** 21/10/2026 (versão 90 da página)
 
 ---
 
@@ -537,6 +537,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 88 | Versão 2: na lista, o prazo vira barra (decisão do responsável): verde para a direita com os dias úteis que faltam, vermelha para a esquerda com há quantos dias a previsão venceu, numa escala única do espaço (do mais vencido ao que mais falta), com o zero marcado; o número fica ao lado, pequeno. Substitui o número com seta. Sem mudança na versão atual |
 | 88.1 | Versão 2: no computador, o botão do menu lateral passa a usar o ícone de barra lateral (retângulo com uma divisão à esquerda, como no Jira, no Todoist e no Planner), no lugar das três linhas, que ficam só no celular, onde o menu é uma gaveta (pedido do responsável). Sem mudança na versão atual |
 | 89 | Versão 2: cada cartão da lista e do quadro mostra uma só barra, à escolha em "Barra: Tempo restante · Execução · Revisão · Nenhuma" (pedido do responsável), com símbolo próprio à esquerda (cronômetro, raio, lupa) e cor própria (verde/vermelho; violeta, nova variável `--execucao` nos três blocos de cores; laranja). A barra da prioridade de execução deixa de ser vermelha. Na janela da ação, as barras usam as mesmas cores. Legenda atualizada. Sem mudança na versão atual |
+| 90 | Versão 2: na lista, o ícone da situação passa a uma coluna estreita logo à direita dos nomes, e os avisos pequenos ("a partir de", "Falta estimar", reprogramações) vão para baixo do nome. Responsáveis com duas letras também no nome único ("Hebert" → "HE"), lado a lado, e todos os que couberem na largura do cartão, com "+N" só quando faltar espaço; a conta é refeita quando a janela muda de tamanho (pedido do responsável). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

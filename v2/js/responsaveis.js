@@ -11,12 +11,12 @@ export const TONS = 15;
 
 const LIGACOES = new Set(["da", "das", "de", "do", "dos", "e"]);
 
-/** Iniciais do primeiro e do último nome: "Ana Maria de Souza" → "AS"; "Ana" → "A". */
+/** Iniciais do primeiro e do último nome: "Ana Maria de Souza" → "AS"; nome único, as duas primeiras letras: "Hebert" → "HE" (22/10/2026). */
 export function iniciais(nome) {
   const partes = String(nome ?? "").trim().split(/\s+/).filter((p) => p && !LIGACOES.has(p.toLowerCase()));
   if (!partes.length) return "?";
   const primeira = partes[0][0];
-  return (partes.length > 1 ? primeira + partes.at(-1)[0] : primeira).toLocaleUpperCase("pt-BR");
+  return (partes.length > 1 ? primeira + partes.at(-1)[0] : [...partes[0]].slice(0, 2).join("")).toLocaleUpperCase("pt-BR");
 }
 
 /**
