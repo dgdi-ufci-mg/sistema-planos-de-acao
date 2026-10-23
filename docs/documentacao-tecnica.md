@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 110.1 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 111 da página)
 
 ---
 
@@ -562,6 +562,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 109.2 | Versão 2: a rede vai até o fim da tela (altura recalculada ao redimensionar a janela), e a explicação de uso subiu para a linha das ferramentas, no espaço livre ao lado da legenda (pedido do responsável). Sem mudança na versão atual |
 | 110 | Versão 2: no indicador **tempo restante**, opção de mostrar ao lado da barra a **data prevista** (dd/mm; com o ano, quando é outro) no lugar dos dias úteis restantes; na ação vencida, a data em que venceu (pedido do responsável). Fica em Exibir > "Ao lado da barra de tempo", lembrada no aparelho (`sextante.tempoNumero`); a legenda da etapa acompanha a escolha. Corrigido junto: a marca da largura por modo, posta no `body` na versão 109.1 com o atributo `data-modo`, fazia os cliques nas opções do Exibir trocarem de visualização; passou a `data-vista-atual`. Sem mudança na versão atual |
 | 110.1 | Versão 2: datas ao lado da barra de tempo uniformes (pedido do responsável): se todas as datas mostradas no espaço são do ano corrente, ficam como dd/mm; se ao menos uma é de outro ano, todas levam o ano (dd/mm/aa). Sem mudança na versão atual |
+| 111 | Versão 2: o indicador ganhou **menu próprio** na barra do topo, com ícone de mostrador (pedido do responsável): "Indicador" fica entre Ordenar e Exibir e só aparece onde há barras (quadro, e lista com a coluna Barras ligada); traz o indicador e, para o tempo restante, o que mostrar ao lado da barra. Essas opções saíram do Exibir. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

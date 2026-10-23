@@ -379,6 +379,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       </div>`;
     }
     if (ui.pop === "exibir") return exibirHtml();
+    if (ui.pop === "indicador") return indicadorHtml();
     return "";
   }
 
@@ -397,15 +398,20 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
   const comIndicador = () => ui.modo === "quadro" || (ui.modo === "lista" && colunas().barras);
   const comExibir = () => ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
-  function exibirHtml() {
-    const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
+  const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
+  /** Menu próprio do indicador (23/10/2026, pedido do responsável): só onde há barras. */
+  function indicadorHtml() {
+    return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Indicador">
+      <h3>Indicador</h3><div class="opcoes-lista">${BARRAS.map(([v, nome, icone]) =>
+        opcao("data-barra", v, nome, ui.barra === v, `<span class="barra-icone ${v}">${ICONES[icone]}</span>`)).join("")}</div>
+      ${ui.barra === "tempo" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
+        opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}
+    </div>`;
+  }
+  function exibirHtml() {
     const nivel = agrupado() && lista ? nivelAtual() : null;
     return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Exibir">
-      ${comIndicador() ? `<h3>Indicador</h3><div class="opcoes-lista">${BARRAS.map(([v, nome, icone]) =>
-        opcao("data-barra", v, nome, ui.barra === v, `<span class="barra-icone ${v}">${ICONES[icone]}</span>`)).join("")}</div>` : ""}
-      ${comIndicador() && ui.barra === "tempo" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
-        opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}
       ${agrupado() ? `<h3>Mostrar até</h3><div class="opcoes-lista">${NIVEIS.map(([v, nome]) => opcao("data-nivel", v, nome, nivel === v)).join("")}</div>` : ""}
       <h3>Identificador antes do nome</h3><div class="opcoes-lista">${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos)
         .map(([v, nome]) => opcao("data-identificador-op", v, nome, identificador() === v)).join("")}</div>
@@ -423,6 +429,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
        Visualização, Filtrar, Ordenar e Exibir, todos abrindo para baixo; à direita, as atrasadas e Nova ação.
        No celular, continua o funil com "Filtros e ordem" e a segunda linha */
     const [, nomeModo, iconeModo] = MODOS.find(([v]) => v === ui.modo);
+    if ((ui.pop === "indicador" && !comIndicador()) || (ui.pop === "exibir" && !comExibir())) ui.pop = null;
     const atrasadas = linhas.filter((l) => l.atrasada).length;
     const menu = (pop, icone, nome, extra = "") => `<button class="menu-topo" type="button" data-pop="${pop}" aria-expanded="${ui.pop === pop}" aria-haspopup="dialog" title="${nome}">
       ${icone}<span class="menu-topo-nome">${nome}</span>${extra}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>`;
@@ -432,6 +439,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           ${menu("modo", ICONES[iconeModo], nomeModo)}
           ${planilha ? "" : menu("filtrar", ICONES.funil, "Filtrar", nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : "")}
           ${planilha ? "" : menu("ordenar", ICONES.ordenar, "Ordenar", ui.ordem !== "espaco" ? '<span class="ponto-menu" title="Ordem diferente da do espaço" aria-label="Ordem diferente da do espaço"></span>' : "")}
+          ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
           ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
         </div>
         <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
