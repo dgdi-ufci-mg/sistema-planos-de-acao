@@ -22,6 +22,7 @@ import { planilhaDoEspaco, mermaidDoEspaco } from "../exportar.js";
 import { hojeLocal } from "../dados.js";
 import { copiarTexto } from "./arquivos.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
+import { opcoesDoCalculo } from "../modelos.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
@@ -271,7 +272,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     const modo = corpo.querySelector('[name="modo-importar"]:checked').value;
     const hoje = hojeLocal();
     const cal = criarCalendario({ ...espaco, datasExcluidas: datasEfetivas(espaco, geral) }, hoje);
-    const caminho = caminhoCritico(acoes, cal, { hoje });
+    const caminho = caminhoCritico(acoes, cal, { hoje, ...opcoesDoCalculo(espaco) });
     plano = planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, modo, situacaoDe: (n) => caminho.porAcao.get(n).situacao });
     corpo.querySelector("[data-previa-importacao]").innerHTML = previaHtml();
   }

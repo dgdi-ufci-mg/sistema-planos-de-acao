@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 122 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 123 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -202,6 +202,7 @@ erDiagram
 | `tipo` | texto: `planoDeAcao` ou `projeto` | não | Tipo do espaço (seção 16.1; passo 2.4a). **Ausente: `projeto`**, como nos espaços criados antes do passo 2.4a | `planoDeAcao` |
 | `programa` | texto | não | Programa do PEI/PDI que prevê o Plano de Ação. **Obrigatório no Plano de Ação**; no Projeto, vazio. Texto livre provisório, até o catálogo do passo 2.5 | `Programa de Governança de Dados` |
 | `aprovacao` | aprovação (4.1.6) | não | Documento que aprovou o Plano de Ação. **Obrigatório no Plano de Ação**, com a identificação; no Projeto, vazio | |
+| `modelo` | modelo (4.1.7) | não | Como o espaço define prazos, dependências e simulação. Escolhido na criação e **imutável** (passo 2.4b). **Ausente: cronograma estruturado** (estimativas, dependências e simulação), como nos espaços criados antes do passo 2.4b | |
 | `inicio` | data | não | Início do espaço: a partir dele contam os dias úteis | `2026-08-03` |
 | `prazoFinal` | data | não | Prazo final, por exemplo o fixado por ato da Diretoria-Geral | `2027-04-14` |
 | `datasExcluidas` | lista de data excluída (4.1.1) | não | Datas sem expediente próprias do espaço (feriados locais, exclusões específicas), que complementam o calendário geral (4.1.5) | |
@@ -287,6 +288,18 @@ Passo 2.4a. Só no Plano de Ação. Quando o tipo muda para Projeto, `programa` 
 | `identificacao` | texto | sim | Número do documento de aprovação no SIPAC ou no Protocolo | `23062.001234/2026-11` |
 | `link` | texto (endereço web) | não | Endereço para abrir o documento; começa com `https://` ou `http://` | `https://…` |
 
+#### 4.1.7 Modelo: o objeto `modelo`
+
+Passo 2.4b (seção 16.1). Escolhido na criação, entre três modelos, e fixo depois (decisão do responsável, 23/10/2026, a reavaliar com o uso). Os prazos são **ou** por estimativa **ou** por data-limite, nunca os dois no mesmo espaço. O Store recusa gravar o que o modelo desliga: estimativas no espaço com data-limite, data-limite no espaço com estimativas e dependências no espaço sem elas. Regras em `js/modelos.js`.
+
+<!-- dicionario: modelo -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `nome` | texto: `estruturado`, `aberto` ou `personalizado` | sim | Modelo escolhido. Estruturado: estimativa, dependências e simulação. Aberto: data-limite, sem dependências nem simulação. Personalizado: as três escolhas abaixo | `aberto` |
+| `prazos` | texto: `estimativa` ou `dataLimite` | sim | Como os prazos das ações são definidos (seção 16.1) | `dataLimite` |
+| `dependencias` | sim/não | sim | Usa dependências entre ações. Não: as anteriores não são pedidas nem entram no cálculo | `false` |
+| `simulacao` | sim/não | sim | Faz a simulação de Monte Carlo (chance de cumprir o prazo, linha do tempo e índices). Só pode ser sim com prazos por estimativa | `false` |
+
 ### 4.2 Ação
 
 Chave: o par (espaço, `numero`).
@@ -308,7 +321,8 @@ Chave: o par (espaço, `numero`).
 | `descricao` | texto | não | Descrição completa | |
 | `dependeDe` | lista de inteiro | sim | Números das ações anteriores, do mesmo espaço. Lista vazia: sem anteriores | `[1, 4]` |
 | `responsaveis` | lista de id | sim | Ids dos responsáveis (4.5). Lista vazia: sem responsável | |
-| `estimativas` | lista de estimativa (4.3) | sim | Da primeira à mais recente. A vigente é a última | |
+| `estimativas` | lista de estimativa (4.3) | sim | Da primeira à mais recente. A vigente é a última. Sempre vazia no espaço com prazos por data-limite | |
+| `dataLimite` | data | não | Data-limite escolhida pela pessoa, só no espaço com prazos por data-limite (passo 2.4b). Vencida e a ação não concluída: carimbo Atrasada. Vazia: a ação não tem prazo | `2026-11-30` |
 | `concluidaEm` | data | não | Data de conclusão. Vazio: não concluída | `2026-09-22` |
 | `naoAntesDe` | data | não | Data mínima de liberação, "Não começa antes de" (seção 5.1) | `2026-10-19` |
 | `notas` | texto (Markdown) | não | Notas da ação (seção 8.5) | |
@@ -402,20 +416,20 @@ Cada ação do retrato tem **todos os campos da ação (4.2)**, copiados como es
 | `situacao` | texto | sim | `naoLiberada`, `liberada` ou `concluida` | `liberada` |
 | `atrasada` | sim/não | sim | Carimbo Atrasada | `false` |
 | `liberacaoPrevista` | data | sim | Data prevista de liberação | `2026-10-05` |
-| `conclusaoPrevista` | data | sim | Data prevista de conclusão | `2026-10-27` |
-| `folga` | dias úteis | sim | Folga total no cálculo determinístico | `4` |
-| `prioridadeExecucao` | número de 0 a 1 | sim | Índice de criticidade (seção 7.1) | `0.72` |
-| `prioridadeRevisao` | número de 0 a 1 | sim | Contribuição para a variância do prazo (seção 7.2) | `0.18` |
+| `conclusaoPrevista` | data | sim | Data prevista de conclusão; no espaço com data-limite, a data-limite (vazia se a ação não tem) | `2026-10-27` |
+| `folga` | dias úteis | sim | Folga total no cálculo determinístico; 0 no espaço com data-limite, que não tem caminho crítico | `4` |
+| `prioridadeExecucao` | número de 0 a 1 | sim | Índice de criticidade (seção 7.1). Vazio no espaço sem simulação (passo 2.4b) | `0.72` |
+| `prioridadeRevisao` | número de 0 a 1 | sim | Contribuição para a variância do prazo (seção 7.2). Vazio no espaço sem simulação (passo 2.4b) | `0.18` |
 
 #### 4.4.2 Resumo do retrato: o objeto `resumo`
 
 <!-- dicionario: retratoResumo -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
 |---|---|---|---|---|
-| `conclusaoPrevista` | data | sim | Conclusão prevista do espaço (P50) | `2026-12-22` |
-| `dataSegura` | data | sim | Data com 80% de chance (P80) | `2027-01-15` |
-| `p95` | data | sim | Data com 95% de chance | `2027-02-03` |
-| `chancePrazo` | número de 0 a 1 | não | Chance de cumprir o prazo final. Vazio se o espaço não tem prazo final | `0.74` |
+| `conclusaoPrevista` | data | sim | Conclusão prevista do espaço (P50). Sem simulação: a do cálculo determinístico, no espaço com estimativas, ou vazia, no espaço com data-limite (passo 2.4b) | `2026-12-22` |
+| `dataSegura` | data | sim | Data com 80% de chance (P80). Vazia sem simulação | `2027-01-15` |
+| `p95` | data | sim | Data com 95% de chance. Vazia sem simulação | `2027-02-03` |
+| `chancePrazo` | número de 0 a 1 | não | Chance de cumprir o prazo final. Vazio se o espaço não tem prazo final ou não tem simulação | `0.74` |
 
 ### 4.5 Responsável
 
@@ -886,7 +900,9 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (espaço órfão).
 2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1). No menu lateral, os espaços passam a ser agrupados por tipo, cada grupo com o nome do tipo no plural ("Planos de Ação", "Projetos", "Quadros de Tarefas"), só para os tipos que existirem; até lá, um grupo só, "Espaços" (decisão do responsável, 21/10/2026). Dividido em dois em 23/10/2026 (decisão do responsável):
 2.4a. ✔ Tipos de espaço. Feito em 23/10/2026: campos `tipo`, `programa` e `aprovacao` do espaço (seção 4.1, com 4.1.6); regras em `js/tipos.js`, com testes; escolha do tipo na criação e em "Configurar este espaço" (`js/telas/tipo-espaco.js`), em dois cartões com a explicação de cada tipo; no Plano de Ação, o Programa do PEI/PDI (texto livre até o passo 2.5) e o documento de aprovação (identificação obrigatória, link opcional); no Projeto, os dois são apagados. Os espaços que já existiam, como a PI², ficam como Projeto, sem gravação: o tipo ausente vale `projeto` (decisão do responsável). Menu lateral agrupado por tipo; sem espaço nenhum, o grupo "Espaços". Mudar o tipo em "Configurar este espaço" muda o grupo na hora.
-2.4b. Modelos prontos na criação (seção 16.1): "Cronograma estruturado", "Cronograma aberto" e "Personalizado".
+2.4b. Modelos prontos na criação (seção 16.1): "Cronograma estruturado", "Cronograma aberto" e "Personalizado". Inclui a data-limite opcional, antecipada do passo 2.10a (decisão do responsável, 23/10/2026). Decisões do responsável (23/10/2026): os prazos são por estimativa **ou** por data-limite, nunca os dois no mesmo espaço; o personalizado escolhe os prazos, as dependências e a simulação (só com estimativa); o modelo fica fixo depois de criado, a reavaliar (seção 14, item 5); no cronograma aberto, o indicador "Tempo restante" conta até a data-limite. Em partes:
+- ✔ Parte 1, dados e cálculo: campo `modelo` do espaço (4.1.7) e `dataLimite` da ação (4.2); regras em `js/modelos.js`; o cálculo (`caminhoCritico`), a lista, o retrato, a exportação e a conferência da importação seguem o modelo; o Store recusa o que o modelo desliga. Sem tela ainda: os espaços existentes continuam como cronograma estruturado.
+- Parte 2, telas: escolha do modelo na criação; campos, visualizações e indicadores conforme o modelo.
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
 2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
 2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
@@ -964,6 +980,7 @@ Decisões aceitas para seguir em frente, mas que o responsável pediu para **rea
 
 3. **Distribuição beta-PERT (seção 5.2).** Adotada por coerência com a fórmula das datas, por ser padrão de mercado e fácil de explicar. Crítica conhecida: concentra os sorteios perto do mais provável e dá pouco peso aos extremos, o que pode deixar a previsão otimista. Alternativas: a triangular, mais pessimista com os mesmos três pontos (na PI², 74% contra 89,5% de chance de cumprir o prazo); ou tratar o otimista e o pessimista como "10% e 90% de chance", e não como limites absolutos, o que engorda as caudas. A reavaliar: comparar previsões e conclusões reais quando houver histórico.
 4. **Durações independentes entre ações (seção 5.7).** A simulação supõe que o prazo de uma ação não influencia o das outras. Na prática, uma mesma causa (falta de pessoal, greve, troca de gestão) atrasa várias ações juntas, e ignorar isso deixa o resultado otimista; costuma ser o efeito mais forte. Alternativas, em ordem de complexidade: correlação entre ações de uma mesma etapa ou responsável; causas comuns modeladas explicitamente (*Termo técnico: risk drivers*). A reavaliar com o sistema em uso. A correção principal do otimismo continua prevista na previsão por classe de referência, com o histórico real da instituição.
+5. **Modelo fixo depois de criado (seção 4.1.7; passo 2.4b).** O modelo (prazos por estimativa ou data-limite, dependências e simulação) é escolhido na criação e não muda, porque algumas coisas são necessariamente diferentes entre os modelos (decisão do responsável, 23/10/2026). A reavaliar com o uso: se faz falta mudar o modelo de um espaço existente, e com que conversão dos dados.
 
 ### 14.1 Decisões da execução em lote (21 e 22/10/2026)
 
@@ -1416,3 +1433,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 120 | Versão 2: com a barra lateral recolhida, no computador, o nome do espaço vai para o alto do conteúdo e o canto esquerdo da barra do topo fica vazio; um puxador na borda esquerda abre a barra lateral, e Ctrl+B (⌘B) abre e recolhe. Correção: na rede e na planilha, a folga de baixo da página fazia a tela rolar um pouco e esconder o alto sob a barra do topo. Sem mudança na versão atual |
 | 121 | **Troca (passo 1.20).** A versão 2 passa a ser o sistema, na raiz do site, com o banco `sextante-v2`; os dados da versão 1 são descartados e `/v2/` redireciona para a raiz. Esta documentação é refeita a partir da especificação da reescrita (seções 2 a 16, com a mesma numeração), do rascunho e da documentação da versão 1 (histórico e ideias futuras); a especificação e o rascunho são apagados. O teste do dicionário passa a ler a seção 4 deste arquivo. O programa de migração sai. O teste de comparação usa uma cópia congelada da versão 1 |
 | 122 | Passo 2.4a: tipos de espaço. Plano de Ação ou Projeto na criação e em "Configurar este espaço"; no Plano de Ação, o Programa do PEI/PDI (texto livre até o catálogo) e o documento de aprovação; menu lateral agrupado por tipo. Campos novos `tipo`, `programa` e `aprovacao` no dicionário de dados (4.1 e 4.1.6). Os espaços existentes, como a PI², valem como Projeto. Passo 2.4 dividido em 2.4a e 2.4b; definição do cronograma aberto registrada na seção 16.1 |
+| 123 | Passo 2.4b, parte 1 (dados e cálculo): modelo do espaço (`modelo`: estruturado, aberto ou personalizado; fixo depois de criado) e data-limite da ação (`dataLimite`). Prazos por estimativa ou por data-limite, nunca os dois; com data-limite, Atrasada = data-limite vencida e ação não concluída, sem caminho crítico; sem dependências, as anteriores são ignoradas; sem simulação, retrato sem chance nem datas estatísticas. O Store recusa o que o modelo desliga. Dicionário: 4.1.7, `dataLimite` em 4.2, retrato. Novo ponto para reavaliação: modelo fixo. Sem mudança na tela |

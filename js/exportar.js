@@ -9,6 +9,8 @@
 import { criarCalendario, datasEfetivas } from "./calendario.js";
 import { caminhoCritico, estimativaVigente, duracaoPert } from "./calculo.js";
 import { dataBr } from "./formato.js";
+import { opcoesDoCalculo, usaDataLimite } from "./modelos.js";
+
 
 const SITUACAO = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
 /** Número com vírgula decimal, como as planilhas em português esperam. */
@@ -19,11 +21,12 @@ const campo = (t) => String(t ?? "").replace(/[\t\r\n]+/g, " ").trim();
 /** Calcula o que a exportação precisa: datas, folga e situação de cada ação. */
 function calcular({ espaco, acoes, geral, hoje }) {
   const cal = criarCalendario({ ...espaco, datasExcluidas: datasEfetivas(espaco, geral) }, hoje);
-  const caminho = caminhoCritico(acoes, cal, { hoje });
+  const caminho = caminhoCritico(acoes, cal, { hoje, ...opcoesDoCalculo(espaco) });
   const datas = (a) => {
     const c = caminho.porAcao.get(a.numero);
     const concluida = c.situacao === "concluida";
-    return { c, concluida, inicio: cal.data(c.liberacao), fim: concluida ? a.concluidaEm : cal.dataDeConclusao(c.conclusao, c.liberacao) };
+    const fim = concluida ? a.concluidaEm : usaDataLimite(espaco) ? a.dataLimite ?? "" : cal.dataDeConclusao(c.conclusao, c.liberacao);
+    return { c, concluida, inicio: cal.data(c.liberacao), fim };
   };
   return { datas };
 }

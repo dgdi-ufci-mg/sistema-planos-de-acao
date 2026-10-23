@@ -8,7 +8,7 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "tipo", "programa", "aprovacao", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
+    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
@@ -17,12 +17,14 @@ export const CAMPOS = Object.freeze({
   documento: ["nome", "data", "identificacao", "link"],
   /** Documento que aprovou o Plano de Ação (passo 2.4a). */
   aprovacao: ["identificacao", "link"],
+  /** Modelo de configuração do espaço, fixo depois de criado (passo 2.4b). */
+  modelo: ["nome", "prazos", "dependencias", "simulacao"],
   fase: ["id", "nome", "etapas"],
   etapa: ["id", "nome"],
   camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao",
-    "dependeDe", "responsaveis", "estimativas", "concluidaEm", "naoAntesDe", "notas", "checklist",
+    "dependeDe", "responsaveis", "estimativas", "dataLimite", "concluidaEm", "naoAntesDe", "notas", "checklist",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],

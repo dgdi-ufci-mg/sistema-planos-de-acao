@@ -14,17 +14,19 @@ export const ORDENS = ["espaco", "execucao", "revisao", "conclusao"];
  * Junta o cadastro de cada ação com o que foi calculado para ela.
  * @param {object[]} acoes  ações do espaço, já na ordem do espaço
  * @param {{porAcao: Map}} caminho  resultado de caminhoCritico, com `hoje`
- * @param {{porAcao: Map}} simulacao  resultado de simular
+ * @param {{porAcao: Map}|null} simulacao  resultado de simular; null no espaço sem simulação
  * @param {object} calendario
  * @param {string} hoje  data ISO
+ * @param {{prazos?: "estimativa"|"dataLimite"}} [opcoes]  como o espaço define os prazos (js/modelos.js)
  */
-export function montarLinhas(acoes, caminho, simulacao, calendario, hoje) {
+export function montarLinhas(acoes, caminho, simulacao, calendario, hoje, { prazos = "estimativa" } = {}) {
+  const porDataLimite = prazos === "dataLimite"; // passo 2.4b: sem estimativas, a data prevista é a data-limite
   return acoes.map((acao) => {
     const c = caminho.porAcao.get(acao.numero);
-    const s = simulacao.porAcao.get(acao.numero);
+    const s = simulacao?.porAcao.get(acao.numero); // sem simulação no espaço, sem prioridades
     const concluida = c.situacao === "concluida";
     /* sem estimativa, as prioridades sairiam de uma duração zero: não são mostradas (passo 1.14a) */
-    const semPrioridade = concluida || !estimativaVigente(acao);
+    const semPrioridade = concluida || !s || !estimativaVigente(acao);
     return {
       acao,
       situacao: c.situacao,
@@ -33,13 +35,13 @@ export function montarLinhas(acoes, caminho, simulacao, calendario, hoje) {
       vencidaEm: c.atrasada ? c.vencidaEm : null,
       /** data mínima ainda por vir, para "a partir de" */
       aPartirDe: c.situacao === "naoLiberada" && acao.naoAntesDe > hoje ? acao.naoAntesDe : null,
-      conclusao: concluida ? acao.concluidaEm : calendario.dataDeConclusao(c.conclusao, c.liberacao),
+      conclusao: concluida ? acao.concluidaEm : porDataLimite ? acao.dataLimite ?? null : calendario.dataDeConclusao(c.conclusao, c.liberacao),
       reprogramacoes: Math.max(0, (acao.estimativas?.length ?? 0) - 1),
       execucao: semPrioridade ? null : s.prioridadeExecucao,
       revisao: semPrioridade ? null : s.prioridadeRevisao,
       vigente: estimativaVigente(acao),
       /** ação ainda sem estimativa: conta como zero dias no cálculo (seção 5.2) */
-      semEstimativa: !concluida && !estimativaVigente(acao),
+      semEstimativa: !porDataLimite && !concluida && !estimativaVigente(acao),
     };
   });
 }

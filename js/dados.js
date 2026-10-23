@@ -12,6 +12,7 @@ import { ordenarPorDependencia } from "./calculo.js";
 import { registrosDaMudanca } from "./historico.js";
 import { montarRetrato } from "./retrato.js";
 import { problemaDoTipo } from "./tipos.js";
+import { problemaDoModelo, modeloDe } from "./modelos.js";
 
 export { ErroDeDados };
 
@@ -23,7 +24,7 @@ export const SEMENTE_PADRAO = 20261014;
 const CODIGO_VALIDO = /^[A-Z0-9]{2,8}$/;
 
 /** Campos que não mudam depois de criados. */
-const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero"]; // tons e proximoNumero: o sistema cuida deles
+const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero", "modelo"]; // modelo: fixo depois de criado (passo 2.4b) // tons e proximoNumero: o sistema cuida deles
 const FIXOS_DA_ACAO = ["numero", "criadaEm"];
 
 /** Código mnemônico: de 2 a 8 letras maiúsculas ou números, sem repetir no espaço. */
@@ -111,6 +112,9 @@ function validarEspaco(e, recusarDesconhecidos) {
   if (e.aprovacao) recusarDesconhecidos(e.aprovacao, "aprovacao");
   const tipo = problemaDoTipo(e); // tipo de espaço e o que ele exige (passo 2.4a)
   if (tipo) throw new ErroDeDados(tipo.codigo, tipo.mensagem);
+  if (e.modelo) recusarDesconhecidos(e.modelo, "modelo");
+  const modelo = problemaDoModelo(e.modelo); // passo 2.4b
+  if (modelo) throw new ErroDeDados(modelo.codigo, modelo.mensagem);
 }
 
 /** Lista de datas excluídas: data válida, sem repetir, só com os campos do dicionário. */
@@ -160,6 +164,20 @@ export function criarStore(banco, opcoes = {}) {
     const desconhecido = Object.keys(campos).find((campo) => !CAMPOS[entidade].includes(campo));
     if (desconhecido) throw new ErroDeDados("campo-desconhecido", `O campo "${desconhecido}" não existe em ${entidade}.`);
   };
+
+  /**
+   * O que o modelo do espaço desliga não pode ser gravado (passo 2.4b): estimativas no espaço com
+   * data-limite, data-limite no espaço com estimativas, dependências no espaço sem elas.
+   */
+  async function conferirModelo(espacoId, campos) {
+    if (campos.dataLimite != null && !DATA_ISO.test(campos.dataLimite)) throw new ErroDeDados("data-invalida", "Data-limite inválida.");
+    const usa = [campos.estimativas?.length, campos.dataLimite != null, campos.dependeDe?.length].some(Boolean);
+    if (!usa) return;
+    const m = modeloDe(await banco.lerEspaco(espacoId));
+    if (campos.estimativas?.length && m.prazos !== "estimativa") throw new ErroDeDados("recurso-desligado", "Este espaço usa data-limite, e não estimativas.");
+    if (campos.dataLimite != null && m.prazos !== "dataLimite") throw new ErroDeDados("recurso-desligado", "Este espaço usa estimativas, e não data-limite.");
+    if (campos.dependeDe?.length && !m.dependencias) throw new ErroDeDados("recurso-desligado", "Este espaço não usa dependências entre ações.");
+  }
 
   const recusarFixos = (campos, fixos) => {
     const proibido = Object.keys(campos).find((campo) => fixos.includes(campo));
@@ -231,6 +249,7 @@ export function criarStore(banco, opcoes = {}) {
       recusarFixos(dados, FIXOS_DA_ACAO);
       const { rotulo, codigo, ...outros } = dados;
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o nome da ação.");
+      await conferirModelo(espacoId, outros);
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
       if (codigo) validarCodigo(codigo, acoes);
@@ -258,6 +277,7 @@ export function criarStore(banco, opcoes = {}) {
     async alterarAcao(espacoId, numero, campos) {
       recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
+      await conferirModelo(espacoId, campos);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
       await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario }, hist);
       if ("responsaveis" in campos) await arrumarTons(espacoId);
@@ -294,6 +314,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Acrescenta uma ação anterior. Recusa a própria ação, código inexistente e ciclo. */
     async acrescentarDependencia(espacoId, numero, anterior) {
+      await conferirModelo(espacoId, { dependeDe: [anterior] });
       const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
       if (anterior === numero) throw new ErroDeDados("ciclo", "Uma ação não pode depender dela mesma.");
       if (!acoes.some((a) => a.numero === anterior)) throw new ErroDeDados("nao-encontrado", `Ação ${anterior} não encontrada.`);
@@ -314,6 +335,7 @@ export function criarStore(banco, opcoes = {}) {
     /** Reestimativa: tempo que falta, a partir de hoje; entra no fim do histórico. */
     async reestimar(espacoId, numero, { o, m, p, motivo = "" }) {
       validarEstimativa({ o, m, p });
+      await conferirModelo(espacoId, { estimativas: [{ o, m, p }] });
       await exigirAcao(espacoId, numero);
       const estimativa = { em: hoje(), por: usuario, o, m, p, contaDe: "data", ...(motivo.trim() ? { motivo: motivo.trim() } : {}) };
       await banco.acrescentarEstimativa(espacoId, numero, estimativa, carimbo(), hist);
@@ -324,6 +346,7 @@ export function criarStore(banco, opcoes = {}) {
      */
     async corrigirEstimativa(espacoId, numero, { o, m, p }) {
       validarEstimativa({ o, m, p });
+      await conferirModelo(espacoId, { estimativas: [{ o, m, p }] });
       const { estimativas = [] } = await exigirAcao(espacoId, numero);
       const ultima = estimativas.at(-1);
       const estimativa = { ...ultima, em: hoje(), por: usuario, o, m, p, contaDe: ultima?.contaDe ?? "liberacao" };

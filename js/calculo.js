@@ -72,13 +72,19 @@ export function ordenarPorDependencia(acoes) {
  * - Com `hoje`: ação liberada e não concluída cuja conclusão prevista já passou é
  *   considerada concluída a partir de hoje, sem alterar o que o usuário registrou (5.5).
  * - Com `hoje`: situação Concluída, Liberada ou Não liberada, e carimbo Atrasada (6).
+ * - Espaço com prazos por data-limite (passo 2.4b; seção 16.1): sem durações. A conclusão prevista
+ *   é a data-limite (ou a liberação, sem ela); Atrasada = data-limite vencida e ação não concluída,
+ *   liberada ou não; sem caminho crítico nem folga, e sem a regra "nada termina no passado".
+ * - Espaço sem dependências: as anteriores gravadas são ignoradas.
  *
  * @param {object[]} acoes ações do espaço (dicionário de dados, 4.2)
  * @param {ReturnType<import("./calendario.js").criarCalendario>} calendario
- * @param {{hoje?: string}} [opcoes] sem `hoje`, só o cálculo pelas estimativas e conclusões
+ * @param {{hoje?: string, prazos?: "estimativa"|"dataLimite", dependencias?: boolean}} [opcoes]
+ *   sem `hoje`, só o cálculo pelas estimativas e conclusões; prazos e dependências vêm do modelo do espaço (js/modelos.js)
  */
-export function caminhoCritico(acoes, calendario, { hoje } = {}) {
-  const { ordem, anteriores, seguintes, avisos } = ordenarPorDependencia(acoes);
+export function caminhoCritico(acoes, calendario, { hoje, prazos = "estimativa", dependencias = true } = {}) {
+  const porDataLimite = prazos === "dataLimite";
+  const { ordem, anteriores, seguintes, avisos } = ordenarPorDependencia(dependencias ? acoes : acoes.map((a) => ({ ...a, dependeDe: [] })));
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   const indiceDeHoje = hoje ? calendario.diasUteisAntes(hoje) : null;
   const porAcao = new Map();
@@ -95,6 +101,8 @@ export function caminhoCritico(acoes, calendario, { hoje } = {}) {
     if (acao.concluidaEm) {
       r.conclusao = calendario.diasUteisAte(acao.concluidaEm);
       r.liberacao = Math.min(liberacao, r.conclusao); // registro anterior à liberação calculada: vale o registro
+    } else if (porDataLimite) {
+      r.conclusao = acao.dataLimite ? Math.max(liberacao, calendario.diasUteisAte(acao.dataLimite)) : liberacao;
     } else {
       const vigente = estimativaVigente(acao);
       if (!vigente) avisos.push({ codigo: "sem-estimativa", acao: numero });
@@ -107,6 +115,13 @@ export function caminhoCritico(acoes, calendario, { hoje } = {}) {
       const anterioresConcluidas = antes.every((d) => porNumero.get(d).concluidaEm);
       const dataMinimaChegou = !acao.naoAntesDe || acao.naoAntesDe <= hoje;
       r.situacao = acao.concluidaEm ? "concluida" : anterioresConcluidas && dataMinimaChegou ? "liberada" : "naoLiberada";
+      if (porDataLimite) {
+        r.atrasada = !acao.concluidaEm && Boolean(acao.dataLimite) && acao.dataLimite < hoje;
+        if (r.atrasada) r.vencidaEm = acao.dataLimite;
+        porAcao.set(numero, r);
+        fim = Math.max(fim, r.conclusao);
+        continue;
+      }
       const semEstimativa = !acao.concluidaEm && !estimativaVigente(acao);
       const noPassado = r.situacao === "liberada" && calendario.dataDeConclusao(r.conclusao, r.liberacao) < hoje;
       /* sem estimativa não há prazo para vencer: "Falta estimar", e não "Atrasada" (seção 5.2) */
@@ -127,8 +142,8 @@ export function caminhoCritico(acoes, calendario, { hoje } = {}) {
     for (const s of seguintes.get(numero)) conclusaoTardia = Math.min(conclusaoTardia, porAcao.get(s).liberacaoTardia);
     r.conclusaoTardia = conclusaoTardia;
     r.liberacaoTardia = conclusaoTardia - (r.conclusao - r.liberacao);
-    r.folga = r.liberacaoTardia - r.liberacao;
-    r.critica = r.folga < 1e-6 && !porNumero.get(numero).concluidaEm;
+    r.folga = porDataLimite ? null : r.liberacaoTardia - r.liberacao;
+    r.critica = !porDataLimite && r.folga < 1e-6 && !porNumero.get(numero).concluidaEm;
   }
   return { fim, porAcao, avisos };
 }

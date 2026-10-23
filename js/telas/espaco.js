@@ -8,6 +8,7 @@
 import { criarCalendario, datasEfetivas } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
 import { simular, chaveDaSimulacao } from "../simulacao.js";
+import { modeloDe, usaSimulacao, opcoesDoCalculo, acoesParaCalculo } from "../modelos.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
@@ -106,12 +107,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     responsaveis = todos;
     const datasExcluidas = datasEfetivas(espaco, geral);
     cal = criarCalendario({ ...espaco, datasExcluidas }, hoje);
-    caminho = caminhoCritico(acoes, cal, { hoje });
-    /* a simulação só é refeita quando muda algo que entra nela (planos grandes levam até 1 s) */
-    const parametros = { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal };
-    const chave = chaveDaSimulacao(acoes, { ...parametros, inicio: espaco.inicio, datasExcluidas });
-    if (chave !== chaveSim) { sim = simular(acoes, cal, parametros); chaveSim = chave; }
-    linhas = montarLinhas(acoes, caminho, sim, cal, hoje);
+    /* o modelo do espaço decide prazos, dependências e simulação (passo 2.4b) */
+    caminho = caminhoCritico(acoes, cal, { hoje, ...opcoesDoCalculo(espaco) });
+    if (usaSimulacao(espaco)) {
+      /* a simulação só é refeita quando muda algo que entra nela (planos grandes levam até 1 s) */
+      const paraSimular = acoesParaCalculo(espaco, acoes);
+      const parametros = { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal };
+      const chave = chaveDaSimulacao(paraSimular, { ...parametros, inicio: espaco.inicio, datasExcluidas });
+      if (chave !== chaveSim) { sim = simular(paraSimular, cal, parametros); chaveSim = chave; }
+    } else { sim = null; chaveSim = null; }
+    linhas = montarLinhas(acoes, caminho, sim, cal, hoje, { prazos: modeloDe(espaco).prazos });
     pessoas = new Map(responsaveis.map((r) => [r.id, r]));
     meus = usuario ? responsaveis.filter((r) => r.usuario === usuario).map((r) => r.id) : null;
     usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
