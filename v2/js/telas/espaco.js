@@ -252,7 +252,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   ];
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
   const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a variância" }; /* nomes técnicos de volta (22/10/2026) */
-  const barrasHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Barra</span><div class="modos barras" role="group" aria-label="Barra mostrada nos cartões">
+  const barrasHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Indicador</span><div class="modos barras" role="group" aria-label="Barra mostrada nos cartões">
       ${BARRAS.map(([v, nome, icone]) => `<button type="button" class="modo" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}"><span class="barra-icone ${v}">${ICONES[icone]}</span><span class="modo-nome" aria-hidden="true">${NOMES_BARRA[v]}</span></button>`).join("")}
     </div></div>`;
   /**
@@ -261,7 +261,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    */
   const usaDescricao = () => espaco.camposOpcionais?.descricao !== false;
   const colunas = () => ({ ...ui.colunas, descricao: ui.colunas.descricao && usaDescricao() });
-  const OPCOES_COLUNAS = [["descricao", "Descrição"], ["participantes", "Participantes"], ["barras", "Barras"]];
+  const OPCOES_COLUNAS = [["descricao", "Descrição"], ["participantes", "Participantes"], ["barras", "Indicador"]];
   /**
    * Identificador antes do nome (22/10/2026, decisão do responsável): o número (#1) ou o código,
    * nunca os dois, porque servem ao mesmo fim. O código só existe se o espaço usa códigos; ação
@@ -439,8 +439,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           ${menu("modo", ICONES[iconeModo], nomeModo)}
           ${planilha ? "" : menu("filtrar", ICONES.funil, "Filtrar", nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : "")}
           ${planilha ? "" : menu("ordenar", ICONES.ordenar, "Ordenar", ui.ordem !== "espaco" ? '<span class="ponto-menu" title="Ordem diferente da do espaço" aria-label="Ordem diferente da do espaço"></span>' : "")}
-          ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
           ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
+          ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
         </div>
         <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
           ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
