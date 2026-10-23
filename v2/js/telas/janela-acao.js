@@ -99,7 +99,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         <div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>
         ${l.situacao === "concluida" || l.execucao == null ? "" : `
           <div><dt>Índice de criticidade <a href="#" class="oque" data-termo="exec">o que é?</a></dt><dd>${barra(l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}</dd></div>
-          <div><dt>Contribuição para a variância <a href="#" class="oque" data-termo="rev">o que é?</a></dt><dd>${barra(l.revisao, "var(--laranja)", revisao)}</dd></div>`}
+          <div><dt>Contribuição para a incerteza <a href="#" class="oque" data-termo="rev">o que é?</a></dt><dd>${barra(l.revisao, "var(--laranja)", revisao)}</dd></div>`}
       </dl>
 
       ${c.regraDoPassado ? `<p class="alerta">${ICONES.atrasada}<span><b>Prazo vencido sem reestimativa:</b> o cálculo considera conclusão a partir de hoje. Reestime a ação para informar quanto falta. <a href="#" class="oque" data-termo="regra">o que é?</a></span></p>` : ""}
@@ -252,10 +252,10 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   function notasHtml(acao) {
     const html = markdownParaHtml(acao.notas);
     if (editando !== "notas") {
-      return `<div class="campo-acao" data-campo="notas"><span class="campo-nome">Notas</span>
+      return `<div class="campo-acao" data-campo="notas"><span class="campo-nome">Anotações</span>
         <div class="editavel nota-html" data-editar="notas" tabindex="0" role="button" title="Clique para editar">${html || `<span class="vazio">Clique para escrever</span>`}</div></div>`;
     }
-    return `<div class="campo-acao" data-campo="notas"><span class="campo-nome">Notas</span>
+    return `<div class="campo-acao" data-campo="notas"><span class="campo-nome">Anotações</span>
       <form class="editor" data-salvar="notas">
         <div class="barra-notas" role="toolbar" aria-label="Formatação">
           <button type="button" class="botao discreto" data-formatar="bold" title="Negrito (Ctrl+B)" aria-label="Negrito"><b>N</b></button>
@@ -267,7 +267,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           <input type="url" inputmode="url" placeholder="https://…" aria-label="Endereço do link" data-endereco-link>
           <button type="button" class="botao" data-aplicar-link>Aplicar</button>
         </div>
-        <div class="editor-notas nota-html" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Notas" data-editor-notas>${html}</div>
+        <div class="editor-notas nota-html" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Anotações" data-editor-notas>${html}</div>
         <p class="erro" data-erro hidden></p>
         <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar>Cancelar</button></div>
       </form></div>`;

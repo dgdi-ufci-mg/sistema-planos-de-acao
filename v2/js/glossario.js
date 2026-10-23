@@ -23,12 +23,14 @@ export const GLOSSARIO = [
     /* equação (22/10/2026, pedido do responsável); fundamento na seção 15.2 da especificação */
     formula: `<p class="formula">CI<sub>i</sub> = (1/K) · Σ<sub>k</sub> 𝟙<sub>i</sub><sup>(k)</sup></p>
       <p>K é o número de cenários simulados; 𝟙<sub>i</sub><sup>(k)</sup> vale 1 quando a ação <i>i</i> está no caminho crítico do cenário <i>k</i> e 0 quando não está. Num cenário, um dia a mais numa ação do caminho crítico adia a conclusão em um dia; nas demais, não adia. Por isso a média, CI<sub>i</sub>, é o efeito esperado de cada dia de atraso na ação.</p>` },
-  { chave: "rev", titulo: "Contribuição para a variância",
+  { chave: "rev", titulo: "Contribuição para a incerteza",
     texto: "Quanto da incerteza do prazo final vem desta ação. Por exemplo, 18% quer dizer que esta ação responde por 18% da incerteza; as parcelas de todas as ações somam 100%. Quanto maior, mais vale revisar as estimativas, dividir a ação ou reduzir riscos.",
     simples: "prioridade de revisão do planejamento",
+    tecnico: "contribuição para a variância do prazo",
     referencia: `WILLIAMS, T. M. Criticality in stochastic networks. <i>Journal of the Operational Research Society</i>, v. 43, n. 4, p. 353–357, 1992. DOI: <a href="https://doi.org/10.1057/jors.1992.50" target="_blank" rel="noopener">10.1057/jors.1992.50</a> (resumo público; texto completo pago). Define a crucialidade, a correlação entre a duração da ação e a do projeto, que é o passo 1 do cálculo. Elevar ao quadrado e dividir pela soma, para as parcelas somarem 100%, é a convenção adotada neste sistema.`,
     /* equação (22/10/2026, pedido do responsável); fundamento na seção 15.3 da especificação */
     formula: `<p class="formula">r<sub>i</sub> = Cov(d<sub>i</sub>, T) / (σ<sub>i</sub> · σ<sub>T</sub>)<br>q<sub>i</sub> = max(r<sub>i</sub>, 0)²<br>CV<sub>i</sub> = q<sub>i</sub> / Σ<sub>j</sub> q<sub>j</sub></p>
+      <p><b>Significado técnico.</b> Em estatística, a incerteza de um número sorteado muitas vezes é medida pela <i>variância</i>: a média dos quadrados das distâncias de cada resultado até a média (o desvio-padrão ao quadrado). Aqui, o número é a duração do espaço nos cenários simulados. O nome técnico, "contribuição para a variância do prazo", diz que cada ação responde por uma parte dessa variância; na tela, "incerteza" é a palavra simples para ela.</p>
       <p>Nos cenários simulados, d<sub>i</sub> é a duração da ação <i>i</i> e T, a duração do espaço inteiro; σ<sub>i</sub> e σ<sub>T</sub> são os desvios-padrão delas. O quadrado da correlação, r<sub>i</sub>², é a parte da variância do prazo explicada pela ação; correlações negativas, que só vêm de ruído, contam como zero. A divisão pela soma das ações não concluídas faz as parcelas somarem 100%.</p>` },
   { chave: "prazo", titulo: "Prazo de uma ação",
     texto: "É contado em dias úteis, da liberação até a conclusão, incluindo o tempo até alguém começar. A data de início real não é registrada." },

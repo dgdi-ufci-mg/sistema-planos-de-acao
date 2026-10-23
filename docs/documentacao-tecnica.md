@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 111.1 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 112 da página)
 
 ---
 
@@ -564,6 +564,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 110.1 | Versão 2: datas ao lado da barra de tempo uniformes (pedido do responsável): se todas as datas mostradas no espaço são do ano corrente, ficam como dd/mm; se ao menos uma é de outro ano, todas levam o ano (dd/mm/aa). Sem mudança na versão atual |
 | 111 | Versão 2: o indicador ganhou **menu próprio** na barra do topo, com ícone de mostrador (pedido do responsável): "Indicador" fica entre Ordenar e Exibir e só aparece onde há barras (quadro, e lista com a coluna Barras ligada); traz o indicador e, para o tempo restante, o que mostrar ao lado da barra. Essas opções saíram do Exibir. Sem mudança na versão atual |
 | 111.1 | Versão 2: o menu Indicador passa para a direita do Exibir; a coluna "Barras" do Exibir passa a se chamar "Indicador", como o rótulo da segunda linha no celular (pedido do responsável). Sem mudança na versão atual |
+| 112 | Versão 2 (pedidos do responsável): (1) o símbolo da contribuição para a incerteza passa da lupa, reservada para uma futura busca, a uma curva de sino; (2) na tela, "contribuição para a variância" passa a "contribuição para a incerteza" (menus, ordens, cartões, janela da ação, legenda); o verbete do glossário ganhou o termo técnico e um parágrafo com o significado técnico (incerteza medida pela variância); (3) o campo "Notas" passa a se chamar "Anotações" na tela e no histórico (no banco, continua `notas`). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

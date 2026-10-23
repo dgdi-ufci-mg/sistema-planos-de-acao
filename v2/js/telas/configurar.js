@@ -25,7 +25,7 @@ import { copiarTexto } from "./arquivos.js";
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
   ["descricao", "Descrição", "Texto completo de cada ação."],
-  ["notas", "Notas", "Anotações formatadas de cada ação."],
+  ["notas", "Anotações", "Anotações formatadas de cada ação."],
   ["codigos", "Códigos das ações", "Códigos curtos, como LEV, para equipes que conversam por eles. Desligado, as ações aparecem só pelo nome."],
 ];
 /** Campos opcionais desligados por padrão (seção 4.1.4); os demais vêm ligados. */

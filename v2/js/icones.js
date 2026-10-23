@@ -24,14 +24,14 @@ export const ICONES = Object.freeze({
   barraTempo: svg('<circle cx="12" cy="13.5" r="7.5"/><path d="M12 10v3.5l2.5 2M9.5 3h5M12 3v3"/>'),
   /** Barra da prioridade de execução: raio. */
   barraExecucao: svg('<path d="M13 2.5 5 13.5h6l-1 8 8-11h-6z"/>'),
-  /** Barra da prioridade de revisão: lupa. */
+  /** Barra da contribuição para a incerteza: curva de sino. */
   /** Colunas da lista: três colunas. */
   /** Indicador: mostrador com ponteiro. */
   indicador: svg('<path d="M3.5 17a8.5 8.5 0 1 1 17 0"/><path d="m12 17 4-5.5"/><circle cx="12" cy="17" r="1.2"/>'),
   /** Exibir: olho. */
   olho: svg('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   colunas: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/>'),
-  barraRevisao: svg('<circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/>'),
+  barraRevisao: svg('<path d="M2 19.5h20"/><path d="M2.5 18c3.5 0 4.2-1.6 5.6-5.2S10.2 6 12 6s2.5 3.2 3.9 6.8 2.1 5.2 5.6 5.2"/>'), /* curva de sino: a incerteza (23/10/2026; a lupa fica para a busca) */
   /** Concluída: visto num círculo. */
   /** Checklist: quadrado com marca. */
   checklist: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12.5 2.7 2.7L16 9.8"/>'),

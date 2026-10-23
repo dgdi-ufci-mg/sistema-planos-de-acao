@@ -38,7 +38,7 @@ const BOTOES_DE_FILTRO = [
 const ORDENS = [
   ["espaco", "Ordem do espaço"],
   ["execucao", "Índice de criticidade"],
-  ["revisao", "Contribuição para a variância"],
+  ["revisao", "Contribuição para a incerteza"],
   ["conclusao", "Conclusão prevista"],
 ];
 const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -248,10 +248,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const BARRAS = [
     ["tempo", "Tempo restante", "barraTempo"],
     ["execucao", "Índice de criticidade", "barraExecucao"],
-    ["revisao", "Contribuição para a variância", "barraRevisao"],
+    ["revisao", "Contribuição para a incerteza", "barraRevisao"],
   ];
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
-  const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a variância" }; /* nomes técnicos de volta (22/10/2026) */
+  const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a incerteza" }; /* nomes técnicos de volta (22/10/2026) */
   const barrasHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Indicador</span><div class="modos barras" role="group" aria-label="Barra mostrada nos cartões">
       ${BARRAS.map(([v, nome, icone]) => `<button type="button" class="modo" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}"><span class="barra-icone ${v}">${ICONES[icone]}</span><span class="modo-nome" aria-hidden="true">${NOMES_BARRA[v]}</span></button>`).join("")}
     </div></div>`;
@@ -598,7 +598,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (ui.barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : prazoHtml(l);
     else if (ui.barra === "revisao") {
       const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
-      conteudo = medidor(l.revisao, `Contribuição para a variância: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
+      conteudo = medidor(l.revisao, `Contribuição para a incerteza: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
     } else conteudo = medidor(l.execucao, "Índice de criticidade", "var(--execucao)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`);
     return `<div class="pr">${simbolo}${conteudo}</div>`;
   }
@@ -1021,7 +1021,7 @@ function legendaHtml(podeEditar) {
     ${podeEditar ? "<span><b>Alt+clique</b> no nome, na descrição ou nos participantes de uma ação edita ali mesmo, sem abrir a ação (na lista, no quadro e na rede).</span>" : ""}
     <span>Barra, à escolha: <span class="barra-icone tempo">${ICONES.barraTempo}</span><a href="#" class="oque" data-termo="tempoRestante">tempo restante</a> (verde: faltam dias úteis; vermelho: venceu)
       · <span class="barra-icone execucao">${ICONES.barraExecucao}</span><a href="#" class="oque" data-termo="exec">índice de criticidade</a>
-      · <span class="barra-icone revisao">${ICONES.barraRevisao}</span><a href="#" class="oque" data-termo="rev">contribuição para a variância</a></span>
+      · <span class="barra-icone revisao">${ICONES.barraRevisao}</span><a href="#" class="oque" data-termo="rev">contribuição para a incerteza</a></span>
     <span class="simbolos">
       <span><span class="icone-concluida">${ICONES.concluida}</span>Concluída</span>
       <span><span class="icone-liberada">${ICONES.liberada}</span>Liberada</span>

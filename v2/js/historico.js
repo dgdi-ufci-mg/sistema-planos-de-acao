@@ -49,7 +49,7 @@ export function descreverRegistro(r, nomes) {
     case "rotulo": return `Mudou o rótulo de “${antes ?? ""}” para “${depois ?? ""}”.`;
     case "codigo": return depois ? `Mudou o código para ${depois}${antes ? ` (era ${antes})` : ""}.` : "Retirou o código.";
     case "descricao": return "Alterou a descrição.";
-    case "notas": return "Alterou as notas.";
+    case "notas": return "Alterou as anotações.";
     case "etapa": return `Mudou a etapa${antes ? ` de “${nomes.etapa(antes)}”` : ""} para ${depois ? `“${nomes.etapa(depois)}”` : "sem fase nem etapa"}.`;
     case "ordem": return "Mudou a posição na ordem do espaço.";
     case "dependeDe": return mudancaDeLista("Depende de", nomes.acao);
