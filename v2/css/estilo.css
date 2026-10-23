@@ -1132,6 +1132,24 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
   .topo-esquerda { grid-column: 2; }
   .topo-direita { grid-column: 4; }
   .cabeca-linha { display: none; }
+  /* no espaço: três grupos (esquerda, centro e direita), como no Numbers; o centro fica no meio da área de trabalho */
+  body[data-vista-atual] .topo-linha { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  body[data-vista-atual] .topo-linha > .topo-titulo { display: none; }
+  body[data-vista-atual] .topo-esquerda { grid-column: 1; justify-self: start; }
+  body[data-vista-atual] .topo-direita { grid-column: 3; justify-self: end; }
+}
+.topo-centro { grid-column: 2; grid-row: 1; justify-self: center; display: flex; align-items: center; position: relative; }
+.topo-centro .popover { left: 50%; right: auto; transform: translateX(-50%); }
+/* nome do espaço na barra: só quando o menu lateral não está à vista (no celular, fica o título de sempre) */
+.titulo-barra { display: none; font-size: 1.05rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30ch; margin-right: 6px; }
+@media (min-width: 900px) { body.lateral-recolhida .titulo-barra { display: block; } }
+@media (min-width: 641px) and (max-width: 899px) { .titulo-barra { display: block; } }
+/* área estreita: sem espaço para centralizar, os grupos ficam lado a lado, e o nome encolhe */
+@media (min-width: 641px) and (max-width: 1099px) {
+  body[data-vista-atual] .topo-linha { grid-template-columns: minmax(0, max-content) max-content minmax(0, 1fr); column-gap: 8px; }
+  .topo-centro { justify-self: start; }
+  .topo-centro .popover { left: 0; transform: none; }
+  .titulo-barra { max-width: 18ch; }
 }
 /* telas médias: os menus ficam só com o ícone (o nome aparece ao passar o mouse) */
 @media (min-width: 641px) and (max-width: 1399px) {

@@ -443,19 +443,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const atrasadas = linhas.filter((l) => l.atrasada).length;
     const menu = (pop, icone, nome, extra = "", titulo = nome) => `<button class="menu-topo" type="button" data-pop="${pop}" aria-expanded="${ui.pop === pop}" aria-haspopup="dialog" title="${titulo}">
       ${icone}<span class="menu-topo-nome">${nome}</span>${extra}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>`;
+    /* três grupos, como na barra do Numbers (teste de 23/10/2026): à esquerda, onde estou (nome do espaço,
+       só com o menu lateral fechado, e a visualização); no centro, como vejo; à direita, o que faço */
+    const doCentro = ["classificar", "exibir", "indicador"].includes(ui.pop);
     ferramentas.innerHTML = `
       <div class="topo-esquerda">
-        <div class="menus-topo so-computador">
-          ${menu("modo", ICONES.visualizacao, nomeModo, "", `Visualização: ${nomeModo}`)}
+        <span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>
+        <div class="menus-topo so-computador">${menu("modo", ICONES.visualizacao, nomeModo, "", `Visualização: ${nomeModo}`)}</div>
+        <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
+          ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
+        ${doCentro ? "" : popoverHtml()}
+      </div>
+      <div class="topo-centro so-computador">
+        <div class="menus-topo">
           ${planilha ? "" : menu("classificar", ICONES.funil, "Classificar e filtrar",
             (ui.ordem !== "espaco" ? '<span class="ponto-menu" title="Ordem diferente da do espaço" aria-label="Ordem diferente da do espaço"></span>' : "")
             + (nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : ""))}
           ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
           ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
         </div>
-        <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
-          ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
-        ${popoverHtml()}
+        ${doCentro ? popoverHtml() : ""}
       </div>
       <div class="topo-direita">
         ${atrasadas ? `<button class="chip-atrasadas so-computador" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
