@@ -226,7 +226,7 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(dados, "acao");
       recusarFixos(dados, FIXOS_DA_ACAO);
       const { rotulo, codigo, ...outros } = dados;
-      if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o rótulo da ação.");
+      if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o nome da ação.");
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
       if (codigo) validarCodigo(codigo, acoes);

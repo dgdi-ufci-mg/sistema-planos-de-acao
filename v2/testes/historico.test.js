@@ -102,7 +102,7 @@ describe("Histórico de alterações: frases da janela (passo 1.16)", () => {
   const r = (campo, antes, depois) => descreverRegistro({ tipo: "alteracao", campo, antes, depois }, nomes);
   it("descreve cada tipo de mudança em linguagem simples", () => {
     assert.equal(descreverRegistro({ tipo: "criacao" }, nomes), "Criou a ação.");
-    assert.equal(r("rotulo", "A", "B"), "Mudou o rótulo de “A” para “B”.");
+    assert.equal(r("rotulo", "A", "B"), "Mudou o nome da ação de “A” para “B”.");
     assert.equal(r("dependeDe", [1], [1, 2]), "Depende de: acrescentou “A2”.");
     assert.equal(r("dependeDe", [1, 3], [2]), "Depende de: acrescentou “A2”; retirou “A1”, “A3”.");
     assert.equal(r("responsaveis", ["dti"], []), "Responsáveis: retirou DTI.");

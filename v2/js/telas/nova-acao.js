@@ -52,7 +52,7 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
   const corpo = abrirPainel("Nova ação", `
     <form class="nova-acao" novalidate>
       <input class="rotulo-novo" name="rotulo" maxlength="120" required autocomplete="off"
-        placeholder="Nome da ação" aria-label="Rótulo (nome curto da ação)">
+        placeholder="Nome da ação" aria-label="Nome da ação">
       <div class="campo"><span>Estimativa <small>(dias úteis, da liberação até a conclusão; pode ficar para depois)</small></span>
         <div class="tres-pontos">
           <label class="campo"><span>Otimista</span><input name="o" type="number" min="0" step="1" inputmode="numeric"></label>

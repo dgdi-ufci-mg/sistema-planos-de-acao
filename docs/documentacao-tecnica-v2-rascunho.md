@@ -111,7 +111,7 @@ Os modos planilha, cronograma, rede e linha do tempo são só para o computador 
 
 - **Janela da ação:** situação, conclusão prevista e as duas prioridades no alto; Reestimar e Registrar conclusão; campos editáveis no lugar (código, etapa, descrição, data mínima, estimativa enquanto livre); dependências e responsáveis como etiquetas, com busca; checklist; notas com editor visual; histórico das estimativas e histórico de alterações; excluir.
 - **Edição no lugar, sem abrir a janela:** Alt+clique no nome (lista, quadro e rede), na descrição (lista) ou nos participantes (lista e quadro). Com Alt pressionado, os campos editáveis ficam contornados.
-- **Nova ação:** janela compacta, com rótulo e três pontos à vista; a estimativa pode ficar para depois ("Falta estimar").
+- **Nova ação:** janela compacta, com o nome da ação e os três pontos à vista; a estimativa pode ficar para depois ("Falta estimar").
 - **Checklist:** itens com caixa de marcar, texto editável e ×; o progresso aparece nos cartões.
 - **Exclusão lógica:** a ação vai para a lixeira, com religação das dependentes às anteriores dela; restaurável.
 

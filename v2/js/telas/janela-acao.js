@@ -90,7 +90,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <div class="janela-cabeca">
         ${d.usaFases ? `<span class="tec">${etapa ? `${esc(etapa.fase)} · ${esc(etapa.nome)}` : "Sem fase nem etapa"}</span>` : ""}
         ${editando === "rotulo"
-          ? editorHtml("rotulo", `<input name="rotulo" maxlength="120" value="${esc(acao.rotulo)}" aria-label="Rótulo">`)
+          ? editorHtml("rotulo", `<input name="rotulo" maxlength="120" value="${esc(acao.rotulo)}" aria-label="Nome da ação">`)
           : `<h3 class="janela-rotulo editavel" data-editar="rotulo" tabindex="0" title="Clique para editar">${esc(acao.rotulo)}</h3>`}
       </div>
 
@@ -450,7 +450,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         return store.alterarAcao(espacoId, numero, { codigo: novo || null });
       },
       rotulo: () => {
-        if (!f.rotulo.trim()) throw new Error("Informe o rótulo da ação.");
+        if (!f.rotulo.trim()) throw new Error("Informe o nome da ação.");
         return store.alterarAcao(espacoId, numero, { rotulo: f.rotulo.trim() });
       },
       etapa: () => store.alterarAcao(espacoId, numero, { etapa: f.etapa || null }),

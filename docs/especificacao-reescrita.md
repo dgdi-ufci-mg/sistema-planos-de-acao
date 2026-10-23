@@ -240,7 +240,7 @@ Chave: o par (espaço, `numero`).
 | `codigo` | texto | não | Código mnemônico, de 2 a 8 letras maiúsculas ou números, único no espaço. Só aparece com o campo opcional `codigos` ligado | `LEV` |
 | `ordem` | inteiro | sim | Posição na "Ordem do espaço" | `3` |
 | `etapa` | id | não | Etapa a que a ação pertence (e, por ela, a fase). Vazio: sem fase nem etapa | `e1` |
-| `rotulo` | texto | sim | Nome curto, usado no cronograma e no diagrama | `Levantar requisitos` |
+| `rotulo` | texto | sim | Nome curto, usado no cronograma e no diagrama. Na interface, "Ação" (título de coluna) ou "Nome da ação" (campos e mensagens); "rótulo" é só o nome do campo no banco (decisão do responsável, 23/10/2026) | `Levantar requisitos` |
 | `descricao` | texto | não | Descrição completa | |
 | `dependeDe` | lista de inteiro | sim | Números das ações anteriores, do mesmo espaço. Lista vazia: sem anteriores | `[1, 4]` |
 | `responsaveis` | lista de id | sim | Ids dos responsáveis (4.5). Lista vazia: sem responsável | |

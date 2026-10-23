@@ -46,7 +46,7 @@ export function descreverRegistro(r, nomes) {
       .filter(Boolean).join("; ") + ".";
   };
   switch (campo) {
-    case "rotulo": return `Mudou o rótulo de “${antes ?? ""}” para “${depois ?? ""}”.`;
+    case "rotulo": return `Mudou o nome da ação de “${antes ?? ""}” para “${depois ?? ""}”.`;
     case "codigo": return depois ? `Mudou o código para ${depois}${antes ? ` (era ${antes})` : ""}.` : "Retirou o código.";
     case "descricao": return "Alterou a descrição.";
     case "notas": return "Alterou as anotações.";
