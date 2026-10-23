@@ -160,6 +160,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function montarBase() {
     base = true;
     alvo.innerHTML = `
+      <h2 class="titulo-conteudo" data-titulo-conteudo>${esc(espaco.nome)}</h2>
       <section class="cabeca-espaco" data-cabeca></section>
       <div data-painel="acoes"></div>`;
     cabeca = alvo.querySelector("[data-cabeca]");
@@ -460,6 +461,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* três grupos, como na barra do Numbers (teste de 23/10/2026): à esquerda, onde estou (nome do espaço,
        só com o menu lateral fechado, e a visualização); no centro, como vejo; à direita, o que faço */
     const doCentro = ["classificar", "exibir", "indicador"].includes(ui.pop);
+    const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
+    if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
     ferramentas.innerHTML = `
       <div class="topo-esquerda">
         <span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>

@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 23/10/2026 (versão 119 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 120 da página)
 
 ---
 
@@ -574,6 +574,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 117 | Versão 2: a palavra "rótulo" sai da interface, a pedido do responsável. Nos títulos de coluna, "Ação"; nos campos, mensagens e histórico, "Nome da ação" (por exemplo, "Mudou o nome da ação de … para …"). O campo no banco continua `rotulo`, e a importação já aceitava o título "Ação". Sem mudança na versão atual |
 | 118 | Versão 2: ajustes da planilha aprovados pelo responsável. Setas, Enter e Shift+Enter andam entre as células (num texto, ← e → só saem com o cursor na ponta; Alt+↓ continua abrindo a lista da etapa); data vazia sem a máscara até receber o cursor; células bloqueadas mais escuras que as calculadas, visíveis também no tema claro; explicação do alto reduzida a uma linha, com "Mais dicas"; a grade vai até o fim da tela. Correção: cada gravação redesenhava a grade e a rolagem voltava ao começo; agora a posição é mantida. Sem mudança na versão atual |
 | 119 | Decisões do responsável, só em documentação: o sistema passa a ser tratado como protótipo (prova de conceito e modelo conceitual para o sistema definitivo, a ser desenvolvido do zero pela equipe de TI da UFCI-MG), registrado no AGENTS.md e na especificação; fase 4 revista (passagem à equipe de TI, com os recursos institucionais como requisitos do sistema definitivo); decisões da execução em lote aprovadas; barra do topo em três grupos aprovada; migração da versão 1 cancelada, com descarte dos dados, e a versão 2 indo para a raiz com o banco `sextante-v2`; manual do usuário parado; piloto detalhado. Sem mudança no código |
+| 120 | Versão 2: com a barra lateral recolhida, no computador, o nome do espaço vai para o alto do conteúdo e o canto esquerdo da barra do topo fica vazio; um puxador na borda esquerda abre a barra lateral, e Ctrl+B (⌘B) abre e recolhe. Correção: na rede e na planilha, a folga de baixo da página fazia a tela rolar um pouco e esconder o alto sob a barra do topo. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

@@ -1,6 +1,8 @@
 /**
  * Navegação (especificação, passo 1.14c): barra do topo e menu lateral, como no Todoist e no Notion.
  * - Barra do topo: botão do menu lateral, à esquerda, e o nome do espaço aberto, no centro.
+ * - No computador, com a barra recolhida (23/10/2026): sem botão no canto; um puxador na borda esquerda
+ *   abre a barra, e Ctrl+B (⌘B) abre e recolhe.
  * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços,
  *   cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, "Ajuda e manual"
  *   e "Configurar o sistema".
@@ -31,9 +33,20 @@ function alternar(abrir) {
     const recolher = abrir === undefined ? !corpo.classList.contains("lateral-recolhida") : !abrir;
     corpo.classList.toggle("lateral-recolhida", recolher);
     gravarRecolhido(recolher);
+    /* o título no alto do conteúdo aparece ou some: rede e planilha refazem a altura, como ao redimensionar a janela */
+    requestAnimationFrame(() => dispatchEvent(new Event("resize")));
   }
+  rotularBotao();
+}
+/** No computador, o botão do menu lateral só aparece com a barra aberta, e serve para recolhê-la. */
+function rotularBotao() {
+  const corpo = document.body;
   const visivel = estreito() ? corpo.classList.contains("lateral-aberta") : !corpo.classList.contains("lateral-recolhida");
-  document.querySelector("[data-alternar-lateral]").setAttribute("aria-expanded", String(visivel));
+  const botao = document.querySelector("[data-alternar-lateral]");
+  botao.setAttribute("aria-expanded", String(visivel));
+  const rotulo = estreito() ? "Menu" : "Recolher a barra lateral (Ctrl+B)";
+  botao.setAttribute("aria-label", rotulo);
+  if (estreito()) botao.removeAttribute("title"); else botao.title = rotulo;
 }
 const fecharNoCelular = () => { if (estreito()) alternar(false); };
 
@@ -41,6 +54,12 @@ function ligar() {
   ligado = true;
   document.body.classList.toggle("lateral-recolhida", lerRecolhido());
   document.querySelector("[data-alternar-lateral]").addEventListener("click", () => alternar());
+  rotularBotao();
+  /* puxador da borda esquerda (23/10/2026): abre a barra recolhida e passa o foco para o botão que a recolhe */
+  document.querySelector("[data-puxador-lateral]").addEventListener("click", () => {
+    alternar(true);
+    document.querySelector("[data-alternar-lateral]").focus({ preventScroll: true });
+  });
   document.querySelector(".fundo-lateral").addEventListener("click", () => alternar(false));
   const lateral = document.querySelector(".lateral");
   lateral.addEventListener("click", (e) => {
@@ -60,11 +79,17 @@ function ligar() {
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && document.body.classList.contains("lateral-aberta") && !document.querySelector(".camada")) alternar(false);
+    /* Ctrl+B (⌘B no Mac) abre e recolhe a barra lateral, como no VS Code e no Notion; num texto formatável, continua sendo negrito */
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "b" && !e.target.isContentEditable && !document.querySelector(".camada")) {
+      e.preventDefault();
+      alternar();
+    }
   });
   /* ao passar de celular para computador (girar o tablet, redimensionar), o menu por cima se desfaz */
   matchMedia("(max-width: 899px)").addEventListener("change", () => {
     document.body.classList.remove("lateral-aberta");
     document.querySelector(".fundo-lateral").hidden = true;
+    rotularBotao();
   });
 }
 
