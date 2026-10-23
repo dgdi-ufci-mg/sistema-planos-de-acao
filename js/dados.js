@@ -179,6 +179,19 @@ export function criarStore(banco, opcoes = {}) {
     if (campos.dependeDe?.length && !m.dependencias) throw new ErroDeDados("recurso-desligado", "Este espaço não usa dependências entre ações.");
   }
 
+  /** Texto de um comentário: sem espaços nas pontas, não vazio, até 4.000 caracteres. */
+  const textoDoComentario = (texto) => {
+    const t = String(texto ?? "").trim();
+    if (!t) throw new ErroDeDados("comentario-vazio", "Escreva o comentário.");
+    if (t.length > 4000) throw new ErroDeDados("comentario-longo", "O comentário passa de 4.000 caracteres.");
+    return t;
+  };
+  /** Só o autor edita ou apaga; o administrador do espaço também apagará, com os papéis (passo 2.1). */
+  const exigirAutor = (c) => {
+    if (c.apagadoEm) throw new ErroDeDados("comentario-apagado", "Este comentário foi apagado.");
+    if (!usuario || c.autor !== usuario) throw new ErroDeDados("sem-permissao", "Só quem escreveu o comentário pode mudá-lo.");
+  };
+
   const recusarFixos = (campos, fixos) => {
     const proibido = Object.keys(campos).find((campo) => fixos.includes(campo));
     if (proibido) throw new ErroDeDados("campo-fixo", `O campo "${proibido}" não pode ser alterado.`);
@@ -312,6 +325,40 @@ export function criarStore(banco, opcoes = {}) {
     async retirarItemDoChecklist(espacoId, numero, id) {
       await banco.mudarChecklist(espacoId, numero, (lista) => lista.filter((i) => i.id !== id), carimbo(), hist);
     },
+    // --- comentários da ação (passo 2.9; seção 16.5): com autor e data; nunca apagados do banco ---
+    /** Comentários da ação, do mais antigo ao mais novo, inclusive os apagados (a tela mostra só o aviso). */
+    async listarComentarios(espacoId, numero) {
+      return (await banco.listarComentarios(espacoId, numero)).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm) || a.id.localeCompare(b.id));
+    },
+    acompanharComentarios(espacoId, numero, aoMudar) {
+      return banco.acompanharComentarios(espacoId, numero, (lista) =>
+        aoMudar(lista.sort((a, b) => a.criadoEm.localeCompare(b.criadoEm) || a.id.localeCompare(b.id))));
+    },
+    async comentar(espacoId, numero, texto) {
+      const t = textoDoComentario(texto);
+      if (!usuario) throw new ErroDeDados("sem-login", "Entre com seu e-mail e senha para comentar.");
+      await exigirAcao(espacoId, numero);
+      const id = novoId();
+      await banco.criarComentario(espacoId, { id, acao: numero, autor: usuario, texto: t, criadoEm: agora(), versoes: [] });
+      return id;
+    },
+    /** Edita o próprio comentário; a versão anterior fica guardada em `versoes`. */
+    async editarComentario(espacoId, id, texto) {
+      const t = textoDoComentario(texto);
+      await banco.mudarComentario(espacoId, id, (c) => {
+        exigirAutor(c);
+        if (c.texto === t) return {};
+        return { texto: t, editadoEm: agora(), versoes: [...(c.versoes ?? []), { texto: c.texto, em: c.editadoEm ?? c.criadoEm }] };
+      });
+    },
+    /** "Apaga" o próprio comentário: some da tela, mas fica no banco, com todas as versões. */
+    async apagarComentario(espacoId, id) {
+      await banco.mudarComentario(espacoId, id, (c) => {
+        exigirAutor(c);
+        return { apagadoEm: agora(), apagadoPor: usuario, apagadoComo: "autor" };
+      });
+    },
+
     /** Acrescenta uma ação anterior. Recusa a própria ação, código inexistente e ciclo. */
     async acrescentarDependencia(espacoId, numero, anterior) {
       await conferirModelo(espacoId, { dependeDe: [anterior] });
@@ -543,6 +590,7 @@ export function criarStore(banco, opcoes = {}) {
         for (const r of e.responsaveis) await banco.criarResponsavel(id, r.id, r);
         for (const a of e.acoes) await banco.criarAcao(id, a);
         if (e.historico?.length) await banco.gravarHistorico(id, e.historico);
+        for (const c of e.comentarios ?? []) await banco.criarComentario(id, c);
         for (const { acoes, ...cabecalho } of e.retratos ?? []) await banco.criarRetrato(id, cabecalho, acoes ?? []);
       }
       return resumo;
@@ -683,7 +731,7 @@ export function criarStore(banco, opcoes = {}) {
       const espacos = (await banco.listarEspacos()).sort((a, b) => a.id.localeCompare(b.id));
       return {
         formato: "sextante-copia-de-seguranca",
-        versao: 2, // 2: com o histórico de alterações (passo 1.16) e os retratos (passo 1.18)
+        versao: 2, // 2: com o histórico de alterações (passo 1.16), os retratos (passo 1.18) e os comentários (passo 2.9)
         geradaEm: agora(),
         geradaPor: usuario ?? null,
         calendarioGeral: (await banco.lerCalendarioGeral()) ?? null,
@@ -692,6 +740,8 @@ export function criarStore(banco, opcoes = {}) {
           acoes: (await banco.listarAcoes(espaco.id)).sort((a, b) => a.numero - b.numero),
           responsaveis: (await banco.listarResponsaveis(espaco.id)).sort((a, b) => a.id.localeCompare(b.id)),
           historico: (await banco.listarHistoricoDoEspaco(espaco.id)).sort((a, b) => a.em.localeCompare(b.em) || a.id.localeCompare(b.id)),
+          /* comentários, inclusive os apagados e as versões anteriores (passo 2.9) */
+          comentarios: (await banco.listarComentariosDoEspaco(espaco.id)).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm) || a.id.localeCompare(b.id)),
           retratos: await Promise.all((await banco.listarRetratos(espaco.id)).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm)).map(async (r) => ({
             ...r, acoes: (await banco.listarAcoesDoRetrato(espaco.id, r.id)).sort((a, b) => a.numero - b.numero),
           }))),

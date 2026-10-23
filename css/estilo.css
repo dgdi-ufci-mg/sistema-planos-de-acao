@@ -1252,3 +1252,26 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .modelo-resumo { margin: 0; font-size: .9rem; }
 .modelo-resumo .campo-nome { font-weight: 600; margin-right: 4px; }
 .modelo-resumo .tec { display: block; }
+
+/* ---------- comentários da ação (passo 2.9) ---------- */
+.comentarios { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
+.comentarios h4 { margin: 0; font-family: var(--f-titulo); font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.comentarios h4 .n { font-family: var(--f-dados); font-size: .78rem; font-weight: 500; color: var(--muted); }
+.comentarios .vazio { margin: 0; }
+.conversa { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.comentario { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 10px; background: var(--sunk); max-width: 92%; }
+.comentario.meu { align-self: flex-end; background: var(--accent-soft); }
+.comentario.apagado { background: transparent; border: 1px dashed var(--line); padding: 6px 10px; }
+.comentario-cabeca { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: .84rem; }
+.comentario-cabeca time, .comentario-cabeca .editado { color: var(--muted); font-size: .78rem; }
+.comentario-cabeca .editado { font-style: italic; cursor: help; }
+.comentario-texto { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.45; }
+.comentario-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: .82rem; color: var(--muted); }
+.comentario-acoes .botao-texto { font-size: .82rem; padding: 0; }
+.comentario-acoes .perigo { color: var(--crit); }
+.comentar { display: flex; flex-direction: column; gap: 6px; }
+.comentar textarea { width: 100%; resize: vertical; min-height: 2.6em; font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); color: inherit; }
+.comentar textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.comentar-pe { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.comentar-pe .tec { margin: 0; }
+.comentar-pe .botoes { display: flex; gap: 6px; }

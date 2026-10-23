@@ -28,6 +28,9 @@ export const CAMPOS = Object.freeze({
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
+  /** Comentário de uma ação (passo 2.9): nunca apagado do banco; editar guarda a versão anterior. */
+  comentario: ["id", "acao", "autor", "texto", "criadoEm", "editadoEm", "versoes", "apagadoEm", "apagadoPor", "apagadoComo"],
+  comentarioVersao: ["texto", "em"],
   /** Item do checklist da ação (passo 2.8). */
   checklistItem: ["id", "texto", "feito"],
   /** Histórico de alterações das ações (passo 1.16): só de acréscimo. */

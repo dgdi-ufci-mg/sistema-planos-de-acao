@@ -9,6 +9,7 @@
  *   espacos/{id}/acoes/{numero}     ação
  *   espacos/{id}/responsaveis/{id}  responsável do espaço (seção 4.5)
  *   espacos/{id}/historico/{id}     histórico de alterações das ações (seção 4.2.1), só de acréscimo
+ *   espacos/{id}/comentarios/{id}   comentários das ações (seção 4.2.3), nunca apagados
  *   espacos/{id}/retratos/{id}      retrato (seção 4.4): cabeçalho; as ações em .../acoes/{numero}
  *   sistema/calendario              calendário geral
  *
@@ -53,6 +54,7 @@ export function criarBancoFirestore(db) {
   const responsaveisRef = (espacoId) => espacoRef(espacoId).collection("responsaveis");
   const historicoRef = (espacoId) => espacoRef(espacoId).collection("historico");
   const retratosRef = (espacoId) => espacoRef(espacoId).collection("retratos");
+  const comentariosRef = (espacoId) => espacoRef(espacoId).collection("comentarios");
 
   /** Na mesma transação da mudança, grava os registros do histórico (um não existe sem o outro). */
   const registrar = (t, espacoId, historico, antes, depois) => {
@@ -229,6 +231,28 @@ export function criarBancoFirestore(db) {
       }
     },
     /** Todos os registros do espaço (cópia de segurança). */
+    // --- comentários das ações (passo 2.9) ---
+    async criarComentario(espacoId, comentario) {
+      await db.runTransaction(async (t) => {
+        const ref = comentariosRef(espacoId).doc(comentario.id);
+        if ((await t.get(ref)).exists) throw new ErroDeDados("id-ocupado", `Já existe um comentário com o id ${comentario.id}.`);
+        t.set(ref, copia(comentario));
+      });
+    },
+    async mudarComentario(espacoId, id, mudanca) {
+      await db.runTransaction(async (t) => {
+        const ref = comentariosRef(espacoId).doc(id);
+        const s = await t.get(ref);
+        if (!s.exists) throw new ErroDeDados("nao-encontrado", "Comentário não encontrado.");
+        t.update(ref, copia(mudanca(s.data())));
+      });
+    },
+    async listarComentarios(espacoId, numero) {
+      return (await comentariosRef(espacoId).where("acao", "==", numero).get()).docs.map((d) => d.data());
+    },
+    async listarComentariosDoEspaco(espacoId) {
+      return (await comentariosRef(espacoId).get()).docs.map((d) => d.data());
+    },
     async listarHistoricoDoEspaco(espacoId) {
       return (await historicoRef(espacoId).get()).docs.map((d) => d.data()).sort((a, b) => a.em.localeCompare(b.em));
     },
@@ -270,6 +294,11 @@ export function criarBancoFirestore(db) {
      * Avisa `aoMudar` quando o espaço, as ações e os responsáveis chegam e a cada mudança neles
      * ou no calendário geral, com {espaco, acoes, responsaveis}. Devolve a função que para de avisar.
      */
+    /** Avisa a cada mudança nos comentários da ação. Devolve a função que para de avisar. */
+    acompanharComentarios(espacoId, numero, aoMudar) {
+      return comentariosRef(espacoId).where("acao", "==", numero)
+        .onSnapshot((s) => aoMudar(s.docs.map((d) => d.data())), (erro) => console.error("Ouvinte dos comentários falhou:", erro));
+    },
     acompanharEspaco(espacoId, aoMudar) {
       acompanharGerais();
       let espaco;
@@ -295,7 +324,7 @@ export function criarBancoFirestore(db) {
 
   /* toda operação assíncrona devolve erros já traduzidos */
   for (const [nome, operacao] of Object.entries(banco)) {
-    if (nome !== "acompanharEspaco") banco[nome] = protegido(operacao);
+    if (!nome.startsWith("acompanhar")) banco[nome] = protegido(operacao);
   }
   return banco;
 }

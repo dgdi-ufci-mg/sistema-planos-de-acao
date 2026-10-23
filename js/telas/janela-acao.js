@@ -55,8 +55,78 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `Ação ${inicial.codigo}` : "Ação", "", {
     janela: true,
-    aoFechar: () => { fechada = true; aoFechar(); },
+    aoFechar: () => { fechada = true; pararComentarios?.(); aoFechar(); },
   });
+
+  /* ---------- comentários (passo 2.9; seção 16.5): conversa da ação, em tempo real ---------- */
+  /** null enquanto carrega; depois, a lista do banco (inclusive os apagados, que a tela resume) */
+  let comentarios = null;
+  let editandoComentario = null;
+  let apagandoComentario = null;
+  let pararComentarios = null;
+  const nomeDoAutor = (email) => d.responsaveis.find((r) => r.usuario && r.usuario === email)?.nome ?? String(email).split("@")[0];
+  const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  /** Texto do comentário: sem formatação; endereços da web viram links e as quebras de linha ficam. */
+  const textoDoComentario = (t) => esc(t).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  /** Aparece com duas ou mais pessoas com login no espaço, ou se já houver conversa (seção 16.5). */
+  function comComentarios() {
+    const pessoas = new Set(d.responsaveis.map((r) => r.usuario).filter(Boolean));
+    if (usuario) pessoas.add(usuario);
+    return pessoas.size >= 2 || Boolean(comentarios?.length);
+  }
+  function comentariosHtml() {
+    if (!comComentarios()) return "";
+    const lista = comentarios ?? [];
+    const visiveis = lista.filter((c) => !c.apagadoEm).length;
+    return `<section class="comentarios" aria-label="Comentários">
+      <h4>Comentários${visiveis ? ` <span class="n">${visiveis}</span>` : ""}</h4>
+      ${comentarios === null ? `<p class="vazio">Carregando…</p>` : lista.length ? `<ol class="conversa">${lista.map(comentarioHtml).join("")}</ol>`
+        : `<p class="vazio">Nenhum comentário ainda.</p>`}
+      ${usuario ? `<form class="comentar" data-comentar>
+          <textarea name="novoComentario" rows="2" maxlength="4000" placeholder="Escreva um comentário" aria-label="Novo comentário"></textarea>
+          <div class="comentar-pe"><small class="tec">Ctrl+Enter envia. Quem consulta o espaço vê os comentários.</small>
+            <button class="botao principal" type="submit">Comentar</button></div>
+        </form>` : `<p class="tec">Entre com seu e-mail e senha para comentar.</p>`}
+    </section>`;
+  }
+  function comentarioHtml(c) {
+    const meu = usuario && c.autor === usuario;
+    if (c.apagadoEm) {
+      return `<li class="comentario apagado"><span class="tec">Comentário apagado ${c.apagadoComo === "administrador" ? "pelo administrador do espaço" : "pelo autor"} em ${quando(c.apagadoEm)}.</span></li>`;
+    }
+    const cabeca = `<div class="comentario-cabeca"><b>${esc(nomeDoAutor(c.autor))}</b>
+      <time datetime="${esc(c.criadoEm)}">${quando(c.criadoEm)}</time>
+      ${c.editadoEm ? `<span class="editado" title="Editado em ${quando(c.editadoEm)}. As versões anteriores ficam guardadas.">editado</span>` : ""}</div>`;
+    if (editandoComentario === c.id) {
+      return `<li class="comentario${meu ? " meu" : ""}">${cabeca}
+        <form class="comentar" data-editar-comentario="${esc(c.id)}">
+          <textarea name="textoComentario" rows="3" maxlength="4000" aria-label="Texto do comentário">${esc(c.texto)}</textarea>
+          <div class="comentar-pe"><small class="tec">A versão anterior fica guardada.</small>
+            <span class="botoes"><button class="botao" type="button" data-cancelar-comentario>Cancelar</button><button class="botao principal" type="submit">Salvar</button></span></div>
+        </form></li>`;
+    }
+    return `<li class="comentario${meu ? " meu" : ""}">${cabeca}
+      <p class="comentario-texto">${textoDoComentario(c.texto)}</p>
+      ${meu ? (apagandoComentario === c.id
+        ? `<div class="comentario-acoes confirmar">Apagar este comentário? Ele some para todos.
+            <button type="button" class="botao-texto perigo" data-confirmar-apagar="${esc(c.id)}">Apagar</button>
+            <button type="button" class="botao-texto" data-cancelar-comentario>Cancelar</button></div>`
+        : `<div class="comentario-acoes"><button type="button" class="botao-texto" data-editar-comentario-id="${esc(c.id)}">Editar</button>
+            <button type="button" class="botao-texto" data-apagar-comentario="${esc(c.id)}">Apagar</button></div>`) : ""}
+    </li>`;
+  }
+  /** Redesenha só a conversa (sem perder o que está sendo digitado nela). */
+  function desenharComentarios() {
+    const alvo = corpo.querySelector("[data-comentarios]");
+    if (!alvo) return;
+    const rascunho = alvo.querySelector('[name="novoComentario"]')?.value ?? "";
+    const comFoco = document.activeElement?.name === "novoComentario";
+    alvo.innerHTML = comentariosHtml();
+    const caixa = alvo.querySelector('[name="novoComentario"]');
+    if (caixa) { caixa.value = rascunho; if (comFoco) caixa.focus(); }
+    const edicao = alvo.querySelector('[name="textoComentario"]');
+    if (edicao && document.activeElement !== edicao) { edicao.focus(); edicao.setSelectionRange(edicao.value.length, edicao.value.length); }
+  }
   const executar = async (operacao, sucesso) => {
     try {
       await operacao();
@@ -160,6 +230,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         ${campos.notas !== false ? notasHtml(acao) : ""}
       </div>
 
+      <div data-comentarios>${comentariosHtml()}</div>
       ${comEstimativas ? historicoHtml(acao, resumoEst) : ""}
       <details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
         <summary><h4>Histórico de alterações</h4></summary>
@@ -546,6 +617,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       } catch (falha) { avisar(falha.message); }
       return;
     }
+    const editarC = t.closest("[data-editar-comentario-id]");
+    if (editarC) { editandoComentario = editarC.dataset.editarComentarioId; apagandoComentario = null; return desenharComentarios(); }
+    const apagarC = t.closest("[data-apagar-comentario]");
+    if (apagarC) { apagandoComentario = apagarC.dataset.apagarComentario; editandoComentario = null; return desenharComentarios(); }
+    if (t.closest("[data-cancelar-comentario]")) { editandoComentario = null; apagandoComentario = null; return desenharComentarios(); }
+    const confirmarC = t.closest("[data-confirmar-apagar]");
+    if (confirmarC) {
+      apagandoComentario = null;
+      return executar(() => store.apagarComentario(espacoId, confirmarC.dataset.confirmarApagar), "Comentário apagado.");
+    }
     if (t.closest("[data-abrir-checklist]")) {
       checklistAberto = true;
       focoNoChecklist = true;
@@ -577,6 +658,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   corpo.addEventListener("mousedown", (e) => { if (e.target.closest("[data-formatar]")) e.preventDefault(); });
   corpo.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (e.target.matches("[data-comentar]")) return enviarComentario(e.target);
+    if (e.target.matches("[data-editar-comentario]")) return salvarComentario(e.target);
     if (!e.target.matches("[data-checklist-form]")) return salvar(e.target);
     const campo = e.target.elements.novoItemChecklist;
     const texto = campo.value.trim();
@@ -585,6 +668,32 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     focoNoChecklist = true;
     try { await store.acrescentarItemNoChecklist(espacoId, numero, texto); }
     catch (falha) { campo.value = texto; avisar(falha.message); }
+  });
+  async function enviarComentario(form) {
+    const caixa = form.elements.novoComentario;
+    const texto = caixa.value;
+    if (!texto.trim()) return;
+    caixa.value = "";
+    try { await store.comentar(espacoId, numero, texto); corpo.querySelector('[name="novoComentario"]')?.focus(); }
+    catch (falha) { caixa.value = texto; avisar(falha.message); }
+  }
+  async function salvarComentario(form) {
+    const id = form.dataset.editarComentario;
+    if (await executar(() => store.editarComentario(espacoId, id, form.elements.textoComentario.value))) {
+      editandoComentario = null;
+      desenharComentarios();
+    }
+  }
+  /* Ctrl+Enter (⌘+Enter) envia o comentário ou salva a edição; Esc desiste da edição */
+  corpo.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && (editandoComentario || apagandoComentario) && e.target.closest("[data-comentarios]")) {
+      e.preventDefault(); e.stopPropagation();
+      editandoComentario = null; apagandoComentario = null;
+      return desenharComentarios();
+    }
+    if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
+    const form = e.target.closest("[data-comentar], [data-editar-comentario]");
+    if (form) { e.preventDefault(); form.requestSubmit(); }
   });
   /* checklist: marcar e desmarcar gravam na hora */
   corpo.addEventListener("change", (e) => {
@@ -621,6 +730,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }, { aoErro: (e) => avisar(e.message) });
 
   desenhar();
+  pararComentarios = store.acompanharComentarios(espacoId, numero, (lista) => { comentarios = lista; if (!fechada) desenharComentarios(); });
   return {
     /**
      * Novos dados do banco. Se outra pessoa alterou a ação, avisa por 10 segundos; os campos

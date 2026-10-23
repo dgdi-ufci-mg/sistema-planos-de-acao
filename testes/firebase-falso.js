@@ -101,6 +101,9 @@ export function criarFirestoreFalso({ auth = null, exigirLogin = false } = {}) {
             const todos = instantaneoColecao(caminho).docs;
             return { docs: todos.filter((d) => igual(d.data()[campo], valor)) };
           },
+          /* ouvinte da consulta, como o dos comentários de uma ação (passo 2.9) */
+          onSnapshot: (f) => ouvir(ouvintesColecao, caminho, (s) => f({ docs: s.docs.filter((d) => igual(d.data()[campo], valor)) }),
+            () => instantaneoColecao(caminho)),
         };
       },
     };

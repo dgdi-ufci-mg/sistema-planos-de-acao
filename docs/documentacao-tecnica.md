@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 124 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 125 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -148,7 +148,8 @@ Regras provisórias do Firestore (`firestore.rules`), até os papéis por espaç
 - qualquer pessoa consulta;
 - só quem entrou com e-mail e senha cria e altera;
 - ninguém apaga: a exclusão é lógica (lixeira, seção 4.7);
-- o histórico de alterações e os retratos só recebem registros novos: ninguém altera nem apaga.
+- o histórico de alterações e os retratos só recebem registros novos: ninguém altera nem apaga;
+- comentários (passo 2.9; seção 4.2.3): quem entrou cria em nome próprio (o `autor` tem de ser o e-mail do login, em minúsculas), sem versões nem marca de apagado; só o autor altera, sem mudar `id`, `acao`, `autor` e `criadoEm`, e com as versões anteriores preservadas (a lista só cresce, com o começo igual ao que já existia); apagado, o comentário não muda mais; ninguém apaga do banco. A leitura é pública, como o resto do sistema: um comentário "apagado" some da tela, mas continua legível por quem consultar o banco diretamente. **Limitação conhecida:** a restauração de uma cópia de segurança no Firebase não consegue recriar comentários de outras pessoas, nem os já editados ou apagados, porque as regras exigem que o autor seja quem está gravando; para restaurar tudo, o administrador precisa relaxar essa regra no console durante a restauração e publicá-la de novo em seguida.
 
 Usuários são cadastrados pela importação de responsáveis (provisório; seção 8.6) ou pelo administrador no console do Firebase. **Obrigatório antes de qualquer uso oficial:** papéis por espaço (administrador, usuário, leitor), visibilidade e proteção da branch `main` (seção 12, passos 2.1 a 2.3 e 2.11). Ao mudar as regras, é preciso publicá-las no console e conferir que entraram em vigor antes de publicar o código que depende delas.
 
@@ -364,6 +365,30 @@ Passo 2.8 (seção 16.5). Cada item é mudado sozinho, numa operação que lê e
 | `texto` | texto | sim | O que precisa ser feito | `Enviar minuta à Procuradoria` |
 | `feito` | sim ou não | sim | Marcado como feito | `false` |
 
+#### 4.2.3 Comentário: a conversa da ação
+
+Passo 2.9 (seção 16.5). Fica fora do documento da ação, numa coleção própria do espaço, ligada à ação pelo número. **Nunca é apagado do banco:** "apagar" só esconde o comentário da tela, que mostra no lugar "Comentário apagado pelo autor" com a data; o texto e todas as versões continuam guardados, para eventual pedido formal das autoridades competentes à equipe de TI. Editar guarda a versão anterior em `versoes`; a tela mostra a última, com a indicação "editado". Só o autor edita e apaga; o administrador do espaço também poderá apagar, com os papéis (passo 2.1), e então `apagadoComo` valerá `administrador`. Os comentários entram na cópia de segurança e **não** entram nos retratos (já são o próprio histórico). Não geram registro no histórico de alterações da ação.
+
+<!-- dicionario: comentario -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do comentário. Imutável | `c7a1…` |
+| `acao` | inteiro | sim | Número da ação comentada (4.2). Imutável | `12` |
+| `autor` | texto (e-mail) | sim | E-mail de quem escreveu, o mesmo do login. Imutável | `ana@ufci.edu.br` |
+| `texto` | texto | sim | Texto atual, de 1 a 4.000 caracteres, sem formatação | `Mandei o ofício hoje.` |
+| `criadoEm` | data e hora | sim | Momento em que foi escrito. Imutável | `2026-10-23T18:40:00Z` |
+| `editadoEm` | data e hora | não | Última edição. Vazio: nunca editado | |
+| `versoes` | lista de versão (abaixo) | sim | Textos anteriores, do mais antigo ao mais recente; só cresce | |
+| `apagadoEm` | data e hora | não | Quando foi apagado (escondido). Depois disso, não muda mais | |
+| `apagadoPor` | texto (e-mail) | não | Quem apagou | |
+| `apagadoComo` | texto: `autor` ou `administrador` | não | Papel de quem apagou, para a frase da tela | `autor` |
+
+<!-- dicionario: comentarioVersao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `texto` | texto | sim | O texto que valia antes da edição | |
+| `em` | data e hora | sim | Desde quando esse texto valia (a criação ou a edição anterior) | |
+
 ### 4.3 Estimativa: cada item de `estimativas`
 
 <!-- dicionario: estimativa -->
@@ -526,6 +551,7 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
 | Histórico de alterações | `espacos/{id}/historico/{id}` | tabela `historico`, com `espaco_id` |
+| Comentário (versões dentro dele) | `espacos/{id}/comentarios/{id}` | tabelas `comentario` e `comentario_versao`, com `espaco_id` e o número da ação |
 | Retrato | cabeçalho em `espacos/{id}/retratos/{id}`; ações em `espacos/{id}/retratos/{id}/acoes/{numero}` | tabelas `retrato`, `retrato_acao` |
 | Calendário geral | documento `sistema/calendario` | tabela `data_excluida_geral` |
 | Responsável (criado no sistema) | `espacos/{id}/responsaveis/{id}` | tabela `responsavel`, com `espaco_id` |
@@ -710,6 +736,8 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 **Novo espaço:** nome, tipo (Plano de Ação ou Projeto, em dois cartões com a explicação; no Plano de Ação, o Programa do PEI/PDI e o documento de aprovação), modelo (Cronograma estruturado, Cronograma aberto ou Personalizado; fixo depois de criado; seção 4.1.7), início e prazo final.
 
 **O que muda conforme o modelo** (passo 2.4b): rede só com dependências; cronograma só com estimativas; linha do tempo, índice de criticidade e contribuição para a incerteza só com simulação. No espaço com prazos por data-limite, a ação tem a data-limite no lugar da estimativa, o "Tempo restante" conta até ela e o carimbo Atrasada vem dela (seção 16.1).
+
+**Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
 **Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
 
@@ -910,7 +938,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
 2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
 2.8. ✔ Checklist. Feito no lote de 22/10/2026 (antes dos passos 2.1 a 2.7, por não depender deles nem de regras novas no banco): campo `checklist` da ação (4.2.2); na janela da ação, "Adicionar checklist", itens com caixa de marcar, texto editável com um clique e ×; progresso "feitos/total" nos cartões da lista e do quadro.
-2.9. Comentários.
+2.9. ✔ Comentários. Feito em 23/10/2026, a pedido do responsável (antes dos passos 2.5 a 2.7): entidade `comentario` (seção 4.2.3), na coleção `espacos/{id}/comentarios`, com regras próprias no `firestore.rules` (seção 3.6); no Store, `comentar`, `editarComentario`, `apagarComentario`, `listarComentarios` e `acompanharComentarios` (tempo real), com testes do contrato dos dois bancos e das regras de negócio. Na janela da ação, a seção "Comentários", entre as anotações e o histórico de estimativas: conversa do mais antigo ao mais novo, com nome (o do responsável ligado ao e-mail, ou o começo do e-mail), data e hora e a marca "editado"; os comentários de quem está vendo ficam à direita, em verde-azulado, com "Editar" e "Apagar" (com confirmação na própria linha); apagado, fica só "Comentário apagado pelo autor em …"; Ctrl+Enter envia; endereços da web viram links. A seção aparece quando o espaço tem duas ou mais pessoas com login (responsáveis com e-mail, mais quem entrou) ou quando já há comentários; sem login, ela mostra a conversa e "Entre com seu e-mail e senha para comentar". Os comentários entram na cópia de segurança e não entram nos retratos.
 2.10. Extração personalizada (seção 16.6).
 2.10a. Campos opcionais: etiquetas, prioridade da equipe (lista ordenada), links e documentos da ação, justificativa e local (seções 16.1 e 16.8). A forma de prazo "data-limite opcional" foi antecipada para o passo 2.4b.
 2.11. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
@@ -1173,6 +1201,7 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
   - **Histórico próprio:** cada edição de um comentário guarda a versão anterior; a tela mostra a última, com a indicação "editado".
   - **Apagar é só esconder:** o autor do comentário ou o administrador do espaço pode "apagar", e o comentário some da tela de todos os usuários. Mas ele **nunca é apagado do banco**, com todas as versões: uma eventual injúria, calúnia ou difamação precisa poder ser recuperada pelas autoridades competentes, por pedido formal à equipe de TI, fora do sistema. No lugar, a conversa mostra "Comentário apagado pelo autor" ou "Comentário apagado pelo administrador do espaço", com a data, para ninguém esconder nada em silêncio.
   - **Fora dos retratos:** os comentários já são o próprio histórico, por isso não são copiados nos retratos.
+  - **Feito no passo 2.9** (23/10/2026; detalhes na seção 12 e na seção 4.2.3). Até os papéis (passo 2.1), só o autor apaga; "apagado pelo administrador do espaço" fica previsto no dado (`apagadoComo`).
 
 ### 16.6 Relatórios e extração de dados
 
@@ -1438,3 +1467,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 122 | Passo 2.4a: tipos de espaço. Plano de Ação ou Projeto na criação e em "Configurar este espaço"; no Plano de Ação, o Programa do PEI/PDI (texto livre até o catálogo) e o documento de aprovação; menu lateral agrupado por tipo. Campos novos `tipo`, `programa` e `aprovacao` no dicionário de dados (4.1 e 4.1.6). Os espaços existentes, como a PI², valem como Projeto. Passo 2.4 dividido em 2.4a e 2.4b; definição do cronograma aberto registrada na seção 16.1 |
 | 123 | Passo 2.4b, parte 1 (dados e cálculo): modelo do espaço (`modelo`: estruturado, aberto ou personalizado; fixo depois de criado) e data-limite da ação (`dataLimite`). Prazos por estimativa ou por data-limite, nunca os dois; com data-limite, Atrasada = data-limite vencida e ação não concluída, sem caminho crítico; sem dependências, as anteriores são ignoradas; sem simulação, retrato sem chance nem datas estatísticas. O Store recusa o que o modelo desliga. Dicionário: 4.1.7, `dataLimite` em 4.2, retrato. Novo ponto para reavaliação: modelo fixo. Sem mudança na tela |
 | 124 | Passo 2.4b, parte 2 (telas): escolha do modelo na criação, com o personalizado; modelo só exibido em "Configurar este espaço"; visualizações, indicadores, ordens, nova ação, janela da ação, planilha, quadro e rede conforme o modelo; data-limite na tela, na importação e na exportação; glossário do "Tempo restante" com a data-limite. Passo 2.4b concluído; a data-limite sai do passo 2.10a |
+| 125 | Passo 2.9: comentários nas ações, a pedido do responsável. Conversa na janela da ação, em tempo real, com edição que guarda as versões anteriores e "apagar" que só esconde; nunca apagados do banco; na cópia de segurança e fora dos retratos. Nova entidade `comentario` (seção 4.2.3), nova coleção `espacos/{id}/comentarios` e regras novas no `firestore.rules` (seção 3.6), que o responsável precisa publicar no console do Firebase |

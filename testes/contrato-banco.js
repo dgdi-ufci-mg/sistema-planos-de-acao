@@ -186,5 +186,23 @@ export function testarContratoDoBanco(nome, criarBanco) {
       assert.deepEqual((await banco.listarAcoesDoRetrato("p1", "r1")).map((a) => a.numero).sort(), [1, 2]);
       assert.deepEqual(await banco.listarAcoesDoRetrato("p1", "r9"), []);
     });
+
+    it("comentários: cria, lista por ação, muda e avisa quem acompanha (passo 2.9)", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      const c = (id, acaoN, texto) => ({ id, acao: acaoN, autor: "ana@ufci.edu.br", texto, criadoEm: `2026-10-23T10:0${id.at(-1)}:00Z`, versoes: [] });
+      const vistos = [];
+      const parar = banco.acompanharComentarios("p1", 1, (lista) => vistos.push(lista.map((x) => x.texto).sort()));
+      await banco.criarComentario("p1", c("c1", 1, "Primeiro"));
+      await banco.criarComentario("p1", c("c2", 2, "De outra ação"));
+      await assert.rejects(banco.criarComentario("p1", c("c1", 1, "Repetido")), { codigo: "id-ocupado" });
+      await banco.mudarComentario("p1", "c1", (atual) => ({ texto: `${atual.texto} (editado)` }));
+      await assert.rejects(banco.mudarComentario("p1", "c9", () => ({})), { codigo: "nao-encontrado" });
+      assert.deepEqual((await banco.listarComentarios("p1", 1)).map((x) => x.texto), ["Primeiro (editado)"]);
+      assert.equal((await banco.listarComentariosDoEspaco("p1")).length, 2);
+      await new Promise((r) => setTimeout(r, 10));
+      parar();
+      assert.deepEqual(vistos.at(-1), ["Primeiro (editado)"]);
+    });
   });
 }

@@ -39,6 +39,18 @@ export function criarBancoLocal() {
     if (!retratosPorEspaco.has(espacoId)) retratosPorEspaco.set(espacoId, new Map());
     return retratosPorEspaco.get(espacoId);
   };
+  /** Comentários das ações (passo 2.9): espacoId → (id → comentário); nunca apagados, só escondidos. */
+  const comentariosPorEspaco = new Map();
+  const comentariosDo = (espacoId) => {
+    if (!comentariosPorEspaco.has(espacoId)) comentariosPorEspaco.set(espacoId, new Map());
+    return comentariosPorEspaco.get(espacoId);
+  };
+  /** Quem acompanha os comentários de uma ação: "espacoId|numero" → funções. */
+  const ouvintesDeComentarios = new Map();
+  const daAcao = (espacoId, numero) => [...comentariosDo(espacoId).values()].filter((c) => c.acao === numero).map(copia);
+  const avisarComentarios = (espacoId, numero) => {
+    for (const f of ouvintesDeComentarios.get(`${espacoId}|${numero}`) ?? []) f(daAcao(espacoId, numero));
+  };
   const historicoDo = (espacoId) => {
     if (!historicoPorEspaco.has(espacoId)) historicoPorEspaco.set(espacoId, []);
     return historicoPorEspaco.get(espacoId);
@@ -215,6 +227,37 @@ export function criarBancoLocal() {
     /** Todos os registros do espaço (cópia de segurança). */
     async listarHistoricoDoEspaco(espacoId) {
       return historicoDo(espacoId).map(copia);
+    },
+
+    // --- comentários das ações (passo 2.9): nunca apagados do banco ---
+    async criarComentario(espacoId, comentario) {
+      exigirEspaco(espacoId);
+      const lista = comentariosDo(espacoId);
+      if (lista.has(comentario.id)) throw new ErroDeDados("id-ocupado", `Já existe um comentário com o id ${comentario.id}.`);
+      lista.set(comentario.id, copia(comentario));
+      avisarComentarios(espacoId, comentario.acao);
+    },
+    /** Muda um comentário: `mudanca` recebe o atual e devolve os campos novos. */
+    async mudarComentario(espacoId, id, mudanca) {
+      const atual = comentariosDo(espacoId).get(id);
+      if (!atual) throw new ErroDeDados("nao-encontrado", "Comentário não encontrado.");
+      const novo = { ...atual, ...copia(mudanca(copia(atual))) };
+      comentariosDo(espacoId).set(id, novo);
+      avisarComentarios(espacoId, atual.acao);
+    },
+    async listarComentarios(espacoId, numero) {
+      return daAcao(espacoId, numero);
+    },
+    async listarComentariosDoEspaco(espacoId) {
+      return [...comentariosDo(espacoId).values()].map(copia);
+    },
+    /** Avisa a cada mudança nos comentários da ação, já com a lista atual. Devolve a função que para. */
+    acompanharComentarios(espacoId, numero, aoMudar) {
+      const chave = `${espacoId}|${numero}`;
+      if (!ouvintesDeComentarios.has(chave)) ouvintesDeComentarios.set(chave, new Set());
+      ouvintesDeComentarios.get(chave).add(aoMudar);
+      aoMudar(daAcao(espacoId, numero));
+      return () => ouvintesDeComentarios.get(chave)?.delete(aoMudar);
     },
 
     // --- responsáveis: de cada espaço (seção 4.5) ---
