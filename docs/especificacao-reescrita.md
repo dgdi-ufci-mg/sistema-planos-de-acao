@@ -871,6 +871,14 @@ Os itens abaixo mantêm a numeração original (1 a 4, da linha do tempo, já ap
 22. Não há como excluir retrato, nem os manuais.
 23. A comparação com retrato fica só no cronograma, com uma linha cinza fina sob cada barra.
 
+**Lote de 22/10/2026, à noite (detalhes no diário de execução)**
+24. Quadro: cartões sem data nem carimbo "Atrasada"; a coluna diz a situação e a barra, o prazo.
+25. Círculo da pessoa com a sigla só quando ela tem até três letras; sem sigla, as iniciais.
+26. Textos pequenos em `--muted` (contraste mínimo de 4,5:1); `--faint` fica para traços e enfeites.
+27. Simulação reaproveitada quando nada do que entra nela muda; sem *Web Worker* por enquanto.
+28. Checklist sem "feito por" e "feito em" no item (o histórico guarda) e sem reordenar itens.
+29. Migração a partir da cópia de segurança da versão 1 (seção 11), com as escolhas registradas lá.
+
 **Já combinado para o passo 1.19b:** na importação, quem importa escolhe entre atualizar as ações que já existem ou só criar novas (responsável, 22/10/2026).
 
 ## 15. Fundamentos matemáticos dos indicadores por ação

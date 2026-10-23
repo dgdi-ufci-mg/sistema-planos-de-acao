@@ -199,3 +199,39 @@ Os registros vão como estão no banco, sem tradução: o dicionário de dados (
 **Fora do lote, à espera de decisão:** 1.19b (importação por planilha e Mermaid, e restauração da cópia), porque grava no banco e pede decisões de comportamento (por exemplo, se a importação atualiza ações existentes ou só cria novas); 1.14d, 1.20, 1.21 e 1.22, já excluídos do lote.
 
 **Observado e corrigido depois (22/10/2026, a pedido do responsável):** no "Histórico de estimativas" da janela da ação, a data, o autor e o selo "vigente" apareciam em linhas separadas; agora ficam na mesma linha.
+
+---
+
+## Lote de 22/10/2026, à noite (seis itens pedidos pelo responsável)
+
+Autorizado pelo responsável ("Pode rodar os seis"). Cada item num commit próprio, testado e documentado. Nenhuma regra do banco mudou e nada foi gravado em dados reais.
+
+| Item | Commit |
+|---|---|
+| 4. Quadro enxuto, siglas nos círculos, pontas alinhadas na rede | `6cf4620` |
+| 5. Revisão de acessibilidade (temas, celular, teclado) | `917fa2e` |
+| 6. Teste de velocidade e simulação reaproveitada | `4d0a04f` |
+| 3. Checklist da ação (passo 2.8) | `674bfe1` |
+| 1. Programa da migração, testado com a PI² (sem executar) | `8aaa057` |
+| 2. Rascunho da documentação técnica da versão 2 | `593a934` |
+
+**Item 4.** Cartão do quadro sem data nem carimbo "Atrasada" (a coluna diz a situação; a barra, o prazo), com todos os participantes que couberem. Círculo da pessoa com a sigla, quando tem até três letras; sem sigla, as iniciais. Na rede, seta reta quando um dos lados tem só ela e a altura cabe no outro cartão.
+
+**Item 5.** axe-core 4.10.2 (regras WCAG 2 A e AA), rodado fora do repositório, nos seis modos, nos temas claro e escuro, a 1280 e a 400 px. Achados e correções: contraste de textos pequenos em `--faint` (passaram a `--muted`); `--faint` do tema escuro clareado; células bloqueadas da planilha sem papel ARIA; "+N" de responsáveis sem rótulo. Depois das correções, nenhuma violação. Teclado conferido no menu Exibir, na legenda da barra, nos cartões da rede e no zoom. Nenhuma rolagem horizontal a 400 px.
+
+**Item 6.** `testes/desempenho.mjs`, plano sintético com semente fixa. No ambiente de teste: 50 ações, simulação 0,3 s e rede 0,14 s; 200 ações, simulação 1,0 s, rede 0,5 s e desenho da rede 0,5 s; 300 ações, simulação 1,5 s. O caminho crítico fica abaixo de 2 ms. Para não refazer a simulação a cada edição de nome, descrição, responsáveis ou notas, a tela reaproveita o resultado anterior quando a chave da simulação não muda (resultado idêntico). Não foi feito: levar a simulação para segundo plano (*Web Worker*), que só se justifica se a tela travar no celular com planos grandes.
+
+**Item 3.** Checklist (passo 2.8), adiantado em relação aos passos 2.1 a 2.7 por não depender deles nem de regra nova no banco.
+
+**Item 1.** A migração parte da cópia de segurança da versão 1 e produz uma cópia da versão 2, restaurável num banco vazio. Ensaio com a cópia da PI²: 29 ações, 3 etapas, sem avisos. Não foi possível ensaiar com os dados reais completos (responsáveis e descrições), porque o ambiente não lê o Firebase da versão 1; o ensaio com eles fica para quando o responsável salvar a cópia de segurança da versão em uso.
+
+**Item 2.** Rascunho em `docs/documentacao-tecnica-v2-rascunho.md`.
+
+**Decisões provisórias deste lote** (também na seção 14.1 da especificação):
+- quadro sem data nem carimbo;
+- sigla no círculo só até três letras;
+- textos pequenos em `--muted`, e não em `--faint`;
+- simulação reaproveitada pela chave, sem *Web Worker*;
+- checklist sem "feito por" nem "feito em" no item (o histórico guarda quem e quando); sem reordenar itens;
+- migração a partir da cópia de segurança; retrato "Plano original" com origem `manual` e números recalculados para o dia em que foi salvo; ação 100% sem data de término fica não concluída, com aviso.
+
