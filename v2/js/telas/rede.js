@@ -18,6 +18,9 @@ import { ICONES } from "../icones.js";
  *   linhas: as linhas da lista (lista.js), para as datas e situações já calculadas;
  *   donos e situacao: o mesmo desenho dos cartões do quadro (22/10/2026)
  */
+/** Ajuste da altura ao redimensionar a janela: um só por vez, trocado a cada desenho. */
+let aoRedimensionar = null;
+
 export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala }) {
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
@@ -70,6 +73,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
         <span class="crono-legenda"><i class="folga"></i>Com folga</span>
         <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
       </div>
+      <p class="tec rede-explicacao">Da esquerda para a direita, na ordem em que as ações podem acontecer. Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la. Ctrl + rolar o mouse aproxima e afasta; arraste o fundo para mover a rede. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
     </div>
     <div class="rede" data-rede>
       <div class="rede-rolagem" data-rede-rolagem>
@@ -87,8 +91,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
           </div>
         </div>
       </div>
-    </div>
-    <p class="tec">Da esquerda para a direita, na ordem em que as ações podem acontecer. Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la. Ctrl + rolar o mouse aproxima e afasta; arraste o fundo para mover a rede. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>`;
+    </div>`;
 
   /* ---------- tamanho e zoom (22/10/2026): Ctrl + rolar aproxima e afasta, em volta do cursor, como
      nos quadros infinitos; arrastar o fundo move a rede. "Normal" é 100%; "Ver tudo" cabe na área ---------- */
@@ -98,6 +101,15 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   const valor = alvo.querySelector("[data-zoom-valor]");
   const MIN = 0.2;
   const MAX = 2.5;
+  /* a rede vai até o fim da tela (23/10/2026): a altura é o que sobra abaixo dela, com uma margem */
+  const ajustarAltura = () => {
+    if (!rolagem.isConnected) return removeEventListener("resize", ajustarAltura);
+    rolagem.style.height = `${Math.max(320, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 16))}px`;
+  };
+  ajustarAltura();
+  if (aoRedimensionar) removeEventListener("resize", aoRedimensionar);
+  aoRedimensionar = ajustarAltura;
+  addEventListener("resize", ajustarAltura);
   const alturaUtil = rolagem.clientHeight;
   const caber = () => Math.min(1, (rolagem.clientWidth - 2) / largura, (alturaUtil - 2) / altura);
   let fator = alvo.dataset.redeZoom ? Number(alvo.dataset.redeZoom) : escala === "tudo" ? caber() : 1;

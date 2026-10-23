@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 109.1 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 109.2 da página)
 
 ---
 
@@ -559,6 +559,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 108 | Versão 2, lote de 22/10/2026 (item 2): **rascunho da documentação técnica da versão 2**, em `docs/documentacao-tecnica-v2-rascunho.md`, para o passo 1.20. Visão geral, arquitetura, funcionalidades, indicadores, importação e exportação, permissões, decisões e pendências escritos a partir do sistema como está; dicionário de dados, regras de cálculo, situações e fundamentos matemáticos copiados da especificação (o teste do dicionário passa também contra o rascunho). Não substitui esta documentação até a troca |
 | 109 | Versão 2, **teste** pedido pelo responsável (23/10/2026): barra do topo com menus que abrem para baixo, no computador. Nome do espaço à esquerda; menus Visualização (mostra o modo atual), Filtrar (com o número de filtros ativos), Ordenar (com um ponto quando a ordem não é a do espaço) e Exibir (indicador da barra, "Mostrar até", identificador e colunas, cada um só onde se aplica); à direita, etiqueta vermelha "N atrasadas" (filtra as atrasadas) e Nova ação. A segunda linha some no computador; no celular, fica como antes. Entre 641 e 1399 px, os menus ficam só com o ícone, exceto o da visualização. Área do conteúdo alargada de 1240 para 1600 px. Sem mudança na versão atual |
 | 109.1 | Versão 2: largura por modo (pedido do responsável). A barra do topo passa a ocupar a largura toda da tela; lista, quadro e linha do tempo voltam à largura de leitura (1240 px); planilha, cronograma e rede ocupam toda a largura abaixo da barra. Sem mudança na versão atual |
+| 109.2 | Versão 2: a rede vai até o fim da tela (altura recalculada ao redimensionar a janela), e a explicação de uso subiu para a linha das ferramentas, no espaço livre ao lado da legenda (pedido do responsável). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

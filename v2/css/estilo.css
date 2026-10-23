@@ -1143,3 +1143,7 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
    linha do tempo ficam na largura de leitura (1240 px), e planilha, cronograma e rede, que precisam de
    espaço, ocupam toda a largura abaixo da barra */
 body[data-modo="planilha"] .conteudo, body[data-modo="cronograma"] .conteudo, body[data-modo="rede"] .conteudo { max-width: none; }
+
+/* rede até o fim da tela (23/10/2026): a explicação sobe para a linha das ferramentas, ocupando o espaço livre */
+.rede-explicacao { flex: 1 1 360px; margin: 0; font-size: .78rem; line-height: 1.35; }
+body[data-modo="rede"] .conteudo { padding-bottom: 0; }
