@@ -1,10 +1,10 @@
 # Documentação técnica — versão 2 (Sextante) — RASCUNHO
 
-> **Rascunho, preparado em lote em 22/10/2026 para o passo 1.20 (troca).** Ainda não é a documentação oficial: a oficial continua sendo `docs/documentacao-tecnica.md`, que descreve a versão em uso, e as decisões da versão 2 continuam em `docs/especificacao-reescrita.md`. Na troca, este texto é revisto pelo responsável, substitui a documentação atual, e a especificação é apagada.
+> **Rascunho, preparado em lote em 22/10/2026 para o passo 1.20 (troca).** Ainda não é a documentação oficial: a oficial continua sendo `docs/documentacao-tecnica.md`, que descreve a versão em uso, e as decisões da versão 2 continuam em `docs/especificacao-reescrita.md`. Na troca, este texto substitui a documentação atual, e a especificação é apagada. O responsável não fará a revisão (decisão de 23/10/2026), por isso o texto precisa ser rigoroso por si.
 >
 > **Como foi montado:** as seções 4 (dicionário de dados), 5 (regras de cálculo), 6 (situações) e 8 (fundamentos matemáticos) foram copiadas da especificação, com a numeração dela, para o teste do dicionário poder passar a ler este arquivo na troca. As demais foram escritas a partir do sistema como está hoje. Referências a seções da especificação que não vêm para cá (interface, ordem de trabalho, ampliação do escopo) aparecem como "especificação, seção N" e precisam ser resolvidas na revisão.
 
-**Última atualização deste documento:** 22/10/2026 (rascunho 1)
+**Última atualização deste documento:** 23/10/2026 (rascunho 2)
 
 ---
 
@@ -20,11 +20,15 @@ Planejar e acompanhar planos de ação institucionais da DGDI (Diretoria de Gove
 
 E mostra o espaço em seis modos: lista, quadro, rede, cronograma, planilha e linha do tempo.
 
-### 1.2 Público
+### 1.2 Natureza: protótipo
+
+O sistema é um **protótipo, uma prova de conceito** (decisão do responsável, 23/10/2026). Ele não vai para o Data Center da UFCI-MG: o sistema definitivo será desenvolvido do zero pela equipe de TI da instituição, com as linguagens e ferramentas dela e com a participação dela desde o início. O protótipo serve de **modelo conceitual**: regras, cálculos, modelo de dados, telas e decisões descritos aqui valem como requisitos; o código não é reaproveitado. Por isso, esta documentação deve permitir reconstruir o comportamento do sistema sem ler o código.
+
+### 1.3 Público
 
 Gestores e equipes **leigos** em gerenciamento de projetos. Por isso a interface usa palavras do dia a dia, com o termo técnico em itálico e menor, e cada termo tem um verbete em "Entenda os termos" (Ajuda > Glossário), com a equação e a fonte primária quando é uma medida matemática.
 
-### 1.3 Princípios de projeto
+### 1.4 Princípios de projeto
 
 - **Simples primeiro** (KISS e YAGNI): a solução mais simples que resolve; nada construído antes de haver necessidade.
 - **Só pedir o necessário:** o usuário informa apenas o que entra em algum cálculo. Exemplo: o início real de uma ação não é pedido.
@@ -400,7 +404,7 @@ O campo `tipo` (decisão do responsável, 20/10/2026) separa **pessoas** de **un
 - **Membro da equipe com acesso ao sistema:** tem `usuario`. Para esses, funcionam o filtro "Minhas ações" e, na Fase 2, os papéis por espaço.
 - **Responsável diverso:** pessoa de fora do sistema, ou qualquer unidade organizacional, equipe ou grupo de unidades (`tipo: unidade`). Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
 
-**Quatro tipos de responsável, previstos para a Fase 4** (decisão do responsável, 21/10/2026). O tipo (pessoa ou unidade) e a **origem** (da instituição ou criado no sistema) são duas perguntas separadas:
+**Quatro tipos de responsável, previstos para o sistema definitivo (antiga Fase 4)** (decisão do responsável, 21/10/2026). O tipo (pessoa ou unidade) e a **origem** (da instituição ou criado no sistema) são duas perguntas separadas:
 
 | | Da instituição | Criado no sistema |
 |---|---|---|
@@ -409,8 +413,8 @@ O campo `tipo` (decisão do responsável, 20/10/2026) separa **pessoas** de **un
 
 - Os cadastros **da instituição** vêm de fora e não são editados no sistema: nome, e-mail e sigla seguem o cadastro oficial, sem duplicatas nem nomes escritos de jeitos diferentes. Cada um guarda o identificador oficial (a IU da pessoa; o código da unidade). As unidades oficiais vêm em árvore (subunidades), o que permite, no futuro, filtros como "ações da DGDI e das suas subunidades".
 - Os cadastros **criados no sistema** continuam livres, como hoje.
-- Até a Fase 4, o e-mail de login (`usuario`) é a forma provisória de ligar uma pessoa a quem entra no sistema (login por e-mail e senha, passo 1.14). Com a IU, a ligação passa a ser pelo identificador da IU.
-- Campos previstos (seção 4.10): `origem` (`instituicao` ou `sistema`) e `identificadorInstitucional`. Não entram antes da Fase 4, porque, sem a IU e o banco de unidades, ficariam vazios.
+- No protótipo, o e-mail de login (`usuario`) é a forma provisória de ligar uma pessoa a quem entra no sistema (login por e-mail e senha, passo 1.14). Com a IU, a ligação passa a ser pelo identificador da IU.
+- Campos previstos (seção 4.10): `origem` (`instituicao` ou `sistema`) e `identificadorInstitucional`. Não entram no protótipo, porque, sem a IU e o banco de unidades, ficariam vazios.
 
 ### 4.6 Edição simultânea
 
@@ -479,7 +483,7 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
 - **Fase 2 e seguintes:** campos opcionais da seção 16.8 da especificação (`etiquetas`, `posicaoPrioridade`, `documentos` da ação, `justificativa`, `local`, `dataLimite`; depois, `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos).
-- **Fase 4:** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
+- **Sistema definitivo (antiga Fase 4):** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
 - **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7 da especificação); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3 da especificação); catálogo do PEI/PDI (seção 16.1 da especificação); situações personalizadas (seção 16.2 da especificação); comentários (seção 16.5 da especificação). O checklist entrou no passo 2.8 (4.2.2).
 
 ---
@@ -661,7 +665,7 @@ Com outro gerador, os resultados são estatisticamente equivalentes, com diferen
 - **Importar responsáveis de planilha:** Nome (obrigatório), Tipo, Sigla, Setor e E-mail. Com e-mail, é pessoa e ganha a conta de acesso, criada numa instância separada do Firebase, sem guardar sessão; a senha é sorteada e descartada, e a pessoa recebe o e-mail para definir a sua. Sem e-mail, o tipo precisa vir na planilha. Provisório até os papéis por espaço (especificação, passo 2.1).
 - **Exportar:** "Copiar para planilha" e "Copiar fluxograma" (Mermaid), por cópia para colar.
 - **Cópia de segurança** ("Configurar o sistema"): arquivo `sextante-copia-de-seguranca`, versão 2, com todos os espaços (inclusive a lixeira), ações, responsáveis, histórico e retratos, e o calendário geral. A restauração só é feita num banco sem nenhum espaço, para nunca misturar nem sobrescrever dados.
-- **Migração da versão 1:** `js/migracao.js` converte a cópia de segurança da versão 1 numa cópia da versão 2, que se restaura como qualquer outra (seção 11 da especificação; ensaio em `testes/migrar-copia.mjs`).
+- **Migração da versão 1:** cancelada em 23/10/2026; os dados da versão 1 são descartados. O programa preparado (`js/migracao.js`, com `testes/migrar-copia.mjs`) pode ser retirado na troca.
 
 ---
 
@@ -692,15 +696,16 @@ As decisões da versão 2, com os motivos, estão hoje na especificação. Na re
 - **Rede desenhada pelo próprio sistema** (camadas, marcos, setas em ângulo reto), sem biblioteca externa, para abrir mesmo sem acesso ao CDN.
 - **Simulação reaproveitada** quando nada do que entra nela muda, com resultado idêntico (chave da simulação).
 
-Decisões provisórias, ainda à espera do responsável: especificação, seção 14.1, e diário de execução (`docs/registro-de-execucao.md`).
+As decisões da execução em lote (especificação, seção 14.1) foram aprovadas pelo responsável em 23/10/2026; os detalhes de cada uma estão no diário de execução (`docs/registro-de-execucao.md`).
 
 ---
 
 ## 12. Pendências e próximos passos
 
-- **Troca (passo 1.20):** revisar este rascunho; decidir como levar os planos da versão 1 (o banco da versão 2 já tem a PI², e a restauração exige banco vazio); migrar; publicar a versão 2 na raiz; atualizar AGENTS.md, README e CONTRIBUTING; apagar a especificação.
-- **Piloto (1.21):** PI² com o andamento real, acompanhada na versão 2.
-- **Manual do usuário (1.22):** quando o responsável liberar.
+- **Troca (passo 1.20):** publicar a versão 2 na raiz, com o banco que ela já usa (projeto `sextante-v2`, com a PI²); descartar os dados da versão 1; concluir este texto; atualizar AGENTS.md, README e CONTRIBUTING; apagar a especificação.
+- **Piloto (1.21):** uso real da versão 2 na PI² por algumas semanas, registrando conclusões e reestimativas, para conferir previsões, avisos e telas.
+- **Manual do usuário (1.22):** parado até o responsável liberar.
+- **Passagem à equipe de TI (fase 4, revista em 23/10/2026):** documentação conceitual, casos de referência com resultados esperados e acompanhamento do novo desenvolvimento; os recursos institucionais (IU, unidades, PostgreSQL, envio de arquivos, retratos automáticos, Data Lakehouse) viram requisitos do sistema definitivo.
 - **Fase 2:** papéis e visibilidade, encerramento, tipos de espaço, catálogo do PEI/PDI, entregas dos Planos de Ação, situações personalizadas, comentários, extração de dados (especificação, seção 12).
 - **Pontos para reavaliação:** data de liberação de ações criadas depois, estimativa livre antes da liberação, distribuição beta-PERT e durações independentes entre ações (especificação, seção 14).
 - **Velocidade:** com 200 ações, a simulação leva cerca de 1 s no ambiente de teste. Se travar no celular, levá-la para segundo plano (*Web Worker*).

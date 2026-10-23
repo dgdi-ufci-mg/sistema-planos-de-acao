@@ -1,6 +1,7 @@
 # Especificação da reescrita (versão 2)
 
-**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 a 1.14, 1.14a, 1.14b, 1.14c, 1.14d, 1.15, 1.16, 1.17a, 1.17b, 1.17c, 1.18, 1.19a e 1.19b (primeiras versões).
+**Situação:** em execução, passo a passo (seção 12). Passos concluídos: 0.1 a 0.5, 1.1 a 1.14, 1.14a, 1.14b, 1.14c, 1.14d, 1.15, 1.16, 1.17a, 1.17b, 1.17c, 1.18, 1.19a, 1.19b e 2.8 (primeiras versões).
+**Natureza do sistema (decisão do responsável, 23/10/2026):** protótipo, uma prova de conceito. Ele não será levado ao Data Center da UFCI-MG. A equipe de TI da instituição precisa conhecer e controlar o código que mantém, por segurança e por compreensão. Por isso, o sistema definitivo será desenvolvido do zero pela própria equipe de TI, com as linguagens e ferramentas que ela usa e com a participação dela desde o início. Este protótipo pode ser usado e testado fora da instituição e serve de **modelo conceitual** para esse desenvolvimento: as regras, os cálculos, o modelo de dados, as telas e as decisões registradas aqui e na documentação técnica valem como requisitos; o código não é reaproveitado. Daí o rigor exigido da documentação.
 **Data:** 19/10/2026
 
 Este documento reúne as decisões tomadas para a reescrita do sistema. A reescrita segue este texto. Quando a versão 2 entrar no ar, o conteúdo daqui passa para a `documentacao-tecnica.md`, e este arquivo é apagado.
@@ -379,7 +380,7 @@ O campo `tipo` (decisão do responsável, 20/10/2026) separa **pessoas** de **un
 - **Membro da equipe com acesso ao sistema:** tem `usuario`. Para esses, funcionam o filtro "Minhas ações" e, na Fase 2, os papéis por espaço.
 - **Responsável diverso:** pessoa de fora do sistema, ou qualquer unidade organizacional, equipe ou grupo de unidades (`tipo: unidade`). Fica sem `usuario`. É cadastrado livremente, inclusive direto no formulário da ação ("Cadastrar … como responsável").
 
-**Quatro tipos de responsável, previstos para a Fase 4** (decisão do responsável, 21/10/2026). O tipo (pessoa ou unidade) e a **origem** (da instituição ou criado no sistema) são duas perguntas separadas:
+**Quatro tipos de responsável, previstos para o sistema definitivo (antiga Fase 4)** (decisão do responsável, 21/10/2026). O tipo (pessoa ou unidade) e a **origem** (da instituição ou criado no sistema) são duas perguntas separadas:
 
 | | Da instituição | Criado no sistema |
 |---|---|---|
@@ -388,8 +389,8 @@ O campo `tipo` (decisão do responsável, 20/10/2026) separa **pessoas** de **un
 
 - Os cadastros **da instituição** vêm de fora e não são editados no sistema: nome, e-mail e sigla seguem o cadastro oficial, sem duplicatas nem nomes escritos de jeitos diferentes. Cada um guarda o identificador oficial (a IU da pessoa; o código da unidade). As unidades oficiais vêm em árvore (subunidades), o que permite, no futuro, filtros como "ações da DGDI e das suas subunidades".
 - Os cadastros **criados no sistema** continuam livres, como hoje.
-- Até a Fase 4, o e-mail de login (`usuario`) é a forma provisória de ligar uma pessoa a quem entra no sistema (login por e-mail e senha, passo 1.14). Com a IU, a ligação passa a ser pelo identificador da IU.
-- Campos previstos (seção 4.10): `origem` (`instituicao` ou `sistema`) e `identificadorInstitucional`. Não entram antes da Fase 4, porque, sem a IU e o banco de unidades, ficariam vazios.
+- No protótipo, o e-mail de login (`usuario`) é a forma provisória de ligar uma pessoa a quem entra no sistema (login por e-mail e senha, passo 1.14). Com a IU, a ligação passa a ser pelo identificador da IU.
+- Campos previstos (seção 4.10): `origem` (`instituicao` ou `sistema`) e `identificadorInstitucional`. Não entram no protótipo, porque, sem a IU e o banco de unidades, ficariam vazios.
 
 ### 4.6 Edição simultânea
 
@@ -458,7 +459,7 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
 - **Fase 2 e seguintes:** campos opcionais da seção 16.8 (`etiquetas`, `posicaoPrioridade`, `documentos` da ação, `justificativa`, `local`, `dataLimite`; depois, `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos).
-- **Fase 4:** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
+- **Sistema definitivo (antiga Fase 4):** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
 - **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); comentários (seção 16.5). O checklist entrou no passo 2.8 (4.2.2).
 
 ---
@@ -609,7 +610,7 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 - **Revisto em 22/10/2026 (decisão do responsável):** os nomes técnicos valem em todo o sistema (seletor Barra, ordens, legenda, janela da ação e glossário); "prioridade de execução" e "prioridade de revisão" ficam no glossário como "Em palavras simples". Cada verbete traz a fonte primária, com DOI. *Revisto em 23/10/2026:* na tela, "contribuição para a incerteza" (o glossário explica o termo técnico, contribuição para a variância), com o símbolo de curva de sino; a lupa fica reservada para a busca. O campo "Notas" passa a "Anotações" na tela.
 - **Acrescentado em 22/10/2026 (pedido do responsável):** edição no lugar com **Alt+clique**, para quem pode gravar, na lista, no quadro e na rede: nome (nas três), descrição (lista) e participantes (lista e quadro). Campos calculados (situação, datas e barras) não se editam. Com Alt pressionado, os campos editáveis ficam contornados.
 - **Revisto em 22/10/2026 (decisão do responsável):** o menu "Colunas" passa a se chamar **Exibir** e vale na lista, no quadro, na rede e no cronograma. Traz o **identificador** antes do nome, na mesma linha: nenhum, número (#1) ou código (este só nos espaços que usam códigos); um ou outro, nunca os dois. Ação sem código mostra o número. Padrão: código onde há códigos; nenhum nos demais. Escolha lembrada no aparelho. Na lista, o mesmo menu mantém as colunas.
-- **Em teste desde 23/10/2026 (pedido do responsável):** no computador, a barra do topo passa a ter o nome do espaço à esquerda e os menus Visualização, Filtrar, Ordenar e Exibir, todos abrindo para baixo; "Barra" vira o item "Indicador" do Exibir, e "Mostrar até" também vai para o Exibir; a segunda linha some, e as atrasadas viram uma etiqueta vermelha ao lado de "Nova ação". Revisto no mesmo dia, em teste: a barra passa a ter três grupos, como no Numbers: à esquerda, o nome do espaço (só com o menu lateral fora de vista) e a visualização; no centro da área de trabalho, Classificar e filtrar, Exibir e Indicador; à direita, atrasadas e Nova ação. Revisto no mesmo dia: Filtrar e Ordenar viram "Classificar e filtrar", como no Excel; o menu de visualização ganhou ícone próprio e continua mostrando o modo atual. O indicador ganhou menu próprio, "Indicador", com ícone de mostrador, à direita do Exibir, só onde há barras; no Exibir, a coluna "Barras" passa a se chamar "Indicador". Largura (revisto no mesmo dia): a barra do topo ocupa a tela toda; lista, quadro e linha do tempo ficam em 1240 px; planilha, cronograma e rede ocupam toda a largura abaixo da barra. No celular, nada muda.
+- **Aprovado em 23/10/2026, depois de um teste pedido pelo responsável:** no computador, a barra do topo passa a ter o nome do espaço à esquerda e os menus Visualização, Filtrar, Ordenar e Exibir, todos abrindo para baixo; "Barra" vira o item "Indicador" do Exibir, e "Mostrar até" também vai para o Exibir; a segunda linha some, e as atrasadas viram uma etiqueta vermelha ao lado de "Nova ação". Revisto no mesmo dia, em teste: a barra passa a ter três grupos, como no Numbers: à esquerda, o nome do espaço (só com o menu lateral fora de vista) e a visualização; no centro da área de trabalho, Classificar e filtrar, Exibir e Indicador; à direita, atrasadas e Nova ação. Revisto no mesmo dia: Filtrar e Ordenar viram "Classificar e filtrar", como no Excel; o menu de visualização ganhou ícone próprio e continua mostrando o modo atual. O indicador ganhou menu próprio, "Indicador", com ícone de mostrador, à direita do Exibir, só onde há barras; no Exibir, a coluna "Barras" passa a se chamar "Indicador". Largura (revisto no mesmo dia): a barra do topo ocupa a tela toda; lista, quadro e linha do tempo ficam em 1240 px; planilha, cronograma e rede ocupam toda a largura abaixo da barra. No celular, nada muda.
 - **Ferramentas da lista no computador:** filtros de situação, Lista ou Editar em planilha, Minhas ações, responsável, ordenação, Recolher fases, Legenda e Nova ação. A legenda de cores e símbolos fica escondida até ser aberta.
 - **Ferramentas da lista no celular**, em uma só linha: os filtros de situação numa faixa que rola para o lado e um botão **"Filtros e ordem"**, que mostra quantas opções estão ativas. Ele abre um painel que sobe de baixo, com: Minhas ações, responsável, ordenação, recolher ou expandir fases, legenda e "Limpar filtros e ordem". **Nova ação** vira um botão flutuante (+) no canto inferior direito. A edição em planilha fica só no computador. Nos cartões de ações concluídas, as barras de prioridade, sem uso, não aparecem.
 
@@ -705,6 +706,8 @@ Construir um Gantt e uma rede interativos sem biblioteca externa é o maior trab
 
 ## 11. Migração dos dados atuais
 
+**Cancelada (decisão do responsável, 23/10/2026):** os dados da versão atual são descartados, e a versão 2 entra no ar com o banco que já usa (projeto `sextante-v2`, com a PI²). O que segue fica como registro do que foi preparado; o programa de migração pode ser retirado na troca (passo 1.20).
+
 A versão 2 converte os dados atuais na primeira leitura de cada plano da versão atual, antes de qualquer gravação. Antes, é feita uma cópia de segurança completa.
 
 | Atual | Versão 2 |
@@ -771,9 +774,9 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 1.19b. ✔ Importação por planilha e restauração da cópia de segurança. A importação por Mermaid foi cancelada (decisão do responsável, 22/10/2026). Feito no passo 1.19b:
 - **Importar ações de planilha** (nome dado pelo responsável em 22/10/2026), em "Configurar este espaço": colar as linhas com a linha de títulos, no formato de "Copiar para planilha" (as colunas calculadas são ignoradas); escolher entre "Só criar ações novas" e "Também atualizar as que já existem" (decisão do responsável, 22/10/2026); conferir antes de gravar, linha a linha, com avisos; gravar. Uma ação já existe quando tem o mesmo número, código ou nome. Ao atualizar, célula vazia não muda nada. Fases e etapas que faltam são criadas. Dependências podem citar ações existentes (número, código ou nome) e outras linhas da planilha (nome, ou o número da coluna Número quando ele não existe no espaço, como ao levar ações para um espaço novo). Ação já liberada não tem a estimativa mudada pela importação (aviso: use "Reestimar"). Responsável não cadastrado fica de fora, com aviso. Também na conferência (ajuste de 22/10/2026): dependência que criaria um ciclo, código inválido ou já usado (no espaço ou em outra linha) e nome repetido na planilha. Dependências pelo código (ajuste de 22/10/2026, planilha da PI²): o código de cada linha é guardado mesmo com "Códigos das ações" desligado, e "Depende de" procura primeiro os códigos (da planilha e do espaço), depois os números e os nomes; assim, códigos só de algarismos, como "001", não se confundem com números. Títulos aceitos também: "ID" e "Cod" para o código; "Predecessoras" para as dependências. Cada linha é gravada pelas operações comuns, com validação e histórico; uma linha que falhe não impede as outras. Regras em `js/importar.js` e `importarAcoes` no `Store`.
 - **Restaurar uma cópia**, em "Configurar o sistema" (e, com o banco vazio, pelo link nas boas-vindas): confere o arquivo, mostra o resumo, pede confirmação e recria tudo exatamente como estava (ids, números, lixeira, histórico, retratos e calendário geral). Só com login e só num banco sem nenhum espaço, nem na lixeira: nunca mistura nem sobrescreve. `conferirCopia` e `restaurarCopia` no `Store`; teste de ida e volta (a cópia do banco restaurado é igual à original).
-1.20. Troca: cópia de segurança, migração dos dados (seção 11; programa preparado em 22/10/2026, sem executar) e versão 2 na raiz. Se houver outros usuários nessa época, também aviso prévio e gravação congelada na versão atual durante a migração. Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas; AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.
-1.21. Piloto: espaço da PI² atualizado com o andamento real e acompanhado na versão 2.
-1.22. Manual do usuário, quando o responsável liberar. Deve trazer as tabelas de decisão da especificação, como a das situações das entregas (seção 16.7); as que chegarem depois entram no manual junto com o passo que as implementar.
+1.20. Troca: versão 2 na raiz, com o banco que ela já usa (projeto `sextante-v2`, com a PI²); os dados da versão atual são descartados, sem migração (decisão do responsável, 23/10/2026; seção 11). Documentação técnica refeita a partir desta especificação, inclusive a revisão das "Decisões tomadas" superadas, sem revisão do responsável, que pediu rigor (23/10/2026); AGENTS.md, README e CONTRIBUTING atualizados; este arquivo removido.
+1.21. Piloto: usar a versão 2 de verdade num plano real, a PI², por algumas semanas: registrar as conclusões e reestimativas à medida que acontecem e conferir se as previsões, os avisos e as telas ajudam no acompanhamento. O que o uso mostrar vira correção ou entra nos pontos para reavaliação (seção 14).
+1.22. Manual do usuário, **parado** até o responsável liberar (reafirmado em 23/10/2026). Deve trazer as tabelas de decisão da especificação, como a das situações das entregas (seção 16.7); as que chegarem depois entram no manual junto com o passo que as implementar.
 
 ### Fase 2: organização e permissões (obrigatória antes do uso oficial)
 
@@ -795,13 +798,13 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 3.1. Tipo "Quadro de tarefas": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de tarefas.
 3.2. Recorrência de tarefas (seção 16.8).
 
-### Fase 4: servidor da UFCI-MG
+### Fase 4: passagem do protótipo à equipe de TI da UFCI-MG
 
-4.1. PostgreSQL e programa do servidor, com as permissões.
-4.2. Login institucional (Identificação Única), com recadastro dos usuários; responsáveis da instituição (pessoas pela IU e unidades oficiais em árvore), ao lado dos criados no sistema (seção 4.5).
-4.3. Envio de arquivos dos documentos do espaço.
-4.4. Retratos automáticos, com periodicidade definida pelo Administrador do Sistema.
-4.5. ETL para o Data Lakehouse (Apache Spark ou Apache Hop).
+*Revista em 23/10/2026 (decisão do responsável):* o protótipo não vai para o servidor da instituição (veja "Natureza do sistema", no alto). Os antigos passos desta fase (PostgreSQL e programa do servidor; login institucional pela Identificação Única; envio de arquivos dos documentos; retratos automáticos; carga para o Data Lakehouse por Apache Spark ou Apache Hop) deixam de ser passos do protótipo e passam a ser **requisitos do sistema definitivo**, a combinar com a equipe de TI. Onde este texto citar passos 4.1 a 4.5 antigos (IU, unidades oficiais, PostgreSQL, envio de arquivos, retratos automáticos, Data Lakehouse), leia "sistema definitivo". O conteúdo desta fase está em definição com o responsável; a proposta é:
+
+4.1. Documentação conceitual completa para a equipe de TI: regras de cálculo com as fontes, dicionário de dados, telas e comportamentos, decisões com os motivos.
+4.2. Casos de referência: planos de exemplo com os resultados esperados (datas, chances, índices), com a semente fixa, para conferir a nova implementação contra o protótipo.
+4.3. Apresentação do protótipo à equipe de TI e acompanhamento do novo desenvolvimento, como fonte das regras.
 
 ### Futuro, sem fase
 
@@ -817,7 +820,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 ### Decisões pendentes, com o passo em que precisam estar tomadas
 
 - **Nome padrão da situação inicial** nos espaços sem dependências, como "A fazer" (passo 2.7).
-- **Integração com os cadastros da instituição** (servidores pela IU e unidades organizacionais): protocolo de comunicação desconhecido; pode não acontecer (passo 4.2).
+- **Integração com os cadastros da instituição** (servidores pela IU e unidades organizacionais): protocolo de comunicação desconhecido; passa a ser requisito do sistema definitivo (fase 4, revista em 23/10/2026).
 
 ## 13. Fora desta reescrita
 
@@ -833,15 +836,15 @@ Decisões aceitas para seguir em frente, mas que o responsável pediu para **rea
 3. **Distribuição beta-PERT (seção 5.2).** Adotada por coerência com a fórmula das datas, por ser padrão de mercado e fácil de explicar. Crítica conhecida: concentra os sorteios perto do mais provável e dá pouco peso aos extremos, o que pode deixar a previsão otimista. Alternativas: a triangular, mais pessimista com os mesmos três pontos (na PI², 74% contra 89,5% de chance de cumprir o prazo); ou tratar o otimista e o pessimista como "10% e 90% de chance", e não como limites absolutos, o que engorda as caudas. A reavaliar: comparar previsões e conclusões reais quando houver histórico.
 4. **Durações independentes entre ações (seção 5.7).** A simulação supõe que o prazo de uma ação não influencia o das outras. Na prática, uma mesma causa (falta de pessoal, greve, troca de gestão) atrasa várias ações juntas, e ignorar isso deixa o resultado otimista; costuma ser o efeito mais forte. Alternativas, em ordem de complexidade: correlação entre ações de uma mesma etapa ou responsável; causas comuns modeladas explicitamente (*Termo técnico: risk drivers*). A reavaliar com o sistema em uso. A correção principal do otimismo continua prevista na previsão por classe de referência, com o histórico real da instituição.
 
-### 14.1 Decisões provisórias da execução em lote (21 e 22/10/2026)
+### 14.1 Decisões da execução em lote (21 e 22/10/2026)
 
-Tomadas sem consulta durante a execução em lote (seção 3.3), à espera do "sim" ou do "não" do responsável. Ao decidir, o item sai desta lista: aprovado, vira regra da seção correspondente; recusado, vira correção. O diário técnico (`docs/registro-de-execucao.md`) guarda os detalhes de cada passo.
+Tomadas sem consulta durante a execução em lote (seção 3.3). **Todas aprovadas pelo responsável em 23/10/2026**, por estarem em uso sem problemas; ficam como regras dos passos correspondentes. Exceção: o item 29 (migração) perdeu o objeto, porque a migração foi cancelada (seção 11). O diário técnico (`docs/registro-de-execucao.md`) guarda os detalhes de cada passo.
 
-**Já aprovadas pelo responsável (22/10/2026):**
+**Aprovadas antes, em 22/10/2026:**
 - Linha do tempo (passo 1.17a): eixo do início do espaço (ou de hoje, se for antes) até a última data simulada ou o prazo final, com uma semana de folga; barras por semana, de segunda a domingo; em cada cenário, o trabalho termina no dia útil em que a última ação acaba (a mesma regra da conclusão prevista); faixa do cartão "Prazo final" vermelha quando a chance é menor que 50%; modo só no computador; termo "Chance de cumprir o prazo" no glossário.
 - Aviso de falta de conexão na barra do topo, inclusive para a rede ligada sem internet.
 
-Os itens abaixo mantêm a numeração original (1 a 4, da linha do tempo, já aprovados).
+Os itens abaixo mantêm a numeração original (1 a 4, da linha do tempo, aprovados em 22/10/2026); de 5 a 28, aprovados em 23/10/2026.
 
 **Cronograma (passo 1.17b)**
 5. Sem filtros nem ordem: mostra sempre o espaço inteiro, na ordem do espaço, porque as setas ligariam ações escondidas.
@@ -878,7 +881,7 @@ Os itens abaixo mantêm a numeração original (1 a 4, da linha do tempo, já ap
 26. Textos pequenos em `--muted` (contraste mínimo de 4,5:1); `--faint` fica para traços e enfeites.
 27. Simulação reaproveitada quando nada do que entra nela muda; sem *Web Worker* por enquanto.
 28. Checklist sem "feito por" e "feito em" no item (o histórico guarda) e sem reordenar itens.
-29. Migração a partir da cópia de segurança da versão 1 (seção 11), com as escolhas registradas lá.
+29. ~~Migração a partir da cópia de segurança da versão 1 (seção 11).~~ Sem objeto: migração cancelada em 23/10/2026.
 
 **Já combinado para o passo 1.19b:** na importação, quem importa escolhe entre atualizar as ações que já existem ou só criar novas (responsável, 22/10/2026).
 

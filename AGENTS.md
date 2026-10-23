@@ -22,6 +22,8 @@ Além disso, ele tem estes atributos:
 - **Público:** gestores e equipes **leigos** em gerenciamento de projetos.
 - **Licença:** GPL v3.
 
+**Este sistema é um protótipo** (decisão do responsável, 23/10/2026): uma prova de conceito, que não irá para o Data Center da instituição. O sistema definitivo será desenvolvido do zero pela equipe de TI da UFCI-MG, com as tecnologias dela, tendo este protótipo como **modelo conceitual**. Por isso, a documentação precisa descrever regras, cálculos, dados e decisões com rigor suficiente para reconstruir o comportamento sem ler o código.
+
 A versão antiga, publicada como artefato no claude.ai, está **descontinuada**. Não a atualize. O repositório é a única fonte da verdade.
 
 **Versão 2 em construção, na pasta `v2/`.** Nome provisório: **Sextante**. Ela é construída passo a passo, conforme a especificação (`docs/especificacao-reescrita.md`), e pode ser conferida em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/v2/. A versão atual, na raiz, continua em uso e com o nome atual até a troca (passo 1.20 da especificação).
