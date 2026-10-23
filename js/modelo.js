@@ -8,13 +8,15 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
+    "id", "nome", "tipo", "programa", "aprovacao", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
   dataExcluida: ["data", "motivo"],
   calendarioGeral: ["datasExcluidas", "alteradoEm", "alteradoPor"],
   documento: ["nome", "data", "identificacao", "link"],
+  /** Documento que aprovou o Plano de Ação (passo 2.4a). */
+  aprovacao: ["identificacao", "link"],
   fase: ["id", "nome", "etapas"],
   etapa: ["id", "nome"],
   camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos"],

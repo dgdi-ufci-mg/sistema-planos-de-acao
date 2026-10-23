@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 121 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 122 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -82,6 +82,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/simulacao.js` | Monte Carlo beta-PERT, prioridades, chave da simulação (reaproveitamento) |
 | `js/lista.js` | Linhas da lista: filtros, ordens, agrupamento por fase e etapa, resumos |
 | `js/acao.js` | Regras da ação: estimativa livre, anteriores possíveis sem ciclo, busca, códigos |
+| `js/tipos.js` | Tipos de espaço: nomes, tipo padrão, o que cada tipo exige, agrupamento do menu lateral |
 | `js/cronograma.js`, `js/rede.js`, `js/linha-do-tempo.js` | Geometria do cronograma, da rede e da linha do tempo |
 | `js/retrato.js` | Montagem do retrato (cópia integral com resultados) |
 | `js/historico.js` | Registros do histórico de alterações e as frases que os descrevem |
@@ -95,7 +96,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/banco/firebase.js` | Carrega o SDK, login, troca e redefinição de senha, criação de contas |
 | **Telas** | |
 | `js/app.js` | Partida, roteamento (`#/espaco/<id>`), conexão, escolha do banco |
-| `js/telas/*.js` | Uma tela ou peça por arquivo: navegação, abertura, espaço (lista e quadro), janela da ação, nova ação, planilha (`editar-planilha.js`), cronograma, rede, linha do tempo, configurar espaço e sistema, lixeira, ajuda, acesso, seletor com busca, edição no lugar, exclusão, pendências, pessoas, painel, movimento |
+| `js/telas/*.js` | Uma tela ou peça por arquivo: navegação, abertura, espaço (lista e quadro), janela da ação, nova ação, planilha (`editar-planilha.js`), cronograma, rede, linha do tempo, configurar espaço e sistema, tipo do espaço (`tipo-espaco.js`), lixeira, ajuda, acesso, seletor com busca, edição no lugar, exclusão, pendências, pessoas, painel, movimento |
 | **Testes** | |
 | `testes/*.test.js` | Testes automáticos (`node --test`, na raiz) |
 | `testes/contrato-banco.js`, `testes/firebase-falso.js` | Garantias que todo banco cumpre; Firebase falso, em memória |
@@ -198,6 +199,9 @@ erDiagram
 |---|---|---|---|---|
 | `id` | id | sim | Identificador do espaço. Imutável | `3f2b8c1e-…` |
 | `nome` | texto | sim | Nome do espaço | `PI² · Fase 1` |
+| `tipo` | texto: `planoDeAcao` ou `projeto` | não | Tipo do espaço (seção 16.1; passo 2.4a). **Ausente: `projeto`**, como nos espaços criados antes do passo 2.4a | `planoDeAcao` |
+| `programa` | texto | não | Programa do PEI/PDI que prevê o Plano de Ação. **Obrigatório no Plano de Ação**; no Projeto, vazio. Texto livre provisório, até o catálogo do passo 2.5 | `Programa de Governança de Dados` |
+| `aprovacao` | aprovação (4.1.6) | não | Documento que aprovou o Plano de Ação. **Obrigatório no Plano de Ação**, com a identificação; no Projeto, vazio | |
 | `inicio` | data | não | Início do espaço: a partir dele contam os dias úteis | `2026-08-03` |
 | `prazoFinal` | data | não | Prazo final, por exemplo o fixado por ato da Diretoria-Geral | `2027-04-14` |
 | `datasExcluidas` | lista de data excluída (4.1.1) | não | Datas sem expediente próprias do espaço (feriados locais, exclusões específicas), que complementam o calendário geral (4.1.5) | |
@@ -272,6 +276,16 @@ Um só, para todos os espaços (seção 5.1). Cuidado pelo Administrador do Sist
 | `datasExcluidas` | lista de data excluída (4.1.1) | sim | Feriados nacionais, recessos e outras datas sem expediente na instituição | |
 | `alteradoEm` | momento | sim | Última gravação | |
 | `alteradoPor` | usuário | não | Autor da última gravação | |
+
+#### 4.1.6 Aprovação: o objeto `aprovacao`
+
+Passo 2.4a. Só no Plano de Ação. Quando o tipo muda para Projeto, `programa` e `aprovacao` são apagados (gravados como vazios).
+
+<!-- dicionario: aprovacao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `identificacao` | texto | sim | Número do documento de aprovação no SIPAC ou no Protocolo | `23062.001234/2026-11` |
+| `link` | texto (endereço web) | não | Endereço para abrir o documento; começa com `https://` ou `http://` | `https://…` |
 
 ### 4.2 Ação
 
@@ -651,7 +665,7 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 
 As seções 8.1 a 8.5 guardam as decisões de interface na ordem em que foram tomadas, com as revisões ("Revisto em…"). Quando duas se contradizem, vale a mais recente. Este resumo descreve o estado em 23/10/2026.
 
-**Barra lateral** (como no Todoist e no Notion): no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços, cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, Legenda, Lixeira, "Ajuda e manual" e "Configurar o sistema". No computador, fica ao lado do conteúdo e pode ser recolhida (lembrado no aparelho): o botão de recolher fica no canto superior direito dela. Recolhida, o canto da barra do topo fica vazio, o nome do espaço aparece grande no alto do conteúdo e um **puxador** na borda esquerda da tela abre a barra de novo; **Ctrl+B** (⌘B no Mac) abre e recolhe. No celular, abre por cima, com fundo escurecido, pelo botão de três linhas.
+**Barra lateral** (como no Todoist e no Notion): no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços, agrupados por tipo ("Planos de Ação", depois "Projetos", só os tipos que existem; seção 16.1), cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, Legenda, Lixeira, "Ajuda e manual" e "Configurar o sistema". No computador, fica ao lado do conteúdo e pode ser recolhida (lembrado no aparelho): o botão de recolher fica no canto superior direito dela. Recolhida, o canto da barra do topo fica vazio, o nome do espaço aparece grande no alto do conteúdo e um **puxador** na borda esquerda da tela abre a barra de novo; **Ctrl+B** (⌘B no Mac) abre e recolhe. No celular, abre por cima, com fundo escurecido, pelo botão de três linhas.
 
 **Barra do topo do espaço, no computador** (três grupos, como no Numbers do Mac; aprovada em 23/10/2026):
 
@@ -678,7 +692,9 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 
 **Ação:** a janela da ação mostra situação, conclusão prevista e os dois índices no alto; "Reestimar" e "Registrar conclusão"; campos editáveis no lugar (código, etapa, descrição, data mínima, estimativa enquanto livre); dependências e responsáveis como etiquetas, com busca; checklist; anotações com editor visual; histórico das estimativas e histórico de alterações; excluir. Sem abrir a janela, **Alt+clique** edita no lugar o nome (lista, quadro e rede), a descrição (lista) e os participantes (lista e quadro). "Nova ação" abre uma janela compacta, com o nome e os três pontos; a estimativa pode ficar para depois ("Falta estimar"). Na interface, o campo `rotulo` se chama **Ação** (títulos de coluna) ou **Nome da ação** (campos e mensagens) (decisão do responsável, 23/10/2026).
 
-**Configurar este espaço:** dados (nome, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
+**Novo espaço:** nome, tipo (Plano de Ação ou Projeto, em dois cartões com a explicação; no Plano de Ação, o Programa do PEI/PDI e o documento de aprovação), início e prazo final.
+
+**Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
 
 **Abertura:** quem não tem espaço vê as boas-vindas (criar espaço, ver o exemplo e, com o banco vazio, restaurar a cópia de segurança); quem tem, vai ao último espaço aberto naquele aparelho.
 
@@ -868,7 +884,9 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.1. Papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3).
 2.2. Visibilidade: pública, institucional ou restrita.
 2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (espaço órfão).
-2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1). No menu lateral, os espaços passam a ser agrupados por tipo, cada grupo com o nome do tipo no plural ("Planos de Ação", "Projetos", "Quadros de Tarefas"), só para os tipos que existirem; até lá, um grupo só, "Espaços" (decisão do responsável, 21/10/2026).
+2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1). No menu lateral, os espaços passam a ser agrupados por tipo, cada grupo com o nome do tipo no plural ("Planos de Ação", "Projetos", "Quadros de Tarefas"), só para os tipos que existirem; até lá, um grupo só, "Espaços" (decisão do responsável, 21/10/2026). Dividido em dois em 23/10/2026 (decisão do responsável):
+2.4a. ✔ Tipos de espaço. Feito em 23/10/2026: campos `tipo`, `programa` e `aprovacao` do espaço (seção 4.1, com 4.1.6); regras em `js/tipos.js`, com testes; escolha do tipo na criação e em "Configurar este espaço" (`js/telas/tipo-espaco.js`), em dois cartões com a explicação de cada tipo; no Plano de Ação, o Programa do PEI/PDI (texto livre até o passo 2.5) e o documento de aprovação (identificação obrigatória, link opcional); no Projeto, os dois são apagados. Os espaços que já existiam, como a PI², ficam como Projeto, sem gravação: o tipo ausente vale `projeto` (decisão do responsável). Menu lateral agrupado por tipo; sem espaço nenhum, o grupo "Espaços". Mudar o tipo em "Configurar este espaço" muda o grupo na hora.
+2.4b. Modelos prontos na criação (seção 16.1): "Cronograma estruturado", "Cronograma aberto" e "Personalizado".
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
 2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
 2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
@@ -1092,6 +1110,8 @@ As **datas excluídas** só fazem sentido na forma 1: em "Configurar o espaço",
 Nos tipos 1 e 2, a criação oferece **modelos prontos de configuração**, como na escolha de opções no início de um jogo: "Cronograma estruturado" (dependências, estimativas e previsões ligadas; por exemplo, obras e eventos), "Cronograma aberto" (sem dependências, estimativas opcionais; por exemplo, projetos de TI) e "Personalizado". Escolhido o modelo, cada opção pode ser ajustada. No tipo 3, não há modelo: as colunas são criadas no dia a dia.
 
 Uma ação sem estimativa não entra nas previsões. Desligar as previsões é um campo opcional do espaço.
+
+**Cronograma aberto, definido em 23/10/2026 (decisão do responsável):** é um projeto **sem estimativas**, de trabalho em ritmo contínuo, parecido com o Scrum na prática, mas sem a metodologia (sem ciclos nem cerimônias). Sem dependências, sem estimativas e sem previsões: ficam a lista, o quadro e a planilha; somem a rede, o cronograma e a linha do tempo, que dependem de cálculo. Sem estimativa por natureza, a ação não leva a marca "Falta estimar" nem gera o aviso de previsão incompleta. O prazo de cada ação, quando houver, é a **data-limite opcional** (forma 2, acima). Com isso, "previsões desligáveis" deixa de ser uma escolha à parte: quem não quer previsões escolhe o cronograma aberto, ou desliga no modelo "Personalizado". **Diferença para o Quadro de tarefas** (fase 3): o modo de usar. O cronograma aberto é para **projetos** de uma equipe, com fases, etapas e responsáveis; o quadro de tarefas é para as **tarefas do dia a dia**, misturando assuntos, com colunas livres e uso individual.
 
 ### 16.2 Situações das ações
 
@@ -1395,3 +1415,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 119 | Decisões do responsável, só em documentação: o sistema passa a ser tratado como protótipo (prova de conceito e modelo conceitual para o sistema definitivo, a ser desenvolvido do zero pela equipe de TI da UFCI-MG), registrado no AGENTS.md e na especificação; fase 4 revista (passagem à equipe de TI, com os recursos institucionais como requisitos do sistema definitivo); decisões da execução em lote aprovadas; barra do topo em três grupos aprovada; migração da versão 1 cancelada, com descarte dos dados, e a versão 2 indo para a raiz com o banco `sextante-v2`; manual do usuário parado; piloto detalhado. Sem mudança no código |
 | 120 | Versão 2: com a barra lateral recolhida, no computador, o nome do espaço vai para o alto do conteúdo e o canto esquerdo da barra do topo fica vazio; um puxador na borda esquerda abre a barra lateral, e Ctrl+B (⌘B) abre e recolhe. Correção: na rede e na planilha, a folga de baixo da página fazia a tela rolar um pouco e esconder o alto sob a barra do topo. Sem mudança na versão atual |
 | 121 | **Troca (passo 1.20).** A versão 2 passa a ser o sistema, na raiz do site, com o banco `sextante-v2`; os dados da versão 1 são descartados e `/v2/` redireciona para a raiz. Esta documentação é refeita a partir da especificação da reescrita (seções 2 a 16, com a mesma numeração), do rascunho e da documentação da versão 1 (histórico e ideias futuras); a especificação e o rascunho são apagados. O teste do dicionário passa a ler a seção 4 deste arquivo. O programa de migração sai. O teste de comparação usa uma cópia congelada da versão 1 |
+| 122 | Passo 2.4a: tipos de espaço. Plano de Ação ou Projeto na criação e em "Configurar este espaço"; no Plano de Ação, o Programa do PEI/PDI (texto livre até o catálogo) e o documento de aprovação; menu lateral agrupado por tipo. Campos novos `tipo`, `programa` e `aprovacao` no dicionário de dados (4.1 e 4.1.6). Os espaços existentes, como a PI², valem como Projeto. Passo 2.4 dividido em 2.4a e 2.4b; definição do cronograma aberto registrada na seção 16.1 |

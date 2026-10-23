@@ -12,6 +12,7 @@
 import { ICONES } from "../icones.js";
 import { esc } from "../formato.js";
 import { iniciais } from "../responsaveis.js";
+import { agruparPorTipo } from "../tipos.js";
 
 const CHAVE_RECOLHIDO = "sextante.menuRecolhido";
 const estreito = () => matchMedia("(max-width: 899px)").matches;
@@ -121,17 +122,21 @@ export function mostrarNavegacao(opcoes) {
       </div>`
     : comLogin ? `<button class="botao" type="button" data-item="entrar">${ICONES.pessoa}Entrar</button>` : "";
 
+  /* espaços agrupados por tipo, com o nome do tipo no plural, só os tipos que existem (passo 2.4a);
+     sem espaço nenhum, o grupo único "Espaços" */
+  const grupos = espacos.length ? agruparPorTipo(espacos) : [{ titulo: "Espaços", espacos: [] }];
   document.querySelector(".lateral").innerHTML = `
     <div class="lateral-conta">${contaHtml}</div>
     <nav class="lateral-espacos" aria-label="Espaços">
-      <h2 class="lateral-rotulo">Espaços</h2>
-      <ul>${espacos.map((e) => `<li class="espaco-item${e.id === abertoId ? " atual" : ""}">
+      ${grupos.map((g) => `<h2 class="lateral-rotulo">${g.titulo}</h2>
+      <ul>${g.espacos.map((e) => `<li class="espaco-item${e.id === abertoId ? " atual" : ""}">
           ${e.id === abertoId
             /* o espaço aberto não é botão: clicar nele não faria nada */
             ? `<span class="espaco-nome" aria-current="page">${esc(e.nome)}</span>`
             : `<button type="button" class="espaco-nome" data-espaco="${esc(e.id)}">${esc(e.nome)}</button>`}
           ${podeConfigurar(e.id) ? `<button type="button" class="espaco-configurar" data-configurar="${esc(e.id)}" aria-label="Configurar ${esc(e.nome)}" title="Configurar este espaço">${ICONES.engrenagem}</button>` : ""}
-        </li>`).join("") || '<li class="vazio">Nenhum espaço ainda.</li>'}</ul>
+        </li>`).join("")}</ul>`).join("")}
+      ${espacos.length ? "" : '<p class="vazio">Nenhum espaço ainda.</p>'}
       ${podeCriar ? `<button type="button" class="lateral-acao" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}
     </nav>
     <div class="lateral-pe">

@@ -5,6 +5,7 @@
  */
 import { NOME, INSTITUICAO } from "../identidade.js";
 import { ICONES } from "../icones.js";
+import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
 
 const hojeIso = () => {
   const d = new Date();
@@ -42,6 +43,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
       <form class="formulario" novalidate>
         <label class="campo"><span>Nome</span>
           <input name="nome" required maxlength="120" placeholder="Por exemplo: Implantação do novo sistema acadêmico"></label>
+        ${tipoHtml()}
         <div class="campos-lado-a-lado">
           <label class="campo"><span>Início</span><input name="inicio" type="date" required value="${hojeIso()}"></label>
           <label class="campo"><span>Prazo final <small>(opcional)</small></span><input name="prazoFinal" type="date"></label>
@@ -75,7 +77,10 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
   if (aoRestaurar && podeCriar && !soFormulario) verificarVazio().then((vazio) => { alvo.querySelector("[data-restaurar-copia]").hidden = !vazio; });
   formulario.querySelector("form").addEventListener("submit", async (evento) => {
     evento.preventDefault();
-    const dados = Object.fromEntries(new FormData(evento.target));
+    const f = Object.fromEntries(new FormData(evento.target));
+    /* tipo do espaço (passo 2.4a): no Projeto, nada de Programa nem aprovação */
+    const tipo = Object.fromEntries(Object.entries(lerTipo(evento.target)).filter(([, v]) => v != null));
+    const dados = { nome: f.nome, inicio: f.inicio, prazoFinal: f.prazoFinal, ...tipo };
     if (!dados.nome.trim()) return mostrarErro("Informe o nome do espaço.");
     if (!dados.inicio) return mostrarErro("Informe a data de início.");
     if (dados.prazoFinal && dados.prazoFinal < dados.inicio) return mostrarErro("O prazo final não pode ser antes do início.");
@@ -86,5 +91,6 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
       mostrarErro(e.message);
     }
   });
+  ligarTipo(formulario.querySelector("form"));
   if (comFormulario && podeCriar) abrirFormulario();
 }

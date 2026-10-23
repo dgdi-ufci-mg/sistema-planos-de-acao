@@ -11,6 +11,7 @@ import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
 import { registrosDaMudanca } from "./historico.js";
 import { montarRetrato } from "./retrato.js";
+import { problemaDoTipo } from "./tipos.js";
 
 export { ErroDeDados };
 
@@ -107,6 +108,9 @@ function validarEspaco(e, recusarDesconhecidos) {
     if (doc.link && !/^https?:\/\/\S+$/i.test(doc.link)) throw new ErroDeDados("link-invalido", "O link do documento deve começar com https:// ou http://.");
   }
   if (e.camposOpcionais) recusarDesconhecidos(e.camposOpcionais, "camposOpcionais");
+  if (e.aprovacao) recusarDesconhecidos(e.aprovacao, "aprovacao");
+  const tipo = problemaDoTipo(e); // tipo de espaço e o que ele exige (passo 2.4a)
+  if (tipo) throw new ErroDeDados(tipo.codigo, tipo.mensagem);
 }
 
 /** Lista de datas excluídas: data válida, sem repetir, só com os campos do dicionário. */

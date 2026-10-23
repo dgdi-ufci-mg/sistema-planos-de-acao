@@ -21,6 +21,7 @@ import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
 import { planilhaDoEspaco, mermaidDoEspaco } from "../exportar.js";
 import { hojeLocal } from "../dados.js";
 import { copiarTexto } from "./arquivos.js";
+import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
@@ -85,6 +86,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
 
   function desenhar() {
     desenharSecoes();
+    ligarTipo(corpo.querySelector('[data-salvar="dados"]')); // Programa e aprovação aparecem só no Plano de Ação
     desenharResponsaveis();
     marcar();
   }
@@ -96,6 +98,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <summary><h3>Dados do espaço</h3></summary>
         <form class="editor" data-salvar="dados">
           <label class="campo"><span>Nome</span><input name="nome" maxlength="120" value="${esc(espaco.nome)}"></label>
+          ${tipoHtml(espaco)}
           <div class="campos-lado-a-lado">
             <label class="campo"><span>Início</span><input name="inicio" type="date" value="${esc(espaco.inicio ?? "")}"></label>
             <label class="campo"><span>Prazo final <small>(opcional)</small></span><input name="prazoFinal" type="date" value="${esc(espaco.prazoFinal ?? "")}"></label>
@@ -378,7 +381,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     try {
       if (secao === "dados") {
         const f = Object.fromEntries(new FormData(form));
-        await store.alterarEspaco(espacoId, { nome: f.nome, inicio: f.inicio || null, prazoFinal: f.prazoFinal || null });
+        await store.alterarEspaco(espacoId, { nome: f.nome, inicio: f.inicio || null, prazoFinal: f.prazoFinal || null, ...lerTipo(form) });
       } else if (secao === "datas") {
         const datas = rascunho.datas.map((d) => limpo({ data: d.data, motivo: d.motivo?.trim() })).sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
         await store.alterarEspaco(espacoId, { datasExcluidas: datas });

@@ -237,6 +237,7 @@ body::before {
 .lateral-rotulo { font-family: var(--f-texto); font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 0 8px; margin-bottom: 4px; }
 .lateral-espacos ul { list-style: none; margin: 0 0 4px; padding: 0; display: flex; flex-direction: column; gap: 2px; }
 .lateral-espacos .vazio { padding: 4px 8px; color: var(--muted); font-size: .9rem; }
+.lateral-espacos ul + .lateral-rotulo { margin-top: 14px; } /* grupos por tipo (passo 2.4a) */
 .espaco-item { display: flex; align-items: center; border-radius: var(--raio); }
 .espaco-item:hover { background: var(--surface); }
 .espaco-item.atual { background: var(--accent-soft); }
@@ -1222,3 +1223,19 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 
 /* data prevista ao lado da barra de tempo (23/10/2026) */
 .prazo-num.data { width: auto; min-width: 40px; white-space: nowrap; }
+
+/* ---------- tipo do espaço (passo 2.4a): Plano de Ação ou Projeto ---------- */
+.tipo-espaco { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.tipo-espaco legend { padding: 0; margin-bottom: 6px; font-size: .84rem; font-weight: 600; color: var(--muted); }
+.tipo-opcoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
+.tipo-opcao {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); cursor: pointer; transition: border-color var(--mov-rapido), background-color var(--mov-rapido);
+}
+.tipo-opcao:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.tipo-opcao:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.tipo-espaco .tipo-opcao input[type="radio"] { width: auto; margin: 3px 0 0; padding: 0; border: 0; accent-color: var(--accent); flex: none; } /* vence as regras gerais de .editor input */
+.tipo-opcao span { display: flex; flex-direction: column; gap: 2px; }
+.tipo-opcao small { color: var(--muted); font-size: .8rem; line-height: 1.35; }
+.tipo-plano { display: flex; flex-direction: column; gap: 10px; }
+.tipo-plano .tec { margin: 0; }

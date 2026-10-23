@@ -172,7 +172,8 @@ async function abrirEspaco(id) {
   const pararTela = mostrarEspaco(principal, { store: daqui, espacoId: id, hoje, usuario, barra: document.querySelector("[data-acoes-topo]") });
   /* o nome do espaço no topo acompanha as mudanças (por exemplo, ao renomear em "Configurar este espaço") */
   /* o topo acompanha o nome do espaço e o nome de quem entrou (o do responsável ligado ao e-mail neste espaço) */
-  const chaveDoTopo = (e, rs) => `${e.nome}|${rs.find((r) => usuario && r.usuario === usuario)?.nome ?? ""}`;
+  /* e o tipo, que muda o grupo do espaço no menu lateral (passo 2.4a) */
+  const chaveDoTopo = (e, rs) => `${e.nome}|${e.tipo ?? ""}|${rs.find((r) => usuario && r.usuario === usuario)?.nome ?? ""}`;
   let chave = null;
   const pararTopo = daqui.acompanharEspaco(id, ({ espaco: atual, responsaveis }) => {
     const nova = chaveDoTopo(atual, responsaveis);
