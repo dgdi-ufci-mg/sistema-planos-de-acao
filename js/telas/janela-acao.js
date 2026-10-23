@@ -139,111 +139,219 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   };
 
   /* ---------- desenho ---------- */
+  /*
+   * Revisão de 23/10/2026 (pedido do responsável):
+   * - duas colunas no computador (dados à esquerda; atividade, com comentários e históricos, à direita),
+   *   e abas "Detalhes" e "Atividade" no celular;
+   * - os campos gravam ao sair deles, sem Salvar nem Cancelar; Esc desfaz o que foi digitado;
+   * - busca de dependências e responsáveis só ao tocar em "+ Acrescentar"; campos vazios recolhidos em
+   *   "Mais campos"; a etapa aparece uma vez, no título da janela, que deixou de dizer só "Ação".
+   */
+  /** busca aberta: "dependeDe", "responsaveis" ou null */
+  let buscando = null;
+  /** campos opcionais abertos em "Mais campos", mesmo vazios */
+  const mostrados = new Set();
+  /** aba no celular: "detalhes" ou "atividade" */
+  let aba = "detalhes";
+  /** situação da última gravação de um campo: {campo, tipo: "salvando"|"salvo"|"erro", texto} */
+  let status = null;
+  let tempoStatus = null;
+  const somenteLeitura = () => !store.podeGravar;
+
   function desenhar() {
     const acao = acaoAtual();
     if (!acao) { fecharPainel(); return; }
     const l = d.linhaDe.get(numero);
     const c = d.caminho.porAcao.get(numero);
-    const campos = d.espaco.camposOpcionais ?? {};
-    const contexto = { tons: d.espaco.tons, meus: d.meus };
     const [sitTexto, sitIcone, sitClasse] = SITUACOES[l.situacao];
     const etapas = (d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => ({ ...e, fase: f.nome })));
     const etapa = etapas.find((e) => e.id === acao.etapa);
-    const livre = estimativaLivre(acao, l.situacao, hoje);
     const pend = l.situacao === "naoLiberada" ? pendencias(acao, d.acoes, hoje) : null;
     const resumoEst = resumoDasEstimativas(acao, c);
-    const donos = acao.responsaveis.map((id) => d.pessoas.get(id)).filter(Boolean);
     const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
-    /* o modelo do espaço decide o que aparece (passo 2.4b) */
     const comEstimativas = usaEstimativas(d.espaco);
-    const comDependencias = usaDependencias(d.espaco);
+    const visiveis = (comentarios ?? []).filter((x) => !x.apagadoEm).length;
 
     const valores = guardarValores();
     corpo.innerHTML = `
-      ${alheia ? `<p class="alteracao-alheia" role="status">${esc(alheia)} alterou esta ação agora.</p>` : ""}
-      <div class="janela-cabeca">
-        ${d.usaFases ? `<span class="tec">${etapa ? `${esc(etapa.fase)} · ${esc(etapa.nome)}` : "Sem fase nem etapa"}</span>` : ""}
-        ${editando === "rotulo"
-          ? editorHtml("rotulo", `<input name="rotulo" maxlength="120" value="${esc(acao.rotulo)}" aria-label="Nome da ação">`)
-          : `<h3 class="janela-rotulo editavel" data-editar="rotulo" tabindex="0" title="Clique para editar">${esc(acao.rotulo)}</h3>`}
+      <div class="janela-abas" role="tablist" aria-label="Partes da ação">
+        <button type="button" role="tab" data-aba="detalhes" aria-selected="${aba === "detalhes"}">Detalhes</button>
+        <button type="button" role="tab" data-aba="atividade" aria-selected="${aba === "atividade"}">Atividade${visiveis ? ` <span class="n">${visiveis}</span>` : ""}</button>
       </div>
+      <div class="janela-grade" data-aba-atual="${aba}">
+        <div class="janela-principal">
+          ${alheia ? `<p class="alteracao-alheia" role="status">${esc(alheia)} alterou esta ação agora.</p>` : ""}
+          <div class="campo-acao campo-nome-acao" data-campo="rotulo">
+            <textarea class="janela-nome" rows="1" maxlength="120" name="rotulo" data-auto="rotulo" data-original="${esc(acao.rotulo)}"
+              aria-label="Nome da ação"${somenteLeitura() ? " readonly" : ""}>${esc(acao.rotulo)}</textarea>
+            ${statusHtml("rotulo")}
+          </div>
 
-      <dl class="janela-resumo">
-        <div><dt>Situação</dt><dd class="sit"><span class="${sitClasse}">${ICONES[sitIcone]}</span>${sitTexto}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
-        ${!comEstimativas && l.situacao !== "concluida" ? `<div><dt>Data-limite</dt><dd class="mono${l.atrasada ? " atrasada" : ""}">${acao.dataLimite ? dataBr(acao.dataLimite) : '<span class="vazio">Sem data-limite</span>'}</dd></div>`
-        : `<div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>`}
-        ${l.situacao === "concluida" || l.execucao == null ? "" : `
-          <div><dt>Índice de criticidade <a href="#" class="oque" data-termo="exec">o que é?</a></dt><dd>${barra(l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}</dd></div>
-          <div><dt>Contribuição para a incerteza <a href="#" class="oque" data-termo="rev">o que é?</a></dt><dd>${barra(l.revisao, "var(--laranja)", revisao)}</dd></div>`}
-      </dl>
+          <dl class="janela-resumo">
+            <div><dt>Situação</dt><dd class="sit"><span class="${sitClasse}">${ICONES[sitIcone]}</span>${sitTexto}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
+            ${!comEstimativas && l.situacao !== "concluida" ? `<div><dt>Data-limite</dt><dd class="mono${l.atrasada ? " atrasada" : ""}">${acao.dataLimite ? dataBr(acao.dataLimite) : '<span class="vazio">Sem data-limite</span>'}</dd></div>`
+            : `<div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>`}
+            ${l.situacao === "concluida" || l.execucao == null ? "" : `
+              <div><dt>Índice de criticidade <a href="#" class="oque" data-termo="exec" aria-label="O que é o índice de criticidade?" title="O que é?">${ICONES.ajuda}</a></dt><dd>${barra(l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}</dd></div>
+              <div><dt>Contribuição para a incerteza <a href="#" class="oque" data-termo="rev" aria-label="O que é a contribuição para a incerteza?" title="O que é?">${ICONES.ajuda}</a></dt><dd>${barra(l.revisao, "var(--laranja)", revisao)}</dd></div>`}
+          </dl>
 
-      ${c.regraDoPassado ? `<p class="alerta">${ICONES.atrasada}<span><b>Prazo vencido sem reestimativa:</b> o cálculo considera conclusão a partir de hoje. Reestime a ação para informar quanto falta. <a href="#" class="oque" data-termo="regra">o que é?</a></span></p>` : ""}
-      ${pend && (pend.anteriores.length || pend.dataMinima) ? `<p class="nota-janela">Será liberada ${[
-        pend.anteriores.length ? `quando ${plural(pend.anteriores.length, "for concluída a ação", "forem concluídas as ações")} ${pend.anteriores.map((n) => `“${esc(nomeTexto(d.acoes.find((a) => a.numero === n)))}”`).join(", ")}` : "",
-        pend.dataMinima ? `a partir de ${dataBr(pend.dataMinima)}` : "",
-      ].filter(Boolean).join(", e ")}.</p>` : ""}
+          ${c.regraDoPassado ? `<p class="alerta">${ICONES.atrasada}<span><b>Prazo vencido sem reestimativa:</b> o cálculo considera conclusão a partir de hoje. Reestime a ação para informar quanto falta. <a href="#" class="oque" data-termo="regra">o que é?</a></span></p>` : ""}
+          ${pend && (pend.anteriores.length || pend.dataMinima) ? `<p class="nota-janela">Será liberada ${[
+            pend.anteriores.length ? `quando ${plural(pend.anteriores.length, "for concluída a ação", "forem concluídas as ações")} ${pend.anteriores.map((n) => `“${esc(nomeTexto(d.acoes.find((a) => a.numero === n)))}”`).join(", ")}` : "",
+            pend.dataMinima ? `a partir de ${dataBr(pend.dataMinima)}` : "",
+          ].filter(Boolean).join(", e ")}.</p>` : ""}
 
-      ${botoesHtml(l, c)}
-      ${editando === "reestimar" ? reestimativaHtml() : ""}
-      ${editando === "concluir" ? conclusaoHtml(acao) : ""}
+          ${botoesHtml(l, c)}
+          ${editando === "reestimar" ? reestimativaHtml() : ""}
+          ${editando === "concluir" ? conclusaoHtml(acao) : ""}
 
-      <div class="janela-campos">
-        ${d.usaCodigos ? campoHtml("codigo", "Código", acao.codigo ? `<span class="mono">${esc(acao.codigo)}</span>` : "",
-          `<input name="codigo" maxlength="12" autocomplete="off" autocapitalize="characters" value="${esc(acao.codigo ?? "")}" aria-label="Código">`,
-          "De 2 a 8 letras ou números, sem repetir no espaço. Deixe vazio para ficar sem código.") : ""}
-        ${d.usaFases ? campoHtml("etapa", "Etapa", etapa ? `${esc(etapa.fase)} · ${esc(etapa.nome)}` : "",
-          `<select name="etapa" aria-label="Etapa"><option value="">Sem fase nem etapa</option>${(d.espaco.estrutura ?? []).map((f) =>
-            `<optgroup label="${esc(f.nome)}">${f.etapas.map((e) => `<option value="${esc(e.id)}"${e.id === acao.etapa ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</optgroup>`).join("")}</select>`) : ""}
-        ${campos.descricao !== false ? campoHtml("descricao", "Descrição", acao.descricao ? `<span class="texto-livre">${esc(acao.descricao)}</span>` : "",
-          `<textarea name="descricao" rows="4" aria-label="Descrição">${esc(acao.descricao ?? "")}</textarea>`) : ""}
-
-        ${comDependencias ? `<div class="campo-acao">
-          <span class="campo-nome">Depende de</span>
-          <div class="etiquetas">${(acao.dependeDe ?? []).map((n) => {
-            const a = d.acoes.find((x) => x.numero === n);
-            return `<span class="etiqueta">${a ? nomeHtml(a) : "(ação excluída)"}<button type="button" class="tirar" data-tirar-dependencia="${n}" aria-label="Retirar ${esc(a ? nomeTexto(a) : "")}">${ICONES.fechar}</button></span>`;
-          }).join("") || `<span class="vazio">Nenhuma: pode começar no início do espaço.</span>`}</div>
-          ${seletorHtml("dependeDe", d.usaCodigos ? "Acrescentar ação anterior: digite o nome ou o código" : "Acrescentar ação anterior: digite o nome")}
-        </div>` : ""}
-
-        <div class="campo-acao">
-          <span class="campo-nome">Responsáveis</span>
-          <div class="etiquetas">${donos.map((r) =>
-            `<span class="etiqueta">${seloHtml(r, contexto)}${esc(r.nome)}<button type="button" class="tirar" data-tirar-responsavel="${esc(r.id)}" aria-label="Retirar ${esc(r.nome)}">${ICONES.fechar}</button></span>`).join("")
-            || `<span class="vazio">Nenhum responsável.</span>`}</div>
-          ${seletorHtml("responsaveis", "Acrescentar responsável: digite o nome, a sigla ou o setor")}
+          <div class="janela-campos">${camposHtml(acao, l, etapas, etapa)}</div>
+          ${maisCamposHtml(acao)}
+          ${store.podeGravar ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ação</button></div>` : ""}
         </div>
 
-        ${campoHtml("naoAntesDe", "Não começa antes de", acao.naoAntesDe ? dataBr(acao.naoAntesDe) : "",
-          `<input type="date" name="naoAntesDe" value="${esc(acao.naoAntesDe ?? "")}" aria-label="Não começa antes de">`,
-          `Data mínima para a ação ser liberada, mesmo que as anteriores já tenham terminado. <a href="#" class="oque" data-termo="naoAntesDe">o que é?</a>`)}
-
-        ${comEstimativas ? "" : campoHtml("dataLimite", "Data-limite", acao.dataLimite ? dataBr(acao.dataLimite) : "",
-          `<input type="date" name="dataLimite" value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite">`,
-          "Até quando a ação deve ser concluída. Vencida, a ação ganha o carimbo Atrasada. Deixe vazio para a ação não ter prazo.")}
-        ${comEstimativas && livre ? campoHtml("estimativa", "Estimativa", vigenteHtml(acao), tresPontosHtml(acao.estimativas?.at(-1)),
-          l.situacao === "naoLiberada" || !acao.estimativas?.length
-            ? "Prazo em dias úteis, da liberação até a conclusão, incluindo o tempo até alguém começar. Enquanto a ação não está liberada, a estimativa pode ser ajustada livremente."
-            : "Correção de digitação: vale só hoje, antes de qualquer reestimativa.") : ""}
-
-        ${checklistHtml(acao)}
-        ${campos.notas !== false ? notasHtml(acao) : ""}
-      </div>
-
-      <div data-comentarios>${comentariosHtml()}</div>
-      ${comEstimativas ? historicoHtml(acao, resumoEst) : ""}
-      <details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
-        <summary><h4>Histórico de alterações</h4></summary>
-        <div data-registros>${registrosHtml()}</div>
-      </details>
-      ${store.podeGravar ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ação</button></div>` : ""}`;
-    corpo.closest(".painel").querySelector("header h2").textContent = d.usaCodigos && acao.codigo ? `Ação ${acao.codigo}` : "Ação";
+        <div class="janela-atividade" aria-label="Atividade">
+          <div data-comentarios>${comentariosHtml()}</div>
+          ${comEstimativas ? historicoHtml(acao, resumoEst) : ""}
+          <details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
+            <summary><h4>Histórico de alterações</h4></summary>
+            <div data-registros>${registrosHtml()}</div>
+          </details>
+        </div>
+      </div>`;
+    /* título da janela: onde a ação fica (fase e etapa) e o código, em vez de só "Ação" */
+    const titulo = [d.usaCodigos && acao.codigo ? acao.codigo : "", d.usaFases ? (etapa ? `${etapa.fase} · ${etapa.nome}` : "Sem fase nem etapa") : ""]
+      .filter(Boolean).join(" · ") || "Ação";
+    const cabeca = corpo.closest(".painel").querySelector("header h2");
+    cabeca.textContent = titulo;
+    cabeca.title = titulo;
     corpo.closest(".painel").style.setProperty("--calor", l.situacao === "concluida" ? "var(--ok)" : l.execucao == null ? "var(--neutral)"
       : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
     restaurarValores(valores);
+    ajustarAlturas();
     if (focoNoChecklist) { focoNoChecklist = false; corpo.querySelector('[name="novoItemChecklist"]')?.focus(); }
     seletores.desenhar();
     encolherFormularioGravado();
+  }
+
+  /** Caixas de texto crescem com o conteúdo (nome da ação e descrição). */
+  function ajustarAlturas(alvo = corpo) {
+    for (const el of alvo.querySelectorAll("textarea.cresce, textarea.janela-nome")) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight + 2}px`;
+    }
+  }
+
+  /** "Salvando…", "Salvo" ou o erro, ao lado do nome do campo. */
+  function statusHtml(campo) {
+    if (!status || status.campo !== campo) return `<span class="status-campo" data-status="${campo}" aria-live="polite"></span>`;
+    return `<span class="status-campo ${status.tipo}" data-status="${campo}" aria-live="polite">${status.tipo === "salvo" ? `${ICONES.marcado}Salvo` : esc(status.texto)}</span>`;
+  }
+
+  /** Rótulo do campo, com a situação da gravação. */
+  const rotuloHtml = (campo, texto, dica = "") => `<span class="campo-nome"><span>${texto}</span>${dica ? ` <a href="#" class="oque" data-termo="${dica}" aria-label="O que é?" title="O que é?">${ICONES.ajuda}</a>` : ""}${statusHtml(campo)}</span>`;
+
+  const atributos = (campo, valor) => `name="${campo}" data-auto="${campo}" data-original="${esc(valor ?? "")}"${somenteLeitura() ? " disabled" : ""}`;
+
+  /** Campos que aparecem: os que têm valor, os essenciais e os abertos em "Mais campos". */
+  function visivel(acao, campo) {
+    if (mostrados.has(campo)) return true;
+    if (campo === "descricao") return Boolean(acao.descricao);
+    if (campo === "naoAntesDe") return Boolean(acao.naoAntesDe);
+    if (campo === "codigo") return Boolean(acao.codigo);
+    if (campo === "notas") return Boolean(acao.notas);
+    if (campo === "checklist") return Boolean(acao.checklist?.length) || checklistAberto;
+    return true;
+  }
+  /** Campos opcionais que o espaço usa, na ordem de "Mais campos". */
+  function opcionais() {
+    const campos = d.espaco.camposOpcionais ?? {};
+    return [
+      campos.descricao !== false && ["descricao", "Descrição"],
+      ["naoAntesDe", "Não começa antes de"],
+      store.podeGravar && ["checklist", "Checklist"],
+      campos.notas !== false && ["notas", "Anotações"],
+      d.usaCodigos && ["codigo", "Código"],
+    ].filter(Boolean);
+  }
+  function maisCamposHtml(acao) {
+    if (somenteLeitura()) return "";
+    const fechados = opcionais().filter(([campo]) => !visivel(acao, campo));
+    if (!fechados.length) return "";
+    return `<div class="chips-campos mais-campos" role="group" aria-label="Mais campos"><span class="tec">Mais campos:</span>
+      ${fechados.map(([campo, texto]) => `<button type="button" class="chip-campo" data-mostrar-campo="${campo}">${ICONES.mais}${texto}</button>`).join("")}</div>`;
+  }
+
+  function camposHtml(acao, l, etapas, etapa) {
+    const campos = d.espaco.camposOpcionais ?? {};
+    const contexto = { tons: d.espaco.tons, meus: d.meus };
+    const donos = acao.responsaveis.map((id) => d.pessoas.get(id)).filter(Boolean);
+    const comEstimativas = usaEstimativas(d.espaco);
+    const livre = estimativaLivre(acao, l.situacao, hoje);
+    const partes = [];
+
+    if (d.usaFases) {
+      partes.push(`<div class="campo-acao" data-campo="etapa">${rotuloHtml("etapa", "Etapa")}
+        <select ${atributos("etapa", acao.etapa)} aria-label="Etapa"><option value="">Sem fase nem etapa</option>${(d.espaco.estrutura ?? []).map((f) =>
+          `<optgroup label="${esc(f.nome)}">${f.etapas.map((e) => `<option value="${esc(e.id)}"${e.id === acao.etapa ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</optgroup>`).join("")}</select></div>`);
+    }
+
+    /* prazo: estimativa (enquanto livre) ou data-limite, conforme o modelo do espaço (passo 2.4b) */
+    if (!comEstimativas) {
+      partes.push(`<div class="campo-acao" data-campo="dataLimite">${rotuloHtml("dataLimite", "Data-limite")}
+        <input type="date" ${atributos("dataLimite", acao.dataLimite)} value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite">
+        <span class="tec">Vencida, a ação ganha o carimbo Atrasada. Vazia, a ação não tem prazo.</span></div>`);
+    } else if (livre) {
+      const e = acao.estimativas?.at(-1);
+      const v = (k) => (e?.[k] ?? "");
+      partes.push(`<div class="campo-acao" data-campo="estimativa">${rotuloHtml("estimativa", "Estimativa <small>(dias úteis)</small>")}
+        <div class="tres-pontos">${[["o", "Otimista"], ["m", "Mais provável"], ["p", "Pessimista"]].map(([k, t]) =>
+          `<label class="campo"><span>${t}</span><input name="${k}" data-auto="estimativa" data-original="${v(k)}" type="number" min="0" step="1" inputmode="numeric" value="${v(k)}"${somenteLeitura() ? " disabled" : ""}></label>`).join("")}</div>
+        <span class="tec" data-pert>${e ? `Prazo previsto (PERT): ${diasUteis(duracaoPert(e))}. ` : "Sem estimativa: a ação fica com “Falta estimar”. "}${l.situacao === "naoLiberada" || !acao.estimativas?.length
+          ? "Enquanto a ação não é liberada, a estimativa muda livremente."
+          : "Correção de digitação: vale só hoje, antes de qualquer reestimativa."}</span></div>`);
+    } else {
+      const e = acao.estimativas?.at(-1);
+      partes.push(`<div class="campo-acao" data-campo="estimativa">${rotuloHtml("estimativa", "Estimativa <small>(dias úteis)</small>")}
+        <span>${e ? `<span class="mono">${decimal(e.o)} · ${decimal(e.m)} · ${decimal(e.p)}</span> <span class="tec">otimista · mais provável · pessimista</span>` : `<span class="falta-estimar">Falta estimar</span>`}</span>
+        <span class="tec">${l.situacao === "concluida" ? "A ação foi concluída." : "Liberada: a estimativa muda por “Reestimar”."}</span></div>`);
+    }
+
+    partes.push(`<div class="campo-acao" data-campo="responsaveis">${rotuloHtml("responsaveis", "Responsáveis")}
+      <div class="etiquetas">${donos.map((r) =>
+        `<span class="etiqueta">${seloHtml(r, contexto)}${esc(r.nome)}${somenteLeitura() ? "" : `<button type="button" class="tirar" data-tirar-responsavel="${esc(r.id)}" aria-label="Retirar ${esc(r.nome)}">${ICONES.fechar}</button>`}</span>`).join("")
+        || `<span class="vazio">Nenhum responsável.</span>`}
+        ${somenteLeitura() || buscando === "responsaveis" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="responsaveis">${ICONES.mais}Acrescentar</button>`}</div>
+      ${buscando === "responsaveis" ? seletorHtml("responsaveis", "Digite o nome, a sigla ou o setor") : ""}</div>`);
+
+    if (usaDependencias(d.espaco)) {
+      partes.push(`<div class="campo-acao" data-campo="dependeDe">${rotuloHtml("dependeDe", "Depende de")}
+        <div class="etiquetas">${(acao.dependeDe ?? []).map((n) => {
+          const a = d.acoes.find((x) => x.numero === n);
+          return `<span class="etiqueta">${a ? nomeHtml(a) : "(ação excluída)"}${somenteLeitura() ? "" : `<button type="button" class="tirar" data-tirar-dependencia="${n}" aria-label="Retirar ${esc(a ? nomeTexto(a) : "")}">${ICONES.fechar}</button>`}</span>`;
+        }).join("") || `<span class="vazio">Nenhuma: pode começar no início do espaço.</span>`}
+          ${somenteLeitura() || buscando === "dependeDe" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="dependeDe">${ICONES.mais}Acrescentar</button>`}</div>
+        ${buscando === "dependeDe" ? seletorHtml("dependeDe", d.usaCodigos ? "Digite o nome ou o código da ação anterior" : "Digite o nome da ação anterior") : ""}</div>`);
+    }
+
+    if (campos.descricao !== false && visivel(acao, "descricao")) {
+      partes.push(`<div class="campo-acao" data-campo="descricao">${rotuloHtml("descricao", "Descrição")}
+        <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="O que é esta ação, em poucas linhas">${esc(acao.descricao ?? "")}</textarea></div>`);
+    }
+    if (visivel(acao, "naoAntesDe")) {
+      partes.push(`<div class="campo-acao" data-campo="naoAntesDe">${rotuloHtml("naoAntesDe", "Não começa antes de", "naoAntesDe")}
+        <input type="date" ${atributos("naoAntesDe", acao.naoAntesDe)} value="${esc(acao.naoAntesDe ?? "")}" aria-label="Não começa antes de">
+        <span class="tec">Data mínima para a ação ser liberada, mesmo que as anteriores já tenham terminado.</span></div>`);
+    }
+    if (d.usaCodigos && visivel(acao, "codigo")) {
+      partes.push(`<div class="campo-acao" data-campo="codigo">${rotuloHtml("codigo", "Código")}
+        <input class="mono" maxlength="12" autocomplete="off" autocapitalize="characters" ${atributos("codigo", acao.codigo)} value="${esc(acao.codigo ?? "")}" aria-label="Código">
+        <span class="tec">De 2 a 8 letras ou números, sem repetir no espaço. Vazio: sem código.</span></div>`);
+    }
+    if (visivel(acao, "checklist")) partes.push(checklistHtml(acao));
+    if (campos.notas !== false && visivel(acao, "notas")) partes.push(notasHtml(acao));
+    return partes.join("");
   }
 
   /**
@@ -276,31 +384,15 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }
 
   function botoesHtml(l, c) {
+    if (somenteLeitura()) return "";
     if (l.situacao === "concluida") {
       return `<div class="botoes"><button class="botao" type="button" data-desfazer-conclusao>Desfazer conclusão</button></div>`;
     }
     if (l.situacao !== "liberada" || editando === "reestimar" || editando === "concluir") return "";
     return `<div class="botoes">
       ${usaEstimativas(d.espaco) ? `<button class="botao${l.atrasada || c.regraDoPassado ? " principal" : ""}" type="button" data-abrir-form="reestimar">Reestimar</button>` : ""}
-      <button class="botao${l.atrasada ? "" : " principal"}" type="button" data-abrir-form="concluir">${ICONES.concluida}Registrar conclusão</button>
+      <button class="botao${l.atrasada && usaEstimativas(d.espaco) ? "" : " principal"}" type="button" data-abrir-form="concluir">${ICONES.concluida}Registrar conclusão</button>
     </div>`;
-  }
-
-  /** Campo com valor e, ao clicar, editor com Salvar e Cancelar. */
-  function campoHtml(nome, rotulo, valorHtml, editor, dica = "") {
-    return `<div class="campo-acao" data-campo="${nome}">
-      <span class="campo-nome">${rotulo}</span>
-      ${editando === nome ? editorHtml(nome, editor)
-        : `<div class="editavel" data-editar="${nome}" tabindex="0" role="button" title="Clique para editar">${valorHtml || `<span class="vazio">Clique para preencher</span>`}</div>`}
-      ${dica && editando === nome ? `<span class="tec">${dica}</span>` : ""}
-    </div>`;
-  }
-
-  function editorHtml(nome, editor) {
-    return `<form class="editor" data-salvar="${nome}">${editor}
-      <p class="erro" data-erro hidden></p>
-      <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar>Cancelar</button></div>
-    </form>`;
   }
 
   /** Notas: mostradas já formatadas; ao clicar, editor visual com negrito, itálico, link e lista (seção 8.5). */
@@ -330,12 +422,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   function notasHtml(acao) {
     const html = markdownParaHtml(acao.notas);
-    if (editando !== "notas") {
-      return `<div class="campo-acao" data-campo="notas"><span class="campo-nome">Anotações</span>
-        <div class="editavel nota-html" data-editar="notas" tabindex="0" role="button" title="Clique para editar">${html || `<span class="vazio">Clique para escrever</span>`}</div></div>`;
+    if (somenteLeitura()) {
+      return `<div class="campo-acao" data-campo="notas">${rotuloHtml("notas", "Anotações")}<div class="nota-html">${html || `<span class="vazio">Sem anotações.</span>`}</div></div>`;
     }
-    return `<div class="campo-acao" data-campo="notas"><span class="campo-nome">Anotações</span>
-      <form class="editor" data-salvar="notas">
+    /* sempre editável; a barra de formatação aparece com o cursor dentro; grava ao sair (revisão de 23/10/2026) */
+    return `<div class="campo-acao campo-notas" data-campo="notas">${rotuloHtml("notas", "Anotações")}
+      <div class="editor-notas-caixa" data-caixa-notas>
         <div class="barra-notas" role="toolbar" aria-label="Formatação">
           <button type="button" class="botao discreto" data-formatar="bold" title="Negrito (Ctrl+B)" aria-label="Negrito"><b>N</b></button>
           <button type="button" class="botao discreto" data-formatar="italic" title="Itálico (Ctrl+I)" aria-label="Itálico"><i>I</i></button>
@@ -346,10 +438,9 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           <input type="url" inputmode="url" placeholder="https://…" aria-label="Endereço do link" data-endereco-link>
           <button type="button" class="botao" data-aplicar-link>Aplicar</button>
         </div>
-        <div class="editor-notas nota-html" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Anotações" data-editor-notas>${html}</div>
-        <p class="erro" data-erro hidden></p>
-        <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar>Cancelar</button></div>
-      </form></div>`;
+        <div class="editor-notas nota-html" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Anotações"
+          data-editor-notas data-vazio="Escreva aqui. Grava ao sair do campo.">${html}</div>
+      </div></div>`;
   }
 
   /* ---------- editor visual das notas ---------- */
@@ -391,12 +482,6 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <label class="campo"><span>Pessimista</span><input name="p" type="number" min="0" step="1" inputmode="numeric" value="${v("p")}"></label>
     </div>
     <p class="tec" data-pert>${e ? `Prazo previsto (PERT): ${diasUteis(duracaoPert(e))}` : ""}</p>`;
-  }
-
-  function vigenteHtml(acao) {
-    const e = acao.estimativas?.at(-1);
-    return e ? `<span class="mono">${decimal(e.o)} · ${decimal(e.m)} · ${decimal(e.p)}</span> <span class="tec">otimista · mais provável · pessimista, em dias úteis</span>`
-      : `<span class="falta-estimar">Falta estimar</span> <span class="vazio">Clique para preencher</span>`;
   }
 
   function reestimativaHtml() {
@@ -502,51 +587,124 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }
 
   /* ---------- valores digitados: mantidos quando a janela é redesenhada por mudança de outra pessoa ---------- */
+  /**
+   * Guarda só o que a pessoa digitou e ainda não gravou (campos com `data-original` diferentes do valor),
+   * para não apagar com um valor velho o que outra pessoa acabou de gravar; os demais campos (busca,
+   * comentário, novo item do checklist) voltam como estavam. Também o foco e a posição do cursor.
+   */
   function guardarValores() {
-    const v = {};
-    for (const el of corpo.querySelectorAll("form [name]")) v[el.name] = el.value;
-    v.foco = document.activeElement && corpo.contains(document.activeElement) ? (document.activeElement.name || document.activeElement.dataset.buscar) : null;
+    const v = { campos: {} };
+    for (const el of corpo.querySelectorAll("[name]")) {
+      if (el.type === "checkbox" || el.type === "radio") continue;
+      if ("original" in el.dataset && el.value === el.dataset.original) continue;
+      v.campos[el.name] = el.value;
+    }
+    const ativo = document.activeElement;
+    if (ativo && corpo.contains(ativo)) {
+      v.foco = ativo.name || ativo.dataset.buscar || (ativo.matches("[data-editor-notas]") ? "notas" : null);
+      if (typeof ativo.selectionStart === "number") v.cursor = [ativo.selectionStart, ativo.selectionEnd];
+    }
     const ed = editorNotas();
-    if (ed) v.notas = ed.innerHTML;
+    if (ed && notasMudaram()) v.notas = ed.innerHTML;
     return v;
   }
   function restaurarValores(v) {
-    for (const el of corpo.querySelectorAll("form [name]")) if (el.name in v) el.value = v[el.name];
-    if (v.foco) corpo.querySelector(`[name="${v.foco}"], [data-buscar="${v.foco}"]`)?.focus();
+    for (const el of corpo.querySelectorAll("[name]")) if (el.name in v.campos) el.value = v.campos[el.name];
     const ed = editorNotas();
     if (ed && v.notas != null) ed.innerHTML = v.notas;
+    if (!v.foco) return;
+    const el = v.foco === "notas" ? ed : corpo.querySelector(`[name="${v.foco}"], [data-buscar="${v.foco}"]`);
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    if (v.cursor && typeof el.setSelectionRange === "function") { try { el.setSelectionRange(...v.cursor); } catch { /* campo sem cursor */ } }
   }
 
-  /* ---------- gravação dos editores ---------- */
+  /* ---------- gravação ao sair do campo (revisão de 23/10/2026) ---------- */
+  function mostrarStatus(campo, tipo, texto = "") {
+    clearTimeout(tempoStatus);
+    status = { campo, tipo, texto };
+    const el = corpo.querySelector(`[data-status="${campo}"]`);
+    if (el) {
+      el.className = `status-campo ${tipo}`;
+      el.innerHTML = tipo === "salvo" ? `${ICONES.marcado}Salvo` : esc(texto);
+    }
+    if (tipo === "salvo") tempoStatus = setTimeout(() => {
+      status = null;
+      const atual = corpo.querySelector(`[data-status="${campo}"]`);
+      if (atual) { atual.className = "status-campo"; atual.textContent = ""; }
+    }, 2000);
+  }
+  const lerTres = () => Object.fromEntries(["o", "m", "p"].map((k) => [k, corpo.querySelector(`[name="${k}"]`)?.value ?? ""]));
+  /** Grava um campo, se mudou. Erro: o valor digitado fica, com a mensagem ao lado do nome do campo. */
+  async function gravarCampo(el) {
+    const campo = el.dataset.auto;
+    if (!campo || somenteLeitura()) return;
+    const texto = el.value;
+    if (campo === "estimativa") {
+      const tres = lerTres();
+      if (["o", "m", "p"].every((k) => tres[k] === corpo.querySelector(`[name="${k}"]`).dataset.original)) return;
+      if (["o", "m", "p"].some((k) => tres[k] === "")) return mostrarStatus("estimativa", "aviso", "Preencha os três pontos para gravar.");
+    } else if (texto === el.dataset.original) return;
+    const operacoes = {
+      rotulo: () => {
+        if (!texto.trim()) throw new Error("O nome da ação não pode ficar vazio.");
+        return store.alterarAcao(espacoId, numero, { rotulo: texto.trim().replace(/\s*\n+\s*/g, " ") });
+      },
+      codigo: () => store.alterarAcao(espacoId, numero, { codigo: normalizarCodigo(texto) || null }),
+      etapa: () => store.alterarAcao(espacoId, numero, { etapa: texto || null }),
+      descricao: () => store.alterarAcao(espacoId, numero, { descricao: texto.trim() }),
+      naoAntesDe: () => store.alterarAcao(espacoId, numero, { naoAntesDe: texto || null }),
+      dataLimite: () => store.alterarAcao(espacoId, numero, { dataLimite: texto || null }),
+      estimativa: () => { const t = lerTres(); return store.corrigirEstimativa(espacoId, numero, { o: Number(t.o), m: Number(t.m), p: Number(t.p) }); },
+    };
+    mostrarStatus(campo, "salvando", "Salvando…");
+    try {
+      await operacoes[campo]();
+      mostrarStatus(campo, "salvo");
+    } catch (e) {
+      mostrarStatus(campo, "erro", e.message);
+      corpo.querySelectorAll(`[data-auto="${campo}"]`).forEach((x) => x.classList.add("com-erro"));
+    }
+  }
+  /** As anotações gravam ao sair do editor, se mudaram. */
+  const notasMudaram = () => {
+    const ed = editorNotas();
+    return Boolean(ed) && htmlParaMarkdown(ed) !== (acaoAtual()?.notas ?? "");
+  };
+  async function gravarNotas() {
+    if (!notasMudaram() || somenteLeitura()) return;
+    mostrarStatus("notas", "salvando", "Salvando…");
+    try {
+      await store.alterarAcao(espacoId, numero, { notas: htmlParaMarkdown(editorNotas()) });
+      mostrarStatus("notas", "salvo");
+    } catch (e) { mostrarStatus("notas", "erro", e.message); }
+  }
+  /** Esc num campo com alteração: volta ao valor gravado (sem fechar a janela). */
+  function desfazerCampo(el) {
+    if (el.dataset.auto === "estimativa") {
+      for (const k of ["o", "m", "p"]) { const x = corpo.querySelector(`[name="${k}"]`); x.value = x.dataset.original; }
+    } else el.value = el.dataset.original;
+    el.classList.remove("com-erro");
+    if (status?.campo === el.dataset.auto) { status = null; mostrarStatus(el.dataset.auto, "", ""); }
+    ajustarAlturas();
+  }
+
+  /* ---------- formulários de bloco: Reestimar e Registrar conclusão ---------- */
   async function salvar(form) {
     const nome = form.dataset.salvar;
     const f = Object.fromEntries(new FormData(form));
     const erro = form.querySelector("[data-erro]");
     const tres = () => ({ o: Number(f.o === "" ? NaN : f.o), m: Number(f.m === "" ? NaN : f.m), p: Number(f.p === "" ? NaN : f.p) });
     const operacoes = {
-      codigo: () => {
-        const novo = normalizarCodigo(f.codigo);
-        return store.alterarAcao(espacoId, numero, { codigo: novo || null });
-      },
-      rotulo: () => {
-        if (!f.rotulo.trim()) throw new Error("Informe o nome da ação.");
-        return store.alterarAcao(espacoId, numero, { rotulo: f.rotulo.trim() });
-      },
-      etapa: () => store.alterarAcao(espacoId, numero, { etapa: f.etapa || null }),
-      descricao: () => store.alterarAcao(espacoId, numero, { descricao: f.descricao.trim() }),
-      naoAntesDe: () => store.alterarAcao(espacoId, numero, { naoAntesDe: f.naoAntesDe || null }),
-      dataLimite: () => store.alterarAcao(espacoId, numero, { dataLimite: f.dataLimite || null }),
-      estimativa: () => store.corrigirEstimativa(espacoId, numero, tres()),
       reestimar: () => store.reestimar(espacoId, numero, { ...tres(), motivo: f.motivo }),
       concluir: () => store.concluir(espacoId, numero, f.data),
-      notas: () => store.alterarAcao(espacoId, numero, { notas: htmlParaMarkdown(form.querySelector("[data-editor-notas]")) }),
     };
     const mensagens = { reestimar: "Reestimativa registrada.", concluir: "Conclusão registrada. As ações seguintes foram recalculadas." };
     try {
-      editando = null; // antes de gravar: a gravação redesenha a janela já sem o editor
-      if (BLOCOS.includes(nome)) gravado = copiaDoFormulario(form);
+      editando = null; // antes de gravar: a gravação redesenha a janela já sem o formulário
+      gravado = copiaDoFormulario(form);
       await operacoes[nome]();
-      if (mensagens[nome]) avisar(mensagens[nome]);
+      avisar(mensagens[nome]);
     } catch (e) {
       gravado = null;
       editando = nome;
@@ -558,38 +716,30 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
   }
 
-  /** Formulários que entram como um bloco novo (crescem); os demais editores substituem o valor (surgem). */
-  const BLOCOS = ["reestimar", "concluir"];
   const botoesDaAcao = () => corpo.querySelector("[data-abrir-form]")?.closest(".botoes") ?? null;
   function editar(nome) {
     editando = nome;
-    if (BLOCOS.includes(nome)) {
-      /* os botões encolhem enquanto o formulário cresce no lugar deles */
-      trocarSuave({ sai: botoesDaAcao(), redesenhar: desenhar, entra: () => corpo.querySelector(`[data-salvar="${nome}"]`), lado: "antes" });
-    } else {
-      desenhar();
-      surgir(corpo.querySelector(`[data-salvar="${nome}"]`));
-    }
-    const ed = editorNotas();
-    if (nome === "notas" && ed) {
-      ed.focus();
-      getSelection().selectAllChildren(ed);
-      getSelection().collapseToEnd();
-    } else {
-      corpo.querySelector(`[data-salvar="${nome}"] [name]`)?.focus();
-    }
+    /* os botões encolhem enquanto o formulário cresce no lugar deles */
+    trocarSuave({ sai: botoesDaAcao(), redesenhar: desenhar, entra: () => corpo.querySelector(`[data-salvar="${nome}"]`), lado: "antes" });
+    corpo.querySelector(`[data-salvar="${nome}"] [name]`)?.focus();
   }
   function cancelar() {
     const nome = editando;
     editando = null;
-    if (BLOCOS.includes(nome)) {
-      /* o formulário encolhe enquanto os botões voltam a crescer */
-      trocarSuave({ sai: corpo.querySelector(`[data-salvar="${nome}"]`), redesenhar: desenhar, entra: botoesDaAcao, lado: "depois" });
-    } else {
-      desenhar();
-      surgir(corpo.querySelector(`[data-editar="${nome}"]`));
-    }
-    corpo.querySelector(`[data-editar="${nome}"], [data-abrir-form="${nome}"]`)?.focus();
+    /* o formulário encolhe enquanto os botões voltam a crescer */
+    trocarSuave({ sai: corpo.querySelector(`[data-salvar="${nome}"]`), redesenhar: desenhar, entra: botoesDaAcao, lado: "depois" });
+    corpo.querySelector(`[data-abrir-form="${nome}"]`)?.focus();
+  }
+
+  /** Abre um campo recolhido em "Mais campos" e põe o cursor nele. */
+  function mostrarCampo(campo) {
+    if (campo === "checklist") { checklistAberto = true; focoNoChecklist = true; }
+    mostrados.add(campo);
+    desenhar();
+    const bloco = corpo.querySelector(`[data-campo="${campo}"]`);
+    abrirSuave(bloco);
+    if (campo === "notas") editorNotas()?.focus();
+    else if (campo !== "checklist") bloco?.querySelector("input, textarea, select")?.focus();
   }
 
   /** Muda o texto de um item do checklist ali mesmo: Enter grava, Esc cancela. */
@@ -606,8 +756,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /* ---------- eventos ---------- */
   corpo.addEventListener("click", async (e) => {
     const t = e.target;
-    const campo = t.closest("[data-editar]");
-    if (campo && !t.closest("a")) return editar(campo.dataset.editar);
+    const abaB = t.closest("[data-aba]");
+    if (abaB) { aba = abaB.dataset.aba; return desenhar(); }
+    const mostrar = t.closest("[data-mostrar-campo]");
+    if (mostrar) return mostrarCampo(mostrar.dataset.mostrarCampo);
+    const abrirBusca = t.closest("[data-buscar-abrir]");
+    if (abrirBusca) {
+      buscando = abrirBusca.dataset.buscarAbrir;
+      desenhar();
+      return corpo.querySelector(`[data-buscar="${buscando}"]`)?.focus();
+    }
     const form = t.closest("[data-abrir-form]");
     if (form) return editar(form.dataset.abrirForm);
     if (t.closest("[data-cancelar]")) return cancelar();
@@ -695,20 +853,47 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const form = e.target.closest("[data-comentar], [data-editar-comentario]");
     if (form) { e.preventDefault(); form.requestSubmit(); }
   });
-  /* checklist: marcar e desmarcar gravam na hora */
+  /* checklist: marcar e desmarcar gravam na hora; os demais campos gravam ao sair deles */
   corpo.addEventListener("change", (e) => {
     const marca = e.target.closest("[data-marcar-item]");
-    if (marca) executar(() => store.marcarItemDoChecklist(espacoId, numero, marca.dataset.marcarItem, marca.checked));
+    if (marca) return executar(() => store.marcarItemDoChecklist(espacoId, numero, marca.dataset.marcarItem, marca.checked));
+    if (e.target.dataset.auto) gravarCampo(e.target);
   });
-  corpo.addEventListener("input", (e) => {
-    const form = e.target.closest("form");
-    const pert = form?.querySelector("[data-pert]");
-    if (pert && ["o", "m", "p"].includes(e.target.name)) {
-      const [o, m, p] = ["o", "m", "p"].map((k) => Number(form.querySelector(`[name="${k}"]`).value));
-      pert.textContent = [o, m, p].every(Number.isInteger) && o >= 0 && o <= m && m <= p && p > 0 ? `Prazo previsto (PERT): ${diasUteis(duracaoPert({ o, m, p }))}` : "";
+  corpo.addEventListener("focusout", (e) => {
+    /* anotações: grava ao sair do editor (não ao ir para a barra de formatação dele) */
+    const caixa = e.target.closest?.("[data-caixa-notas]");
+    if (caixa && !caixa.contains(e.relatedTarget)) gravarNotas();
+    /* busca de dependências e responsáveis: recolhe ao sair dela sem nada digitado */
+    const nome = e.target.dataset?.buscar;
+    if (nome && !e.target.value && buscando === nome) {
+      setTimeout(() => {
+        const ativo = document.activeElement;
+        if (fechada || buscando !== nome || ativo?.closest?.(`[data-seletor="${nome}"]`)) return;
+        buscando = null;
+        desenhar();
+      }, 150);
     }
   });
+  corpo.addEventListener("input", (e) => {
+    const bloco = e.target.closest("form, [data-campo]");
+    const pert = bloco?.querySelector("[data-pert]");
+    if (pert && ["o", "m", "p"].includes(e.target.name)) {
+      const [o, m, p] = ["o", "m", "p"].map((k) => Number(bloco.querySelector(`[name="${k}"]`).value));
+      pert.textContent = [o, m, p].every(Number.isInteger) && o >= 0 && o <= m && m <= p && p > 0 ? `Prazo previsto (PERT): ${diasUteis(duracaoPert({ o, m, p }))}.` : "Preencha os três pontos: otimista ≤ mais provável ≤ pessimista.";
+    }
+    if (e.target.dataset.auto) e.target.classList.remove("com-erro");
+    if (e.target.matches("textarea.cresce, textarea.janela-nome")) ajustarAlturas(e.target.parentElement);
+  });
   corpo.addEventListener("keydown", (e) => {
+    /* Esc na busca vazia recolhe a busca, sem fechar a janela */
+    if (e.key === "Escape" && e.target.dataset.buscar && !e.target.value && buscando) {
+      e.preventDefault();
+      const nome = buscando;
+      buscando = null;
+      desenhar();
+      corpo.querySelector(`[data-buscar-abrir="${nome}"]`)?.focus();
+      return;
+    }
     if (e.target.dataset.buscar) return; // o seletor cuida das teclas
     if (e.target.matches("[data-endereco-link]")) {
       if (e.key === "Enter") { e.preventDefault(); aplicarLink(); }
@@ -717,7 +902,21 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
     if (e.target.matches("[data-editor-notas]") && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); abrirBarraDeLink(); return; }
     if (e.key === "Escape" && editando) { e.preventDefault(); cancelar(); return; }
-    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-editar]")) { e.preventDefault(); editar(e.target.dataset.editar); }
+    const auto = e.target.dataset?.auto;
+    /* Esc num campo alterado desfaz a digitação (sem fechar a janela); sem alteração, fecha como sempre */
+    if (e.key === "Escape" && auto) {
+      const alterado = auto === "estimativa"
+        ? ["o", "m", "p"].some((k) => { const x = corpo.querySelector(`[name="${k}"]`); return x.value !== x.dataset.original; })
+        : e.target.value !== e.target.dataset.original;
+      if (alterado) { e.preventDefault(); desfazerCampo(e.target); return; }
+    }
+    if (e.key === "Escape" && e.target.matches("[data-editor-notas]") && notasMudaram()) {
+      e.preventDefault();
+      e.target.innerHTML = markdownParaHtml(acaoAtual()?.notas);
+      return;
+    }
+    /* Enter no nome e no código grava (o nome não tem quebra de linha) */
+    if (e.key === "Enter" && (auto === "rotulo" || auto === "codigo")) { e.preventDefault(); e.target.blur(); return; }
     if (e.key === "Enter" && e.target.matches("[data-texto-item]") && !e.target.isContentEditable) { e.preventDefault(); editarItem(e.target); }
   });
 
