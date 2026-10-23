@@ -430,6 +430,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ação</button>
       </div>`;
     modoDesenhado = ui.modo;
+    document.body.dataset.modo = ui.modo; // largura da área conforme o modo (css)
     legenda.hidden = !ui.legenda || planilha;
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
@@ -973,6 +974,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.removeEventListener("keyup", marcarAlt);
     removeEventListener("blur", marcarAlt);
     document.body.classList.remove("alt-edicao");
+    delete document.body.dataset.modo;
     document.querySelector(".escolher-participantes")?.remove();
     document.removeEventListener("sextante:alternar-legenda", alternarLegenda);
     barra.innerHTML = "";
