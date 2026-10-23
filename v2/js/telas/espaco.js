@@ -560,8 +560,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (l.atrasada) return -Math.max(1, cal.diasUteisAte(hoje) - cal.diasUteisAte(l.vencidaEm));
     return Math.max(0, cal.diasUteisAte(l.conclusao) - cal.diasUteisAte(hoje));
   }
-  /** Data curta ao lado da barra: dd/mm no ano corrente; dd/mm/aa nos outros. */
-  const dataCurta = (iso) => (iso ? (iso.slice(0, 4) === hoje.slice(0, 4) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}`) : "");
+  /** Data curta ao lado da barra: dd/mm, ou dd/mm/aa em todas se alguma for de outro ano. */
+  /* uniforme (23/10/2026, pedido do responsável): se alguma data mostrada é de outro ano, todas levam o ano */
+  const dataDaBarra = (l) => { const n = diasDoPrazo(l); return n == null ? null : n < 0 ? l.vencidaEm : l.conclusao; };
+  const comAno = () => linhas.some((l) => { const d = l.situacao !== "concluida" && !l.semEstimativa ? dataDaBarra(l) : null; return d && d.slice(0, 4) !== hoje.slice(0, 4); });
+  const dataCurta = (iso, ano) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}${ano ? `/${iso.slice(2, 4)}` : ""}` : "");
   function prazoHtml(l) {
     const n = diasDoPrazo(l);
     const valores = linhas.map(diasDoPrazo).filter((x) => x != null);
@@ -575,7 +578,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       : "Conclusão prevista para hoje";
     return `<span class="prazo-barra ${n < 0 ? "vencido" : n > 0 ? "faltam" : "zero"}" title="${titulo}" aria-label="${titulo}">
       <span class="prazo-trilho">${min < 0 ? `<i class="prazo-zero" style="left:${zero}%"></i>` : ""}${n ? `<i class="prazo-valor" style="left:${n < 0 ? zero - largura : zero}%;width:${Math.max(1.5, largura)}%"></i>` : ""}</span>
-      ${ui.tempoNumero === "data" ? `<span class="prazo-num data">${dataCurta(n < 0 ? l.vencidaEm : l.conclusao)}</span>` : `<span class="prazo-num">${n}</span>`}</span>`;
+      ${ui.tempoNumero === "data" ? `<span class="prazo-num data">${dataCurta(n < 0 ? l.vencidaEm : l.conclusao, comAno())}</span>` : `<span class="prazo-num">${n}</span>`}</span>`;
   }
 
   /** A barra escolhida, com o símbolo à esquerda (22/10/2026). */
