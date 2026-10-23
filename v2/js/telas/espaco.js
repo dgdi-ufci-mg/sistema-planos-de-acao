@@ -360,6 +360,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return ORDENS.map(([v, t]) => `<button class="opcao" type="button" data-ordem="${v}" aria-pressed="${ui.ordem === v}"><span class="opcao-icone">${ui.ordem === v ? ICONES.marcado : ""}</span><span class="opcao-texto">${t}</span></button>`).join("");
   }
   function popoverHtml() {
+    /* "Classificar e filtrar" (23/10/2026, pedido do responsável), como no Excel: a ordem primeiro, depois os filtros */
+    if (ui.pop === "classificar") {
+      return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Classificar e filtrar">
+        <h3>Classificar por</h3><div class="opcoes-lista">${ordensHtml()}</div>
+        <h3>Filtrar por situação</h3><div class="opcoes-lista">${situacoesHtml()}</div>
+        ${responsavelHtml()}
+        ${filtrosAtivos() ? '<button class="botao discreto" type="button" data-limpar-filtros>Limpar filtros</button>' : ""}
+      </div>`;
+    }
     if (ui.pop === "filtrar") {
       return `<div class="popover" data-popover role="dialog" aria-label="Filtrar">
         <h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div>
@@ -428,17 +437,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* teste de 23/10/2026 (pedido do responsável): nome do espaço à esquerda, seguido dos menus
        Visualização, Filtrar, Ordenar e Exibir, todos abrindo para baixo; à direita, as atrasadas e Nova ação.
        No celular, continua o funil com "Filtros e ordem" e a segunda linha */
-    const [, nomeModo, iconeModo] = MODOS.find(([v]) => v === ui.modo);
+    const [, nomeModo] = MODOS.find(([v]) => v === ui.modo);
+    if (["filtrar", "ordenar"].includes(ui.pop) || (ui.pop === "classificar" && planilha)) ui.pop = null;
     if ((ui.pop === "indicador" && !comIndicador()) || (ui.pop === "exibir" && !comExibir())) ui.pop = null;
     const atrasadas = linhas.filter((l) => l.atrasada).length;
-    const menu = (pop, icone, nome, extra = "") => `<button class="menu-topo" type="button" data-pop="${pop}" aria-expanded="${ui.pop === pop}" aria-haspopup="dialog" title="${nome}">
+    const menu = (pop, icone, nome, extra = "", titulo = nome) => `<button class="menu-topo" type="button" data-pop="${pop}" aria-expanded="${ui.pop === pop}" aria-haspopup="dialog" title="${titulo}">
       ${icone}<span class="menu-topo-nome">${nome}</span>${extra}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>`;
     ferramentas.innerHTML = `
       <div class="topo-esquerda">
         <div class="menus-topo so-computador">
-          ${menu("modo", ICONES[iconeModo], nomeModo)}
-          ${planilha ? "" : menu("filtrar", ICONES.funil, "Filtrar", nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : "")}
-          ${planilha ? "" : menu("ordenar", ICONES.ordenar, "Ordenar", ui.ordem !== "espaco" ? '<span class="ponto-menu" title="Ordem diferente da do espaço" aria-label="Ordem diferente da do espaço"></span>' : "")}
+          ${menu("modo", ICONES.visualizacao, nomeModo, "", `Visualização: ${nomeModo}`)}
+          ${planilha ? "" : menu("classificar", ICONES.funil, "Classificar e filtrar",
+            (ui.ordem !== "espaco" ? '<span class="ponto-menu" title="Ordem diferente da do espaço" aria-label="Ordem diferente da do espaço"></span>' : "")
+            + (nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : ""))}
           ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
           ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
         </div>

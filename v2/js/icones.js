@@ -26,6 +26,8 @@ export const ICONES = Object.freeze({
   barraExecucao: svg('<path d="M13 2.5 5 13.5h6l-1 8 8-11h-6z"/>'),
   /** Barra da contribuição para a incerteza: curva de sino. */
   /** Colunas da lista: três colunas. */
+  /** Visualização: janela dividida em painéis. */
+  visualizacao: svg('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M10 9v11"/>'),
   /** Indicador: mostrador com ponteiro. */
   indicador: svg('<path d="M3.5 17a8.5 8.5 0 1 1 17 0"/><path d="m12 17 4-5.5"/><circle cx="12" cy="17" r="1.2"/>'),
   /** Exibir: olho. */
