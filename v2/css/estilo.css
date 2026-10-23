@@ -105,7 +105,7 @@ h1, h2, h3 { font-family: var(--f-titulo); font-weight: 600; letter-spacing: .01
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 a { color: var(--accent-ink); font-weight: 600; }
-.conteudo { max-width: 1240px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.conteudo { max-width: 1600px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
 .mono { font-family: var(--f-dados); font-variant-numeric: tabular-nums; }
 .tec { font-size: .74rem; color: var(--muted); font-style: italic; }
 .cartao { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); padding: 16px; }
@@ -141,7 +141,7 @@ body::before {
 }
 .topo.rolou, body.rolou::before { background: var(--barra); }
 .topo.rolou { box-shadow: inset 0 -1px 0 var(--barra-borda), 0 6px 20px rgba(0, 0, 0, .08); }
-.topo-linha { max-width: 1240px; margin: 0 auto; height: 48px; display: flex; align-items: center; gap: 10px; }
+.topo-linha { max-width: 1600px; margin: 0 auto; height: 48px; display: flex; align-items: center; gap: 10px; }
 /* sem desfoque disponível, ou com "Reduzir transparência": barra opaca */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .topo.rolou, body.rolou::before { background: var(--bg); }
@@ -979,7 +979,7 @@ h3.editavel { padding: 2px 6px; }
 .crono-legenda i.base { background: var(--muted); opacity: .8; height: 3px; }
 
 /* ---------- sem conexão (22/10/2026): aviso fixo na barra do topo ---------- */
-.aviso-conexao { max-width: 1240px; margin: 0 auto 8px; padding: 6px 12px; border-radius: var(--raio); background: var(--warn-soft); color: var(--warn-ink);
+.aviso-conexao { max-width: 1600px; margin: 0 auto 8px; padding: 6px 12px; border-radius: var(--raio); background: var(--warn-soft); color: var(--warn-ink);
   border: 1px solid var(--warn); font-size: .9rem; text-align: center; }
 body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .zona-exclusao, body.sem-conexao [data-salvar-retrato] { display: none !important; } /* !important: vence o .so-celular do botão (+) */
 .aviso-conexao:not([hidden]) { animation: aviso-conexao-surge var(--mov) var(--mov-curva); }
@@ -1097,3 +1097,44 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .nota-checklist .icone { width: 13px; height: 13px; }
 .nota-checklist.completo { color: var(--ok-ink, var(--accent-ink)); }
 @media (prefers-reduced-motion: reduce) { .checklist-barra i { transition: none; } }
+
+/* ---------- teste de 23/10/2026: barra do topo com menus (Visualização, Filtrar, Ordenar, Exibir) ----------
+   No computador: nome do espaço à esquerda, menus logo depois, atrasadas e Nova ação à direita; a segunda
+   linha some. No celular, fica como antes (funil, nome no centro e segunda linha). Área até 1600 px. */
+.menus-topo { display: flex; align-items: center; gap: 2px; }
+.menu-topo { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 8px 0 10px; border: 0; border-radius: var(--raio);
+  background: transparent; color: var(--ink); font: 600 .9rem var(--f-texto); cursor: pointer; white-space: nowrap; transition: background-color var(--mov-rapido); }
+.menu-topo:hover, .menu-topo[aria-expanded="true"] { background: var(--barra-controle-foco, var(--sunk)); }
+.menu-topo:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.menu-topo > .icone { width: 18px; height: 18px; flex: none; }
+.menu-topo-seta { display: inline-flex; color: var(--muted); transition: transform var(--mov-rapido); }
+.menu-topo-seta .icone { width: 14px; height: 14px; }
+.menu-topo[aria-expanded="true"] .menu-topo-seta { transform: rotate(180deg); }
+.menu-topo .contador { position: static; }
+.ponto-menu { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+.opcao-marca { display: inline-flex; color: var(--accent-ink); }
+.opcao-marca .icone { width: 16px; height: 16px; }
+.opcao .opcao-icone .icone { width: 17px; height: 17px; }
+.popover-exibir { width: 300px; max-height: min(70vh, 560px); overflow-y: auto; }
+.popover-exibir h3 + .opcoes-lista, .popover-exibir h3 + .colunas-escolha { margin-top: -4px; }
+.colunas-escolha { display: flex; flex-direction: column; gap: 6px; padding: 2px 6px; }
+.colunas-escolha label { display: flex; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; }
+.colunas-escolha label.fixa { color: var(--muted); cursor: default; }
+.chip-atrasadas { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; margin-right: 8px; border: 1px solid var(--crit); border-radius: 999px;
+  background: var(--crit-soft); color: var(--crit-ink); font: 600 .84rem var(--f-texto); cursor: pointer; white-space: nowrap; }
+.chip-atrasadas .icone { width: 15px; height: 15px; }
+.chip-atrasadas[aria-pressed="true"] { background: var(--crit); color: var(--texto-sobre-destaque, #fff); }
+.chip-atrasadas:focus-visible { outline: 2px solid var(--crit); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .menu-topo, .menu-topo-seta { transition: none; } }
+@media (min-width: 641px) {
+  .topo-linha { grid-template-columns: minmax(0, max-content) auto minmax(0, 1fr) auto; column-gap: 14px; }
+  .topo-linha > .topo-titulo { grid-column: 1; text-align: left; max-width: 34ch; }
+  .topo-esquerda { grid-column: 2; }
+  .topo-direita { grid-column: 4; }
+  .cabeca-linha { display: none; }
+}
+/* telas médias: os menus ficam só com o ícone (o nome aparece ao passar o mouse) */
+@media (min-width: 641px) and (max-width: 1399px) {
+  .menu-topo:not([data-pop="modo"]) .menu-topo-nome { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* o modo atual continua escrito */
+  .menu-topo { padding: 0 6px; gap: 3px; }
+}

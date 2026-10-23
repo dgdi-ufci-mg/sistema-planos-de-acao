@@ -292,6 +292,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ui.colunasAberto = true;
     cabeca.innerHTML = cabecaHtml();
     desenharLista();
+    desenharFerramentas();
   }
   function mudarColuna(v, ligada) {
     ui.colunas = { ...ui.colunas, [v]: ligada };
@@ -299,6 +300,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ui.colunasAberto = true;
     cabeca.innerHTML = cabecaHtml();
     desenharLista();
+    desenharFerramentas();
   }
   /* clique fora do menu de colunas, ou Esc, fecha o menu */
   const fecharColunas = (e) => {
@@ -312,6 +314,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     try { localStorage.setItem("sextante.barra", v); } catch { /* sem armazenamento */ }
     cabeca.innerHTML = cabecaHtml();
     desenharLista();
+    desenharFerramentas();
   }
   const niveisHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Mostrar até</span><div class="modos niveis" role="group" aria-label="Mostrar até">
       ${NIVEIS.map(([v, nome]) => `<button type="button" class="modo" data-nivel="${v}" aria-pressed="false"><span class="modo-nome">${nome}</span></button>`).join("")}
@@ -330,6 +333,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       g.querySelector(":scope > .grupo-cabeca").setAttribute("aria-expanded", String(!fechado));
     }
     marcarNivel();
+    if (ui.pop === "exibir") desenharFerramentas();
   }
 
   /** Filtros ativos (situação, responsável, "Minhas ações"), para o número no funil. */
@@ -364,27 +368,67 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <h3>Ordenar por</h3><div class="opcoes-lista">${ordensHtml()}</div>
       </div>`;
     }
+    if (ui.pop === "modo") {
+      return `<div class="popover popover-modo" data-popover role="dialog" aria-label="Visualização">
+        <h3>Visualização</h3><div class="opcoes-lista">${MODOS.map(([v, nome, icone]) => `<button class="opcao" type="button" data-modo="${v}" aria-pressed="${ui.modo === v}">
+          <span class="opcao-icone">${ICONES[icone]}</span><span class="opcao-texto">${nome}</span>${ui.modo === v ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`).join("")}</div>
+      </div>`;
+    }
+    if (ui.pop === "exibir") return exibirHtml();
     return "";
+  }
+
+  /**
+   * Menu "Exibir" da barra do topo (teste de 23/10/2026, pedido do responsável): reúne o que antes
+   * ficava na segunda linha. Indicador (a barra dos cartões), "Mostrar até", identificador e colunas,
+   * cada um só onde faz sentido.
+   */
+  const comIndicador = () => ui.modo === "quadro" || (ui.modo === "lista" && colunas().barras);
+  const comExibir = () => ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
+  function exibirHtml() {
+    const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
+      <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
+    const nivel = agrupado() && lista ? nivelAtual() : null;
+    return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Exibir">
+      ${comIndicador() ? `<h3>Indicador</h3><div class="opcoes-lista">${BARRAS.map(([v, nome, icone]) =>
+        opcao("data-barra", v, nome, ui.barra === v, `<span class="barra-icone ${v}">${ICONES[icone]}</span>`)).join("")}</div>` : ""}
+      ${agrupado() ? `<h3>Mostrar até</h3><div class="opcoes-lista">${NIVEIS.map(([v, nome]) => opcao("data-nivel", v, nome, nivel === v)).join("")}</div>` : ""}
+      <h3>Identificador antes do nome</h3><div class="opcoes-lista">${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos)
+        .map(([v, nome]) => opcao("data-identificador-op", v, nome, identificador() === v)).join("")}</div>
+      ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
+        <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
+        ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || usaDescricao()).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
+    </div>`;
   }
 
   /** Ferramentas na barra do topo: modo, Filtrar, Ordenar e Nova ação (celular: "Filtros e ordem"). */
   function desenharFerramentas({ abriu = false } = {}) {
     const planilha = semFiltros();
     const nf = filtrosAtivos();
-    /* modo, Filtrar e Ordenar à esquerda; o nome do espaço no meio; Nova ação à direita (22/10/2026, pedido do responsável) */
+    /* teste de 23/10/2026 (pedido do responsável): nome do espaço à esquerda, seguido dos menus
+       Visualização, Filtrar, Ordenar e Exibir, todos abrindo para baixo; à direita, as atrasadas e Nova ação.
+       No celular, continua o funil com "Filtros e ordem" e a segunda linha */
+    const [, nomeModo, iconeModo] = MODOS.find(([v]) => v === ui.modo);
+    const atrasadas = linhas.filter((l) => l.atrasada).length;
+    const menu = (pop, icone, nome, extra = "") => `<button class="menu-topo" type="button" data-pop="${pop}" aria-expanded="${ui.pop === pop}" aria-haspopup="dialog" title="${nome}">
+      ${icone}<span class="menu-topo-nome">${nome}</span>${extra}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>`;
     ferramentas.innerHTML = `
       <div class="topo-esquerda">
-        <div class="so-computador">${modosHtml()}</div>
-        ${planilha ? "" : `
-        <button class="icone-barra so-computador" type="button" data-pop="filtrar" aria-label="Filtrar" title="Filtrar" aria-expanded="${ui.pop === "filtrar"}">
-          ${ICONES.funil}${nf ? `<span class="contador">${nf}</span>` : ""}</button>
-        <button class="icone-barra so-computador" type="button" data-pop="ordenar" aria-label="Ordenar" title="Ordenar" aria-expanded="${ui.pop === "ordenar"}">
-          ${ICONES.ordenar}${ui.ordem !== "espaco" ? '<span class="ponto" aria-hidden="true"></span>' : ""}</button>`}
+        <div class="menus-topo so-computador">
+          ${menu("modo", ICONES[iconeModo], nomeModo)}
+          ${planilha ? "" : menu("filtrar", ICONES.funil, "Filtrar", nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : "")}
+          ${planilha ? "" : menu("ordenar", ICONES.ordenar, "Ordenar", ui.ordem !== "espaco" ? '<span class="ponto-menu" title="Ordem diferente da do espaço" aria-label="Ordem diferente da do espaço"></span>' : "")}
+          ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
+        </div>
         <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
           ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
-        ${planilha ? "" : popoverHtml()}
+        ${popoverHtml()}
       </div>
-      <div class="topo-direita"><button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ação</button></div>`;
+      <div class="topo-direita">
+        ${atrasadas ? `<button class="chip-atrasadas so-computador" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
+          title="${ui.situacao === "atrasada" ? "Mostrar todas as ações" : "Mostrar só as atrasadas"}">${ICONES.atrasada}${atrasadas} ${plural(atrasadas, "atrasada", "atrasadas")}</button>` : ""}
+        <button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ação</button>
+      </div>`;
     modoDesenhado = ui.modo;
     legenda.hidden = !ui.legenda || planilha;
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
@@ -403,6 +447,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (t.closest("[data-limpar-filtros]")) { ui.responsavel = ""; ui.minhas = false; return mudar("situacao", "todas"); }
     if (t.closest("[data-opcoes]")) return abrirOpcoes();
     if (t.closest("[data-nova]")) { ui.pop = null; desenharFerramentas(); return abrirNova(); }
+    const barra = t.closest("[data-barra]");
+    if (barra) return mostrarBarra(barra.dataset.barra);
+    const nivel = t.closest("[data-nivel]");
+    if (nivel) return mostrarAte(nivel.dataset.nivel);
+    const id = t.closest("[data-identificador-op]");
+    if (id) return mudarIdentificador(id.dataset.identificadorOp);
   }
   /* clique fora do painel aberto, ou Esc, fecha o painel */
   const fecharPop = (e) => {
@@ -803,6 +853,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
 
   function aoMudarControle(e) {
+    if (e.target.dataset.coluna) return mudarColuna(e.target.dataset.coluna, e.target.checked);
     const ctl = e.target.dataset.ctl;
     if (ctl) mudar(ctl, e.target.type === "checkbox" ? e.target.checked : e.target.value);
   }
