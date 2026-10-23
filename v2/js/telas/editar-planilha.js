@@ -18,17 +18,18 @@ const SITUACOES = { concluida: "Concluída", liberada: "Liberada", naoLiberada: 
 /**
  * Todas as colunas da planilha, na ordem da grade (23/10/2026, pedido do responsável: a planilha é para
  * quem usa muito o sistema e mostra todos os campos, inclusive os calculados). Larguras em em.
- * fixa: fica parada à esquerda ao rolar para o lado (telas largas); calculada: só leitura, no fim.
+ * fixa: fica parada à esquerda ao rolar para o lado; calculada: só leitura, no fim.
  * @returns {{chave: string, titulo: string, largura: number, fixa?: boolean, calculada?: boolean, obrigatoria?: boolean}[]}
  */
 export function colunasDaPlanilha(d) {
   const campos = d.espaco.camposOpcionais ?? {};
   return [
-    d.usaFases && { chave: "fase", titulo: "Fase", largura: 9, fixa: true },
-    d.usaFases && { chave: "etapa", titulo: "Etapa", largura: 10, fixa: true },
+    /* revisão de 23/10/2026 (pedido do responsável): número e ação primeiro, parados à esquerda; o rótulo se chama "Ação" aqui */
     { chave: "numero", titulo: "Nº", largura: 3, fixa: true },
     d.usaCodigos && { chave: "codigo", titulo: "Código", largura: 6, fixa: true },
-    { chave: "rotulo", titulo: "Rótulo", largura: 16, fixa: true, obrigatoria: true },
+    { chave: "rotulo", titulo: "Ação", largura: 16, fixa: true, obrigatoria: true },
+    d.usaFases && { chave: "fase", titulo: "Fase", largura: 9 },
+    d.usaFases && { chave: "etapa", titulo: "Etapa", largura: 10 },
     campos.descricao !== false && { chave: "descricao", titulo: "Descrição", largura: 18 },
     { chave: "dependeDe", titulo: "Depende de", largura: 7 },
     { chave: "responsaveis", titulo: "Responsáveis", largura: 9 },
@@ -136,7 +137,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   }
 
   function celulaHtml(acao, coluna, linha, indice, esquerda) {
-    const motivo = acao ? bloqueio(acao, coluna.chave) : coluna.chave === "rotulo" ? "" : coluna.calculada ? "Calculado pelo sistema." : "Escreva o rótulo para criar a ação.";
+    const motivo = acao ? bloqueio(acao, coluna.chave) : coluna.chave === "rotulo" ? "" : coluna.calculada ? "Calculado pelo sistema." : "Escreva o nome da ação para criar a linha.";
     const v = acao ? valor(acao, coluna.chave) : "";
     const classes = [coluna.calculada && "calculada", coluna.inicioCalculados && "inicio-calculados", esquerda != null && "fixa", coluna.ultimaFixa && "ultima-fixa"].filter(Boolean);
     const estilo = esquerda != null ? ` style="--esq:${esquerda}"` : "";
@@ -151,7 +152,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         `<option value="${esc(e.id)}"${e.id === v ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</select></td>`;
     }
     const tipo = ["naoAntesDe", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
-    const dica = !acao && coluna.chave === "rotulo" ? ' placeholder="Nova ação: escreva o rótulo"' : "";
+    const dica = !acao && coluna.chave === "rotulo" ? ' placeholder="Nova ação: escreva o nome"' : "";
     const inteiro = v && !tipo && v.length > 12 ? ` title="${esc(v)}"` : "";
     return `${td}<input${tipo} ${comum} value="${esc(v)}" data-original="${esc(v)}"${dica}${inteiro}${coluna.chave === "concluidaEm" ? ` max="${hoje}"` : ""}></td>`;
   }
@@ -215,7 +216,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     switch (chave) {
       case "codigo": return store.alterarAcao(espacoId, n, { codigo: normalizarCodigo(t) || null });
       case "rotulo":
-        if (!t) throw new Error("O rótulo não pode ficar vazio.");
+        if (!t) throw new Error("O nome da ação não pode ficar vazio.");
         return store.alterarAcao(espacoId, n, { rotulo: t });
       case "etapa": {
         const etapa = etapas().find((e) => e.id === t) ?? etapas().find((e) => e.nome.toLowerCase() === t.toLowerCase());

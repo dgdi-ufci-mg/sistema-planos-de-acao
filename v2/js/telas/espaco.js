@@ -424,7 +424,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}
     </div>`;
   }
-  /** Colunas da planilha em "Exibir" (23/10/2026): dados da ação e calculados; o rótulo fica sempre. */
+  /** Colunas da planilha em "Exibir" (23/10/2026): dados da ação e calculados; a coluna Ação fica sempre. */
   function colunasDaPlanilhaHtml() {
     const todas = colunasDaPlanilha(dadosDaJanela());
     const grupo = (titulo, cols) => `<h3>${titulo}</h3><div class="colunas-escolha colunas-planilha">${cols.map((c) => c.obrigatoria

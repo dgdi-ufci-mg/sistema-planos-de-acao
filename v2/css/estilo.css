@@ -682,12 +682,10 @@ h3.editavel { padding: 2px 6px; }
 .planilha th.calculada { font-style: italic; }
 .planilha td.calculada > span { color: var(--muted); }
 .planilha .inicio-calculados { border-left: 2px solid var(--line); }
-/* fase, etapa, número e rótulo ficam parados ao rolar para o lado, nas telas largas */
-@media (min-width: 1200px) {
-  .planilha .fixa { position: sticky; left: calc(var(--esq) * .88rem); z-index: 1; } /* --esq em em da tabela (.88rem) */
-  .planilha th.fixa { z-index: 2; }
-  .planilha .ultima-fixa { border-right: 2px solid var(--line); }
-}
+/* número (e código) e ação ficam parados ao rolar para o lado */
+.planilha .fixa { position: sticky; left: calc(var(--esq) * .88rem); z-index: 1; } /* --esq em em da tabela (.88rem) */
+.planilha th.fixa { z-index: 2; }
+.planilha .ultima-fixa { border-right: 2px solid var(--line); }
 .planilha .linha-nova td { background: var(--bg); }
 .planilha .linha-nova input[data-chave="rotulo"]::placeholder { color: var(--faint); }
 
