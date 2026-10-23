@@ -201,9 +201,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * Seletor de modo: só ícones; o modo ativo mostra também o nome, e os demais o mostram ao
    * passar o mouse (decisão do responsável, 21/10/2026). No celular, só Lista e Quadro.
    */
-  const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""], ["planilha", "Planilha", "modoPlanilha", "so-computador"],
-    ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
+  const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""],
     ["rede", "Rede", "modoRede", "so-computador"],
+    ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
+    ["planilha", "Planilha", "modoPlanilha", "so-computador"],
     ["linha", "Linha do tempo", "modoLinha", "so-computador"]];
   /** Modos sem filtros nem ordem: mostram o espaço inteiro (no cronograma, as setas ligariam ações escondidas). */
   const semFiltros = () => ["planilha", "cronograma", "rede", "linha"].includes(ui.modo);

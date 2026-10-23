@@ -18,7 +18,7 @@ Planejar e acompanhar planos de ação institucionais da DGDI (Diretoria de Gove
 - a chance de cumprir o prazo final e as datas prováveis de conclusão (simulação de Monte Carlo com a distribuição beta-PERT);
 - para cada ação, quanto um atraso nela atrasa o fim (índice de criticidade) e quanto da incerteza do prazo vem dela (contribuição para a variância).
 
-E mostra o espaço em seis modos: lista, quadro, planilha, cronograma, rede e linha do tempo.
+E mostra o espaço em seis modos: lista, quadro, rede, cronograma, planilha e linha do tempo.
 
 ### 1.2 Público
 
