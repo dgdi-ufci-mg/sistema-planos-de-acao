@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 102 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 103 da página)
 
 ---
 
@@ -551,6 +551,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 100 | Versão 2: rede no estilo do Bizagi (pedido do responsável). **Raias** horizontais, uma por etapa, com o nome na cabeça, à esquerda; cada ação fica na raia da sua etapa (decisão do responsável, entre raias e caixas em volta dos grupos). **Setas em ângulo reto**, de cantos secos: as subidas e descidas ficam nos vãos entre colunas, cada uma num trilho, na ordem de trilhos que cruza menos (custo de cruzamento por par e trocas sucessivas). A ordem dos cartões continua minimizando cruzamentos, agora dentro de cada raia. Onde duas setas ainda se cruzam, a horizontal dá um **salto** (semicírculo) sobre a vertical, como no Visio. Testes: no exemplo e na PI², cartões dentro das suas raias, setas só com trechos horizontais e verticais, nenhuma passando por cartão, e saltos só onde há cruzamento. Sem mudança na versão atual |
 | 101 | Versão 2: na rede, as raias dão lugar aos **marcos** (milestones), como no Bizagi (pedido do responsável): uma faixa vertical por etapa, da esquerda para a direita na ordem do espaço, com o nome no alto. Cada ação fica no marco da sua etapa; dentro dele, as regras de coluna continuam. Seta para uma etapa anterior (rara) passa por baixo de tudo, tracejada. Setas longas passam a correr retas, numa altura só, sempre que cabem entre os cartões das colunas do meio. Sem mudança na versão atual |
 | 102 | Versão 2: **zoom na rede**, como nos quadros infinitos (pedido do responsável): Ctrl + rolar o mouse (ou o gesto de pinça do touchpad) aproxima e afasta em volta do cursor, de 20% a 250%; botões − e + com a porcentagem; arrastar o fundo move a rede. "Normal" volta a 100% e "Ver tudo" faz caber na área, que agora tem altura fixa. O zoom escolhido se mantém quando a rede é redesenhada. Sem mudança na versão atual |
+| 103 | Versão 2, lote de 22/10/2026 (item 4): cartões do quadro no estilo enxuto da lista (sem data nem carimbo "Atrasada": a coluna diz a situação e a barra, o prazo; todos os responsáveis que couberem); círculos das pessoas com a sigla, quando tem até três letras, no lugar das iniciais, que podiam repetir; na rede, seta reta quando um dos lados tem só ela e a altura cabe no outro cartão (menos degraus perto das pontas). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

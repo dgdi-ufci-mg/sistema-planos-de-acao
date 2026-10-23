@@ -279,6 +279,13 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     const ys = ar.cadeia.map(yDe);
     ys[0] += porta(saidas.get(ar.de), ar, (a) => a.cadeia[1]);
     ys[ys.length - 1] += porta(chegadas.get(ar.para), ar, (a) => a.cadeia.at(-2));
+    /* pontas alinhadas (22/10/2026): se um lado tem só esta seta e a altura do outro cabe nele, a seta fica reta, sem degrau */
+    const fim = ys.length - 1;
+    const cabe = (y, it) => Math.abs(y - yDe(it)) <= M.altura / 2 - 10;
+    if (Math.abs(ys[fim - 1] - ys[fim]) >= 0.5) {
+      if (chegadas.get(ar.para).length === 1 && cabe(ys[fim - 1], ar.para)) ys[fim] = ys[fim - 1];
+      else if (fim === 1 && saidas.get(ar.de).length === 1 && cabe(ys[fim], ar.de)) ys[0] = ys[fim];
+    }
     ar.ys = ys;
     ar.trilhos = [];
     for (let k = 0; k + 1 < ys.length; k++) {

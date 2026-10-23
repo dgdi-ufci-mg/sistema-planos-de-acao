@@ -641,15 +641,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["liberada", "Liberadas", "icone-liberada", "Arraste para Concluídas ao terminar."],
     ["concluida", "Concluídas", "icone-concluida", "Arraste de volta para Liberadas para desfazer a conclusão."],
   ];
+  /* cartão do quadro no estilo enxuto da lista (22/10/2026): sem data nem carimbo; a coluna diz a situação e a barra, o prazo */
   function cartaoHtml(l) {
     const a = l.acao;
-    const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus });
+    const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus, todos: true });
     const arrastavel = l.situacao !== "naoLiberada";
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
-        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}</div>
-        ${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}
-        <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div>${l.semEstimativa ? FALTA_ESTIMAR : `<span class="data${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>`}</div>
+        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+          l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}</div>
+        <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div></div>
         ${l.situacao === "concluida" ? "" : barraHtml(l)}
       </div>
     </article>`;

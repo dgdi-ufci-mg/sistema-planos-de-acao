@@ -5,6 +5,12 @@
 import { esc } from "../formato.js";
 import { iniciais, tomDe, separar } from "../responsaveis.js";
 
+/**
+ * Letras do círculo (22/10/2026): a sigla da pessoa, quando tem até três letras, que é única no
+ * espaço; sem sigla, as iniciais do nome (que podem repetir, como Hebert e Henrique).
+ */
+export const rotuloDoCirculo = (r) => (r.sigla && r.sigla.trim().length <= 3 ? r.sigla.trim().toLocaleUpperCase("pt-BR") : iniciais(r.nome));
+
 /** Até quantas pessoas aparecem juntas; as demais viram "+N". */
 const PESSOAS_JUNTAS = 3;
 
@@ -18,7 +24,8 @@ export function seloHtml(r, { tons, meus } = {}) {
     return `<span class="unidade" title="${esc(r.nome)}" role="img" aria-label="${esc(r.nome)}">${esc(r.sigla || iniciais(r.nome))}</span>`;
   }
   const tom = tons?.[r.id] ?? tomDe(r.nome);
-  return `<span class="avatar${meus?.includes(r.id) ? " eu" : ""}" style="--tom:var(--tom-${tom});--tom-texto:var(--tom-${tom}-texto)" title="${esc(r.nome)}" role="img" aria-label="${esc(r.nome)}">${esc(iniciais(r.nome))}</span>`;
+  const letras = rotuloDoCirculo(r);
+  return `<span class="avatar${meus?.includes(r.id) ? " eu" : ""}${letras.length > 2 ? " tres" : ""}" style="--tom:var(--tom-${tom});--tom-texto:var(--tom-${tom}-texto)" title="${esc(r.nome)}" role="img" aria-label="${esc(r.nome)}">${esc(letras)}</span>`;
 }
 
 /**

@@ -382,6 +382,8 @@ body.so-leitura [data-nova] { display: none; }
   box-shadow: 0 0 0 2px var(--surface); cursor: default;
 }
 .avatar + .avatar { margin-left: 3px; } /* lado a lado, sem sobrepor: as iniciais têm duas letras (22/10/2026) */
+.avatar.tres { font-size: .6rem; letter-spacing: 0; }
+.rede-base .avatar.tres { font-size: .54rem; }
 .avatar.mais { background: var(--sunk); color: var(--muted); border: 1px solid var(--line); }
 .avatar.eu { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); position: relative; }
 .unidade {
