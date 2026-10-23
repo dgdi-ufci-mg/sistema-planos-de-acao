@@ -8,7 +8,7 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
+    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "nomeInicial", "situacoes", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
@@ -17,6 +17,8 @@ export const CAMPOS = Object.freeze({
   documento: ["nome", "data", "identificacao", "link"],
   /** Documento que aprovou o Plano de Ação (passo 2.4a). */
   aprovacao: ["identificacao", "link"],
+  /** Situação personalizada do espaço, uma coluna do quadro (passo 2.7). */
+  situacao: ["id", "nome"],
   /** Modelo de configuração do espaço, fixo depois de criado (passo 2.4b). */
   modelo: ["nome", "prazos", "dependencias", "simulacao"],
   fase: ["id", "nome", "etapas"],
@@ -24,7 +26,7 @@ export const CAMPOS = Object.freeze({
   camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao",
-    "dependeDe", "responsaveis", "estimativas", "dataLimite", "concluidaEm", "naoAntesDe", "notas", "checklist",
+    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],

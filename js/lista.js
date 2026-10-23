@@ -3,6 +3,7 @@
  * ordenação e agrupamento por fases e etapas. Só regras, sem tela, para ser testado.
  */
 import { estimativaVigente } from "./calculo.js";
+import { fluxoDe } from "./situacoes.js";
 
 /** Situações dos filtros, na ordem dos botões. "atrasada" é carimbo, não situação. */
 export const FILTROS = ["todas", "liberada", "atrasada", "naoLiberada", "concluida"];
@@ -17,9 +18,10 @@ export const ORDENS = ["espaco", "execucao", "revisao", "conclusao"];
  * @param {{porAcao: Map}|null} simulacao  resultado de simular; null no espaço sem simulação
  * @param {object} calendario
  * @param {string} hoje  data ISO
- * @param {{prazos?: "estimativa"|"dataLimite"}} [opcoes]  como o espaço define os prazos (js/modelos.js)
+ * @param {{prazos?: "estimativa"|"dataLimite", espaco?: object}} [opcoes]  como o espaço define os prazos (js/modelos.js);
+ *   espaco: para as situações personalizadas (js/situacoes.js)
  */
-export function montarLinhas(acoes, caminho, simulacao, calendario, hoje, { prazos = "estimativa" } = {}) {
+export function montarLinhas(acoes, caminho, simulacao, calendario, hoje, { prazos = "estimativa", espaco = {} } = {}) {
   const porDataLimite = prazos === "dataLimite"; // passo 2.4b: sem estimativas, a data prevista é a data-limite
   return acoes.map((acao) => {
     const c = caminho.porAcao.get(acao.numero);
@@ -30,6 +32,8 @@ export function montarLinhas(acoes, caminho, simulacao, calendario, hoje, { praz
     return {
       acao,
       situacao: c.situacao,
+      /** onde está no fluxo: "naoLiberada", "inicial", id de situação personalizada ou "concluida" (passo 2.7) */
+      fluxo: fluxoDe(acao, c.situacao, espaco),
       atrasada: Boolean(c.atrasada),
       /** atrasada: dia em que a conclusão prevista venceu */
       vencidaEm: c.atrasada ? c.vencidaEm : null,
@@ -53,6 +57,8 @@ export function contar(linhas) {
     n.todas++;
     n[l.situacao]++;
     if (l.atrasada) n.atrasada++;
+    /* situações personalizadas (passo 2.7): "fluxo:<id>" e "fluxo:inicial" */
+    if (l.situacao === "liberada" && l.fluxo) n[`fluxo:${l.fluxo}`] = (n[`fluxo:${l.fluxo}`] ?? 0) + 1;
   }
   return n;
 }
@@ -64,7 +70,7 @@ export function contar(linhas) {
  */
 export function filtrar(linhas, { situacao = "todas", responsavel = "", minhas } = {}) {
   return linhas.filter((l) =>
-    (situacao === "todas" || (situacao === "atrasada" ? l.atrasada : l.situacao === situacao)) &&
+    (situacao === "todas" || (situacao === "atrasada" ? l.atrasada : situacao.startsWith("fluxo:") ? `fluxo:${l.fluxo}` === situacao : l.situacao === situacao)) &&
     (!responsavel || l.acao.responsaveis.includes(responsavel)) &&
     (!minhas || l.acao.responsaveis.some((id) => minhas.includes(id))));
 }

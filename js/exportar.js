@@ -10,6 +10,7 @@ import { criarCalendario, datasEfetivas } from "./calendario.js";
 import { caminhoCritico, estimativaVigente, duracaoPert } from "./calculo.js";
 import { dataBr } from "./formato.js";
 import { opcoesDoCalculo, usaDataLimite, usaDependencias } from "./modelos.js";
+import { fluxoDe, nomeDoFluxo } from "./situacoes.js";
 
 
 const SITUACAO = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
@@ -65,7 +66,8 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
       ...(comDependencias ? [(a.dependeDe ?? []).map((d) => (porNumero.has(d) ? referencia(porNumero.get(d), usaCodigos) : d)).join("; ")] : []),
       ...(comEstimativas ? [numero(e?.o), numero(e?.m), numero(e?.p), e ? numero(duracaoPert(e)) : ""] : [a.dataLimite ? dataBr(a.dataLimite) : ""]),
       (a.responsaveis ?? []).map((id) => pessoa.get(id)).filter(Boolean).join("; "),
-      SITUACAO[c.situacao] ?? c.situacao, c.atrasada ? "sim" : "não",
+      /* situação personalizada, quando houver (passo 2.7) */
+      c.situacao === "liberada" ? nomeDoFluxo(espaco, fluxoDe(a, c.situacao, espaco)) : SITUACAO[c.situacao] ?? c.situacao, c.atrasada ? "sim" : "não",
       ...(comEstimativas ? [dataBr(inicio), dataBr(fim), concluida ? "" : numero(Math.max(0, c.folga)), concluida ? "" : (c.critica ? "sim" : "não")] : []),
     ].map(campo).join("\t");
   });

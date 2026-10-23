@@ -56,6 +56,8 @@ export function descreverRegistro(r, nomes) {
     case "responsaveis": return mudancaDeLista("Responsáveis", nomes.responsavel);
     case "naoAntesDe": return depois ? `“Não começa antes de” passou a ${dataBr(depois)}.` : "Retirou a data de “Não começa antes de”.";
     case "concluidaEm": return depois ? `Registrou a conclusão em ${dataBr(depois)}.` : "Desfez a conclusão.";
+    /* passo 2.7: nomes vindos do espaço; uma situação já retirada aparece como "situação retirada" */
+    case "situacaoPersonalizada": return `Mudou a situação para ${depois ? `“${nomes.situacao?.(depois) ?? "situação retirada"}”` : "a inicial"}.`;
     case "excluidaEm": return depois ? "Excluiu a ação (foi para a lixeira)." : "Restaurou a ação da lixeira.";
     case "checklist": {
       /* passo 2.8: compara item a item, pelo id */

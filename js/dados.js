@@ -13,6 +13,7 @@ import { registrosDaMudanca } from "./historico.js";
 import { montarRetrato } from "./retrato.js";
 import { problemaDoTipo } from "./tipos.js";
 import { problemaDoModelo, modeloDe } from "./modelos.js";
+import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
 
 export { ErroDeDados };
 
@@ -115,6 +116,9 @@ function validarEspaco(e, recusarDesconhecidos) {
   if (e.modelo) recusarDesconhecidos(e.modelo, "modelo");
   const modelo = problemaDoModelo(e.modelo); // passo 2.4b
   if (modelo) throw new ErroDeDados(modelo.codigo, modelo.mensagem);
+  for (const s of e.situacoes ?? []) recusarDesconhecidos(s, "situacao"); // passo 2.7
+  const situacoes = problemaDasSituacoes(e);
+  if (situacoes) throw new ErroDeDados(situacoes.codigo, situacoes.mensagem);
 }
 
 /** Lista de datas excluídas: data válida, sem repetir, só com os campos do dicionário. */
@@ -290,6 +294,9 @@ export function criarStore(banco, opcoes = {}) {
     async alterarAcao(espacoId, numero, campos) {
       recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
+      if ("situacaoPersonalizada" in campos) throw new ErroDeDados("campo-fixo", "A situação muda por mudarSituacao.");
+      /* data mínima no futuro: a ação deixa de estar liberada e sai da situação personalizada (passo 2.7) */
+      if (campos.naoAntesDe && campos.naoAntesDe > hoje()) campos = { ...campos, situacaoPersonalizada: null };
       await conferirModelo(espacoId, campos);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
       await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario }, hist);
@@ -372,7 +379,9 @@ export function criarStore(banco, opcoes = {}) {
         const nome = (n) => `“${acoes.find((a) => a.numero === n)?.rotulo ?? n}”`;
         throw new ErroDeDados("ciclo", `${nome(anterior)} já depende de ${nome(numero)}, direta ou indiretamente. A dependência criaria um ciclo.`);
       }
-      await banco.acrescentarNaLista(espacoId, numero, "dependeDe", [anterior], carimbo(), hist);
+      /* anterior ainda não concluída: a ação deixa de estar liberada e volta à situação inicial (passo 2.7; seção 16.2) */
+      const sai = !acoes.find((a) => a.numero === anterior).concluidaEm && acoes.find((a) => a.numero === numero)?.situacaoPersonalizada;
+      await banco.acrescentarNaLista(espacoId, numero, "dependeDe", [anterior], { ...carimbo(), ...(sai ? { situacaoPersonalizada: null } : {}) }, hist);
     },
     async retirarDependencia(espacoId, numero, anterior) {
       await banco.retirarDaLista(espacoId, numero, "dependeDe", [anterior], carimbo(), hist);
@@ -404,12 +413,44 @@ export function criarStore(banco, opcoes = {}) {
     async concluir(espacoId, numero, data) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data de conclusão.");
       if (data > hoje()) throw new ErroDeDados("data-futura", "A data de conclusão não pode ser depois de hoje.");
-      await exigirAcao(espacoId, numero);
-      await banco.alterarAcao(espacoId, numero, { concluidaEm: data, ...carimbo() }, hist);
+      const atual = await exigirAcao(espacoId, numero);
+      /* concluída, sai da personalizada: se a conclusão for desfeita, volta à inicial (passo 2.7) */
+      await banco.alterarAcao(espacoId, numero, { concluidaEm: data, ...(atual.situacaoPersonalizada ? { situacaoPersonalizada: null } : {}), ...carimbo() }, hist);
     },
     async desfazerConclusao(espacoId, numero) {
       await exigirAcao(espacoId, numero);
       await banco.alterarAcao(espacoId, numero, { concluidaEm: null, ...carimbo() }, hist);
+      /* as seguintes ainda não concluídas deixam de estar liberadas e voltam à inicial (passo 2.7) */
+      const seguintes = (await banco.listarAcoes(espacoId)).filter((a) => ativa(a) && !a.concluidaEm && a.situacaoPersonalizada && (a.dependeDe ?? []).includes(numero));
+      for (const a of seguintes) await banco.alterarAcao(espacoId, a.numero, { situacaoPersonalizada: null, ...carimbo() }, hist);
+    },
+
+    // --- situações personalizadas (passo 2.7; seção 16.2) ---
+    /**
+     * Põe a ação numa situação personalizada (id) ou de volta na inicial (null). Só para ação liberada:
+     * não concluída, com as anteriores concluídas (se o espaço usa dependências) e a data mínima já chegada.
+     */
+    async mudarSituacao(espacoId, numero, id) {
+      const espaco = await banco.lerEspaco(espacoId);
+      if (id != null && !personalizadasDe(espaco).some((s) => s.id === id)) throw new ErroDeDados("nao-encontrado", "Situação não encontrada neste espaço.");
+      const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
+      const acao = acoes.find((a) => a.numero === numero);
+      if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
+      if (acao.concluidaEm) throw new ErroDeDados("situacao-invalida", "A ação já foi concluída. Desfaça a conclusão antes.");
+      const anteriores = modeloDe(espaco).dependencias ? acao.dependeDe ?? [] : [];
+      const pendente = anteriores.some((n) => !acoes.find((a) => a.numero === n)?.concluidaEm) || (acao.naoAntesDe && acao.naoAntesDe > hoje());
+      if (pendente) throw new ErroDeDados("situacao-invalida", "A ação ainda não foi liberada.");
+      if ((acao.situacaoPersonalizada ?? null) === (id ?? null)) return;
+      await banco.alterarAcao(espacoId, numero, { situacaoPersonalizada: id ?? null, ...carimbo() }, hist);
+    },
+    /** Retira uma situação personalizada; as ações nela voltam à inicial. Devolve quantas voltaram. */
+    async retirarSituacao(espacoId, id) {
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      const nela = (await banco.listarAcoes(espacoId)).filter((a) => a.situacaoPersonalizada === id);
+      for (const a of nela) await banco.alterarAcao(espacoId, a.numero, { situacaoPersonalizada: null, ...carimbo() }, hist);
+      await store.alterarEspaco(espacoId, { situacoes: personalizadasDe(espaco).filter((s) => s.id !== id) });
+      return nela.filter(ativa).length;
     },
 
     // --- responsáveis: de cada espaço (seção 4.5) ---

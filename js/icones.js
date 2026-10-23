@@ -40,6 +40,8 @@ export const ICONES = Object.freeze({
   concluida: svg('<circle cx="12" cy="12" r="9.5"/><path d="m8 12.5 2.7 2.7L16 9.8"/>'),
   /** Liberada: cadeado aberto. */
   liberada: svg('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.8-1.2"/>'),
+  /** Situação personalizada (passo 2.7): círculo com um quarto marcado, como um trabalho em curso. */
+  personalizada: svg('<circle cx="12" cy="12" r="9.5"/><path d="M12 2.5V12h9.5"/>'),
   /** Não liberada: cadeado fechado. */
   naoLiberada: svg('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
   /** Atrasada: relógio. */

@@ -13,6 +13,7 @@ import { estimativaLivre, normalizarCodigo } from "../acao.js";
 import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData } from "../planilha.js";
 import { avisar } from "./painel.js";
 import { usaEstimativas, usaDependencias, usaSimulacao } from "../modelos.js";
+import { nomeDoFluxo } from "../situacoes.js";
 
 const SITUACOES = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
 
@@ -111,7 +112,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     };
     const semNumeros = l.situacao === "concluida" || l.semEstimativa;
     switch (chave) {
-      case "situacao": return SITUACOES[l.situacao] ?? "";
+      case "situacao": return l.situacao === "liberada" ? nomeDoFluxo(d.espaco, l.fluxo) : SITUACOES[l.situacao] ?? ""; // personalizada (passo 2.7)
       case "atrasadaDesde": return l.atrasada ? dataBr(l.vencidaEm) : "";
       case "liberacaoPrevista": return dataBr(d.cal.data(c.liberacao));
       case "conclusaoPrevista": return l.semEstimativa ? "" : dataBr(l.conclusao);

@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 126 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 127 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -205,6 +205,8 @@ erDiagram
 | `programa` | texto | não | Programa do PEI/PDI que prevê o Plano de Ação. **Obrigatório no Plano de Ação**; no Projeto, vazio. Texto livre provisório, até o catálogo do passo 2.5 | `Programa de Governança de Dados` |
 | `aprovacao` | aprovação (4.1.6) | não | Documento que aprovou o Plano de Ação. **Obrigatório no Plano de Ação**, com a identificação; no Projeto, vazio | |
 | `modelo` | modelo (4.1.7) | não | Como o espaço define prazos, dependências e simulação. Escolhido na criação e **imutável** (passo 2.4b). **Ausente: cronograma estruturado** (estimativas, dependências e simulação), como nos espaços criados antes do passo 2.4b | |
+| `nomeInicial` | texto | não | Nome da situação inicial nos espaços sem dependências (seção 16.2; passo 2.7). **Ausente: "A fazer"**. Nos espaços com dependências, a inicial é sempre "Liberada" | `Para fazer` |
+| `situacoes` | lista de situação (4.1.8) | não | Situações personalizadas, na ordem das colunas do quadro, entre a inicial e Concluídas (passo 2.7) | |
 | `inicio` | data | não | Início do espaço: a partir dele contam os dias úteis | `2026-08-03` |
 | `prazoFinal` | data | não | Prazo final, por exemplo o fixado por ato da Diretoria-Geral | `2027-04-14` |
 | `datasExcluidas` | lista de data excluída (4.1.1) | não | Datas sem expediente próprias do espaço (feriados locais, exclusões específicas), que complementam o calendário geral (4.1.5) | |
@@ -302,6 +304,16 @@ Passo 2.4b (seção 16.1). Escolhido na criação, entre três modelos, e fixo d
 | `dependencias` | sim/não | sim | Usa dependências entre ações. Não: as anteriores não são pedidas nem entram no cálculo | `false` |
 | `simulacao` | sim/não | sim | Faz a simulação de Monte Carlo (chance de cumprir o prazo, linha do tempo e índices). Só pode ser sim com prazos por estimativa | `false` |
 
+#### 4.1.8 Situação personalizada: cada item de `situacoes`
+
+Passo 2.7 (seção 16.2). Subtipos de Liberada, como "Em andamento", "Em teste" e "Em revisão", criados no espaço (até os papéis, por quem tem login; depois, pelo administrador do espaço). Viram colunas do quadro, na ordem da lista. Os nomes não se repetem, nem com a inicial, "Não liberada" e "Concluída", e têm até 40 caracteres. Retirar uma situação devolve as ações que estavam nela à situação inicial.
+
+<!-- dicionario: situacao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador da situação. Imutável | `s1a2…` |
+| `nome` | texto | sim | Nome na tela e na coluna do quadro | `Em teste` |
+
 ### 4.2 Ação
 
 Chave: o par (espaço, `numero`).
@@ -324,6 +336,7 @@ Chave: o par (espaço, `numero`).
 | `dependeDe` | lista de inteiro | sim | Números das ações anteriores, do mesmo espaço. Lista vazia: sem anteriores | `[1, 4]` |
 | `responsaveis` | lista de id | sim | Ids dos responsáveis (4.5). Lista vazia: sem responsável | |
 | `estimativas` | lista de estimativa (4.3) | sim | Da primeira à mais recente. A vigente é a última. Sempre vazia no espaço com prazos por data-limite | |
+| `situacaoPersonalizada` | id | não | Situação personalizada em que a ação está (4.1.8; passo 2.7). Só vale enquanto a ação está liberada; vazia: a situação inicial. Volta a vazia quando a ação é concluída ou deixa de estar liberada | |
 | `dataLimite` | data | não | Data-limite escolhida pela pessoa, só no espaço com prazos por data-limite (passo 2.4b). Vencida e a ação não concluída: carimbo Atrasada. Vazia: a ação não tem prazo | `2026-11-30` |
 | `concluidaEm` | data | não | Data de conclusão. Vazio: não concluída | `2026-09-22` |
 | `naoAntesDe` | data | não | Data mínima de liberação, "Não começa antes de" (seção 5.1) | `2026-10-19` |
@@ -737,6 +750,8 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 
 **O que muda conforme o modelo** (passo 2.4b): rede só com dependências; cronograma só com estimativas; linha do tempo, índice de criticidade e contribuição para a incerteza só com simulação. No espaço com prazos por data-limite, a ação tem a data-limite no lugar da estimativa, o "Tempo restante" conta até ela e o carimbo Atrasada vem dela (seção 16.1).
 
+**Situações** (passo 2.7): a inicial ("Liberada", ou "A fazer" e renomeável sem dependências), as personalizadas do espaço (colunas do quadro, etiqueta na lista, lista de escolha na janela da ação) e Concluída; configuradas em "Configurar este espaço" > Situações.
+
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
 **Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
@@ -936,7 +951,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 - ✔ Parte 2, telas: no "Novo espaço", a escolha do modelo em três cartões e, no personalizado, os prazos (estimativa ou data-limite), as dependências e a simulação (desligada e desmarcada com data-limite); em "Configurar este espaço", o modelo só aparece, com a nota de que não muda, e a seção Simulação só existe com simulação (`js/telas/modelo-espaco.js`). Conforme o modelo: a rede só com dependências, o cronograma só com estimativas e a linha do tempo só com simulação; os índices (indicador e ordens) só com simulação; no espaço com data-limite, "Conclusão prevista" vira "Data-limite" nas ordens, o "Tempo restante" conta até a data-limite (sem ela, sem barra), a nova ação pede a data-limite no lugar dos três pontos e não preenche a data mínima, a janela da ação mostra e edita a data-limite e não tem Reestimar nem histórico de estimativas, a planilha troca as colunas de estimativa, conclusão prevista, folga e reestimativas pela Data-limite; sem dependências, somem os campos e a coluna "Depende de". Importação: coluna "Data-limite" (também "Data limite", "Prazo" e "Data de entrega"); o que o modelo não usa fica de fora, com aviso. Exportação: as colunas seguem o modelo. Escolhas da tela guardadas no aparelho que o espaço não tem (por exemplo, a rede num espaço sem dependências) voltam ao padrão só naquele espaço.
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
 2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
-2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
+2.7. ✔ Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2). Feito em 23/10/2026. Decisões do responsável: a inicial se chama "A fazer" nos espaços sem dependências, com nome editável (nos espaços com dependências, continua "Liberada"); até os papéis (passo 2.1), quem tem login cria, renomeia, reordena e retira as situações; retirar uma situação devolve as ações dela à inicial, com aviso de quantas. Dados: `situacoes` e `nomeInicial` do espaço (4.1, 4.1.8) e `situacaoPersonalizada` da ação (4.2); regras em `js/situacoes.js`; no Store, `mudarSituacao` (só para ação liberada) e `retirarSituacao`; a personalizada é apagada quando a ação é concluída, ganha uma anterior não concluída, tem a data mínima levada para o futuro ou tem uma anterior com a conclusão desfeita, e assim a ação volta sempre à inicial. Telas: seção "Situações" em "Configurar este espaço" (lista com as fixas, as personalizadas editáveis com ↑ ↓ e ×, e "Nova situação" com Enter); quadro com uma coluna por situação (arrastar entre a inicial e as personalizadas muda a situação; para Concluídas, registra a conclusão; de Concluídas para a inicial, desfaz); na lista, a etiqueta da personalizada sob o nome; no filtro, as liberadas se abrem na inicial e em cada personalizada (nos espaços sem dependências, "Liberadas" passa a "Em aberto"); na janela da ação, a situação vira uma lista de escolha na ação liberada; ao acrescentar uma anterior não concluída numa ação em situação personalizada, um aviso pede confirmação antes de gravar; planilha, exportação e histórico mostram o nome da situação. Ícone das personalizadas: círculo com um quarto marcado.
 2.8. ✔ Checklist. Feito no lote de 22/10/2026 (antes dos passos 2.1 a 2.7, por não depender deles nem de regras novas no banco): campo `checklist` da ação (4.2.2); na janela da ação, "Adicionar checklist", itens com caixa de marcar, texto editável com um clique e ×; progresso "feitos/total" nos cartões da lista e do quadro.
 2.9. ✔ Comentários. Feito em 23/10/2026, a pedido do responsável (antes dos passos 2.5 a 2.7): entidade `comentario` (seção 4.2.3), na coleção `espacos/{id}/comentarios`, com regras próprias no `firestore.rules` (seção 3.6); no Store, `comentar`, `editarComentario`, `apagarComentario`, `listarComentarios` e `acompanharComentarios` (tempo real), com testes do contrato dos dois bancos e das regras de negócio. Na janela da ação, a seção "Comentários", entre as anotações e o histórico de estimativas: conversa do mais antigo ao mais novo, com nome (o do responsável ligado ao e-mail, ou o começo do e-mail), data e hora e a marca "editado"; os comentários de quem está vendo ficam à direita, em verde-azulado, com "Editar" e "Apagar" (com confirmação na própria linha); apagado, fica só "Comentário apagado pelo autor em …"; Ctrl+Enter envia; endereços da web viram links. A seção aparece quando o espaço tem duas ou mais pessoas com login (responsáveis com e-mail, mais quem entrou) ou quando já há comentários; sem login, ela mostra a conversa e "Entre com seu e-mail e senha para comentar". Os comentários entram na cópia de segurança e não entram nos retratos.
 2.10. Extração personalizada (seção 16.6).
@@ -969,7 +984,6 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 ### Decisões pendentes, com o passo em que precisam estar tomadas
 
-- **Nome padrão da situação inicial** nos espaços sem dependências, como "A fazer" (passo 2.7).
 - **Integração com os cadastros da instituição** (servidores pela IU e unidades organizacionais): protocolo de comunicação desconhecido; passa a ser requisito do sistema definitivo (fase 4, revista em 23/10/2026).
 
 ---
@@ -1469,3 +1483,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 124 | Passo 2.4b, parte 2 (telas): escolha do modelo na criação, com o personalizado; modelo só exibido em "Configurar este espaço"; visualizações, indicadores, ordens, nova ação, janela da ação, planilha, quadro e rede conforme o modelo; data-limite na tela, na importação e na exportação; glossário do "Tempo restante" com a data-limite. Passo 2.4b concluído; a data-limite sai do passo 2.10a |
 | 125 | Passo 2.9: comentários nas ações, a pedido do responsável. Conversa na janela da ação, em tempo real, com edição que guarda as versões anteriores e "apagar" que só esconde; nunca apagados do banco; na cópia de segurança e fora dos retratos. Nova entidade `comentario` (seção 4.2.3), nova coleção `espacos/{id}/comentarios` e regras novas no `firestore.rules` (seção 3.6), que o responsável precisa publicar no console do Firebase |
 | 126 | Revisão da janela da ação, a pedido do responsável: duas colunas no computador (dados e atividade) e abas no celular; campos que gravam ao sair, com "Salvo" ao lado do nome e Esc para desfazer; busca de responsáveis e dependências só em "+ Acrescentar"; campos opcionais vazios em "Mais campos"; título da janela com a fase e a etapa; "?" no lugar de "o que é?" nos índices; título da Nova ação na fonte do texto e botão "Criar ação" sempre à vista |
+| 127 | Passo 2.7: situações personalizadas. Colunas do quadro entre a inicial e Concluídas, com arrastar; etiqueta na lista; filtro; escolha na janela da ação; aviso antes de uma nova dependência tirar a ação da situação; volta à inicial ao concluir, ao perder a liberação ou ao retirar a situação; nome editável da inicial ("A fazer") nos espaços sem dependências. Dicionário: `situacoes` e `nomeInicial` (4.1, 4.1.8), `situacaoPersonalizada` (4.2) |

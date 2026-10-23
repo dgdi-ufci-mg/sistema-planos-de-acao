@@ -26,7 +26,7 @@ export function montarRetrato({ espaco, acoes, responsaveis, geral, hoje }) {
     ? simular(acoesParaCalculo(espaco, acoes), cal, { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal })
     : null;
   const prazos = modeloDe(espaco).prazos;
-  const linhas = new Map(montarLinhas(acoes, caminho, sim, cal, hoje, { prazos }).map((l) => [l.acao.numero, l]));
+  const linhas = new Map(montarLinhas(acoes, caminho, sim, cal, hoje, { prazos, espaco }).map((l) => [l.acao.numero, l]));
   const fimSemSimulacao = prazos === "estimativa" && acoes.length ? cal.dataDeConclusao(caminho.fim, 0) : null;
   const citados = new Set(acoes.flatMap((a) => a.responsaveis ?? []));
   return {

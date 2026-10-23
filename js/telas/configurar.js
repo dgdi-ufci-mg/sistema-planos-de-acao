@@ -22,7 +22,8 @@ import { planilhaDoEspaco, mermaidDoEspaco } from "../exportar.js";
 import { hojeLocal } from "../dados.js";
 import { copiarTexto } from "./arquivos.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
-import { opcoesDoCalculo, usaSimulacao } from "../modelos.js";
+import { opcoesDoCalculo, usaSimulacao, usaDependencias } from "../modelos.js";
+import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO } from "../situacoes.js";
 import { resumoDoModelo } from "./modelo-espaco.js";
 
 const CAMPOS_OPCIONAIS = [
@@ -144,6 +145,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       </details>
 
       ${ligado(campos, "fasesEtapas") ? estruturaHtml() : ""}
+      ${situacoesHtml()}
 
       <details class="config" data-secao="campos"${aberta("campos")}>
         <summary><h3>Campos opcionais</h3></summary>
@@ -342,6 +344,56 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     <p class="tec">Marque "desconsiderar" nas datas em que este espaço trabalha, como um ponto facultativo.</p>`;
   }
 
+  /**
+   * Situações (passo 2.7; seção 16.2): as fixas e as personalizadas, que viram colunas do quadro.
+   * Cada mudança grava na hora: renomear (ao sair do campo), subir, descer, retirar (com aviso se
+   * houver ações nela) e acrescentar (Enter). Sem dependências, o nome da inicial é editável.
+   */
+  let retirandoSituacao = null;
+  function situacoesHtml() {
+    const lista = personalizadasDe(espaco);
+    const pode = store.podeGravar;
+    const nelas = (id) => acoes.filter((a) => a.situacaoPersonalizada === id && !a.concluidaEm).length;
+    const fixa = (icone, nome, dica) => `<li class="situacao-fixa"><span class="situacao-icone">${ICONES[icone]}</span><span>${nome}</span><small class="tec">${dica}</small></li>`;
+    return `<details class="config" data-secao="situacoes"${aberta("situacoes")}>
+      <summary><h3>Situações</h3><span class="n">${lista.length}</span></summary>
+      <p class="tec">As situações personalizadas, como “Em andamento” e “Em teste”, ficam entre ${esc(nomeInicial(espaco))} e Concluída e viram colunas do quadro, nesta ordem.</p>
+      <ol class="lista-situacoes">
+        ${usaDependencias(espaco) ? fixa("naoLiberada", "Não liberada", "calculada: espera as anteriores ou a data mínima") : ""}
+        ${usaDependencias(espaco) || !pode ? fixa("liberada", esc(nomeInicial(espaco)), "situação inicial")
+          : `<li class="situacao-fixa"><span class="situacao-icone">${ICONES.liberada}</span>
+              <input data-nome-inicial maxlength="40" value="${esc(nomeInicial(espaco))}" aria-label="Nome da situação inicial" placeholder="${NOME_INICIAL_PADRAO}">
+              <small class="tec">situação inicial; o nome pode mudar</small></li>`}
+        ${lista.map((x, i) => `<li class="situacao-personalizada">
+          <span class="situacao-icone">${ICONES.personalizada}</span>
+          ${pode ? `<input data-nome-situacao="${esc(x.id)}" maxlength="40" value="${esc(x.nome)}" aria-label="Nome da situação">` : `<span>${esc(x.nome)}</span>`}
+          ${pode ? `<span class="botoes-situacao">
+            <button type="button" class="tirar" data-mover-situacao="${i}" data-sentido="-1" aria-label="Subir"${i === 0 ? " disabled" : ""}>↑</button>
+            <button type="button" class="tirar" data-mover-situacao="${i}" data-sentido="1" aria-label="Descer"${i === lista.length - 1 ? " disabled" : ""}>↓</button>
+            <button type="button" class="tirar" data-retirar-situacao="${esc(x.id)}" aria-label="Retirar ${esc(x.nome)}">${ICONES.fechar}</button></span>` : ""}
+          ${retirandoSituacao === x.id ? `<div class="aviso-confirmar">
+            <p>${nelas(x.id) ? `${nelas(x.id)} ${plural(nelas(x.id), "ação volta", "ações voltam")} para ${esc(nomeInicial(espaco))}.` : "Nenhuma ação está nela."} Retirar “${esc(x.nome)}”?</p>
+            <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-situacao="${esc(x.id)}">Retirar</button>
+              <button type="button" class="botao" data-cancelar-retirar-situacao>Cancelar</button></div></div>` : ""}
+        </li>`).join("")}
+        ${fixa("concluida", "Concluída", "obrigatória")}
+      </ol>
+      ${pode ? `<input class="nova-situacao" data-nova-situacao maxlength="40" placeholder="Nova situação: escreva e tecle Enter" aria-label="Nova situação">` : ""}
+    </details>`;
+  }
+  async function gravarSituacoes(mudanca, mensagem) {
+    try {
+      await store.alterarEspaco(espacoId, mudanca);
+      await recarregar();
+      desenhar();
+      if (mensagem) avisar(mensagem);
+      return true;
+    } catch (falha) {
+      avisar(falha.message);
+      return false;
+    }
+  }
+
   function estruturaHtml() {
     const usos = new Map();
     for (const a of acoes) if (a.etapa) usos.set(a.etapa, (usos.get(a.etapa) ?? 0) + 1);
@@ -413,6 +465,19 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     else if (t.dataset.fase != null) rascunho.estrutura[Number(t.dataset.fase)].nome = t.value;
   });
   corpo.addEventListener("change", async (e) => {
+    /* situações (passo 2.7): renomear grava ao sair do campo */
+    if (e.target.dataset.nomeSituacao) {
+      const id = e.target.dataset.nomeSituacao;
+      const nome = e.target.value.trim();
+      const lista = personalizadasDe(espaco).map((x) => (x.id === id ? { ...x, nome } : x));
+      if (!(await gravarSituacoes({ situacoes: lista }, "Situação renomeada."))) e.target.value = personalizadasDe(espaco).find((x) => x.id === id)?.nome ?? "";
+      return;
+    }
+    if (e.target.matches("[data-nome-inicial]")) {
+      const nome = e.target.value.trim();
+      if (!(await gravarSituacoes({ nomeInicial: nome || NOME_INICIAL_PADRAO }, "Situação inicial renomeada."))) e.target.value = nomeInicial(espaco);
+      return;
+    }
     const data = e.target.dataset.desconsiderar;
     if (data) {
       const atuais = new Set(espaco.datasGeraisDesconsideradas ?? []);
@@ -462,6 +527,28 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     const t = e.target.closest("button");
     if (!t || t.disabled) return;
     if (t.dataset.comAcoes) { tirarComAcoes(t); return; }
+    /* situações (passo 2.7) */
+    if (t.dataset.moverSituacao != null) {
+      const lista = [...personalizadasDe(espaco)];
+      const i = Number(t.dataset.moverSituacao);
+      const j = i + Number(t.dataset.sentido);
+      [lista[i], lista[j]] = [lista[j], lista[i]];
+      await gravarSituacoes({ situacoes: lista });
+      corpo.querySelector(`[data-mover-situacao="${j}"][data-sentido="${t.dataset.sentido}"]`)?.focus();
+      return;
+    }
+    if (t.dataset.retirarSituacao) { retirandoSituacao = t.dataset.retirarSituacao; desenhar(); return; }
+    if (t.dataset.cancelarRetirarSituacao != null) { retirandoSituacao = null; desenhar(); return; }
+    if (t.dataset.confirmarRetirarSituacao) {
+      retirandoSituacao = null;
+      try {
+        const n = await store.retirarSituacao(espacoId, t.dataset.confirmarRetirarSituacao);
+        await recarregar();
+        desenhar();
+        avisar(n ? `Situação retirada. ${n} ${plural(n, "ação voltou", "ações voltaram")} para ${nomeInicial(espaco)}.` : "Situação retirada.");
+      } catch (falha) { avisar(falha.message); }
+      return;
+    }
     if (t.dataset.salvarRetrato != null) {
       const campo = corpo.querySelector("[data-nome-retrato]");
       t.disabled = true;
@@ -520,7 +607,16 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       alvo[alvo.length - (t.dataset.acrescentar === "documentos" ? 4 : t.dataset.acrescentar === "datas" ? 2 : 1)]?.focus();
     }
   });
-  corpo.addEventListener("keydown", (e) => {
+  corpo.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter" && e.target.matches("[data-nova-situacao]")) {
+      e.preventDefault();
+      const nome = e.target.value.trim();
+      if (!nome) return;
+      if (await gravarSituacoes({ situacoes: [...personalizadasDe(espaco), { id: novoId("s"), nome }] }, `Situação “${nome}” criada.`)) {
+        corpo.querySelector("[data-nova-situacao]")?.focus();
+      }
+      return;
+    }
     if (e.key === "Enter" && e.target.matches("[data-nome-retrato]")) { e.preventDefault(); corpo.querySelector("[data-salvar-retrato]")?.click(); }
   });
   corpo.addEventListener("submit", (e) => {

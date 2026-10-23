@@ -22,7 +22,7 @@ describe("Lista de ações", async () => {
   const numeros = (ls) => ls.map((l) => l.acao.numero);
 
   it("conta as situações e o carimbo como no resumo do exemplo", () => {
-    assert.deepEqual(contar(linhas), { todas: 12, liberada: 4, atrasada: 1, naoLiberada: 6, concluida: 2 });
+    assert.deepEqual(contar(linhas), { todas: 12, liberada: 4, atrasada: 1, naoLiberada: 6, concluida: 2, "fluxo:inicial": 4 });
   });
 
   it("ação concluída mostra a data registrada e não tem barras", () => {

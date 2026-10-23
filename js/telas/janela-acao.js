@@ -17,6 +17,7 @@ import { seletorHtml, ligarSeletores } from "./seletor.js";
 import { descreverRegistro } from "../historico.js";
 import { editarTexto } from "./edicao-no-lugar.js";
 import { usaEstimativas, usaDependencias } from "../modelos.js";
+import { nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -188,7 +189,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           </div>
 
           <dl class="janela-resumo">
-            <div><dt>Situação</dt><dd class="sit"><span class="${sitClasse}">${ICONES[sitIcone]}</span>${sitTexto}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
+            <div><dt>Situação</dt><dd class="sit">${situacaoHtml(l, sitClasse, sitIcone, sitTexto)}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
             ${!comEstimativas && l.situacao !== "concluida" ? `<div><dt>Data-limite</dt><dd class="mono${l.atrasada ? " atrasada" : ""}">${acao.dataLimite ? dataBr(acao.dataLimite) : '<span class="vazio">Sem data-limite</span>'}</dd></div>`
             : `<div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>`}
             ${l.situacao === "concluida" || l.execucao == null ? "" : `
@@ -233,6 +234,22 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (focoNoChecklist) { focoNoChecklist = false; corpo.querySelector('[name="novoItemChecklist"]')?.focus(); }
     seletores.desenhar();
     encolherFormularioGravado();
+  }
+
+  /**
+   * Situação (passo 2.7): na ação liberada de um espaço com situações personalizadas, uma lista para
+   * escolher a inicial ou uma personalizada, que grava na hora; nas demais, o nome e o ícone.
+   */
+  function situacaoHtml(l, classe, icone, texto) {
+    const nome = l.situacao === "liberada" ? nomeDoFluxo(d.espaco, l.fluxo) : texto;
+    const ic = l.situacao === "liberada" && l.fluxo !== "inicial" ? "personalizada" : icone;
+    if (l.situacao !== "liberada" || !personalizadasDe(d.espaco).length || somenteLeitura()) {
+      return `<span class="${classe}">${ICONES[ic]}</span>${esc(nome)}`;
+    }
+    return `<span class="${classe}">${ICONES[ic]}</span><select class="escolha-situacao" data-mudar-situacao aria-label="Situação">
+      <option value=""${l.fluxo === "inicial" ? " selected" : ""}>${esc(nomeInicial(d.espaco))}</option>
+      ${personalizadasDe(d.espaco).map((x) => `<option value="${esc(x.id)}"${l.fluxo === x.id ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}
+    </select>`;
   }
 
   /** Caixas de texto crescem com o conteúdo (nome da ação e descrição). */
@@ -332,7 +349,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           return `<span class="etiqueta">${a ? nomeHtml(a) : "(ação excluída)"}${somenteLeitura() ? "" : `<button type="button" class="tirar" data-tirar-dependencia="${n}" aria-label="Retirar ${esc(a ? nomeTexto(a) : "")}">${ICONES.fechar}</button>`}</span>`;
         }).join("") || `<span class="vazio">Nenhuma: pode começar no início do espaço.</span>`}
           ${somenteLeitura() || buscando === "dependeDe" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="dependeDe">${ICONES.mais}Acrescentar</button>`}</div>
-        ${buscando === "dependeDe" ? seletorHtml("dependeDe", d.usaCodigos ? "Digite o nome ou o código da ação anterior" : "Digite o nome da ação anterior") : ""}</div>`);
+        ${buscando === "dependeDe" ? seletorHtml("dependeDe", d.usaCodigos ? "Digite o nome ou o código da ação anterior" : "Digite o nome da ação anterior") : ""}
+        ${confirmarAnteriorHtml()}</div>`);
     }
 
     if (campos.descricao !== false && visivel(acao, "descricao")) {
@@ -529,6 +547,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       acao: (n) => { const a = d.acoes.find((x) => x.numero === n); return a ? `“${nomeTexto(a)}”` : "uma ação excluída"; },
       responsavel: (id) => d.pessoas.get(id)?.nome ?? "um responsável excluído",
       etapa: (id) => etapas.get(id) ?? "etapa retirada",
+      situacao: (id) => personalizadasDe(d.espaco).find((x) => x.id === id)?.nome ?? "situação retirada",
     };
     const quem = (email) => (email ? d.responsaveis.find((r) => r.usuario === email)?.nome ?? email : "Sem login");
     const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -555,6 +574,31 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }, true);
 
   /* ---------- seletores com busca ---------- */
+  /**
+   * Nova anterior ainda não concluída numa ação em situação personalizada (passo 2.7; seção 16.2):
+   * antes de gravar, avisa que a ação vai para Não liberada e sai da situação atual.
+   */
+  let anteriorPendente = null;
+  async function acrescentarAnterior(a) {
+    const l = d.linhaDe.get(numero);
+    if (!a.concluidaEm && l?.situacao === "liberada" && l.fluxo !== "inicial") {
+      anteriorPendente = a.numero;
+      buscando = null;
+      return desenhar();
+    }
+    return store.acrescentarDependencia(espacoId, numero, a.numero);
+  }
+  function confirmarAnteriorHtml() {
+    if (anteriorPendente == null) return "";
+    const a = d.acoes.find((x) => x.numero === anteriorPendente);
+    const l = d.linhaDe.get(numero);
+    if (!a) { anteriorPendente = null; return ""; }
+    return `<div class="aviso-confirmar" role="alertdialog" aria-label="Confirmar a nova dependência">
+      <p>“${esc(nomeTexto(a))}” ainda não foi concluída. Com ela como anterior, esta ação passa para <b>Não liberada</b> e sai de <b>${esc(nomeDoFluxo(d.espaco, l.fluxo))}</b>. Quando a anterior terminar, ela volta para ${esc(nomeInicial(d.espaco))}.</p>
+      <div class="botoes"><button class="botao principal" type="button" data-confirmar-anterior>Acrescentar assim mesmo</button>
+        <button class="botao" type="button" data-desistir-anterior>Desistir</button></div></div>`;
+  }
+
   function opcoesDe(nome, texto) {
     const acao = acaoAtual();
     if (nome === "dependeDe") {
@@ -562,7 +606,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       return buscar(anterioresPossiveis(d.acoes, numero), texto, (a) => [a.rotulo, d.usaCodigos ? a.codigo : ""]).slice(0, MAX_SUGESTOES)
         .map((a) => ({
           html: `${nomeHtml(a)}${etapaDe.get(a.etapa) ? ` <span class="tec">${esc(etapaDe.get(a.etapa))}</span>` : ""}`,
-          escolher: () => store.acrescentarDependencia(espacoId, numero, a.numero),
+          escolher: () => acrescentarAnterior(a),
         }));
     }
     const contexto = { tons: d.espaco.tons, meus: d.meus };
@@ -756,6 +800,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /* ---------- eventos ---------- */
   corpo.addEventListener("click", async (e) => {
     const t = e.target;
+    if (t.closest("[data-confirmar-anterior]")) {
+      const n = anteriorPendente;
+      anteriorPendente = null;
+      return executar(() => store.acrescentarDependencia(espacoId, numero, n));
+    }
+    if (t.closest("[data-desistir-anterior]")) { anteriorPendente = null; return desenhar(); }
     const abaB = t.closest("[data-aba]");
     if (abaB) { aba = abaB.dataset.aba; return desenhar(); }
     const mostrar = t.closest("[data-mostrar-campo]");
@@ -799,7 +849,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const resp = t.closest("[data-tirar-responsavel]");
     if (resp) return executar(() => store.retirarResponsavelDaAcao(espacoId, numero, resp.dataset.tirarResponsavel));
     if (t.closest("[data-desfazer-conclusao]")) {
-      return executar(() => store.desfazerConclusao(espacoId, numero), "Conclusão desfeita. A ação voltou a ser liberada.");
+      return executar(() => store.desfazerConclusao(espacoId, numero), `Conclusão desfeita. A ação voltou para ${usaDependencias(d.espaco) ? "as liberadas" : nomeInicial(d.espaco)}.`);
     }
     const fmt = t.closest("[data-formatar]");
     if (fmt) return formatar(fmt.dataset.formatar);
@@ -857,6 +907,10 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   corpo.addEventListener("change", (e) => {
     const marca = e.target.closest("[data-marcar-item]");
     if (marca) return executar(() => store.marcarItemDoChecklist(espacoId, numero, marca.dataset.marcarItem, marca.checked));
+    if (e.target.matches("[data-mudar-situacao]")) {
+      const nome = e.target.selectedOptions[0]?.textContent.trim();
+      return executar(() => store.mudarSituacao(espacoId, numero, e.target.value || null), `Situação: ${nome}.`);
+    }
     if (e.target.dataset.auto) gravarCampo(e.target);
   });
   corpo.addEventListener("focusout", (e) => {

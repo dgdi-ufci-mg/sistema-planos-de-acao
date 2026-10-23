@@ -8,6 +8,7 @@
 import { criarCalendario, datasEfetivas } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
 import { simular, chaveDaSimulacao } from "../simulacao.js";
+import { colunasDoQuadro, nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
 import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo } from "../modelos.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
@@ -116,7 +117,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       const chave = chaveDaSimulacao(paraSimular, { ...parametros, inicio: espaco.inicio, datasExcluidas });
       if (chave !== chaveSim) { sim = simular(paraSimular, cal, parametros); chaveSim = chave; }
     } else { sim = null; chaveSim = null; }
-    linhas = montarLinhas(acoes, caminho, sim, cal, hoje, { prazos: modeloDe(espaco).prazos });
+    linhas = montarLinhas(acoes, caminho, sim, cal, hoje, { prazos: modeloDe(espaco).prazos, espaco });
     pessoas = new Map(responsaveis.map((r) => [r.id, r]));
     meus = usuario ? responsaveis.filter((r) => r.usuario === usuario).map((r) => r.id) : null;
     usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
@@ -372,9 +373,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   function situacoesHtml() {
     const n = contar(linhas);
-    return BOTOES_DE_FILTRO.filter(([v]) => ui.modo === "lista" || v === "todas" || v === "atrasada").map(([v, t, icone, classe]) =>
-      `<button class="opcao" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
-        <span class="opcao-icone ${classe ?? ""}">${icone ? ICONES[icone] : ""}</span><span class="opcao-texto">${t}</span><span class="n">${n[v]}</span></button>`).join("");
+    /* com situações personalizadas (passo 2.7), as liberadas se abrem: a inicial e cada personalizada */
+    const sub = ui.modo === "lista" && personalizadasDe(espaco).length
+      ? [["fluxo:inicial", nomeInicial(espaco)], ...personalizadasDe(espaco).map((s) => [`fluxo:${s.id}`, s.nome])] : [];
+    const botao = ([v, t, icone, classe], recuo = false) => `<button class="opcao${recuo ? " recuo" : ""}" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
+        <span class="opcao-icone ${classe ?? ""}">${icone ? ICONES[icone] : ""}</span><span class="opcao-texto">${t}</span><span class="n">${n[v] ?? 0}</span></button>`;
+    return BOTOES_DE_FILTRO.filter(([v]) => ui.modo === "lista" || v === "todas" || v === "atrasada").map((b) =>
+      botao(b[0] === "liberada" && !usaDependencias(espaco) ? ["liberada", "Em aberto", b[2], b[3]] : b)
+      + (b[0] === "liberada" ? sub.map(([v, t]) => botao([v, t, v === "fluxo:inicial" ? "liberada" : "personalizada", "icone-liberada"], true)).join("") : "")).join("");
   }
   function responsavelHtml() {
     return `${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
@@ -680,7 +686,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <div class="sit">${sit}</div>
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
-          [l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a)].join("")}</div>
+          [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
+            l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a)].join("")}</div>
         ${c.descricao ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
         ${c.participantes ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras ? barraHtml(l) : ""}
@@ -806,24 +813,40 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       </div>
     </article>`;
   }
+  /* colunas do quadro (passo 2.7): Não liberadas (com dependências), a inicial, as personalizadas e Concluídas */
   function quadroHtml(ls) {
-    return `<div class="quadro">${COLUNAS.map(([situacao, titulo, classe, dica]) => {
-      const daColuna = ls.filter((l) => l.situacao === situacao);
-      return `<section class="coluna" data-coluna="${situacao}" aria-label="${titulo}">
-        <header><span class="${classe}">${ICONES[SITUACOES[situacao].icone]}</span><b>${titulo}</b><span class="n">${daColuna.length}</span></header>
-        <p class="tec so-computador">${situacao === "naoLiberada" && !usaDependencias(espaco) ? "Liberadas sozinhas quando a data mínima chega." : dica}</p>
+    const comPersonalizadas = personalizadasDe(espaco).length > 0;
+    const dicas = {
+      naoLiberada: usaDependencias(espaco) ? COLUNAS[0][3] : "Liberadas sozinhas quando a data mínima chega.",
+      inicial: comPersonalizadas ? "Arraste para a coluna seguinte conforme o trabalho anda." : COLUNAS[1][3],
+      concluida: `Arraste de volta para ${usaDependencias(espaco) ? "Liberadas" : nomeInicial(espaco)} para desfazer a conclusão.`,
+    };
+    const icone = (chave) => (chave === "naoLiberada" ? ["icone-nao-liberada", "naoLiberada"] : chave === "concluida" ? ["icone-concluida", "concluida"]
+      : chave === "inicial" ? ["icone-liberada", "liberada"] : ["icone-liberada", "personalizada"]);
+    /* sem dependências, "Não liberadas" só aparece se alguma ação espera a data mínima */
+    const colunas = colunasDoQuadro(espaco);
+    if (!colunas.some((c) => c.chave === "naoLiberada") && ls.some((l) => l.fluxo === "naoLiberada")) colunas.unshift({ chave: "naoLiberada", titulo: "Não liberadas" });
+    return `<div class="quadro" style="--colunas-quadro:${colunas.length}">${colunas.map(({ chave, titulo }) => {
+      const daColuna = ls.filter((l) => l.fluxo === chave);
+      const [classe, ic] = icone(chave);
+      return `<section class="coluna" data-coluna="${esc(chave)}" aria-label="${esc(titulo)}">
+        <header><span class="${classe}">${ICONES[ic]}</span><b>${esc(titulo)}</b><span class="n">${daColuna.length}</span></header>
+        ${dicas[chave] ? `<p class="tec so-computador">${dicas[chave]}</p>` : ""}
         <div class="coluna-cartoes">${daColuna.map(cartaoHtml).join("") || `<p class="vazio">Nenhuma ação.</p>`}</div>
-        ${situacao === "liberada" && comRapida() ? rapidaHtml("quadro") : ""}
+        ${chave === "inicial" && comRapida() ? rapidaHtml("quadro") : ""}
       </section>`;
     }).join("")}</div>`;
   }
 
-  /* arrastar no quadro (computador): Liberadas → Concluídas registra a conclusão; Concluídas → Liberadas desfaz */
+  /* arrastar no quadro (computador): entre a inicial e as personalizadas muda a situação (passo 2.7);
+     para Concluídas registra a conclusão; de Concluídas para a inicial desfaz */
   let arrastada = null;
-  const situacaoDe = (numero) => linhas.find((l) => l.acao.numero === numero)?.situacao;
+  const linhaDe = (numero) => linhas.find((l) => l.acao.numero === numero);
   const destinoValido = (coluna, numero) => {
-    const s = situacaoDe(numero);
-    return (s === "liberada" && coluna === "concluida") || (s === "concluida" && coluna === "liberada");
+    const l = linhaDe(numero);
+    if (!l || coluna === l.fluxo) return false;
+    if (l.situacao === "liberada") return coluna !== "naoLiberada";
+    return l.situacao === "concluida" && coluna === "inicial";
   };
   function ligarArraste() {
     lista.addEventListener("dragstart", (e) => {
@@ -855,11 +878,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       e.preventDefault();
       const numero = arrastada;
       coluna.classList.remove("alvo");
+      if (!destinoValido(coluna.dataset.coluna, numero)) return;
+      const l = linhaDe(numero);
       if (coluna.dataset.coluna === "concluida") abrirJanela(numero, "concluir");
-      else {
+      else if (l.situacao === "liberada") {
+        try {
+          await store.mudarSituacao(espacoId, numero, coluna.dataset.coluna === "inicial" ? null : coluna.dataset.coluna);
+        } catch (falha) {
+          avisar(falha.message);
+        }
+      } else {
         try {
           await store.desfazerConclusao(espacoId, numero);
-          avisar("Conclusão desfeita. A ação voltou a ser liberada.");
+          avisar(`Conclusão desfeita. A ação voltou para ${usaDependencias(espaco) ? "as liberadas" : nomeInicial(espaco)}.`);
         } catch (falha) {
           avisar(falha.message);
         }
