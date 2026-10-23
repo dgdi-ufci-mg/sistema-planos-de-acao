@@ -59,7 +59,7 @@ export function ajustarDonos(raiz) {
     grupo.querySelector(".avatar.mais")?.remove();
     const selos = [...grupo.querySelectorAll(".avatar")];
     for (const s of selos) s.hidden = false;
-    if (caixa.scrollWidth <= caixa.clientWidth + 1) continue;
+    if (caixa.scrollWidth <= caixa.clientWidth + 1 || selos.length < 2) continue;
     const mais = document.createElement("span");
     mais.className = "avatar mais";
     mais.setAttribute("role", "img");

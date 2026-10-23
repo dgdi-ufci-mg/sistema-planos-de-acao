@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 103 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 104 da página)
 
 ---
 
@@ -552,6 +552,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 101 | Versão 2: na rede, as raias dão lugar aos **marcos** (milestones), como no Bizagi (pedido do responsável): uma faixa vertical por etapa, da esquerda para a direita na ordem do espaço, com o nome no alto. Cada ação fica no marco da sua etapa; dentro dele, as regras de coluna continuam. Seta para uma etapa anterior (rara) passa por baixo de tudo, tracejada. Setas longas passam a correr retas, numa altura só, sempre que cabem entre os cartões das colunas do meio. Sem mudança na versão atual |
 | 102 | Versão 2: **zoom na rede**, como nos quadros infinitos (pedido do responsável): Ctrl + rolar o mouse (ou o gesto de pinça do touchpad) aproxima e afasta em volta do cursor, de 20% a 250%; botões − e + com a porcentagem; arrastar o fundo move a rede. "Normal" volta a 100% e "Ver tudo" faz caber na área, que agora tem altura fixa. O zoom escolhido se mantém quando a rede é redesenhada. Sem mudança na versão atual |
 | 103 | Versão 2, lote de 22/10/2026 (item 4): cartões do quadro no estilo enxuto da lista (sem data nem carimbo "Atrasada": a coluna diz a situação e a barra, o prazo; todos os responsáveis que couberem); círculos das pessoas com a sigla, quando tem até três letras, no lugar das iniciais, que podiam repetir; na rede, seta reta quando um dos lados tem só ela e a altura cabe no outro cartão (menos degraus perto das pontas). Sem mudança na versão atual |
+| 104 | Versão 2, lote de 22/10/2026 (item 5): revisão de acessibilidade com o axe-core (regras WCAG 2 A e AA) nos seis modos, nos temas claro e escuro, no computador e a 400 px. Corrigido: contraste insuficiente de textos pequenos em `--faint` (números das barras, etapa no cartão, folga na rede, datas do cronograma), que passaram a `--muted`; `--faint` do tema escuro clareado para #86978F; células bloqueadas da planilha com papel de caixa de texto só de leitura; o "+N" de responsáveis só aparece quando há o que esconder. Conferido pelo teclado: menu Exibir abre com Enter e fecha com Esc, a caixa de explicação da legenda aparece com o foco, cartões da rede abrem com Enter e o zoom responde aos botões. Nenhuma rolagem horizontal a 400 px. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

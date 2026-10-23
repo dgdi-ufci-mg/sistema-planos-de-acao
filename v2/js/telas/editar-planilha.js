@@ -70,7 +70,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const motivo = acao ? bloqueio(acao, coluna.chave) : coluna.chave === "rotulo" ? "" : "Escreva o rótulo para criar a ação.";
     const v = acao ? valor(acao, coluna.chave) : "";
     const comum = `data-linha="${linha}" data-coluna="${indice}" data-chave="${coluna.chave}" aria-label="${esc(coluna.titulo)}"`;
-    if (motivo) return `<td class="bloqueada" title="${esc(motivo)}"><span ${comum} tabindex="-1">${esc(v)}</span></td>`;
+    if (motivo) return `<td class="bloqueada" title="${esc(motivo)}"><span ${comum} role="textbox" aria-readonly="true" tabindex="-1">${esc(v)}</span></td>`;
     if (coluna.chave === "etapa") {
       return `<td><select ${comum}><option value=""></option>${etapas().map((e) =>
         `<option value="${esc(e.id)}"${e.id === v ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</select></td>`;
