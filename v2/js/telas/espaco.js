@@ -76,6 +76,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     colunasAberto: false,
     /** identificador antes do nome (22/10/2026): "nenhum", "numero" (#1) ou "codigo"; null: o padrão do espaço */
     identificador: lembrado("sextante.identificador", null),
+    /** número ao lado da barra de tempo restante (23/10/2026): "dias" (dias úteis) ou "data" (data prevista) */
+    tempoNumero: lembrado("sextante.tempoNumero", "dias"),
     /** comparação do cronograma com um retrato (passo 1.18): lista (null: a carregar), escolhido e datas dele */
     retratos: null, comparar: null, base: null,
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
@@ -279,6 +281,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const colunasHtml = () => `<details class="menu-colunas" data-colunas-menu${ui.colunasAberto ? " open" : ""}>
       <summary class="botao-colunas" title="Exibir" aria-label="Exibir">${ICONES.olho}<span class="colunas-nome">Exibir</span></summary>
       <div class="popover colunas-popover" role="group" aria-label="O que exibir">
+        ${comIndicador() && ui.barra === "tempo" ? `<h3>Ao lado da barra de tempo</h3>
+        ${OPCOES_TEMPO.map(([v, nome]) => `<label><input type="radio" name="tempoNumero" data-tempo-numero="${v}"${ui.tempoNumero === v ? " checked" : ""}> ${nome}</label>`).join("")}` : ""}
         <h3>Identificador</h3>
         ${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos).map(([v, nome]) => `<label><input type="radio" name="identificador" data-identificador="${v}"${identificador() === v ? " checked" : ""}> ${nome}</label>`).join("")}
         ${ui.modo === "lista" ? `<h3>Colunas</h3>
@@ -383,6 +387,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * ficava na segunda linha. Indicador (a barra dos cartões), "Mostrar até", identificador e colunas,
    * cada um só onde faz sentido.
    */
+  const OPCOES_TEMPO = [["dias", "Dias úteis restantes"], ["data", "Data prevista"]];
+  function mudarTempoNumero(v) {
+    ui.tempoNumero = v;
+    try { localStorage.setItem("sextante.tempoNumero", v); } catch { /* sem armazenamento */ }
+    cabeca.innerHTML = cabecaHtml();
+    desenharLista();
+    desenharFerramentas();
+  }
   const comIndicador = () => ui.modo === "quadro" || (ui.modo === "lista" && colunas().barras);
   const comExibir = () => ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
   function exibirHtml() {
@@ -392,6 +404,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Exibir">
       ${comIndicador() ? `<h3>Indicador</h3><div class="opcoes-lista">${BARRAS.map(([v, nome, icone]) =>
         opcao("data-barra", v, nome, ui.barra === v, `<span class="barra-icone ${v}">${ICONES[icone]}</span>`)).join("")}</div>` : ""}
+      ${comIndicador() && ui.barra === "tempo" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
+        opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}
       ${agrupado() ? `<h3>Mostrar até</h3><div class="opcoes-lista">${NIVEIS.map(([v, nome]) => opcao("data-nivel", v, nome, nivel === v)).join("")}</div>` : ""}
       <h3>Identificador antes do nome</h3><div class="opcoes-lista">${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos)
         .map(([v, nome]) => opcao("data-identificador-op", v, nome, identificador() === v)).join("")}</div>
@@ -430,7 +444,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ação</button>
       </div>`;
     modoDesenhado = ui.modo;
-    document.body.dataset.modo = ui.modo; // largura da área conforme o modo (css)
+    document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
     legenda.hidden = !ui.legenda || planilha;
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
@@ -452,6 +466,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (barra) return mostrarBarra(barra.dataset.barra);
     const nivel = t.closest("[data-nivel]");
     if (nivel) return mostrarAte(nivel.dataset.nivel);
+    const tempoNum = t.closest("[data-tempo-num]");
+    if (tempoNum) return mudarTempoNumero(tempoNum.dataset.tempoNum);
     const id = t.closest("[data-identificador-op]");
     if (id) return mudarIdentificador(id.dataset.identificadorOp);
   }
@@ -544,6 +560,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (l.atrasada) return -Math.max(1, cal.diasUteisAte(hoje) - cal.diasUteisAte(l.vencidaEm));
     return Math.max(0, cal.diasUteisAte(l.conclusao) - cal.diasUteisAte(hoje));
   }
+  /** Data curta ao lado da barra: dd/mm no ano corrente; dd/mm/aa nos outros. */
+  const dataCurta = (iso) => (iso ? (iso.slice(0, 4) === hoje.slice(0, 4) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(2, 4)}`) : "");
   function prazoHtml(l) {
     const n = diasDoPrazo(l);
     const valores = linhas.map(diasDoPrazo).filter((x) => x != null);
@@ -557,7 +575,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       : "Conclusão prevista para hoje";
     return `<span class="prazo-barra ${n < 0 ? "vencido" : n > 0 ? "faltam" : "zero"}" title="${titulo}" aria-label="${titulo}">
       <span class="prazo-trilho">${min < 0 ? `<i class="prazo-zero" style="left:${zero}%"></i>` : ""}${n ? `<i class="prazo-valor" style="left:${n < 0 ? zero - largura : zero}%;width:${Math.max(1.5, largura)}%"></i>` : ""}</span>
-      <span class="prazo-num">${n}</span></span>`;
+      ${ui.tempoNumero === "data" ? `<span class="prazo-num data">${dataCurta(n < 0 ? l.vencidaEm : l.conclusao)}</span>` : `<span class="prazo-num">${n}</span>`}</span>`;
   }
 
   /** A barra escolhida, com o símbolo à esquerda (22/10/2026). */
@@ -611,11 +629,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    */
   const LEGENDA_BARRA = {
     tempo: ["tempoRestante", "dias úteis até a conclusão; em vermelho, desde que venceu"],
+    tempoData: ["tempoRestante", "barra em dias úteis até a conclusão, com a data prevista; em vermelho, venceu"],
     execucao: ["exec", "quanto cada dia de atraso adia o fim"],
     revisao: ["rev", "parte da incerteza do prazo final"],
   };
   function legendaBarraHtml() {
-    const leg = LEGENDA_BARRA[ui.barra];
+    const leg = LEGENDA_BARRA[ui.barra === "tempo" && ui.tempoNumero === "data" ? "tempoData" : ui.barra];
     if (!leg || ui.modo !== "lista" || !colunas().barras) return "";
     const [chave, curto] = leg;
     const termo = GLOSSARIO.find((t) => t.chave === chave);
@@ -865,6 +884,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (coluna) mudarColuna(coluna, e.target.checked);
     const id = e.target.dataset?.identificador;
     if (id) mudarIdentificador(id);
+    const tempoNum = e.target.dataset?.tempoNumero;
+    if (tempoNum) mudarTempoNumero(tempoNum);
   };
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;
@@ -974,7 +995,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.removeEventListener("keyup", marcarAlt);
     removeEventListener("blur", marcarAlt);
     document.body.classList.remove("alt-edicao");
-    delete document.body.dataset.modo;
+    delete document.body.dataset.vistaAtual;
     document.querySelector(".escolher-participantes")?.remove();
     document.removeEventListener("sextante:alternar-legenda", alternarLegenda);
     barra.innerHTML = "";

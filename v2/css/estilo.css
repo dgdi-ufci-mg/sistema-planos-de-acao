@@ -1142,8 +1142,11 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 /* largura por modo (23/10/2026, pedido do responsável): a barra do topo ocupa a tela toda; lista, quadro e
    linha do tempo ficam na largura de leitura (1240 px), e planilha, cronograma e rede, que precisam de
    espaço, ocupam toda a largura abaixo da barra */
-body[data-modo="planilha"] .conteudo, body[data-modo="cronograma"] .conteudo, body[data-modo="rede"] .conteudo { max-width: none; }
+body[data-vista-atual="planilha"] .conteudo, body[data-vista-atual="cronograma"] .conteudo, body[data-vista-atual="rede"] .conteudo { max-width: none; }
 
 /* rede até o fim da tela (23/10/2026): a explicação sobe para a linha das ferramentas, ocupando o espaço livre */
 .rede-explicacao { flex: 1 1 360px; margin: 0; font-size: .78rem; line-height: 1.35; }
-body[data-modo="rede"] .conteudo { padding-bottom: 0; }
+body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
+
+/* data prevista ao lado da barra de tempo (23/10/2026) */
+.prazo-num.data { width: auto; min-width: 40px; white-space: nowrap; }
