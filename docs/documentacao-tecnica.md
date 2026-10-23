@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 104 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 105 da página)
 
 ---
 
@@ -553,6 +553,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 102 | Versão 2: **zoom na rede**, como nos quadros infinitos (pedido do responsável): Ctrl + rolar o mouse (ou o gesto de pinça do touchpad) aproxima e afasta em volta do cursor, de 20% a 250%; botões − e + com a porcentagem; arrastar o fundo move a rede. "Normal" volta a 100% e "Ver tudo" faz caber na área, que agora tem altura fixa. O zoom escolhido se mantém quando a rede é redesenhada. Sem mudança na versão atual |
 | 103 | Versão 2, lote de 22/10/2026 (item 4): cartões do quadro no estilo enxuto da lista (sem data nem carimbo "Atrasada": a coluna diz a situação e a barra, o prazo; todos os responsáveis que couberem); círculos das pessoas com a sigla, quando tem até três letras, no lugar das iniciais, que podiam repetir; na rede, seta reta quando um dos lados tem só ela e a altura cabe no outro cartão (menos degraus perto das pontas). Sem mudança na versão atual |
 | 104 | Versão 2, lote de 22/10/2026 (item 5): revisão de acessibilidade com o axe-core (regras WCAG 2 A e AA) nos seis modos, nos temas claro e escuro, no computador e a 400 px. Corrigido: contraste insuficiente de textos pequenos em `--faint` (números das barras, etapa no cartão, folga na rede, datas do cronograma), que passaram a `--muted`; `--faint` do tema escuro clareado para #86978F; células bloqueadas da planilha com papel de caixa de texto só de leitura; o "+N" de responsáveis só aparece quando há o que esconder. Conferido pelo teclado: menu Exibir abre com Enter e fecha com Esc, a caixa de explicação da legenda aparece com o foco, cartões da rede abrem com Enter e o zoom responde aos botões. Nenhuma rolagem horizontal a 400 px. Sem mudança na versão atual |
+| 105 | Versão 2, lote de 22/10/2026 (item 6): teste de velocidade com planos sintéticos de 50 a 300 ações (`v2/testes/desempenho.mjs`, rodado à mão). No ambiente de teste, com 200 ações: caminho crítico 1 ms, simulação de 10.000 cenários cerca de 1 s, arrumação da rede cerca de 0,5 s e desenho da rede na tela cerca de 0,5 s. Para não refazer a simulação sem necessidade, a tela passou a reaproveitar o resultado anterior quando muda só o que não entra no cálculo (nome, descrição, responsáveis, notas): `chaveDaSimulacao`, em `js/simulacao.js`, com testes. Resultados idênticos (mesma semente, mesmo sorteio). Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

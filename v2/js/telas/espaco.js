@@ -7,7 +7,7 @@
  */
 import { criarCalendario, datasEfetivas } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
-import { simular } from "../simulacao.js";
+import { simular, chaveDaSimulacao } from "../simulacao.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
@@ -83,6 +83,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "" };
   if (!["tempo", "execucao", "revisao"].includes(ui.barra)) ui.barra = "tempo";
+  let chaveSim = null;
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
   let janela = null;
   /** janela "Nova ação" aberta: fica aberta entre criações e recebe as mudanças do banco */
@@ -96,9 +97,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     espaco = dados.espaco;
     acoes = [...dados.acoes].sort((a, b) => a.ordem - b.ordem);
     responsaveis = todos;
-    cal = criarCalendario({ ...espaco, datasExcluidas: datasEfetivas(espaco, geral) }, hoje);
+    const datasExcluidas = datasEfetivas(espaco, geral);
+    cal = criarCalendario({ ...espaco, datasExcluidas }, hoje);
     caminho = caminhoCritico(acoes, cal, { hoje });
-    sim = simular(acoes, cal, { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal });
+    /* a simulação só é refeita quando muda algo que entra nela (planos grandes levam até 1 s) */
+    const parametros = { hoje, semente: espaco.semente, simulacoes: espaco.simulacoes, prazoFinal: espaco.prazoFinal };
+    const chave = chaveDaSimulacao(acoes, { ...parametros, inicio: espaco.inicio, datasExcluidas });
+    if (chave !== chaveSim) { sim = simular(acoes, cal, parametros); chaveSim = chave; }
     linhas = montarLinhas(acoes, caminho, sim, cal, hoje);
     pessoas = new Map(responsaveis.map((r) => [r.id, r]));
     meus = usuario ? responsaveis.filter((r) => r.usuario === usuario).map((r) => r.id) : null;

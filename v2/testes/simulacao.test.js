@@ -108,3 +108,28 @@ describe("Referência da PI² com a beta-PERT (seção 3.2)", () => {
     assert.equal(r.chancePrazo, 0.8948);
   });
 });
+
+describe("Chave da simulação (22/10/2026)", async () => {
+  const { chaveDaSimulacao } = await import("../js/simulacao.js");
+  const base = [{ numero: 1, ordem: 1, rotulo: "A", dependeDe: [], estimativas: [{ o: 1, m: 2, p: 3, em: "2026-10-01" }], responsaveis: [] },
+    { numero: 2, ordem: 2, rotulo: "B", dependeDe: [1], estimativas: [{ o: 2, m: 3, p: 5, em: "2026-10-01" }], responsaveis: [] }];
+  const op = { hoje: "2026-10-22", semente: 20261014, simulacoes: 10000, inicio: "2026-10-01", datasExcluidas: [{ data: "2026-11-02" }] };
+  const chave = (acoes, o = op) => chaveDaSimulacao(acoes, o);
+  it("não muda com nome, descrição, responsáveis ou notas", () => {
+    const outra = base.map((a) => ({ ...a, rotulo: a.rotulo + "!", descricao: "x", responsaveis: ["r1"], notas: "y" }));
+    assert.equal(chave(outra), chave(base));
+  });
+  it("muda com estimativa, dependência, conclusão, data mínima, ordem, calendário, hoje e semente", () => {
+    const k = chave(base);
+    const troca = (i, campos) => base.map((a, j) => (j === i ? { ...a, ...campos } : a));
+    assert.notEqual(chave(troca(1, { estimativas: [...base[1].estimativas, { o: 2, m: 4, p: 6, em: "2026-10-20" }] })), k);
+    assert.notEqual(chave(troca(1, { dependeDe: [] })), k);
+    assert.notEqual(chave(troca(0, { concluidaEm: "2026-10-10" })), k);
+    assert.notEqual(chave(troca(0, { naoAntesDe: "2026-10-05" })), k);
+    assert.notEqual(chave(troca(0, { ordem: 3 })), k);
+    assert.notEqual(chave(base, { ...op, datasExcluidas: [] }), k);
+    assert.notEqual(chave(base, { ...op, hoje: "2026-10-23" }), k);
+    assert.notEqual(chave(base, { ...op, semente: 1 }), k);
+  });
+});
+

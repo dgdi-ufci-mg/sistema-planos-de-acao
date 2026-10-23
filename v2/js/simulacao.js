@@ -167,3 +167,17 @@ export function simular(acoes, calendario, { hoje, semente, simulacoes, prazoFin
     fins, porAcao,
   };
 }
+
+/**
+ * Chave da simulação (22/10/2026, teste de velocidade com planos grandes): junta só o que muda o
+ * resultado. Duas chaves iguais dão exatamente a mesma simulação; por isso a tela pode reaproveitar
+ * o resultado anterior quando muda só o nome, a descrição, os responsáveis ou as notas de uma ação.
+ * @param {object[]} acoes
+ * @param {{hoje: string, semente: number, simulacoes: number, prazoFinal?: string, inicio: string, datasExcluidas: {data: string}[]}} opcoes
+ */
+export function chaveDaSimulacao(acoes, { hoje, semente, simulacoes, prazoFinal, inicio, datasExcluidas }) {
+  return JSON.stringify([
+    VERSAO_CALCULO, hoje, semente, simulacoes, prazoFinal ?? null, inicio, (datasExcluidas ?? []).map((d) => d.data).sort(),
+    acoes.map((a) => [a.numero, a.ordem ?? 0, a.dependeDe ?? [], estimativaVigente(a), a.concluidaEm ?? null, a.naoAntesDe ?? null]),
+  ]);
+}
