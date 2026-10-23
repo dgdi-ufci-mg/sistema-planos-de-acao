@@ -20,10 +20,12 @@ export const CAMPOS = Object.freeze({
   camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao",
-    "dependeDe", "responsaveis", "estimativas", "concluidaEm", "naoAntesDe", "notas",
+    "dependeDe", "responsaveis", "estimativas", "concluidaEm", "naoAntesDe", "notas", "checklist",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
+  /** Item do checklist da ação (passo 2.8). */
+  checklistItem: ["id", "texto", "feito"],
   /** Histórico de alterações das ações (passo 1.16): só de acréscimo. */
   historico: ["id", "entidade", "chave", "tipo", "campo", "antes", "depois", "em", "por"],
   retrato: [

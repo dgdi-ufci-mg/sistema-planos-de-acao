@@ -175,6 +175,10 @@ export function criarBancoFirestore(db) {
       await mudarAcao(espacoId, numero, (a) => ({ ...extra, [campo]: (a[campo] ?? []).filter((i) => !itens.includes(i)) }), historico);
     },
     /** Estimativa no fim do histórico de estimativas (duas iguais continuam sendo duas). */
+    /** Muda o checklist da ação numa transação (passo 2.8; seção 4.6): `mudanca` recebe a lista atual. */
+    async mudarChecklist(espacoId, numero, mudanca, extra = {}, historico) {
+      await mudarAcao(espacoId, numero, (a) => ({ ...extra, checklist: mudanca(a.checklist ?? []) }), historico);
+    },
     async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}, historico) {
       await mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }), historico);
     },

@@ -158,6 +158,13 @@ export function criarBancoLocal() {
     async retirarDaLista(espacoId, numero, campo, itens, extra = {}, historico) {
       mudarAcao(espacoId, numero, (a) => ({ ...extra, [campo]: (a[campo] ?? []).filter((i) => !itens.includes(i)) }), historico);
     },
+    /**
+     * Muda o checklist da ação (passo 2.8): `mudanca` recebe a lista atual e devolve a nova.
+     * Lê e grava de uma vez: duas pessoas marcando itens ao mesmo tempo não apagam uma à outra.
+     */
+    async mudarChecklist(espacoId, numero, mudanca, extra = {}, historico) {
+      mudarAcao(espacoId, numero, (a) => ({ ...extra, checklist: mudanca(a.checklist ?? []) }), historico);
+    },
     /** Acrescenta uma estimativa no fim do histórico, sem regravar as anteriores (seção 4.6). */
     async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}, historico) {
       mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }), historico);

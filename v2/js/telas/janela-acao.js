@@ -15,6 +15,7 @@ import { surgir, trocarSuave, abrirSuave, fecharSuave, reduzirMovimento } from "
 import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 import { descreverRegistro } from "../historico.js";
+import { editarTexto } from "./edicao-no-lugar.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -46,6 +47,9 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /** Histórico de alterações (passo 1.16): lido do banco só quando a seção é aberta. */
   let registros = null;
   let historicoAberto = false;
+  /** checklist aberto sem itens ainda ("Adicionar checklist"), e foco a devolver ao campo de novo item */
+  let checklistAberto = false;
+  let focoNoChecklist = false;
 
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `Ação ${inicial.codigo}` : "Ação", "", {
@@ -144,6 +148,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
             ? "Prazo em dias úteis, da liberação até a conclusão, incluindo o tempo até alguém começar. Enquanto a ação não está liberada, a estimativa pode ser ajustada livremente."
             : "Correção de digitação: vale só hoje, antes de qualquer reestimativa.") : ""}
 
+        ${checklistHtml(acao)}
         ${campos.notas !== false ? notasHtml(acao) : ""}
       </div>
 
@@ -157,6 +162,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     corpo.closest(".painel").style.setProperty("--calor", l.situacao === "concluida" ? "var(--ok)" : l.execucao == null ? "var(--neutral)"
       : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
     restaurarValores(valores);
+    if (focoNoChecklist) { focoNoChecklist = false; corpo.querySelector('[name="novoItemChecklist"]')?.focus(); }
     seletores.desenhar();
     encolherFormularioGravado();
   }
@@ -219,6 +225,30 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }
 
   /** Notas: mostradas já formatadas; ao clicar, editor visual com negrito, itálico, link e lista (seção 8.5). */
+  /**
+   * Checklist (passo 2.8; seção 16.5): não ocupa espaço até "Adicionar checklist". Cada item muda
+   * sozinho, na hora, sem Salvar: marcar, mudar o texto (clique nele) ou retirar (×).
+   */
+  function checklistHtml(acao) {
+    const itens = acao.checklist ?? [];
+    const pode = store.podeGravar;
+    if (!itens.length && !checklistAberto) {
+      return pode ? `<div class="campo-acao"><span class="campo-nome">Checklist</span>
+        <button type="button" class="botao-texto" data-abrir-checklist>${ICONES.mais}Adicionar checklist</button></div>` : "";
+    }
+    const feitos = itens.filter((i) => i.feito).length;
+    return `<div class="campo-acao checklist">
+      <span class="campo-nome">Checklist${itens.length ? ` <span class="checklist-progresso">${feitos}/${itens.length}</span>` : ""}</span>
+      ${itens.length ? `<span class="checklist-barra" aria-hidden="true"><i style="width:${Math.round((100 * feitos) / itens.length)}%"></i></span>` : ""}
+      <ul class="checklist-itens">${itens.map((i) => `<li class="${i.feito ? "feito" : ""}">
+        <input type="checkbox" data-marcar-item="${esc(i.id)}"${i.feito ? " checked" : ""}${pode ? "" : " disabled"} aria-label="${esc(i.texto)}">
+        <span class="checklist-texto"${pode ? ` data-texto-item="${esc(i.id)}" tabindex="0" title="Clique para mudar o texto"` : ""}>${esc(i.texto)}</span>
+        ${pode ? `<button type="button" class="tirar" data-tirar-item="${esc(i.id)}" aria-label="Retirar ${esc(i.texto)}">${ICONES.fechar}</button>` : ""}</li>`).join("")}</ul>
+      ${pode ? `<form class="checklist-novo" data-checklist-form><input name="novoItemChecklist" maxlength="200" autocomplete="off"
+        placeholder="Novo item: escreva e tecle Enter" aria-label="Novo item do checklist"></form>` : ""}
+    </div>`;
+  }
+
   function notasHtml(acao) {
     const html = markdownParaHtml(acao.notas);
     if (editando !== "notas") {
@@ -482,6 +512,17 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     corpo.querySelector(`[data-editar="${nome}"], [data-abrir-form="${nome}"]`)?.focus();
   }
 
+  /** Muda o texto de um item do checklist ali mesmo: Enter grava, Esc cancela. */
+  function editarItem(el) {
+    const item = (acaoAtual()?.checklist ?? []).find((i) => i.id === el.dataset.textoItem);
+    if (!item) return;
+    editarTexto(el, {
+      valor: item.texto,
+      aoGravar: (novo) => store.alterarItemDoChecklist(espacoId, numero, item.id, novo),
+      aoTerminar: () => {},
+    });
+  }
+
   /* ---------- eventos ---------- */
   corpo.addEventListener("click", async (e) => {
     const t = e.target;
@@ -496,6 +537,15 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       } catch (falha) { avisar(falha.message); }
       return;
     }
+    if (t.closest("[data-abrir-checklist]")) {
+      checklistAberto = true;
+      focoNoChecklist = true;
+      return desenhar();
+    }
+    const tirarItem = t.closest("[data-tirar-item]");
+    if (tirarItem) return executar(() => store.retirarItemDoChecklist(espacoId, numero, tirarItem.dataset.tirarItem));
+    const textoItem = t.closest("[data-texto-item]");
+    if (textoItem && !textoItem.isContentEditable) return editarItem(textoItem);
     const dep = t.closest("[data-tirar-dependencia]");
     if (dep) return executar(() => store.retirarDependencia(espacoId, numero, Number(dep.dataset.tirarDependencia)));
     const resp = t.closest("[data-tirar-responsavel]");
@@ -516,7 +566,22 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   });
   /* os botões de formatação não podem tirar o foco do editor das notas */
   corpo.addEventListener("mousedown", (e) => { if (e.target.closest("[data-formatar]")) e.preventDefault(); });
-  corpo.addEventListener("submit", (e) => { e.preventDefault(); salvar(e.target); });
+  corpo.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!e.target.matches("[data-checklist-form]")) return salvar(e.target);
+    const campo = e.target.elements.novoItemChecklist;
+    const texto = campo.value.trim();
+    if (!texto) return;
+    campo.value = "";
+    focoNoChecklist = true;
+    try { await store.acrescentarItemNoChecklist(espacoId, numero, texto); }
+    catch (falha) { campo.value = texto; avisar(falha.message); }
+  });
+  /* checklist: marcar e desmarcar gravam na hora */
+  corpo.addEventListener("change", (e) => {
+    const marca = e.target.closest("[data-marcar-item]");
+    if (marca) executar(() => store.marcarItemDoChecklist(espacoId, numero, marca.dataset.marcarItem, marca.checked));
+  });
   corpo.addEventListener("input", (e) => {
     const form = e.target.closest("form");
     const pert = form?.querySelector("[data-pert]");
@@ -535,6 +600,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (e.target.matches("[data-editor-notas]") && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); abrirBarraDeLink(); return; }
     if (e.key === "Escape" && editando) { e.preventDefault(); cancelar(); return; }
     if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-editar]")) { e.preventDefault(); editar(e.target.dataset.editar); }
+    if (e.key === "Enter" && e.target.matches("[data-texto-item]") && !e.target.isContentEditable) { e.preventDefault(); editarItem(e.target); }
   });
 
   const seletores = ligarSeletores(corpo, {

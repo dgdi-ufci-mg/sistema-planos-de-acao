@@ -95,6 +95,20 @@ export function testarContratoDoBanco(nome, criarBanco) {
       assert.deepEqual([...lida.responsaveis].sort(), ["a", "c"]);
     });
 
+    it("checklist: mudanças simultâneas em itens diferentes não se apagam (passo 2.8)", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarAcao("p1", acao(1, { checklist: [{ id: "a", texto: "A", feito: false }, { id: "b", texto: "B", feito: false }] }));
+      await Promise.all([
+        banco.mudarChecklist("p1", 1, (l) => l.map((i) => (i.id === "a" ? { ...i, feito: true } : i))),
+        banco.mudarChecklist("p1", 1, (l) => [...l, { id: "c", texto: "C", feito: false }]),
+        banco.mudarChecklist("p1", 1, (l) => l.map((i) => (i.id === "b" ? { ...i, texto: "B2" } : i)), { alteradaPor: "x" }),
+      ]);
+      const lida = await banco.lerAcao("p1", 1);
+      assert.deepEqual(lida.checklist, [{ id: "a", texto: "A", feito: true }, { id: "b", texto: "B2", feito: false }, { id: "c", texto: "C", feito: false }]);
+      await assert.rejects(banco.mudarChecklist("p1", 9, (l) => l), { codigo: "nao-encontrado" });
+    });
+
     it("estimativas: acrescenta no fim e só corrige a última se ninguém acrescentou outra", async () => {
       const banco = criarBanco();
       await banco.criarEspaco("p1", { nome: "Espaço 1" });

@@ -523,6 +523,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<div class="pr">${simbolo}${conteudo}</div>`;
   }
 
+  /** Progresso do checklist no cartão, como "2/5" (passo 2.8; seção 16.5). */
+  const checklistNota = (a) => {
+    const itens = a.checklist ?? [];
+    if (!itens.length) return "";
+    const feitos = itens.filter((i) => i.feito).length;
+    return `<small class="nota-checklist${feitos === itens.length ? " completo" : ""}" title="Checklist: ${feitos} de ${itens.length} itens feitos">${ICONES.checklist}${feitos}/${itens.length}</small>`;
+  };
   function linhaHtml(l) {
     const a = l.acao;
     const s = SITUACOES[l.situacao];
@@ -538,7 +545,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <div class="sit">${sit}</div>
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
-          [l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : ""].join("")}</div>
+          [l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a)].join("")}</div>
         ${c.descricao ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
         ${c.participantes ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras ? barraHtml(l) : ""}
@@ -654,7 +661,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
-          l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}</div>
+          l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${checklistNota(a)}</div>
         <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div></div>
         ${l.situacao === "concluida" ? "" : barraHtml(l)}
       </div>

@@ -248,6 +248,7 @@ Chave: o par (espaço, `numero`).
 | `concluidaEm` | data | não | Data de conclusão. Vazio: não concluída | `2026-09-22` |
 | `naoAntesDe` | data | não | Data mínima de liberação, "Não começa antes de" (seção 5.1) | `2026-10-19` |
 | `notas` | texto (Markdown) | não | Notas da ação (seção 8.5) | |
+| `checklist` | lista de item do checklist (4.2.2) | não | Itens a cumprir dentro da ação, na ordem em que foram acrescentados (seção 16.5; passo 2.8). Vazio: sem checklist | |
 | `criadaEm` | momento | sim | Criação da ação. Imutável | |
 | `alteradaEm` | momento | sim | Última gravação na ação (seção 4.6) | |
 | `alteradaPor` | usuário | não | Autor da última gravação | |
@@ -272,6 +273,17 @@ Toda alteração de uma ação gera registros no histórico (seção 16.4; passo
 | `depois` | qualquer | não | Valor depois da alteração. Vazio na criação ou se o campo foi esvaziado | `2026-10-21` |
 | `em` | momento | sim | Quando | |
 | `por` | usuário | não | Quem. Vazio só em gravações sem login (espaço de exemplo, na memória) | |
+
+#### 4.2.2 Item do checklist: cada item de `checklist`
+
+Passo 2.8 (seção 16.5). Cada item é mudado sozinho, numa operação que lê e grava a ação de uma vez (no Firebase, numa transação): duas pessoas marcando itens ao mesmo tempo não apagam uma à outra (seção 4.6). Cada mudança entra no histórico de alterações (4.2.1), com a lista antes e depois. O checklist não entra no cálculo: marcar itens não conclui a ação nem muda previsões.
+
+<!-- dicionario: checklistItem -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do item, único na ação | |
+| `texto` | texto | sim | O que precisa ser feito | `Enviar minuta à Procuradoria` |
+| `feito` | sim ou não | sim | Marcado como feito | `false` |
 
 ### 4.3 Estimativa: cada item de `estimativas`
 
@@ -447,7 +459,7 @@ Entram no dicionário, com tabela marcada e teste, no passo em que forem constru
 
 - **Fase 2 e seguintes:** campos opcionais da seção 16.8 (`etiquetas`, `posicaoPrioridade`, `documentos` da ação, `justificativa`, `local`, `dataLimite`; depois, `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos).
 - **Fase 4:** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
-- **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); checklist e comentários (seção 16.5).
+- **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); comentários (seção 16.5). O checklist entrou no passo 2.8 (4.2.2).
 
 ---
 
@@ -769,7 +781,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
 2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
 2.7. Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2).
-2.8. Checklist.
+2.8. ✔ Checklist. Feito no lote de 22/10/2026 (antes dos passos 2.1 a 2.7, por não depender deles nem de regras novas no banco): campo `checklist` da ação (4.2.2); na janela da ação, "Adicionar checklist", itens com caixa de marcar, texto editável com um clique e ×; progresso "feitos/total" nos cartões da lista e do quadro.
 2.9. Comentários.
 2.10. Extração personalizada (seção 16.6).
 2.10a. Campos opcionais: etiquetas, prioridade da equipe (lista ordenada), links e documentos da ação, justificativa e local; forma de prazo "data-limite opcional" (seções 16.1 e 16.8).

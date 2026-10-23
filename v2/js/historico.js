@@ -57,6 +57,22 @@ export function descreverRegistro(r, nomes) {
     case "naoAntesDe": return depois ? `“Não começa antes de” passou a ${dataBr(depois)}.` : "Retirou a data de “Não começa antes de”.";
     case "concluidaEm": return depois ? `Registrou a conclusão em ${dataBr(depois)}.` : "Desfez a conclusão.";
     case "excluidaEm": return depois ? "Excluiu a ação (foi para a lixeira)." : "Restaurou a ação da lixeira.";
+    case "checklist": {
+      /* passo 2.8: compara item a item, pelo id */
+      const a = new Map(lista(antes).map((i) => [i.id, i]));
+      const d = new Map(lista(depois).map((i) => [i.id, i]));
+      const partes = [];
+      for (const [id, i] of d) {
+        const velho = a.get(id);
+        if (!velho) partes.push(`acrescentou “${i.texto}”`);
+        else {
+          if (velho.texto !== i.texto) partes.push(`mudou “${velho.texto}” para “${i.texto}”`);
+          if (velho.feito !== i.feito) partes.push(i.feito ? `marcou “${i.texto}” como feito` : `desmarcou “${i.texto}”`);
+        }
+      }
+      for (const [id, i] of a) if (!d.has(id)) partes.push(`retirou “${i.texto}”`);
+      return partes.length ? `Checklist: ${partes.join("; ")}.` : "Reordenou o checklist.";
+    }
     case "estimativas": {
       const a = lista(antes);
       const d = lista(depois);

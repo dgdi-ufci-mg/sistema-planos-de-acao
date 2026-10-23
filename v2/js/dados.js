@@ -268,6 +268,26 @@ export function criarStore(banco, opcoes = {}) {
       await banco.retirarDaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo(), hist);
       await arrumarTons(espacoId);
     },
+    // --- checklist da ação (passo 2.8; seção 16.5): item a item, sem regravar os demais ---
+    async acrescentarItemNoChecklist(espacoId, numero, texto) {
+      const t = String(texto ?? "").trim();
+      if (!t) throw new ErroDeDados("checklist-vazio", "Escreva o item do checklist.");
+      await exigirAcao(espacoId, numero);
+      const id = novoId();
+      await banco.mudarChecklist(espacoId, numero, (lista) => [...lista, { id, texto: t, feito: false }], carimbo(), hist);
+      return id;
+    },
+    async marcarItemDoChecklist(espacoId, numero, id, feito) {
+      await banco.mudarChecklist(espacoId, numero, (lista) => lista.map((i) => (i.id === id ? { ...i, feito: Boolean(feito) } : i)), carimbo(), hist);
+    },
+    async alterarItemDoChecklist(espacoId, numero, id, texto) {
+      const t = String(texto ?? "").trim();
+      if (!t) throw new ErroDeDados("checklist-vazio", "Escreva o item do checklist.");
+      await banco.mudarChecklist(espacoId, numero, (lista) => lista.map((i) => (i.id === id ? { ...i, texto: t } : i)), carimbo(), hist);
+    },
+    async retirarItemDoChecklist(espacoId, numero, id) {
+      await banco.mudarChecklist(espacoId, numero, (lista) => lista.filter((i) => i.id !== id), carimbo(), hist);
+    },
     /** Acrescenta uma ação anterior. Recusa a própria ação, código inexistente e ciclo. */
     async acrescentarDependencia(espacoId, numero, anterior) {
       const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
@@ -658,7 +678,8 @@ export function criarStore(banco, opcoes = {}) {
     "retirarResponsavelDaAcao", "acrescentarDependencia", "retirarDependencia", "reestimar", "corrigirEstimativa",
     "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral",
     "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco",
-    "salvarRetrato", "importarAcoes", "restaurarCopia", "importarResponsaveis"];
+    "salvarRetrato", "importarAcoes", "restaurarCopia", "importarResponsaveis",
+    "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {
