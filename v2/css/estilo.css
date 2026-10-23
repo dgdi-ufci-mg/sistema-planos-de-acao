@@ -662,7 +662,7 @@ h3.editavel { padding: 2px 6px; }
 }
 
 /* ---------- modo "Editar em planilha" (passo 1.11) ---------- */
-.planilha-rolagem { overflow: auto; max-height: calc(100vh - 220px); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); }
+.planilha-rolagem { overflow: auto; height: calc(100vh - 220px); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); }
 .planilha { border-collapse: separate; border-spacing: 0; font-size: .88rem; table-layout: fixed; }
 .planilha th {
   position: sticky; top: 0; z-index: 1; background: var(--sunk); text-align: left; font-size: .72rem; font-weight: 700; color: var(--muted);
@@ -675,6 +675,18 @@ h3.editavel { padding: 2px 6px; }
 .planilha td input:focus, .planilha td select:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--accent-soft); }
 .planilha td.bloqueada { background: var(--sunk); color: var(--muted); cursor: not-allowed; }
 .planilha td.bloqueada > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* bloqueadas mais visíveis (23/10/2026): fundo mais escuro que o dos calculados, nos dois temas */
+.planilha td.bloqueada:not(.calculada) { background: color-mix(in srgb, var(--sunk) 55%, var(--line)); }
+/* data vazia: sem a máscara dd/mm/aaaa nem o calendário até receber o cursor */
+.planilha input[type="date"][data-vazia]:not(:focus) { color: transparent; }
+.planilha input[type="date"][data-vazia]:not(:focus)::-webkit-calendar-picker-indicator { opacity: 0; }
+.planilha td:hover input[type="date"][data-vazia]::-webkit-calendar-picker-indicator { opacity: .6; }
+.planilha-dicas { margin: 0 0 8px; font-size: .78rem; line-height: 1.35; }
+.planilha-dicas summary { cursor: pointer; list-style: none; }
+.planilha-dicas summary::-webkit-details-marker { display: none; }
+.planilha-dicas .mais { color: var(--accent); text-decoration: underline; white-space: nowrap; }
+.planilha-dicas[open] .mais { display: none; }
+.planilha-dicas p { margin: 4px 0 0; }
 .planilha .com-erro { outline: 2px solid var(--crit) !important; outline-offset: -2px; background: var(--crit-soft) !important; }
 .planilha td { background: var(--surface); }
 .planilha tr:hover td:not(.bloqueada) { background: color-mix(in srgb, var(--sunk) 60%, var(--surface)); }
@@ -686,7 +698,7 @@ h3.editavel { padding: 2px 6px; }
 .planilha .fixa { position: sticky; left: calc(var(--esq) * .88rem); z-index: 1; } /* --esq em em da tabela (.88rem) */
 .planilha th.fixa { z-index: 2; }
 .planilha .ultima-fixa { border-right: 2px solid var(--line); }
-.planilha .linha-nova td { background: var(--bg); }
+.planilha .linha-nova td, .planilha .linha-nova td.bloqueada:not(.calculada) { background: var(--bg); }
 .planilha .linha-nova input[data-chave="rotulo"]::placeholder { color: var(--faint); }
 
 /* ---------- painel de ações e responsáveis do espaço ---------- */

@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 23/10/2026 (versão 117 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 118 da página)
 
 ---
 
@@ -572,6 +572,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 116 | Versão 2: revisão da planilha. Todos os campos, inclusive os calculados (só leitura, depois de uma linha mais forte), na ordem Fase, Etapa, Nº, Rótulo, Descrição e demais; novas colunas Fase, Anotações, Checklist, Situação, Atrasada desde, Liberação prevista, Conclusão prevista, Folga, Índice de criticidade, Contribuição para a incerteza, Reestimativas, Criada em, Alterada em e Alterada por. Correções: as colunas eram espremidas até caber na tela, e agora mantêm a largura, com rolagem para o lado; de Fase a Rótulo ficam paradas à esquerda a partir de 1200 px. Escolha das colunas em "Exibir", lembrada no aparelho. As células da grade deixaram de usar o atributo `data-coluna`, que o menu de colunas da lista também lia: editar uma célula gravava colunas falsas na escolha da lista. Sem mudança na versão atual |
 | 116.1 | Versão 2: ajuste da planilha, a pedido do responsável. A ordem passa a começar por Nº e Ação (o rótulo, com nome de coluna mudado só na planilha), seguidos de Fase, Etapa e demais; ficam parados à esquerda só Nº, Código e Ação, em qualquer largura de tela. Sem mudança na versão atual |
 | 117 | Versão 2: a palavra "rótulo" sai da interface, a pedido do responsável. Nos títulos de coluna, "Ação"; nos campos, mensagens e histórico, "Nome da ação" (por exemplo, "Mudou o nome da ação de … para …"). O campo no banco continua `rotulo`, e a importação já aceitava o título "Ação". Sem mudança na versão atual |
+| 118 | Versão 2: ajustes da planilha aprovados pelo responsável. Setas, Enter e Shift+Enter andam entre as células (num texto, ← e → só saem com o cursor na ponta; Alt+↓ continua abrindo a lista da etapa); data vazia sem a máscara até receber o cursor; células bloqueadas mais escuras que as calculadas, visíveis também no tema claro; explicação do alto reduzida a uma linha, com "Mais dicas"; a grade vai até o fim da tela. Correção: cada gravação redesenhava a grade e a rolagem voltava ao começo; agora a posição é mantida. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

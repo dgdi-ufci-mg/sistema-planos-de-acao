@@ -154,7 +154,8 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const tipo = ["naoAntesDe", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
     const dica = !acao && coluna.chave === "rotulo" ? ' placeholder="Nova ação: escreva o nome"' : "";
     const inteiro = v && !tipo && v.length > 12 ? ` title="${esc(v)}"` : "";
-    return `${td}<input${tipo} ${comum} value="${esc(v)}" data-original="${esc(v)}"${dica}${inteiro}${coluna.chave === "concluidaEm" ? ` max="${hoje}"` : ""}></td>`;
+    const vazia = tipo.includes("date") && !v ? " data-vazia" : ""; // data vazia: sem a máscara dd/mm/aaaa até receber o cursor
+    return `${td}<input${tipo} ${comum} value="${esc(v)}" data-original="${esc(v)}"${dica}${inteiro}${vazia}${coluna.chave === "concluidaEm" ? ` max="${hoje}"` : ""}></td>`;
   }
 
   function desenhar(novoAlvo, dados) {
@@ -162,6 +163,8 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const trocouAlvo = alvo !== novoAlvo;
     alvo = novoAlvo;
     const foco = guardarFoco();
+    const rolagemAntes = alvo.querySelector(".planilha-rolagem");
+    const posicao = rolagemAntes ? [rolagemAntes.scrollLeft, rolagemAntes.scrollTop] : null; // a gravação redesenha a grade sem mudar a rolagem
     const cols = colunas();
     /* largura de cada coluna em em (corrigido em 23/10/2026: antes, a tabela era espremida até caber na tela) */
     const total = cols.reduce((t, c) => t + c.largura, 0);
@@ -173,11 +176,11 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const cabecalho = (c, j) => `<th scope="col" class="${[c.calculada && "calculada", c.inicioCalculados && "inicio-calculados", c.fixa && "fixa", c.ultimaFixa && "ultima-fixa"].filter(Boolean).join(" ")}"
       ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}>${c.titulo}</th>`;
     alvo.innerHTML = `
-      <p class="tec so-computador">Cada célula é gravada ao sair dela. Enter desce para a linha de baixo; Esc desfaz o que foi digitado.
-        Cole um bloco do Google Planilhas ou do Excel a partir da célula selecionada. Em "Depende de", use os ${d.usaCodigos ? "números ou códigos" : "números"} das ações,
-        separados por ponto e vírgula; em "Responsáveis", as siglas ou os nomes. Células cinza não podem ser editadas aqui: passe o mouse para ver o motivo.
-        As colunas depois da linha mais forte são calculadas pelo sistema; escolha as colunas em "Exibir".</p>
-      <div class="planilha-rolagem so-computador">
+      <details class="tec planilha-dicas so-computador"${dicasAbertas ? " open" : ""}><summary>Cada célula é gravada ao sair dela. Cinza: não se edita aqui (passe o mouse para ver o motivo). Títulos em itálico: calculados. <span class="mais">Mais dicas</span></summary>
+        <p>Setas, Enter e Shift+Enter andam entre as células; Esc desfaz o que foi digitado. Cole um bloco do Google Planilhas ou do Excel a partir da célula selecionada.
+        Em "Depende de", use os ${d.usaCodigos ? "números ou códigos" : "números"} das ações, separados por ponto e vírgula; em "Responsáveis", as siglas ou os nomes.
+        Escolha as colunas em "Exibir".</p></details>
+      <div class="planilha-rolagem so-computador" style="scroll-padding-left:calc(${soma} * .88rem)">
         <table class="planilha" style="width:${total}em">
           <colgroup>${cols.map((c) => `<col style="width:${c.largura}em">`).join("")}</colgroup>
           <thead><tr>${cols.map(cabecalho).join("")}</tr></thead>
@@ -188,8 +191,19 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         </table>
       </div>
       <p class="so-celular cartao">A edição em planilha está disponível no computador.</p>`;
+    const rolagem = alvo.querySelector(".planilha-rolagem");
+    if (posicao) [rolagem.scrollLeft, rolagem.scrollTop] = posicao;
+    ajustarAltura();
     restaurarFoco(foco);
     if (trocouAlvo) ligar();
+  }
+
+  /* a planilha vai até o fim da tela (23/10/2026), como a rede */
+  let dicasAbertas = false;
+  function ajustarAltura() {
+    const rolagem = alvo?.querySelector(".planilha-rolagem");
+    if (!rolagem?.isConnected || !rolagem.offsetParent) return;
+    rolagem.style.height = `${Math.max(240, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 16))}px`;
   }
 
   /* ---------- foco: mantido quando a grade é redesenhada por uma gravação ---------- */
@@ -203,7 +217,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const el = alvo.querySelector(`[data-linha="${foco.linha}"][data-col="${foco.coluna}"]`);
     if (!el) return;
     if (foco.sujo && "value" in el) el.value = foco.valor;
-    el.focus();
+    el.focus({ preventScroll: true });
   }
 
   /* ---------- gravação de uma célula ---------- */
@@ -329,12 +343,31 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   /* ---------- eventos ---------- */
   function ligar() {
     alvo.addEventListener("change", (e) => { if (e.target.dataset?.chave) gravarCelula(e.target); });
+    alvo.addEventListener("input", (e) => { if (e.target.type === "date") e.target.toggleAttribute("data-vazia", !e.target.value); });
+    alvo.addEventListener("toggle", (e) => { if (e.target.matches?.(".planilha-dicas")) { dicasAbertas = e.target.open; ajustarAltura(); } }, true);
+    addEventListener("resize", () => { if (alvo.isConnected) ajustarAltura(); });
     alvo.addEventListener("keydown", (e) => {
       const el = e.target;
       if (!el.dataset?.chave) return;
-      if (e.key === "Enter") {
-        e.preventDefault(); // a saída da célula dispara a gravação (evento change)
-        alvo.querySelector(`[data-linha="${Number(el.dataset.linha) + 1}"][data-col="${el.dataset.col}"]`)?.focus();
+      /* setas, Enter e Shift+Enter andam entre as células (23/10/2026); a saída da célula dispara a gravação (evento change).
+         Num texto, ← e → só saem da célula com o cursor na ponta; Alt+↓ continua abrindo a lista da etapa */
+      const ir = (dl, dc) => {
+        const alvoCel = alvo.querySelector(`[data-linha="${Number(el.dataset.linha) + dl}"][data-col="${Number(el.dataset.col) + dc}"]`);
+        if (!alvoCel) return false;
+        alvoCel.focus();
+        if (alvoCel.select && alvoCel.type !== "date" && alvoCel.type !== "number") alvoCel.select();
+        return true;
+      };
+      const texto = el.tagName === "INPUT" && !["date", "number"].includes(el.type);
+      const naPonta = (lado) => !texto || (el.selectionStart === el.selectionEnd && el.selectionStart === (lado < 0 ? 0 : el.value.length));
+      let andou = null;
+      if (e.key === "Enter") andou = ir(e.shiftKey ? -1 : 1, 0) || true;
+      else if (e.key === "ArrowDown" && !e.altKey) andou = ir(1, 0);
+      else if (e.key === "ArrowUp" && !e.altKey) andou = ir(-1, 0);
+      else if (e.key === "ArrowLeft" && naPonta(-1)) andou = ir(0, -1);
+      else if (e.key === "ArrowRight" && naPonta(1)) andou = ir(0, 1);
+      if (andou !== null) {
+        if (andou || e.key === "Enter" || el.tagName !== "INPUT" || !texto) e.preventDefault();
       } else if (e.key === "Escape" && "value" in el && el.value !== el.dataset.original) {
         e.preventDefault();
         el.value = el.dataset.original;
