@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 22/10/2026 (versão 107 da página)
+**Última atualização deste documento:** 22/10/2026 (versão 108 da página)
 
 ---
 
@@ -556,6 +556,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 105 | Versão 2, lote de 22/10/2026 (item 6): teste de velocidade com planos sintéticos de 50 a 300 ações (`v2/testes/desempenho.mjs`, rodado à mão). No ambiente de teste, com 200 ações: caminho crítico 1 ms, simulação de 10.000 cenários cerca de 1 s, arrumação da rede cerca de 0,5 s e desenho da rede na tela cerca de 0,5 s. Para não refazer a simulação sem necessidade, a tela passou a reaproveitar o resultado anterior quando muda só o que não entra no cálculo (nome, descrição, responsáveis, notas): `chaveDaSimulacao`, em `js/simulacao.js`, com testes. Resultados idênticos (mesma semente, mesmo sorteio). Sem mudança na versão atual |
 | 106 | Versão 2, lote de 22/10/2026 (item 3): **checklist da ação** (passo 2.8; especificação, seções 4.2.2 e 16.5). Campo novo `checklist` na ação, com itens `id`, `texto` e `feito` (dicionário de dados atualizado). Cada item muda sozinho, numa transação (`mudarChecklist` nos dois bancos, com teste de contrato de gravações simultâneas); operações do `Store`: acrescentar, marcar, mudar o texto e retirar item; cada mudança entra no histórico, em frase simples. Na janela da ação: "Adicionar checklist", itens com caixa de marcar, texto editável com um clique e ×, barra de progresso; nos cartões da lista e do quadro, o progresso "feitos/total". Não precisa de regra nova no banco (o campo fica no documento da ação). Sem mudança na versão atual |
 | 107 | Versão 2, lote de 22/10/2026 (item 1): **programa da migração** preparado para a troca (passo 1.20), sem executar. `v2/js/migracao.js` converte a cópia de segurança da versão atual na cópia de segurança da versão 2 (seção 11 da especificação), com relatório de avisos; ensaio por `v2/testes/migrar-copia.mjs`. Testado com a cópia real da PI²: restaurada na versão 2, dá as mesmas datas do caminho crítico da versão atual; o plano original vira o retrato "Plano original". Nada foi gravado em banco. Sem mudança na versão atual |
+| 108 | Versão 2, lote de 22/10/2026 (item 2): **rascunho da documentação técnica da versão 2**, em `docs/documentacao-tecnica-v2-rascunho.md`, para o passo 1.20. Visão geral, arquitetura, funcionalidades, indicadores, importação e exportação, permissões, decisões e pendências escritos a partir do sistema como está; dicionário de dados, regras de cálculo, situações e fundamentos matemáticos copiados da especificação (o teste do dicionário passa também contra o rascunho). Não substitui esta documentação até a troca |
 
 ### Notas de implementação recentes
 
