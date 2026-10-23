@@ -2,7 +2,7 @@
 
 **Instituição:** Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)
 **Situação:** em uso, em fase de testes. Publicado no GitHub Pages (https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/), com dados no Firebase
-**Última atualização deste documento:** 23/10/2026 (versão 115 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 116 da página)
 
 ---
 
@@ -569,6 +569,7 @@ O plano selecionado, a aba aberta e a opção de mostrar setas ficam no `localSt
 | 114 | Versão 2 (teste pedido pelo responsável): barra do topo do espaço em **três grupos**, como no Numbers (e nas diretrizes de interface do macOS). À esquerda, "onde estou": o nome do espaço, só quando o menu lateral não está à vista, e a visualização. No centro da área de trabalho, "como vejo": Classificar e filtrar, Exibir e Indicador, com os painéis abrindo centralizados sob eles. À direita, "o que faço": atrasadas e Nova ação. Com o menu lateral aberto, o nome sai da barra (o espaço já aparece destacado no menu). Entre 641 e 1099 px, sem espaço para centralizar, os grupos ficam lado a lado. No celular, nada muda. Sem mudança na versão atual |
 | 114.1 | Versão 2: correção. Os painéis de Classificar e filtrar, Exibir e Indicador abriam deslocados para a direita e pulavam de lugar no primeiro clique, porque a animação de abrir sobrepunha o deslocamento que os centraliza. A centralização passou a usar a propriedade `translate`, que a animação não altera. Sem mudança na versão atual |
 | 115 | Versão 2: nova ordem do menu Visualização, a pedido do responsável: Lista, Quadro, Rede, Cronograma, Planilha e Linha do tempo. Sem mudança na versão atual |
+| 116 | Versão 2: revisão da planilha. Todos os campos, inclusive os calculados (só leitura, depois de uma linha mais forte), na ordem Fase, Etapa, Nº, Rótulo, Descrição e demais; novas colunas Fase, Anotações, Checklist, Situação, Atrasada desde, Liberação prevista, Conclusão prevista, Folga, Índice de criticidade, Contribuição para a incerteza, Reestimativas, Criada em, Alterada em e Alterada por. Correções: as colunas eram espremidas até caber na tela, e agora mantêm a largura, com rolagem para o lado; de Fase a Rótulo ficam paradas à esquerda a partir de 1200 px. Escolha das colunas em "Exibir", lembrada no aparelho. As células da grade deixaram de usar o atributo `data-coluna`, que o menu de colunas da lista também lia: editar uma célula gravava colunas falsas na escolha da lista. Sem mudança na versão atual |
 
 ### Notas de implementação recentes
 

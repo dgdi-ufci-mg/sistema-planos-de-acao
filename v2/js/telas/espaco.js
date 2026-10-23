@@ -18,7 +18,7 @@ import { GLOSSARIO } from "../glossario.js";
 import { editarTexto, escolherParticipantes } from "./edicao-no-lugar.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
-import { criarPlanilha } from "./editar-planilha.js";
+import { criarPlanilha, colunasDaPlanilha } from "./editar-planilha.js";
 import { desenharLinhaDoTempo } from "./linha-do-tempo.js";
 import { desenharCronograma } from "./cronograma.js";
 import { desenharRede } from "./rede.js";
@@ -55,6 +55,9 @@ const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").ma
 function lembrado(chave, padrao) {
   try { return localStorage.getItem(chave) || padrao; } catch { return padrao; }
 }
+function lerOcultasPlanilha() {
+  try { return new Set(JSON.parse(localStorage.getItem("sextante.colunasPlanilha") || "[]")); } catch { return new Set(); }
+}
 /* "Nenhuma" saiu do seletor de barra (22/10/2026): quem a usava fica com a coluna Barras desligada */
 function lerColunas() {
   let guardadas = null;
@@ -73,6 +76,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     barra: lembrado("sextante.barra", "tempo"),
     /** colunas opcionais da lista (22/10/2026), lembradas neste aparelho; nome e situação são fixos */
     colunas: { descricao: false, participantes: true, barras: true, ...lerColunas() },
+    /** colunas escondidas na planilha (23/10/2026), lembradas neste aparelho */
+    ocultasPlanilha: lerOcultasPlanilha(),
     colunasAberto: false,
     /** identificador antes do nome (22/10/2026): "nenhum", "numero" (#1) ou "codigo"; null: o padrão do espaço */
     identificador: lembrado("sextante.identificador", null),
@@ -407,7 +412,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     desenharFerramentas();
   }
   const comIndicador = () => ui.modo === "quadro" || (ui.modo === "lista" && colunas().barras);
-  const comExibir = () => ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
+  const comExibir = () => ["lista", "quadro", "rede", "cronograma", "planilha"].includes(ui.modo);
   const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
   /** Menu próprio do indicador (23/10/2026, pedido do responsável): só onde há barras. */
@@ -419,12 +424,20 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}
     </div>`;
   }
+  /** Colunas da planilha em "Exibir" (23/10/2026): dados da ação e calculados; o rótulo fica sempre. */
+  function colunasDaPlanilhaHtml() {
+    const todas = colunasDaPlanilha(dadosDaJanela());
+    const grupo = (titulo, cols) => `<h3>${titulo}</h3><div class="colunas-escolha colunas-planilha">${cols.map((c) => c.obrigatoria
+      ? `<label class="fixa"><input type="checkbox" checked disabled> ${c.titulo}</label>`
+      : `<label><input type="checkbox" data-coluna-planilha="${c.chave}"${ui.ocultasPlanilha.has(c.chave) ? "" : " checked"}> ${c.titulo}</label>`).join("")}</div>`;
+    return grupo("Dados da ação", todas.filter((c) => !c.calculada)) + grupo("Calculados", todas.filter((c) => c.calculada));
+  }
   function exibirHtml() {
     const nivel = agrupado() && lista ? nivelAtual() : null;
     return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Exibir">
       ${agrupado() ? `<h3>Mostrar até</h3><div class="opcoes-lista">${NIVEIS.map(([v, nome]) => opcao("data-nivel", v, nome, nivel === v)).join("")}</div>` : ""}
-      <h3>Identificador antes do nome</h3><div class="opcoes-lista">${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos)
-        .map(([v, nome]) => opcao("data-identificador-op", v, nome, identificador() === v)).join("")}</div>
+      ${ui.modo === "planilha" ? colunasDaPlanilhaHtml() : `<h3>Identificador antes do nome</h3><div class="opcoes-lista">${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos)
+        .map(([v, nome]) => opcao("data-identificador-op", v, nome, identificador() === v)).join("")}</div>`}
       ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
         <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
         ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || usaDescricao()).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
@@ -695,7 +708,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.numero, el.getBoundingClientRect());
     const ls = visiveis();
     let corpo;
-    if (ui.modo === "planilha") { planilha.desenhar(lista, dadosDaJanela()); return; }
+    if (ui.modo === "planilha") { planilha.desenhar(lista, { ...dadosDaJanela(), ocultas: ui.ocultasPlanilha }); return; }
     if (ui.modo === "cronograma") {
       desenharCronograma(lista, { espaco, acoes, caminho, cal, hoje, usaFases, identificador: idHtml, escala: ui.escalaCrono,
         aoMudarEscala: (escala) => { ui.escalaCrono = escala; desenharLista(); },
@@ -904,6 +917,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   function aoMudarControle(e) {
     if (e.target.dataset.coluna) return mudarColuna(e.target.dataset.coluna, e.target.checked);
+    if (e.target.dataset.colunaPlanilha) {
+      const v = e.target.dataset.colunaPlanilha;
+      if (e.target.checked) ui.ocultasPlanilha.delete(v); else ui.ocultasPlanilha.add(v);
+      try { localStorage.setItem("sextante.colunasPlanilha", JSON.stringify([...ui.ocultasPlanilha])); } catch { /* sem armazenamento */ }
+      return desenharLista();
+    }
     const ctl = e.target.dataset.ctl;
     if (ctl) mudar(ctl, e.target.type === "checkbox" ? e.target.checked : e.target.value);
   }

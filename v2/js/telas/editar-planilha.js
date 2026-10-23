@@ -8,10 +8,50 @@
  * - Células que não podem ser editadas ficam cinza, com o motivo ao passar o mouse.
  * - A última linha, vazia, cria uma ação nova ao receber um rótulo.
  */
-import { esc } from "../formato.js";
+import { esc, dataBr } from "../formato.js";
 import { estimativaLivre, normalizarCodigo } from "../acao.js";
 import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData } from "../planilha.js";
 import { avisar } from "./painel.js";
+
+const SITUACOES = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
+
+/**
+ * Todas as colunas da planilha, na ordem da grade (23/10/2026, pedido do responsável: a planilha é para
+ * quem usa muito o sistema e mostra todos os campos, inclusive os calculados). Larguras em em.
+ * fixa: fica parada à esquerda ao rolar para o lado (telas largas); calculada: só leitura, no fim.
+ * @returns {{chave: string, titulo: string, largura: number, fixa?: boolean, calculada?: boolean, obrigatoria?: boolean}[]}
+ */
+export function colunasDaPlanilha(d) {
+  const campos = d.espaco.camposOpcionais ?? {};
+  return [
+    d.usaFases && { chave: "fase", titulo: "Fase", largura: 9, fixa: true },
+    d.usaFases && { chave: "etapa", titulo: "Etapa", largura: 10, fixa: true },
+    { chave: "numero", titulo: "Nº", largura: 3, fixa: true },
+    d.usaCodigos && { chave: "codigo", titulo: "Código", largura: 6, fixa: true },
+    { chave: "rotulo", titulo: "Rótulo", largura: 16, fixa: true, obrigatoria: true },
+    campos.descricao !== false && { chave: "descricao", titulo: "Descrição", largura: 18 },
+    { chave: "dependeDe", titulo: "Depende de", largura: 7 },
+    { chave: "responsaveis", titulo: "Responsáveis", largura: 9 },
+    { chave: "naoAntesDe", titulo: "Não começa antes de", largura: 9 },
+    { chave: "o", titulo: "Otimista", largura: 5.5 },
+    { chave: "m", titulo: "Mais provável", largura: 5.5 },
+    { chave: "p", titulo: "Pessimista", largura: 5.5 },
+    { chave: "concluidaEm", titulo: "Concluída em", largura: 9 },
+    campos.notas !== false && { chave: "notas", titulo: "Anotações", largura: 16 },
+    { chave: "checklist", titulo: "Checklist", largura: 5.5 },
+    { chave: "situacao", titulo: "Situação", largura: 7, calculada: true },
+    { chave: "atrasadaDesde", titulo: "Atrasada desde", largura: 7, calculada: true },
+    { chave: "liberacaoPrevista", titulo: "Liberação prevista", largura: 7, calculada: true },
+    { chave: "conclusaoPrevista", titulo: "Conclusão prevista", largura: 7, calculada: true },
+    { chave: "folga", titulo: "Folga (dias úteis)", largura: 5.5, calculada: true },
+    { chave: "execucao", titulo: "Índice de criticidade", largura: 6.5, calculada: true },
+    { chave: "revisao", titulo: "Contribuição para a incerteza", largura: 8.5, calculada: true },
+    { chave: "reestimativas", titulo: "Reestimativas", largura: 6.5, calculada: true },
+    { chave: "criadaEm", titulo: "Criada em", largura: 6.5, calculada: true },
+    { chave: "alteradaEm", titulo: "Alterada em", largura: 9, calculada: true },
+    { chave: "alteradaPor", titulo: "Alterada por", largura: 10, calculada: true },
+  ].filter(Boolean);
+}
 
 /**
  * @param {{store: object, espacoId: string, hoje: string, usuario?: string|null}} contexto
@@ -22,23 +62,10 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   let alvo = null;
   let ocupado = Promise.resolve(); // gravações em fila, na ordem em que a pessoa editou
 
-  /** Colunas visíveis, na ordem da grade. */
+  /** Colunas visíveis, na ordem da grade (as escondidas em "Exibir" ficam de fora). */
   function colunas() {
-    const campos = d.espaco.camposOpcionais ?? {};
-    return [
-      { chave: "numero", titulo: "Nº", largura: "3.5em" },
-      d.usaCodigos && { chave: "codigo", titulo: "Código", largura: "6em" },
-      { chave: "rotulo", titulo: "Rótulo", largura: "18em" },
-      d.usaFases && { chave: "etapa", titulo: "Etapa", largura: "13em" },
-      campos.descricao !== false && { chave: "descricao", titulo: "Descrição", largura: "18em" },
-      { chave: "dependeDe", titulo: "Depende de", largura: "8em" },
-      { chave: "responsaveis", titulo: "Responsáveis", largura: "10em" },
-      { chave: "naoAntesDe", titulo: "Não começa antes de", largura: "9em" },
-      { chave: "o", titulo: "Otimista", largura: "5em" },
-      { chave: "m", titulo: "Mais provável", largura: "5em" },
-      { chave: "p", titulo: "Pessimista", largura: "5em" },
-      { chave: "concluidaEm", titulo: "Concluída em", largura: "9em" },
-    ].filter(Boolean);
+    const ocultas = d.ocultas ?? new Set();
+    return colunasDaPlanilha(d).filter((c) => c.obrigatoria || !ocultas.has(c.chave));
   }
 
   const etapas = () => (d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => ({ ...e, fase: f.nome })));
@@ -48,16 +75,58 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const e = acao.estimativas?.at(-1);
     switch (chave) {
       case "numero": return String(acao.numero);
+      case "fase": return etapas().find((x) => x.id === acao.etapa)?.fase ?? "";
       case "dependeDe": return escreverReferencias(acao.dependeDe, d.acoes, d.usaCodigos);
       case "responsaveis": return escreverResponsaveis(acao.responsaveis, d.responsaveis);
       case "o": case "m": case "p": return e ? String(e[chave]) : "";
-      default: return acao[chave] ?? "";
+      case "notas": { // com mais de uma linha, só leitura: mostrada como texto corrido, sem as marcas de formatação
+        const t = acao.notas ?? "";
+        return /\n/.test(t) ? t.replace(/\*\*|__|\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/^\s*[-*]\s+/gm, "").split(/\n+/).filter(Boolean).join(" · ") : t;
+      }
+      case "checklist": {
+        const itens = acao.checklist ?? [];
+        return itens.length ? `${itens.filter((i) => i.feito).length}/${itens.length}` : "";
+      }
+      default: return calculado(acao, chave) ?? acao[chave] ?? "";
+    }
+  }
+
+  /** Valores calculados pelo sistema (só leitura), ou undefined se a coluna não é calculada. */
+  function calculado(acao, chave) {
+    const l = d.linhaDe.get(acao.numero);
+    const c = d.caminho.porAcao.get(acao.numero);
+    if (!l || !c) return undefined;
+    const pct = (x) => (x == null ? "" : x > 0 && x < 0.01 ? "<1%" : `${Math.round(x * 100)}%`);
+    const quando = (iso, comHora) => {
+      if (!iso) return "";
+      const t = new Date(iso);
+      return comHora ? t.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : t.toLocaleDateString("pt-BR");
+    };
+    const semNumeros = l.situacao === "concluida" || l.semEstimativa;
+    switch (chave) {
+      case "situacao": return SITUACOES[l.situacao] ?? "";
+      case "atrasadaDesde": return l.atrasada ? dataBr(l.vencidaEm) : "";
+      case "liberacaoPrevista": return dataBr(d.cal.data(c.liberacao));
+      case "conclusaoPrevista": return l.semEstimativa ? "" : dataBr(l.conclusao);
+      case "folga": return semNumeros ? "" : String(Math.round(c.folga));
+      case "execucao": return pct(l.execucao);
+      case "revisao": return pct(l.revisao);
+      case "reestimativas": return String(l.reprogramacoes);
+      case "criadaEm": return quando(acao.criadaEm);
+      case "alteradaEm": return quando(acao.alteradaEm, true);
+      case "alteradaPor": return acao.alteradaPor ? d.responsaveis.find((r) => r.usuario === acao.alteradaPor)?.nome ?? acao.alteradaPor : "";
+      default: return undefined;
     }
   }
 
   /** Motivo de a célula não poder ser editada, ou "". */
   function bloqueio(acao, chave) {
+    const coluna = colunasDaPlanilha(d).find((c) => c.chave === chave);
+    if (coluna?.calculada) return "Calculado pelo sistema.";
     if (chave === "numero") return "O número é dado pelo sistema e não muda.";
+    if (chave === "fase") return "A fase vem da etapa: mude a etapa.";
+    if (chave === "checklist") return "Itens feitos / total. Edite o checklist na janela da ação.";
+    if (chave === "notas" && /\n/.test(acao.notas ?? "")) return "Anotações com mais de uma linha: edite na janela da ação.";
     const situacao = d.linhaDe.get(acao.numero)?.situacao;
     if (["o", "m", "p"].includes(chave) && !estimativaLivre(acao, situacao, hoje)) {
       return situacao === "concluida" ? "A ação já foi concluída." : "A ação já foi liberada: a estimativa muda por reestimativa, na janela da ação.";
@@ -66,18 +135,25 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     return "";
   }
 
-  function celulaHtml(acao, coluna, linha, indice) {
-    const motivo = acao ? bloqueio(acao, coluna.chave) : coluna.chave === "rotulo" ? "" : "Escreva o rótulo para criar a ação.";
+  function celulaHtml(acao, coluna, linha, indice, esquerda) {
+    const motivo = acao ? bloqueio(acao, coluna.chave) : coluna.chave === "rotulo" ? "" : coluna.calculada ? "Calculado pelo sistema." : "Escreva o rótulo para criar a ação.";
     const v = acao ? valor(acao, coluna.chave) : "";
-    const comum = `data-linha="${linha}" data-coluna="${indice}" data-chave="${coluna.chave}" aria-label="${esc(coluna.titulo)}"`;
-    if (motivo) return `<td class="bloqueada" title="${esc(motivo)}"><span ${comum} role="textbox" aria-readonly="true" tabindex="-1">${esc(v)}</span></td>`;
+    const classes = [coluna.calculada && "calculada", coluna.inicioCalculados && "inicio-calculados", esquerda != null && "fixa", coluna.ultimaFixa && "ultima-fixa"].filter(Boolean);
+    const estilo = esquerda != null ? ` style="--esq:${esquerda}"` : "";
+    const comum = `data-linha="${linha}" data-col="${indice}" data-chave="${coluna.chave}" aria-label="${esc(coluna.titulo)}"`;
+    if (motivo) {
+      const dica = coluna.calculada ? (v ? `${v}` : "") : motivo;
+      return `<td class="${["bloqueada", ...classes].join(" ")}"${estilo}${dica ? ` title="${esc(dica)}"` : ""}><span ${comum} role="textbox" aria-readonly="true" tabindex="-1">${esc(v)}</span></td>`;
+    }
+    const td = `<td${classes.length ? ` class="${classes.join(" ")}"` : ""}${estilo}>`;
     if (coluna.chave === "etapa") {
-      return `<td><select ${comum}><option value=""></option>${etapas().map((e) =>
+      return `${td}<select ${comum}><option value=""></option>${etapas().map((e) =>
         `<option value="${esc(e.id)}"${e.id === v ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</select></td>`;
     }
     const tipo = ["naoAntesDe", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
     const dica = !acao && coluna.chave === "rotulo" ? ' placeholder="Nova ação: escreva o rótulo"' : "";
-    return `<td><input${tipo} ${comum} value="${esc(v)}" data-original="${esc(v)}"${dica}${coluna.chave === "concluidaEm" ? ` max="${hoje}"` : ""}></td>`;
+    const inteiro = v && !tipo && v.length > 12 ? ` title="${esc(v)}"` : "";
+    return `${td}<input${tipo} ${comum} value="${esc(v)}" data-original="${esc(v)}"${dica}${inteiro}${coluna.chave === "concluidaEm" ? ` max="${hoje}"` : ""}></td>`;
   }
 
   function desenhar(novoAlvo, dados) {
@@ -86,17 +162,27 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     alvo = novoAlvo;
     const foco = guardarFoco();
     const cols = colunas();
+    /* largura de cada coluna em em (corrigido em 23/10/2026: antes, a tabela era espremida até caber na tela) */
+    const total = cols.reduce((t, c) => t + c.largura, 0);
+    const fixas = cols.filter((c) => c.fixa);
+    const esquerdas = [];
+    let soma = 0;
+    cols.forEach((c, j) => { esquerdas[j] = c.fixa ? soma : null; if (c.fixa) soma += c.largura; });
+    cols.forEach((c) => { c.ultimaFixa = c === fixas.at(-1); c.inicioCalculados = c === cols.find((x) => x.calculada); });
+    const cabecalho = (c, j) => `<th scope="col" class="${[c.calculada && "calculada", c.inicioCalculados && "inicio-calculados", c.fixa && "fixa", c.ultimaFixa && "ultima-fixa"].filter(Boolean).join(" ")}"
+      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}>${c.titulo}</th>`;
     alvo.innerHTML = `
       <p class="tec so-computador">Cada célula é gravada ao sair dela. Enter desce para a linha de baixo; Esc desfaz o que foi digitado.
         Cole um bloco do Google Planilhas ou do Excel a partir da célula selecionada. Em "Depende de", use os ${d.usaCodigos ? "números ou códigos" : "números"} das ações,
-        separados por ponto e vírgula; em "Responsáveis", as siglas ou os nomes. Células cinza não podem ser editadas aqui: passe o mouse para ver o motivo.</p>
+        separados por ponto e vírgula; em "Responsáveis", as siglas ou os nomes. Células cinza não podem ser editadas aqui: passe o mouse para ver o motivo.
+        As colunas depois da linha mais forte são calculadas pelo sistema; escolha as colunas em "Exibir".</p>
       <div class="planilha-rolagem so-computador">
-        <table class="planilha">
-          <colgroup>${cols.map((c) => `<col style="width:${c.largura}">`).join("")}</colgroup>
-          <thead><tr>${cols.map((c) => `<th scope="col">${c.titulo}</th>`).join("")}</tr></thead>
+        <table class="planilha" style="width:${total}em">
+          <colgroup>${cols.map((c) => `<col style="width:${c.largura}em">`).join("")}</colgroup>
+          <thead><tr>${cols.map(cabecalho).join("")}</tr></thead>
           <tbody>
-            ${d.acoes.map((a, i) => `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, i, j)).join("")}</tr>`).join("")}
-            <tr class="linha-nova">${cols.map((c, j) => celulaHtml(null, c, d.acoes.length, j)).join("")}</tr>
+            ${d.acoes.map((a, i) => `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, i, j, esquerdas[j])).join("")}</tr>`).join("")}
+            <tr class="linha-nova">${cols.map((c, j) => celulaHtml(null, c, d.acoes.length, j, esquerdas[j])).join("")}</tr>
           </tbody>
         </table>
       </div>
@@ -109,11 +195,11 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   function guardarFoco() {
     const el = document.activeElement;
     if (!alvo?.contains(el) || !el.dataset?.linha) return null;
-    return { linha: el.dataset.linha, coluna: el.dataset.coluna, valor: el.value, sujo: el.value !== el.dataset.original };
+    return { linha: el.dataset.linha, coluna: el.dataset.col, valor: el.value, sujo: el.value !== el.dataset.original };
   }
   function restaurarFoco(foco) {
     if (!foco) return;
-    const el = alvo.querySelector(`[data-linha="${foco.linha}"][data-coluna="${foco.coluna}"]`);
+    const el = alvo.querySelector(`[data-linha="${foco.linha}"][data-col="${foco.coluna}"]`);
     if (!el) return;
     if (foco.sujo && "value" in el) el.value = foco.valor;
     el.focus();
@@ -137,6 +223,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         return store.alterarAcao(espacoId, n, { etapa: etapa?.id ?? null });
       }
       case "descricao": return store.alterarAcao(espacoId, n, { descricao: t });
+      case "notas": return store.alterarAcao(espacoId, n, { notas: t });
       case "naoAntesDe": {
         const data = lerData(t);
         if (data === undefined) throw new Error("Use uma data como 20/10/2026.");
@@ -213,7 +300,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     if (blocos.length <= 1 && (blocos[0]?.length ?? 0) <= 1) return false; // uma célula só: colagem comum
     const cols = colunas();
     const linha0 = Number(el.dataset.linha);
-    const coluna0 = Number(el.dataset.coluna);
+    const coluna0 = Number(el.dataset.col);
     ocupado = ocupado.then(async () => {
       let erros = 0;
       let criadas = 0;
@@ -246,7 +333,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       if (!el.dataset?.chave) return;
       if (e.key === "Enter") {
         e.preventDefault(); // a saída da célula dispara a gravação (evento change)
-        alvo.querySelector(`[data-linha="${Number(el.dataset.linha) + 1}"][data-coluna="${el.dataset.coluna}"]`)?.focus();
+        alvo.querySelector(`[data-linha="${Number(el.dataset.linha) + 1}"][data-col="${el.dataset.col}"]`)?.focus();
       } else if (e.key === "Escape" && "value" in el && el.value !== el.dataset.original) {
         e.preventDefault();
         el.value = el.dataset.original;

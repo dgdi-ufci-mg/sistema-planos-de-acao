@@ -663,10 +663,10 @@ h3.editavel { padding: 2px 6px; }
 
 /* ---------- modo "Editar em planilha" (passo 1.11) ---------- */
 .planilha-rolagem { overflow: auto; max-height: calc(100vh - 220px); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo); }
-.planilha { border-collapse: separate; border-spacing: 0; font-size: .88rem; table-layout: fixed; min-width: 100%; }
+.planilha { border-collapse: separate; border-spacing: 0; font-size: .88rem; table-layout: fixed; }
 .planilha th {
   position: sticky; top: 0; z-index: 1; background: var(--sunk); text-align: left; font-size: .72rem; font-weight: 700; color: var(--muted);
-  padding: 6px 7px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--grid); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 6px 7px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--grid); vertical-align: bottom; line-height: 1.25;
 }
 .planilha td { border-bottom: 1px solid var(--grid); border-right: 1px solid var(--grid); padding: 0; vertical-align: top; }
 .planilha td input, .planilha td select, .planilha td > span {
@@ -676,7 +676,18 @@ h3.editavel { padding: 2px 6px; }
 .planilha td.bloqueada { background: var(--sunk); color: var(--muted); cursor: not-allowed; }
 .planilha td.bloqueada > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .planilha .com-erro { outline: 2px solid var(--crit) !important; outline-offset: -2px; background: var(--crit-soft) !important; }
-.planilha tr:hover td:not(.bloqueada) { background: color-mix(in srgb, var(--sunk) 60%, transparent); }
+.planilha td { background: var(--surface); }
+.planilha tr:hover td:not(.bloqueada) { background: color-mix(in srgb, var(--sunk) 60%, var(--surface)); }
+/* colunas calculadas (23/10/2026): só leitura, separadas dos dados por uma linha mais forte */
+.planilha th.calculada { font-style: italic; }
+.planilha td.calculada > span { color: var(--muted); }
+.planilha .inicio-calculados { border-left: 2px solid var(--line); }
+/* fase, etapa, número e rótulo ficam parados ao rolar para o lado, nas telas largas */
+@media (min-width: 1200px) {
+  .planilha .fixa { position: sticky; left: calc(var(--esq) * .88rem); z-index: 1; } /* --esq em em da tabela (.88rem) */
+  .planilha th.fixa { z-index: 2; }
+  .planilha .ultima-fixa { border-right: 2px solid var(--line); }
+}
 .planilha .linha-nova td { background: var(--bg); }
 .planilha .linha-nova input[data-chave="rotulo"]::placeholder { color: var(--faint); }
 
@@ -1120,6 +1131,10 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .colunas-escolha { display: flex; flex-direction: column; gap: 6px; padding: 2px 6px; }
 .colunas-escolha label { display: flex; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; }
 .colunas-escolha label.fixa { color: var(--muted); cursor: default; }
+.colunas-planilha { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
+.colunas-planilha label { font-size: .85rem; align-items: flex-start; }
+.colunas-planilha input { margin-top: 3px; }
+body[data-vista-atual="planilha"] .popover-exibir { width: 380px; }
 .chip-atrasadas { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; margin-right: 8px; border: 1px solid var(--crit); border-radius: 999px;
   background: var(--crit-soft); color: var(--crit-ink); font: 600 .84rem var(--f-texto); cursor: pointer; white-space: nowrap; }
 .chip-atrasadas .icone { width: 15px; height: 15px; }
