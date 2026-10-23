@@ -1,6 +1,6 @@
 <img src="logo.png" width="72" alt="Logotipo: rosa dos ventos">
 
-# Sistema de Gerenciamento de Planos de Ação
+# Sistema de Gerenciamento de Planos de Ação (Sextante)
 
 **Diretoria de Governança e Desenvolvimento Institucional (DGDI) · Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)**
 
@@ -8,26 +8,28 @@ Ferramenta online para planejar e acompanhar planos de ação institucionais, pe
 
 ## O que o sistema faz
 
-- Calcula quando o plano deve terminar e mostra quais ações não podem atrasar (caminho crítico).
-- Estima a chance de cumprir o prazo final por simulação (método de Monte Carlo) e indica onde vale mais a pena reforçar o acompanhamento.
-- Desenha o cronograma (Gantt) e o diagrama de rede das ações, agrupado por etapas.
-- Compara o andamento real com o plano original (valor agregado e Earned Schedule).
-- Importa e exporta ações pelo Google Planilhas e por fluxogramas Mermaid.
+- Calcula quando o plano deve terminar e mostra quais ações não podem atrasar (caminho crítico, em dias úteis).
+- Estima a chance de cumprir o prazo final por simulação (método de Monte Carlo) e indica, ação por ação, onde um atraso pesa mais e de onde vem a incerteza do prazo.
+- Mostra o plano em seis visualizações: lista, quadro, rede, cronograma (Gantt), planilha e linha do tempo.
+- Acompanha o andamento por situações (não liberada, liberada, concluída), reestimativas com histórico e retratos do plano.
+- Importa e exporta ações pelo Google Planilhas e exporta fluxogramas Mermaid.
 
 Todos os termos aparecem em linguagem simples, com o nome técnico ao lado para quem quiser se aprofundar.
 
 ## Situação atual
 
-**Em uso, em fase de testes.** O sistema está online, conectado ao Firebase da DGDI. Qualquer pessoa consulta; só usuários cadastrados editam.
+**Protótipo, em fase de testes.** Este sistema é uma prova de conceito: serve de modelo conceitual para o sistema definitivo, que será desenvolvido do zero pela equipe de TI da UFCI-MG. Ele está online, conectado ao Firebase da DGDI (projeto `sextante-v2`). Qualquer pessoa consulta; só usuários cadastrados editam.
 
-Em cópias locais com o `config.js` vazio, o sistema abre em **modo local**: calcula tudo, porém **não salva** os dados.
+A versão 2 substituiu a versão 1 em 23/10/2026. O endereço antigo da versão 2 (`/v2/`) leva para o endereço principal.
+
+Com o `config.js` contendo `null`, o sistema abre só na memória: calcula tudo, porém **não salva** os dados.
 
 ## Como ver o sistema
 
 - **Online:** https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/
-- **No seu computador:** baixe o arquivo `index.html` e abra no navegador.
+- **No seu computador:** o sistema usa módulos JavaScript, que não abrem com clique duplo. Na pasta do repositório, rode `python3 -m http.server` e abra http://localhost:8000/.
 
-Para testar com dados, use o botão **Ver um plano de exemplo**.
+Para testar com dados, use o botão **Ver um exemplo**. O exemplo roda só na memória e nunca vai para o banco.
 
 ## Instalação com banco de dados (Firebase)
 
@@ -46,25 +48,29 @@ Passo a passo para o administrador:
 
 Depois disso, o site passa a abrir já conectado: qualquer pessoa consulta, e quem tem usuário toca em **Entrar** para editar.
 
-**Levar dados de uma instalação para outra:** na aba **Importar e exportar**, use **Copiar todos os dados** na origem e **Restaurar a partir de uma cópia** no destino.
+**Levar dados de uma instalação para outra:** em **Configurar o sistema**, baixe a cópia de segurança na origem e, no destino, com o banco ainda vazio, use **Restaurar uma cópia**.
 
 ## Estrutura do repositório
 
 | Caminho | Conteúdo |
 |---|---|
-| `index.html` | O sistema inteiro: HTML, CSS e JavaScript num único arquivo |
+| `index.html` | Estrutura da página |
+| `css/estilo.css` | Aparência e temas claro e escuro |
+| `js/` | O sistema, em módulos JavaScript por assunto: regras de cálculo, dados e telas |
+| `testes/` | Testes automáticos (`node --test`, sem dependências) |
 | `logo.png` | Logotipo (rosa dos ventos), também usado como ícone da aba do navegador |
-| `config.js` | Configuração do Firebase (vazia = modo local) |
+| `config.js` | Configuração do Firebase (`null` = só memória) |
 | `firestore.rules` | Regras de acesso ao banco de dados |
+| `v2/index.html` | Leva o endereço antigo `/v2/` para o principal |
 | `LICENSE` | Licença GPL v3 |
-| `docs/documentacao-tecnica.md` | Arquitetura, fórmulas, modelo de dados, decisões e histórico de versões |
-| `docs/especificacao-reescrita.md` | Decisões para a versão 2 do sistema (em revisão) |
-| `docs/manual-do-usuario.md` | Manual em linguagem simples (em revisão, ver abaixo) |
+| `docs/documentacao-tecnica.md` | Modelo conceitual completo: arquitetura, dicionário de dados, regras de cálculo, interface, decisões, plano de trabalho e histórico |
+| `docs/registro-de-execucao.md` | Diário das execuções em lote |
+| `docs/manual-do-usuario.md` | Manual em linguagem simples (congelado; ainda descreve a versão 1) |
 | `CONTRIBUTING.md` | Como colaborar |
 | `AGENTS.md` | Regras de trabalho para quem contribui, pessoa ou assistente de IA |
 | `CLAUDE.md` | Aponta para o `AGENTS.md` e traz instruções exclusivas do Claude |
 
-O manual do usuário está **congelado** até o sistema estabilizar, para evitar retrabalho com telas que ainda mudam.
+O manual do usuário está **congelado** até o responsável liberar, para evitar retrabalho com telas que ainda mudam. Por isso, ele ainda descreve a versão 1.
 
 ## Como colaborar
 

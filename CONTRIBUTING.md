@@ -11,7 +11,7 @@ Leia a [documentação técnica](docs/documentacao-tecnica.md). Ela explica como
 Abra uma **Issue** (aba "Issues" → "New issue") e descreva:
 
 - **O que aconteceu** ou o que você gostaria que acontecesse;
-- **Onde**: em qual aba do sistema e com quais dados;
+- **Onde**: em qual tela ou visualização do sistema e com quais dados;
 - **Como reproduzir**, se for um problema;
 - se possível, **uma captura de tela**.
 
@@ -22,21 +22,23 @@ Abra uma **Issue** (aba "Issues" → "New issue") e descreva:
 3. **Atualize a documentação técnica** (`docs/documentacao-tecnica.md`):
    - descreva a mudança na seção correspondente;
    - registre uma nova linha na tabela "Histórico de versões da página";
-   - se for uma decisão de projeto, inclua-a em "Decisões tomadas", com o motivo.
-4. Abra um **pull request** explicando o que mudou e por quê. Uma pessoa responsável revisa antes de incorporar.
+   - se for uma decisão de projeto, inclua-a em "Decisões tomadas", com o motivo;
+   - se mudar um campo do banco, atualize o dicionário de dados (seção 4).
+4. Rode os testes (`node --test`, na raiz) e confira que todos passam.
+5. Abra um **pull request** explicando o que mudou e por quê. Uma pessoa responsável revisa antes de incorporar.
 
 ## Princípios que toda mudança deve respeitar
 
-- **Linguagem simples.** Os usuários são leigos em gerenciamento de projetos. Use palavras do dia a dia; quando houver termo técnico equivalente, mostre-o em itálico, em letra menor ("Termo técnico: …"), e inclua-o na aba "Entenda os termos".
+- **Linguagem simples.** Os usuários são leigos em gerenciamento de projetos. Use palavras do dia a dia; quando houver termo técnico equivalente, mostre-o em itálico, em letra menor ("Termo técnico: …"), e inclua-o no glossário da Ajuda (`js/glossario.js`).
 - **Rigor nos cálculos.** Mudanças nas fórmulas precisam citar a referência e ser validadas com um plano real ou de exemplo.
-- **Um único arquivo.** O sistema fica em `index.html`, sem etapa de compilação. Bibliotecas externas só pela CDN e com versão fixa.
+- **Módulos, sem compilação.** O sistema fica em módulos JavaScript por assunto (`js/`), sem etapa de compilação, sem npm e sem *framework*. Bibliotecas externas só pela CDN e com versão fixa.
 - **Celular.** Toda tela precisa funcionar em largura de celular (cerca de 400 px).
-- **Temas claro e escuro.** Cores sempre pelas variáveis CSS definidas no início do arquivo, derivadas das cores do logotipo (`logo.png`).
-- **Dados pela camada `Store`.** Toda leitura e gravação passa pelo objeto `Store`. Não acesse o banco de dados diretamente de outras partes do código.
+- **Temas claro e escuro.** Cores sempre pelas variáveis CSS do início de `css/estilo.css`, em três blocos (claro, escuro pelo sistema e escuro escolhido), derivadas das cores do logotipo (`logo.png`).
+- **Dados pelo `Store`.** Toda leitura e gravação passa pelo `Store` (`js/dados.js`). Nenhum termo do Firestore aparece fora de `js/banco/firestore.js`.
 
 ## Testar localmente
 
-Abra o `index.html` no navegador. Com o `config.js` vazio, o sistema funciona em modo local e não salva dados; use o botão **Ver um plano de exemplo** para testar. **Não altere o `config.js` do repositório para apontar para outro banco**: para testar com o seu próprio Firebase, use uma cópia local.
+Rode `node --test` na raiz para os testes automáticos. Para ver a página, rode `python3 -m http.server` na raiz e abra http://localhost:8000/; use o botão **Ver um exemplo**, que roda só na memória. **Não altere o `config.js` do repositório para apontar para outro banco**: para testar com o seu próprio Firebase, use uma cópia local, ou troque a configuração por `null` na sua cópia para trabalhar só na memória.
 
 ## Dúvidas
 
