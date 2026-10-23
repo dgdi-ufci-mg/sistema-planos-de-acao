@@ -1239,3 +1239,16 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .tipo-opcao small { color: var(--muted); font-size: .8rem; line-height: 1.35; }
 .tipo-plano { display: flex; flex-direction: column; gap: 10px; }
 .tipo-plano .tec { margin: 0; }
+
+/* ---------- modelo do espaço (passo 2.4b) ---------- */
+.modelo-escolhas { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.modelo-escolhas .escolha { display: flex; flex-direction: column; gap: 4px; }
+.modelo-escolhas .escolha-nome { font-size: .84rem; font-weight: 600; color: var(--muted); }
+.modelo-escolhas label { display: flex; align-items: baseline; gap: 8px; font-weight: 400; font-size: .92rem; cursor: pointer; }
+.modelo-escolhas label small { color: var(--muted); font-size: .8rem; }
+.modelo-escolhas input { width: auto; flex: none; accent-color: var(--accent); }
+.modelo-escolhas .desligada { opacity: .5; cursor: not-allowed; }
+.modelo-espaco > .tec { margin: 0; }
+.modelo-resumo { margin: 0; font-size: .9rem; }
+.modelo-resumo .campo-nome { font-weight: 600; margin-right: 4px; }
+.modelo-resumo .tec { display: block; }

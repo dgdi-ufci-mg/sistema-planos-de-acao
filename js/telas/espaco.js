@@ -8,7 +8,7 @@
 import { criarCalendario, datasEfetivas } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
 import { simular, chaveDaSimulacao } from "../simulacao.js";
-import { modeloDe, usaSimulacao, opcoesDoCalculo, acoesParaCalculo } from "../modelos.js";
+import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo } from "../modelos.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
@@ -200,6 +200,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
 
   function desenhar() {
+    /* o que o modelo do espaço não tem volta ao padrão (só nesta tela; a escolha guardada no aparelho fica) */
+    if (!modos().some(([v]) => v === ui.modo)) ui.modo = "lista";
+    if (!barras().some(([v]) => v === ui.barra)) ui.barra = "tempo";
+    if (!ordens().some(([v]) => v === ui.ordem)) ui.ordem = "espaco";
     if (!base) montarBase();
     if (!comAcoes) montar();
     cabeca.innerHTML = cabecaHtml();
@@ -217,13 +221,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
     ["planilha", "Planilha", "modoPlanilha", "so-computador"],
     ["linha", "Linha do tempo", "modoLinha", "so-computador"]];
+  /**
+   * Visualizações que o modelo do espaço permite (passo 2.4b): a rede pede dependências; o
+   * cronograma, estimativas; a linha do tempo, simulação. Lista, quadro e planilha valem sempre.
+   */
+  const modos = () => MODOS.filter(([v]) => (v === "rede" ? usaDependencias(espaco) : v === "cronograma" ? usaEstimativas(espaco)
+    : v === "linha" ? usaSimulacao(espaco) : true));
   /** Modos sem filtros nem ordem: mostram o espaço inteiro (no cronograma, as setas ligariam ações escondidas). */
   const semFiltros = () => ["planilha", "cronograma", "rede", "linha"].includes(ui.modo);
   let modoDesenhado = null;
   function modosHtml() {
     const trocou = modoDesenhado !== null && modoDesenhado !== ui.modo;
     return `<div class="modos" role="group" aria-label="Exibir como">
-      ${MODOS.map(([v, nome, icone, classe]) => `<button type="button" class="modo ${classe}" data-modo="${v}" aria-pressed="${ui.modo === v}" title="${nome}" aria-label="${nome}">
+      ${modos().map(([v, nome, icone, classe]) => `<button type="button" class="modo ${classe}" data-modo="${v}" aria-pressed="${ui.modo === v}" title="${nome}" aria-label="${nome}">
         ${ICONES[icone]}<span class="modo-nome${ui.modo === v && trocou ? " entrando" : ""}" aria-hidden="true">${nome}</span></button>`).join("")}
     </div>`;
   }
@@ -236,7 +246,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${responsaveis.map((r) => `<option value="${esc(r.id)}"${ui.responsavel === r.id ? " selected" : ""}>${esc(r.sigla ? `${r.sigla} · ${r.nome}` : r.nome)}</option>`).join("")}
       </select>
       <select data-ctl="ordem" aria-label="Ordenar">
-        ${ORDENS.map(([v, t]) => `<option value="${v}"${ui.ordem === v ? " selected" : ""}>${t}</option>`).join("")}
+        ${ordens().map(([v, t]) => `<option value="${v}"${ui.ordem === v ? " selected" : ""}>${t}</option>`).join("")}
       </select>`}`;
   }
   /**
@@ -262,10 +272,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["execucao", "Índice de criticidade", "barraExecucao"],
     ["revisao", "Contribuição para a incerteza", "barraRevisao"],
   ];
+  /** Indicadores que o espaço tem: os dois índices vêm da simulação (passo 2.4b). */
+  const barras = () => (usaSimulacao(espaco) ? BARRAS : BARRAS.filter(([v]) => v === "tempo"));
+  /** Ordens que o espaço tem; no espaço com data-limite, "Conclusão prevista" vira "Data-limite". */
+  const ordens = () => ORDENS.filter(([v]) => usaSimulacao(espaco) || !["execucao", "revisao"].includes(v))
+    .map(([v, t]) => [v, v === "conclusao" && usaDataLimite(espaco) ? "Data-limite" : t]);
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
   const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a incerteza" }; /* nomes técnicos de volta (22/10/2026) */
   const barrasHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Indicador</span><div class="modos barras" role="group" aria-label="Barra mostrada nos cartões">
-      ${BARRAS.map(([v, nome, icone]) => `<button type="button" class="modo" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}"><span class="barra-icone ${v}">${ICONES[icone]}</span><span class="modo-nome" aria-hidden="true">${NOMES_BARRA[v]}</span></button>`).join("")}
+      ${barras().map(([v, nome, icone]) => `<button type="button" class="modo" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}"><span class="barra-icone ${v}">${ICONES[icone]}</span><span class="modo-nome" aria-hidden="true">${NOMES_BARRA[v]}</span></button>`).join("")}
     </div></div>`;
   /**
    * Colunas da lista (22/10/2026, pedido do responsável): nome e situação ficam sempre; descrição,
@@ -369,7 +384,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       </select></label>`;
   }
   function ordensHtml() {
-    return ORDENS.map(([v, t]) => `<button class="opcao" type="button" data-ordem="${v}" aria-pressed="${ui.ordem === v}"><span class="opcao-icone">${ui.ordem === v ? ICONES.marcado : ""}</span><span class="opcao-texto">${t}</span></button>`).join("");
+    return ordens().map(([v, t]) => `<button class="opcao" type="button" data-ordem="${v}" aria-pressed="${ui.ordem === v}"><span class="opcao-icone">${ui.ordem === v ? ICONES.marcado : ""}</span><span class="opcao-texto">${t}</span></button>`).join("");
   }
   function popoverHtml() {
     /* "Classificar e filtrar" (23/10/2026, pedido do responsável), como no Excel: a ordem primeiro, depois os filtros */
@@ -395,7 +410,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }
     if (ui.pop === "modo") {
       return `<div class="popover popover-modo" data-popover role="dialog" aria-label="Visualização">
-        <h3>Visualização</h3><div class="opcoes-lista">${MODOS.map(([v, nome, icone]) => `<button class="opcao" type="button" data-modo="${v}" aria-pressed="${ui.modo === v}">
+        <h3>Visualização</h3><div class="opcoes-lista">${modos().map(([v, nome, icone]) => `<button class="opcao" type="button" data-modo="${v}" aria-pressed="${ui.modo === v}">
           <span class="opcao-icone">${ICONES[icone]}</span><span class="opcao-texto">${nome}</span>${ui.modo === v ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`).join("")}</div>
       </div>`;
     }
@@ -424,7 +439,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /** Menu próprio do indicador (23/10/2026, pedido do responsável): só onde há barras. */
   function indicadorHtml() {
     return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Indicador">
-      <h3>Indicador</h3><div class="opcoes-lista">${BARRAS.map(([v, nome, icone]) =>
+      <h3>Indicador</h3><div class="opcoes-lista">${barras().map(([v, nome, icone]) =>
         opcao("data-barra", v, nome, ui.barra === v, `<span class="barra-icone ${v}">${ICONES[icone]}</span>`)).join("")}</div>
       ${ui.barra === "tempo" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
         opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}
@@ -604,7 +619,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * lado, pequeno; a data aparece ao parar o mouse.
    */
   function diasDoPrazo(l) {
-    if (l.situacao === "concluida" || l.semEstimativa) return null;
+    if (l.situacao === "concluida" || l.semEstimativa || !l.conclusao) return null; // sem data-limite: sem barra (passo 2.4b)
     if (l.atrasada) return -Math.max(1, cal.diasUteisAte(hoje) - cal.diasUteisAte(l.vencidaEm));
     return Math.max(0, cal.diasUteisAte(l.conclusao) - cal.diasUteisAte(hoje));
   }
@@ -622,8 +637,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const zero = ((0 - min) / faixa) * 100;
     const largura = (Math.abs(n) / faixa) * 100;
     const titulo = n < 0 ? `Venceu há ${-n} ${plural(-n, "dia útil", "dias úteis")}, em ${dataBr(l.vencidaEm)}`
-      : n > 0 ? `${plural(n, "Falta", "Faltam")} ${n} ${plural(n, "dia útil", "dias úteis")}: conclusão prevista em ${dataBr(l.conclusao)}`
-      : "Conclusão prevista para hoje";
+      : n > 0 ? `${plural(n, "Falta", "Faltam")} ${n} ${plural(n, "dia útil", "dias úteis")}: ${usaDataLimite(espaco) ? "data-limite" : "conclusão prevista"} em ${dataBr(l.conclusao)}`
+      : usaDataLimite(espaco) ? "Data-limite hoje" : "Conclusão prevista para hoje";
     return `<span class="prazo-barra ${n < 0 ? "vencido" : n > 0 ? "faltam" : "zero"}" title="${titulo}" aria-label="${titulo}">
       <span class="prazo-trilho">${min < 0 ? `<i class="prazo-zero" style="left:${zero}%"></i>` : ""}${n ? `<i class="prazo-valor" style="left:${n < 0 ? zero - largura : zero}%;width:${Math.max(1.5, largura)}%"></i>` : ""}</span>
       ${ui.tempoNumero === "data" ? `<span class="prazo-num data">${dataCurta(n < 0 ? l.vencidaEm : l.conclusao, comAno())}</span>` : `<span class="prazo-num">${n}</span>`}</span>`;
@@ -635,7 +650,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const simbolo = `<span class="barra-icone ${ui.barra}" title="${nome}" aria-hidden="true">${ICONES[icone]}</span>`;
     if (l.situacao === "concluida") return `<div class="pr"></div>`;
     let conteudo;
-    if (ui.barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : prazoHtml(l);
+    if (ui.barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : diasDoPrazo(l) == null ? "" : prazoHtml(l);
     else if (ui.barra === "revisao") {
       const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
       conteudo = medidor(l.revisao, `Contribuição para a incerteza: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
@@ -681,11 +696,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const LEGENDA_BARRA = {
     tempo: ["tempoRestante", "dias úteis até a conclusão; em vermelho, desde que venceu"],
     tempoData: ["tempoRestante", "barra em dias úteis até a conclusão, com a data prevista; em vermelho, venceu"],
+    /* espaço com data-limite (passo 2.4b) */
+    tempoLimite: ["tempoRestante", "dias úteis até a data-limite; em vermelho, desde que venceu"],
+    tempoDataLimite: ["tempoRestante", "barra em dias úteis até a data-limite, com a data; em vermelho, venceu"],
     execucao: ["exec", "quanto cada dia de atraso adia o fim"],
     revisao: ["rev", "parte da incerteza do prazo final"],
   };
   function legendaBarraHtml() {
-    const leg = LEGENDA_BARRA[ui.barra === "tempo" && ui.tempoNumero === "data" ? "tempoData" : ui.barra];
+    const leg = LEGENDA_BARRA[(ui.barra === "tempo" && ui.tempoNumero === "data" ? "tempoData" : ui.barra) + (ui.barra === "tempo" && usaDataLimite(espaco) ? "Limite" : "")];
     if (!leg || ui.modo !== "lista" || !colunas().barras) return "";
     const [chave, curto] = leg;
     const termo = GLOSSARIO.find((t) => t.chave === chave);
@@ -793,7 +811,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       const daColuna = ls.filter((l) => l.situacao === situacao);
       return `<section class="coluna" data-coluna="${situacao}" aria-label="${titulo}">
         <header><span class="${classe}">${ICONES[SITUACOES[situacao].icone]}</span><b>${titulo}</b><span class="n">${daColuna.length}</span></header>
-        <p class="tec so-computador">${dica}</p>
+        <p class="tec so-computador">${situacao === "naoLiberada" && !usaDependencias(espaco) ? "Liberadas sozinhas quando a data mínima chega." : dica}</p>
         <div class="coluna-cartoes">${daColuna.map(cartaoHtml).join("") || `<p class="vazio">Nenhuma ação.</p>`}</div>
         ${situacao === "liberada" && comRapida() ? rapidaHtml("quadro") : ""}
       </section>`;

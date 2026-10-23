@@ -602,10 +602,10 @@ export function criarStore(banco, opcoes = {}) {
       let criadas = 0;
       let atualizadas = 0;
       for (const l of plano.linhas) {
-        const { rotulo, codigo, descricao, etapa, naoAntesDe, responsaveis: resp, estimativa } = l.campos;
+        const { rotulo, codigo, descricao, etapa, naoAntesDe, dataLimite, responsaveis: resp, estimativa } = l.campos;
         const comuns = {
           ...(codigo ? { codigo } : {}), ...(descricao ? { descricao } : {}), ...(etapa ? { etapa: etapaId(etapa) } : {}),
-          ...(naoAntesDe !== undefined ? { naoAntesDe } : {}), ...(resp ? { responsaveis: resp } : {}),
+          ...(naoAntesDe !== undefined ? { naoAntesDe } : {}), ...(dataLimite !== undefined ? { dataLimite } : {}), ...(resp ? { responsaveis: resp } : {}),
         };
         if (l.tipo === "nova") {
           await tentar(l.linha, async () => {

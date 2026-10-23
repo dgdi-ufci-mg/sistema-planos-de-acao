@@ -9,7 +9,7 @@
 import { criarCalendario, datasEfetivas } from "./calendario.js";
 import { caminhoCritico, estimativaVigente, duracaoPert } from "./calculo.js";
 import { dataBr } from "./formato.js";
-import { opcoesDoCalculo, usaDataLimite } from "./modelos.js";
+import { opcoesDoCalculo, usaDataLimite, usaDependencias } from "./modelos.js";
 
 
 const SITUACAO = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
@@ -48,20 +48,25 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const pessoa = new Map(responsaveis.map((r) => [r.id, r.sigla || r.nome]));
   const faseEEtapa = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, [f.nome, e.nome]])));
 
+  /* colunas conforme o modelo do espaço (passo 2.4b): dependências, e estimativas ou data-limite */
+  const comDependencias = usaDependencias(espaco);
+  const comEstimativas = !usaDataLimite(espaco);
   const titulos = ["Número", ...(usaCodigos ? ["Código"] : []), ...(usaFases ? ["Fase", "Etapa"] : []), "Ação",
-    ...(usaDescricao ? ["Descrição"] : []), "Depende de", "Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)",
-    "Responsáveis", "Situação", "Atrasada", "Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"];
+    ...(usaDescricao ? ["Descrição"] : []), ...(comDependencias ? ["Depende de"] : []),
+    ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
+    "Responsáveis", "Situação", "Atrasada",
+    ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
   const linhas = [...acoes].sort((a, b) => a.ordem - b.ordem).map((a) => {
     const { c, concluida, inicio, fim } = datas(a);
     const e = estimativaVigente(a);
     const [fase, etapa] = faseEEtapa.get(a.etapa) ?? ["", ""];
     return [a.numero, ...(usaCodigos ? [a.codigo ?? ""] : []), ...(usaFases ? [fase, etapa] : []), a.rotulo,
       ...(usaDescricao ? [a.descricao ?? ""] : []),
-      (a.dependeDe ?? []).map((d) => (porNumero.has(d) ? referencia(porNumero.get(d), usaCodigos) : d)).join("; "),
-      numero(e?.o), numero(e?.m), numero(e?.p), e ? numero(duracaoPert(e)) : "",
+      ...(comDependencias ? [(a.dependeDe ?? []).map((d) => (porNumero.has(d) ? referencia(porNumero.get(d), usaCodigos) : d)).join("; ")] : []),
+      ...(comEstimativas ? [numero(e?.o), numero(e?.m), numero(e?.p), e ? numero(duracaoPert(e)) : ""] : [a.dataLimite ? dataBr(a.dataLimite) : ""]),
       (a.responsaveis ?? []).map((id) => pessoa.get(id)).filter(Boolean).join("; "),
       SITUACAO[c.situacao] ?? c.situacao, c.atrasada ? "sim" : "não",
-      dataBr(inicio), dataBr(fim), concluida ? "" : numero(Math.max(0, c.folga)), concluida ? "" : (c.critica ? "sim" : "não"),
+      ...(comEstimativas ? [dataBr(inicio), dataBr(fim), concluida ? "" : numero(Math.max(0, c.folga)), concluida ? "" : (c.critica ? "sim" : "não")] : []),
     ].map(campo).join("\t");
   });
   return [titulos.join("\t"), ...linhas].join("\n");

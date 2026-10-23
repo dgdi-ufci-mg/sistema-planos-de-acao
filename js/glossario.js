@@ -14,7 +14,7 @@ export const GLOSSARIO = [
   { chave: "atrasada", icone: "atrasada", titulo: "Atrasada",
     texto: "A data prevista de conclusão, pela estimativa mais recente, já passou. Uma reestimativa tira o carimbo e fica registrada no histórico." },
   { chave: "tempoRestante", titulo: "Tempo restante",
-    texto: "Dias úteis que faltam até a conclusão prevista da ação, pela estimativa mais recente (barra verde, para a direita). Se essa data já passou, mostra os dias úteis decorridos desde ela (barra vermelha, para a esquerda). Zero quer dizer que a conclusão está prevista para hoje. Fins de semana, feriados e datas excluídas não contam." },
+    texto: "Dias úteis que faltam até a conclusão prevista da ação, pela estimativa mais recente (barra verde, para a direita). Se essa data já passou, mostra os dias úteis decorridos desde ela (barra vermelha, para a esquerda). Zero quer dizer que a conclusão está prevista para hoje. Fins de semana, feriados e datas excluídas não contam. Nos espaços com prazos por data-limite, a conta é até a data-limite; sem data-limite, não há barra." },
   { chave: "exec", titulo: "Índice de criticidade",
     texto: "Quanto um atraso nesta ação atrasa a conclusão prevista. Por exemplo, com 70%, cada dia de atraso nesta ação atrasa a conclusão em cerca de 0,7 dia. Considera só o prazo final; outros motivos de prioridade ficam a critério da equipe.",
     simples: "prioridade de execução",

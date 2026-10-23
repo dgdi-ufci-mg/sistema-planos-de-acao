@@ -6,6 +6,7 @@
 import { NOME, INSTITUICAO } from "../identidade.js";
 import { ICONES } from "../icones.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
+import { modeloHtml, ligarModelo, lerModelo } from "./modelo-espaco.js";
 
 const hojeIso = () => {
   const d = new Date();
@@ -44,6 +45,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
         <label class="campo"><span>Nome</span>
           <input name="nome" required maxlength="120" placeholder="Por exemplo: Implantação do novo sistema acadêmico"></label>
         ${tipoHtml()}
+        ${modeloHtml()}
         <div class="campos-lado-a-lado">
           <label class="campo"><span>Início</span><input name="inicio" type="date" required value="${hojeIso()}"></label>
           <label class="campo"><span>Prazo final <small>(opcional)</small></span><input name="prazoFinal" type="date"></label>
@@ -80,7 +82,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
     const f = Object.fromEntries(new FormData(evento.target));
     /* tipo do espaço (passo 2.4a): no Projeto, nada de Programa nem aprovação */
     const tipo = Object.fromEntries(Object.entries(lerTipo(evento.target)).filter(([, v]) => v != null));
-    const dados = { nome: f.nome, inicio: f.inicio, prazoFinal: f.prazoFinal, ...tipo };
+    const dados = { nome: f.nome, inicio: f.inicio, prazoFinal: f.prazoFinal, ...tipo, modelo: lerModelo(evento.target) };
     if (!dados.nome.trim()) return mostrarErro("Informe o nome do espaço.");
     if (!dados.inicio) return mostrarErro("Informe a data de início.");
     if (dados.prazoFinal && dados.prazoFinal < dados.inicio) return mostrarErro("O prazo final não pode ser antes do início.");
@@ -92,5 +94,6 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
     }
   });
   ligarTipo(formulario.querySelector("form"));
+  ligarModelo(formulario.querySelector("form"));
   if (comFormulario && podeCriar) abrirFormulario();
 }

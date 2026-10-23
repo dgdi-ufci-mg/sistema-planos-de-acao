@@ -22,7 +22,8 @@ import { planilhaDoEspaco, mermaidDoEspaco } from "../exportar.js";
 import { hojeLocal } from "../dados.js";
 import { copiarTexto } from "./arquivos.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
-import { opcoesDoCalculo } from "../modelos.js";
+import { opcoesDoCalculo, usaSimulacao } from "../modelos.js";
+import { resumoDoModelo } from "./modelo-espaco.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
@@ -100,6 +101,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <form class="editor" data-salvar="dados">
           <label class="campo"><span>Nome</span><input name="nome" maxlength="120" value="${esc(espaco.nome)}"></label>
           ${tipoHtml(espaco)}
+          ${resumoDoModelo(espaco)}
           <div class="campos-lado-a-lado">
             <label class="campo"><span>Início</span><input name="inicio" type="date" value="${esc(espaco.inicio ?? "")}"></label>
             <label class="campo"><span>Prazo final <small>(opcional)</small></span><input name="prazoFinal" type="date" value="${esc(espaco.prazoFinal ?? "")}"></label>
@@ -172,7 +174,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         </form>
       </details>
 
-      <details class="config" data-secao="simulacao"${aberta("simulacao")}>
+      ${usaSimulacao(espaco) ? `<details class="config" data-secao="simulacao"${aberta("simulacao")}>
         <summary><h3>Simulação</h3></summary>
         <dl class="numeros">
           <div><dt>Semente</dt><dd>${espaco.semente}</dd></div>
@@ -180,7 +182,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
           <div><dt>Versão do cálculo</dt><dd>${VERSAO_CALCULO}</dd></div>
         </dl>
         <p class="tec">Fixos desde a criação do espaço, para que qualquer pessoa obtenha os mesmos resultados ao refazer o cálculo.</p>
-      </details>
+      </details>` : ""}
 
       <details class="config" data-secao="retratos"${aberta("retratos")}>
         <summary><h3>Retratos</h3><span class="n">${retratos.length}</span></summary>

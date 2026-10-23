@@ -40,8 +40,9 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     const c = caminho.porAcao.get(a.numero);
     const classe = l.situacao === "concluida" ? "concluida" : l.semEstimativa ? "sem-estimativa" : c.critica ? "critica" : "folga";
     const data = l.situacao === "concluida" ? `Concluída ${dataBr(l.conclusao)}`
-      : l.semEstimativa ? "Falta estimar" : `Até ${dataBr(l.conclusao)}`;
-    const folga = l.situacao === "concluida" || l.semEstimativa ? ""
+      : l.semEstimativa ? "Falta estimar" : l.conclusao ? `Até ${dataBr(l.conclusao)}` : "Sem data-limite";
+    /* espaço com data-limite (passo 2.4b): sem caminho crítico, sem folga */
+    const folga = l.situacao === "concluida" || l.semEstimativa || c.folga == null ? ""
       : c.critica ? "sem folga" : `folga ${Math.round(c.folga)} ${plural(Math.round(c.folga), "dia", "dias")}`;
     return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}">
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"

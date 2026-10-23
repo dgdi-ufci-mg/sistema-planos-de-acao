@@ -16,6 +16,7 @@ import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 import { descreverRegistro } from "../historico.js";
 import { editarTexto } from "./edicao-no-lugar.js";
+import { usaEstimativas, usaDependencias } from "../modelos.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -41,7 +42,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const nomeHtml = (a) => `${d.usaCodigos && a.codigo ? `<span class="mono">${esc(a.codigo)}</span> ` : ""}${esc(a.rotulo)}`;
   const nomeTexto = (a) => `${d.usaCodigos && a.codigo ? `${a.codigo} ` : ""}${a.rotulo}`;
   const acaoAtual = () => d.acoes.find((a) => a.numero === numero);
-  /** Campo em edição ("rotulo", "etapa", "descricao", "naoAntesDe", "estimativa") ou formulário aberto ("reestimar", "concluir"). */
+  /** Campo em edição ("rotulo", "etapa", "descricao", "naoAntesDe", "dataLimite", "estimativa") ou formulário aberto ("reestimar", "concluir"). */
   let editando = abrirCom; // "concluir" quando a janela é aberta ao arrastar para Concluídas
   let fechada = false;
   /** Histórico de alterações (passo 1.16): lido do banco só quando a seção é aberta. */
@@ -83,6 +84,9 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const resumoEst = resumoDasEstimativas(acao, c);
     const donos = acao.responsaveis.map((id) => d.pessoas.get(id)).filter(Boolean);
     const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
+    /* o modelo do espaço decide o que aparece (passo 2.4b) */
+    const comEstimativas = usaEstimativas(d.espaco);
+    const comDependencias = usaDependencias(d.espaco);
 
     const valores = guardarValores();
     corpo.innerHTML = `
@@ -96,7 +100,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
       <dl class="janela-resumo">
         <div><dt>Situação</dt><dd class="sit"><span class="${sitClasse}">${ICONES[sitIcone]}</span>${sitTexto}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
-        <div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>
+        ${!comEstimativas && l.situacao !== "concluida" ? `<div><dt>Data-limite</dt><dd class="mono${l.atrasada ? " atrasada" : ""}">${acao.dataLimite ? dataBr(acao.dataLimite) : '<span class="vazio">Sem data-limite</span>'}</dd></div>`
+        : `<div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>`}
         ${l.situacao === "concluida" || l.execucao == null ? "" : `
           <div><dt>Índice de criticidade <a href="#" class="oque" data-termo="exec">o que é?</a></dt><dd>${barra(l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}</dd></div>
           <div><dt>Contribuição para a incerteza <a href="#" class="oque" data-termo="rev">o que é?</a></dt><dd>${barra(l.revisao, "var(--laranja)", revisao)}</dd></div>`}
@@ -122,14 +127,14 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         ${campos.descricao !== false ? campoHtml("descricao", "Descrição", acao.descricao ? `<span class="texto-livre">${esc(acao.descricao)}</span>` : "",
           `<textarea name="descricao" rows="4" aria-label="Descrição">${esc(acao.descricao ?? "")}</textarea>`) : ""}
 
-        <div class="campo-acao">
+        ${comDependencias ? `<div class="campo-acao">
           <span class="campo-nome">Depende de</span>
           <div class="etiquetas">${(acao.dependeDe ?? []).map((n) => {
             const a = d.acoes.find((x) => x.numero === n);
             return `<span class="etiqueta">${a ? nomeHtml(a) : "(ação excluída)"}<button type="button" class="tirar" data-tirar-dependencia="${n}" aria-label="Retirar ${esc(a ? nomeTexto(a) : "")}">${ICONES.fechar}</button></span>`;
           }).join("") || `<span class="vazio">Nenhuma: pode começar no início do espaço.</span>`}</div>
           ${seletorHtml("dependeDe", d.usaCodigos ? "Acrescentar ação anterior: digite o nome ou o código" : "Acrescentar ação anterior: digite o nome")}
-        </div>
+        </div>` : ""}
 
         <div class="campo-acao">
           <span class="campo-nome">Responsáveis</span>
@@ -143,7 +148,10 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           `<input type="date" name="naoAntesDe" value="${esc(acao.naoAntesDe ?? "")}" aria-label="Não começa antes de">`,
           `Data mínima para a ação ser liberada, mesmo que as anteriores já tenham terminado. <a href="#" class="oque" data-termo="naoAntesDe">o que é?</a>`)}
 
-        ${livre ? campoHtml("estimativa", "Estimativa", vigenteHtml(acao), tresPontosHtml(acao.estimativas?.at(-1)),
+        ${comEstimativas ? "" : campoHtml("dataLimite", "Data-limite", acao.dataLimite ? dataBr(acao.dataLimite) : "",
+          `<input type="date" name="dataLimite" value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite">`,
+          "Até quando a ação deve ser concluída. Vencida, a ação ganha o carimbo Atrasada. Deixe vazio para a ação não ter prazo.")}
+        ${comEstimativas && livre ? campoHtml("estimativa", "Estimativa", vigenteHtml(acao), tresPontosHtml(acao.estimativas?.at(-1)),
           l.situacao === "naoLiberada" || !acao.estimativas?.length
             ? "Prazo em dias úteis, da liberação até a conclusão, incluindo o tempo até alguém começar. Enquanto a ação não está liberada, a estimativa pode ser ajustada livremente."
             : "Correção de digitação: vale só hoje, antes de qualquer reestimativa.") : ""}
@@ -152,7 +160,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         ${campos.notas !== false ? notasHtml(acao) : ""}
       </div>
 
-      ${historicoHtml(acao, resumoEst)}
+      ${comEstimativas ? historicoHtml(acao, resumoEst) : ""}
       <details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
         <summary><h4>Histórico de alterações</h4></summary>
         <div data-registros>${registrosHtml()}</div>
@@ -202,7 +210,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
     if (l.situacao !== "liberada" || editando === "reestimar" || editando === "concluir") return "";
     return `<div class="botoes">
-      <button class="botao${l.atrasada || c.regraDoPassado ? " principal" : ""}" type="button" data-abrir-form="reestimar">Reestimar</button>
+      ${usaEstimativas(d.espaco) ? `<button class="botao${l.atrasada || c.regraDoPassado ? " principal" : ""}" type="button" data-abrir-form="reestimar">Reestimar</button>` : ""}
       <button class="botao${l.atrasada ? "" : " principal"}" type="button" data-abrir-form="concluir">${ICONES.concluida}Registrar conclusão</button>
     </div>`;
   }
@@ -456,6 +464,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       etapa: () => store.alterarAcao(espacoId, numero, { etapa: f.etapa || null }),
       descricao: () => store.alterarAcao(espacoId, numero, { descricao: f.descricao.trim() }),
       naoAntesDe: () => store.alterarAcao(espacoId, numero, { naoAntesDe: f.naoAntesDe || null }),
+      dataLimite: () => store.alterarAcao(espacoId, numero, { dataLimite: f.dataLimite || null }),
       estimativa: () => store.corrigirEstimativa(espacoId, numero, tres()),
       reestimar: () => store.reestimar(espacoId, numero, { ...tres(), motivo: f.motivo }),
       concluir: () => store.concluir(espacoId, numero, f.data),

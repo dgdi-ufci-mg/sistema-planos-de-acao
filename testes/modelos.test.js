@@ -114,3 +114,32 @@ describe("Modelos: Store", () => {
     await assert.rejects(store.criarEspaco({ nome: "X", modelo: { nome: "aberto", prazos: "estimativa", dependencias: false, simulacao: false } }), { codigo: "modelo-invalido" });
   });
 });
+
+describe("Modelos: importação e exportação", async () => {
+  const { planejarImportacao } = await import("../js/importar.js");
+  const { planilhaDoEspaco } = await import("../js/exportar.js");
+  const aberto = { id: "e", nome: "Aberto", inicio: "2026-11-02", modelo: montarModelo("aberto") };
+
+  it("no espaço aberto, importa a data-limite e deixa de fora estimativa e dependências, com aviso", () => {
+    const texto = "Ação\tData-limite\tOtimista\tMais provável\tPessimista\tDepende de\nPublicar\t30/11/2026\t1\t2\t3\t\nRevisar\t\t\t\t\tPublicar";
+    const plano = planejarImportacao({ texto, espaco: aberto, acoes: [], responsaveis: [], hoje: "2026-11-10", situacaoDe: () => "liberada", modo: "criar" });
+    const [a, b] = plano.linhas;
+    assert.equal(a.campos.dataLimite, "2026-11-30");
+    assert.equal(a.campos.estimativa, undefined);
+    assert.ok(a.avisos.some((x) => x.includes("estimativa fica de fora")));
+    assert.ok(b.avisos.some((x) => x.includes("Depende de fica de fora")));
+  });
+
+  it("no espaço estruturado, a coluna Data-limite fica de fora, com aviso", () => {
+    const plano = planejarImportacao({ texto: "Ação\tData-limite\nX\t30/11/2026", espaco: { nome: "E" }, acoes: [], responsaveis: [], hoje: "2026-11-10", situacaoDe: () => "liberada", modo: "criar" });
+    assert.equal(plano.linhas[0].campos.dataLimite, undefined);
+    assert.ok(plano.linhas[0].avisos.some((x) => x.includes("Data-limite fica de fora")));
+  });
+
+  it("a planilha exportada do espaço aberto tem Data-limite e não tem estimativas, dependências nem folga", () => {
+    const acoes = [{ numero: 1, ordem: 1, rotulo: "Publicar", dependeDe: [], responsaveis: [], estimativas: [], dataLimite: "2026-11-30" }];
+    const [titulos, linha] = planilhaDoEspaco({ espaco: aberto, acoes, responsaveis: [], geral: {}, hoje: "2026-11-10" }).split("\n").map((l) => l.split("\t"));
+    assert.deepEqual(titulos, ["Número", "Ação", "Descrição", "Data-limite", "Responsáveis", "Situação", "Atrasada"]);
+    assert.equal(linha[3], "30/11/2026");
+  });
+});

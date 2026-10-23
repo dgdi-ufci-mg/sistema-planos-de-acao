@@ -11,6 +11,7 @@
  */
 import { normalizar } from "./acao.js";
 import { estimativaLivre } from "./acao.js";
+import { usaEstimativas, usaDependencias } from "./modelos.js";
 import { lerColagem, lerData, lerResponsaveis } from "./planilha.js";
 
 /** Títulos aceitos para cada coluna (sem acentos, minúsculas). */
@@ -27,6 +28,7 @@ const TITULOS = {
   p: ["pessimista", "pior caso"],
   responsaveis: ["responsaveis", "responsavel"],
   naoAntesDe: ["nao comeca antes de", "nao antes de"],
+  dataLimite: ["data-limite", "data limite", "prazo", "data de entrega"],
 };
 const colunaDe = (titulo) => {
   const t = normalizar(titulo).replace(/[º°.:]/g, "").replace(/\s+/g, " ").trim();
@@ -115,8 +117,19 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
       r.avisos.push(...erros.map((e) => `${e} Fica de fora.`));
       if (!existente || JSON.stringify(ids) !== JSON.stringify(existente.responsaveis ?? [])) r.campos.responsaveis = ids;
     }
+    /* o modelo do espaço decide o que entra (passo 2.4b): estimativas ou data-limite, e dependências */
+    const comEstimativas = usaEstimativas(espaco);
+    const limite = celula(c, "dataLimite");
+    if (limite && comEstimativas) r.avisos.push("Este espaço usa estimativas, e não data-limite: a coluna Data-limite fica de fora.");
+    else if (limite) {
+      const d = lerData(limite);
+      if (d === undefined) r.avisos.push(`Data-limite não entendida (${limite}); use dd/mm/aaaa.`);
+      else if (d !== existente?.dataLimite) r.campos.dataLimite = d;
+    }
     const [o, m, p] = ["o", "m", "p"].map((k) => inteiro(celula(c, k)));
-    if ([o, m, p].some((x) => x !== null && x !== undefined)) {
+    const temEstimativa = [o, m, p].some((x) => x !== null && x !== undefined);
+    if (temEstimativa && !comEstimativas) r.avisos.push("Este espaço usa data-limite, e não estimativas: a estimativa fica de fora.");
+    else if (temEstimativa) {
       if ([o, m, p].some((x) => x === undefined || x === null) || !(o <= m && m <= p && p > 0)) {
         r.avisos.push("Estimativa incompleta ou inválida (use três números inteiros, otimista ≤ mais provável ≤ pessimista): fica de fora.");
       } else {
@@ -129,6 +142,10 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
       }
     }
     r.dependeDeTexto = celula(c, "dependeDe");
+    if (r.dependeDeTexto && !usaDependencias(espaco)) {
+      r.avisos.push("Este espaço não usa dependências: a coluna Depende de fica de fora.");
+      r.dependeDeTexto = "";
+    }
     return r;
   });
 

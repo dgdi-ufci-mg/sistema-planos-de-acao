@@ -77,7 +77,8 @@ export function ordenar(linhas, ordem = "espaco") {
     espaco: (a, b) => pos(a) - pos(b),
     execucao: desc("execucao"),
     revisao: desc("revisao"),
-    conclusao: (a, b) => a.conclusao.localeCompare(b.conclusao) || pos(a) - pos(b),
+    /* sem data (ação sem data-limite, passo 2.4b): vai para o fim */
+    conclusao: (a, b) => (a.conclusao ?? "\uffff").localeCompare(b.conclusao ?? "\uffff") || pos(a) - pos(b),
   }[ordem];
   return [...linhas].sort(comparar);
 }

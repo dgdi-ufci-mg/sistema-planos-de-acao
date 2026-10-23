@@ -12,6 +12,7 @@ import { esc, dataBr } from "../formato.js";
 import { estimativaLivre, normalizarCodigo } from "../acao.js";
 import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData } from "../planilha.js";
 import { avisar } from "./painel.js";
+import { usaEstimativas, usaDependencias, usaSimulacao } from "../modelos.js";
 
 const SITUACOES = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
 
@@ -23,6 +24,10 @@ const SITUACOES = { concluida: "Concluída", liberada: "Liberada", naoLiberada: 
  */
 export function colunasDaPlanilha(d) {
   const campos = d.espaco.camposOpcionais ?? {};
+  /* o modelo do espaço decide as colunas de prazo, dependências e simulação (passo 2.4b) */
+  const est = usaEstimativas(d.espaco);
+  const dep = usaDependencias(d.espaco);
+  const simu = usaSimulacao(d.espaco);
   return [
     /* revisão de 23/10/2026 (pedido do responsável): número e ação primeiro, parados à esquerda; o rótulo se chama "Ação" aqui */
     { chave: "numero", titulo: "Nº", largura: 3, fixa: true },
@@ -31,23 +36,24 @@ export function colunasDaPlanilha(d) {
     d.usaFases && { chave: "fase", titulo: "Fase", largura: 9 },
     d.usaFases && { chave: "etapa", titulo: "Etapa", largura: 10 },
     campos.descricao !== false && { chave: "descricao", titulo: "Descrição", largura: 18 },
-    { chave: "dependeDe", titulo: "Depende de", largura: 7 },
+    dep && { chave: "dependeDe", titulo: "Depende de", largura: 7 },
     { chave: "responsaveis", titulo: "Responsáveis", largura: 9 },
     { chave: "naoAntesDe", titulo: "Não começa antes de", largura: 9 },
-    { chave: "o", titulo: "Otimista", largura: 5.5 },
-    { chave: "m", titulo: "Mais provável", largura: 5.5 },
-    { chave: "p", titulo: "Pessimista", largura: 5.5 },
+    est && { chave: "o", titulo: "Otimista", largura: 5.5 },
+    est && { chave: "m", titulo: "Mais provável", largura: 5.5 },
+    est && { chave: "p", titulo: "Pessimista", largura: 5.5 },
+    !est && { chave: "dataLimite", titulo: "Data-limite", largura: 9 },
     { chave: "concluidaEm", titulo: "Concluída em", largura: 9 },
     campos.notas !== false && { chave: "notas", titulo: "Anotações", largura: 16 },
     { chave: "checklist", titulo: "Checklist", largura: 5.5 },
     { chave: "situacao", titulo: "Situação", largura: 7, calculada: true },
     { chave: "atrasadaDesde", titulo: "Atrasada desde", largura: 7, calculada: true },
     { chave: "liberacaoPrevista", titulo: "Liberação prevista", largura: 7, calculada: true },
-    { chave: "conclusaoPrevista", titulo: "Conclusão prevista", largura: 7, calculada: true },
-    { chave: "folga", titulo: "Folga (dias úteis)", largura: 5.5, calculada: true },
-    { chave: "execucao", titulo: "Índice de criticidade", largura: 6.5, calculada: true },
-    { chave: "revisao", titulo: "Contribuição para a incerteza", largura: 8.5, calculada: true },
-    { chave: "reestimativas", titulo: "Reestimativas", largura: 6.5, calculada: true },
+    est && { chave: "conclusaoPrevista", titulo: "Conclusão prevista", largura: 7, calculada: true },
+    est && { chave: "folga", titulo: "Folga (dias úteis)", largura: 5.5, calculada: true },
+    simu && { chave: "execucao", titulo: "Índice de criticidade", largura: 6.5, calculada: true },
+    simu && { chave: "revisao", titulo: "Contribuição para a incerteza", largura: 8.5, calculada: true },
+    est && { chave: "reestimativas", titulo: "Reestimativas", largura: 6.5, calculada: true },
     { chave: "criadaEm", titulo: "Criada em", largura: 6.5, calculada: true },
     { chave: "alteradaEm", titulo: "Alterada em", largura: 9, calculada: true },
     { chave: "alteradaPor", titulo: "Alterada por", largura: 10, calculada: true },
@@ -151,7 +157,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       return `${td}<select ${comum}><option value=""></option>${etapas().map((e) =>
         `<option value="${esc(e.id)}"${e.id === v ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</select></td>`;
     }
-    const tipo = ["naoAntesDe", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
+    const tipo = ["naoAntesDe", "dataLimite", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
     const dica = !acao && coluna.chave === "rotulo" ? ' placeholder="Nova ação: escreva o nome"' : "";
     const inteiro = v && !tipo && v.length > 12 ? ` title="${esc(v)}"` : "";
     const vazia = tipo.includes("date") && !v ? " data-vazia" : ""; // data vazia: sem a máscara dd/mm/aaaa até receber o cursor
@@ -239,10 +245,10 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       }
       case "descricao": return store.alterarAcao(espacoId, n, { descricao: t });
       case "notas": return store.alterarAcao(espacoId, n, { notas: t });
-      case "naoAntesDe": {
+      case "naoAntesDe": case "dataLimite": {
         const data = lerData(t);
         if (data === undefined) throw new Error("Use uma data como 20/10/2026.");
-        return store.alterarAcao(espacoId, n, { naoAntesDe: data });
+        return store.alterarAcao(espacoId, n, { [chave]: data });
       }
       case "dependeDe": {
         const { numeros, erros } = lerReferencias(t, d.acoes, d.usaCodigos);

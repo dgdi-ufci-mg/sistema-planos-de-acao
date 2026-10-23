@@ -1,7 +1,8 @@
 /**
  * Nova ação (documentação técnica, seção 8.3; passos 1.9 e 1.14a): janela compacta, como a adição
  * rápida do Todoist. À vista, o essencial do tipo de espaço: o rótulo e os três pontos da
- * estimativa (que podem ficar para depois: a ação nasce com "Falta estimar"). O opcional fica
+ * estimativa (que podem ficar para depois: a ação nasce com "Falta estimar") ou, no espaço com
+ * prazos por data-limite (passo 2.4b), a data-limite opcional. O opcional fica
  * recolhido em botões pequenos, um por campo, ou todos de uma vez em "Todos os campos".
  * Enter cria a ação e deixa a janela aberta e limpa para a próxima, na mesma etapa.
  */
@@ -13,6 +14,7 @@ import { abrirPainel, avisar } from "./painel.js";
 import { abrirSuave } from "./movimento.js";
 import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
+import { usaEstimativas, usaDependencias } from "../modelos.js";
 
 const MAX_SUGESTOES = 8;
 const decimal = (x) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -29,6 +31,9 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
   const d = { ...dados };
   let fechada = false;
   const campos = d.espaco.camposOpcionais ?? {};
+  /* o modelo do espaço decide: estimativa ou data-limite, com ou sem dependências (passo 2.4b) */
+  const comEstimativas = usaEstimativas(d.espaco);
+  const comDependencias = usaDependencias(d.espaco);
   const etapas = (d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => ({ ...e, fase: f.nome })));
   const etapaDe = new Map(etapas.map((e) => [e.id, e.nome]));
   const nomeHtml = (a) => `${d.usaCodigos && a.codigo ? `<span class="mono">${esc(a.codigo)}</span> ` : ""}${esc(a.rotulo)}`;
@@ -42,7 +47,7 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
   const OPCIONAIS = [
     d.usaFases && ["etapa", "Etapa"],
     ["responsaveis", "Responsáveis"],
-    ["dependeDe", "Depende de"],
+    comDependencias && ["dependeDe", "Depende de"],
     ["naoAntesDe", "Não começa antes de"],
     campos.descricao !== false && ["descricao", "Descrição"],
     d.usaCodigos && ["codigo", "Código"],
@@ -53,22 +58,25 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
     <form class="nova-acao" novalidate>
       <input class="rotulo-novo" name="rotulo" maxlength="120" required autocomplete="off"
         placeholder="Nome da ação" aria-label="Nome da ação">
-      <div class="campo"><span>Estimativa <small>(dias úteis, da liberação até a conclusão; pode ficar para depois)</small></span>
+      ${comEstimativas ? `<div class="campo"><span>Estimativa <small>(dias úteis, da liberação até a conclusão; pode ficar para depois)</small></span>
         <div class="tres-pontos">
           <label class="campo"><span>Otimista</span><input name="o" type="number" min="0" step="1" inputmode="numeric"></label>
           <label class="campo"><span>Mais provável</span><input name="m" type="number" min="0" step="1" inputmode="numeric"></label>
           <label class="campo"><span>Pessimista</span><input name="p" type="number" min="0" step="1" inputmode="numeric"></label>
         </div>
-        <small data-pert></small></div>
+        <small data-pert></small></div>`
+        : `<label class="campo campo-data-limite"><span>Data-limite <small>(opcional: até quando a ação deve ser concluída)</small></span><input name="dataLimite" type="date"></label>`}
       ${d.usaFases ? `<label class="campo" data-bloco="etapa" hidden><span>Etapa</span><select name="etapa"><option value="">Sem fase nem etapa</option>${(d.espaco.estrutura ?? []).map((f) =>
         `<optgroup label="${esc(f.nome)}">${f.etapas.map((e) => `<option value="${esc(e.id)}"${e.id === etapa ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</optgroup>`).join("")}</select></label>` : ""}
       <div class="campo" data-bloco="responsaveis" hidden><span>Responsáveis</span><div class="etiquetas" data-etiquetas="responsaveis"></div>
         ${seletorHtml("responsaveis", "Digite o nome, a sigla ou o setor")}</div>
-      <div class="campo" data-bloco="dependeDe" hidden><span>Depende de</span><div class="etiquetas" data-etiquetas="dependeDe"></div>
-        ${seletorHtml("dependeDe", d.usaCodigos ? "Digite o nome ou o código da ação anterior" : "Digite o nome da ação anterior")}</div>
+      ${comDependencias ? `<div class="campo" data-bloco="dependeDe" hidden><span>Depende de</span><div class="etiquetas" data-etiquetas="dependeDe"></div>
+        ${seletorHtml("dependeDe", d.usaCodigos ? "Digite o nome ou o código da ação anterior" : "Digite o nome da ação anterior")}</div>` : ""}
       <label class="campo" data-bloco="naoAntesDe" hidden><span>Não começa antes de</span>
-        <input name="naoAntesDe" type="date" value="${dataMinimaPadrao(d.espaco, hoje)}">
-        <small>Se o espaço já começou, vem com a data de hoje, para a ação não nascer atrasada. Apague se ela puder ser liberada assim que as anteriores terminarem.</small></label>
+        ${comEstimativas ? `<input name="naoAntesDe" type="date" value="${dataMinimaPadrao(d.espaco, hoje)}">
+        <small>Se o espaço já começou, vem com a data de hoje, para a ação não nascer atrasada. Apague se ela puder ser liberada assim que as anteriores terminarem.</small>`
+        /* com data-limite, o atraso vem só dela: a data mínima não precisa vir preenchida (passo 2.4b) */
+        : `<input name="naoAntesDe" type="date"><small>Data a partir da qual a ação pode começar.</small>`}</label>
       ${campos.descricao !== false ? `<label class="campo" data-bloco="descricao" hidden><span>Descrição</span><textarea name="descricao" rows="2"></textarea></label>` : ""}
       ${d.usaCodigos ? `<label class="campo" data-bloco="codigo" hidden><span>Código</span>
         <input name="codigo" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="automático">
@@ -114,7 +122,8 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
   /* ---------- etiquetas e seletores ---------- */
   const contexto = () => ({ tons: d.espaco.tons, meus: d.meus });
   function desenharEtiquetas() {
-    corpo.querySelector('[data-etiquetas="dependeDe"]').innerHTML = escolhidos.dependeDe.map((n) => {
+    const deps = corpo.querySelector('[data-etiquetas="dependeDe"]');
+    if (deps) deps.innerHTML = escolhidos.dependeDe.map((n) => {
       const a = d.acoes.find((x) => x.numero === n);
       return `<span class="etiqueta">${nomeHtml(a)}<button type="button" class="tirar" data-tirar="dependeDe" data-valor="${n}" aria-label="Retirar ${esc(a.rotulo)}">${ICONES.fechar}</button></span>`;
     }).join("");
@@ -180,6 +189,7 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
 
   /** Três pontos: todos vazios (fica para depois), todos inteiros válidos, ou um problema. */
   function lerTres() {
+    if (!comEstimativas) return { vazia: true };
     const textos = ["o", "m", "p"].map((k) => form[k].value);
     if (textos.every((t) => t === "")) return { vazia: true };
     const [o, m, p] = textos.map((t) => (t === "" ? NaN : Number(t)));
@@ -187,6 +197,7 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
     return { o, m, p };
   }
   function atualizarPert() {
+    if (!comEstimativas) return;
     const { o, m, p } = lerTres();
     form.querySelector("[data-pert]").textContent = [o, m, p].every(Number.isInteger) && o >= 0 && o <= m && m <= p && p > 0
       ? `Prazo previsto (PERT): ${decimal(duracaoPert({ o, m, p }))} ${plural(duracaoPert({ o, m, p }), "dia útil", "dias úteis")}`
@@ -211,7 +222,7 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
 
   /** Depois de criar: limpa tudo, menos a etapa e a data mínima, para cadastrar várias em sequência. */
   function limpar() {
-    for (const nome of ["rotulo", "o", "m", "p", "descricao", "codigo"]) if (form[nome]) form[nome].value = "";
+    for (const nome of ["rotulo", "o", "m", "p", "dataLimite", "descricao", "codigo"]) if (form[nome]) form[nome].value = "";
     limparEscolhas();
     desenharEtiquetas();
     atualizarPert();
@@ -238,12 +249,13 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
         ...(codigo ? { codigo } : {}),
         ...(f.etapa ? { etapa: f.etapa } : {}),
         ...(f.descricao?.trim() ? { descricao: f.descricao.trim() } : {}),
-        dependeDe: escolhidos.dependeDe,
+        dependeDe: comDependencias ? escolhidos.dependeDe : [],
         responsaveis: escolhidos.responsaveis,
         ...(f.naoAntesDe ? { naoAntesDe: f.naoAntesDe } : {}),
         estimativas: tres.vazia ? [] : [{ em: hoje, por: usuario, o: tres.o, m: tres.m, p: tres.p, contaDe: "liberacao" }],
+        ...(!comEstimativas && f.dataLimite ? { dataLimite: f.dataLimite } : {}),
       });
-      avisar(tres.vazia ? `Ação criada: ${rotulo}. Falta estimar.` : `Ação criada: ${rotulo}.`);
+      avisar(comEstimativas && tres.vazia ? `Ação criada: ${rotulo}. Falta estimar.` : `Ação criada: ${rotulo}.`);
       aoCriar(numero);
       limpar();
     } catch (falha) {
