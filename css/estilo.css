@@ -1365,3 +1365,15 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .janela-resumo dd.sit:has(.escolha-situacao) { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .janela-resumo .escolha-situacao { flex: 1 1 0; width: 0; min-width: 0; }
 .janela-resumo dd.sit:has(.escolha-situacao) { flex-wrap: nowrap; }
+
+/* colunas criadas, renomeadas e retiradas no próprio quadro (passo 2.7, 23/10/2026) */
+.coluna header .titulo-coluna { background: none; border: 0; padding: 2px 4px; margin: -2px -4px; border-radius: 6px; font: inherit; font-weight: 700; color: inherit; cursor: text; text-align: left; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.coluna header .titulo-coluna:hover, .coluna header .titulo-coluna:focus-visible { background: var(--accent-soft); }
+.coluna header .tirar { background: none; border: 0; padding: 2px; color: var(--muted); cursor: pointer; display: inline-flex; border-radius: 6px; }
+.coluna header .tirar:hover { color: var(--ink); background: var(--accent-soft); }
+.coluna header .tirar svg { width: 14px; height: 14px; }
+.coluna .nome-coluna { flex: 1; min-width: 0; font: inherit; font-size: .95rem; padding: 4px 6px; border: 1px solid var(--accent); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.coluna .aviso-confirmar p { margin: 0 0 6px; }
+.coluna-nova { background: transparent; border-style: dashed; justify-content: flex-start; min-height: 0; }
+.coluna-nova [data-criar-coluna] { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
+.coluna-nova .tec { margin: 0; }

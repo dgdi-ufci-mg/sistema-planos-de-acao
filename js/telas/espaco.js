@@ -599,6 +599,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     lista.addEventListener("input", (e) => { if (e.target.closest("[data-rapida]")) ui.rapidaTexto = e.target.value; });
     lista.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && e.target.closest("[data-rapida]")) { e.target.value = ""; ui.rapidaTexto = ""; e.target.blur(); }
+      /* colunas do quadro: Enter grava, Esc desiste */
+      const nova = e.target.closest("[data-nova-coluna]");
+      const nome = e.target.closest("[data-nome-coluna]");
+      if (!nova && !nome) return;
+      if (e.key === "Escape") {
+        e.preventDefault(); e.stopPropagation();
+        coluna.criando = false; coluna.editando = null;
+        return desenharLista();
+      }
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      if (nova) criarColuna(nova.value);
+      else { nome.dataset.gravando = "1"; renomearColuna(nome.dataset.nomeColuna, nome.value); }
+    });
+    /* sair do campo do nome também grava (como na janela da ação); sair da coluna nova vazia desiste */
+    lista.addEventListener("focusout", (e) => {
+      const nome = e.target.closest("[data-nome-coluna]");
+      if (nome && !nome.dataset.gravando && coluna.editando === nome.dataset.nomeColuna) renomearColuna(nome.dataset.nomeColuna, nome.value);
+      const nova = e.target.closest("[data-nova-coluna]");
+      if (nova && coluna.criando && !nova.value.trim()) setTimeout(() => { if (coluna.criando && !lista.querySelector("[data-nova-coluna]")?.value.trim()) { coluna.criando = false; desenharLista(); } }, 150);
     });
     lista.addEventListener("focusin", (e) => {
       const form = e.target.closest("[data-rapida]");
@@ -813,6 +833,43 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       </div>
     </article>`;
   }
+  /** "+ Nova coluna", antes de Concluídas: cria uma situação personalizada (passo 2.7) ali mesmo. */
+  function novaColunaHtml() {
+    if (!store.podeGravar) return "";
+    return `<section class="coluna coluna-nova" aria-label="Nova coluna">${coluna.criando
+      ? `<input class="nome-coluna" data-nova-coluna maxlength="40" placeholder="Nome da coluna" aria-label="Nome da nova coluna">
+         <p class="tec">Enter cria; Esc desiste. A coluna é uma situação do espaço, como “Em andamento”.</p>`
+      : `<button type="button" class="botao-texto" data-criar-coluna>${ICONES.mais}Nova coluna</button>`}</section>`;
+  }
+  async function gravarColunas(mudanca, mensagem) {
+    try {
+      await store.alterarEspaco(espacoId, mudanca);
+      if (mensagem) avisar(mensagem);
+      return true;
+    } catch (falha) {
+      avisar(falha.message);
+      return false;
+    }
+  }
+  async function criarColuna(nome) {
+    const n = nome.trim();
+    if (!n) { coluna.criando = false; return desenharLista(); }
+    coluna.criando = false;
+    if (!(await gravarColunas({ situacoes: [...personalizadasDe(espaco), { id: novoIdDeSituacao(), nome: n }] }, `Coluna “${n}” criada.`))) {
+      coluna.criando = true;
+      desenharLista();
+      const campo = lista.querySelector("[data-nova-coluna]");
+      if (campo) { campo.value = n; campo.focus(); }
+    }
+  }
+  async function renomearColuna(id, nome) {
+    const n = nome.trim();
+    coluna.editando = null;
+    const atual = personalizadasDe(espaco).find((x) => x.id === id);
+    if (!n || !atual || n === atual.nome) return desenharLista();
+    if (!(await gravarColunas({ situacoes: personalizadasDe(espaco).map((x) => (x.id === id ? { ...x, nome: n } : x)) }, "Coluna renomeada."))) desenharLista();
+  }
+
   /* colunas do quadro (passo 2.7): Não liberadas (com dependências), a inicial, as personalizadas e Concluídas */
   function quadroHtml(ls) {
     const comPersonalizadas = personalizadasDe(espaco).length > 0;
@@ -826,11 +883,21 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* sem dependências, "Não liberadas" só aparece se alguma ação espera a data mínima */
     const colunas = colunasDoQuadro(espaco);
     if (!colunas.some((c) => c.chave === "naoLiberada") && ls.some((l) => l.fluxo === "naoLiberada")) colunas.unshift({ chave: "naoLiberada", titulo: "Não liberadas" });
-    return `<div class="quadro" style="--colunas-quadro:${colunas.length}">${colunas.map(({ chave, titulo }) => {
+    return `<div class="quadro" style="--colunas-quadro:${colunas.length + (store.podeGravar ? 1 : 0)}">${colunas.map(({ chave, titulo }) => {
       const daColuna = ls.filter((l) => l.fluxo === chave);
       const [classe, ic] = icone(chave);
-      return `<section class="coluna" data-coluna="${esc(chave)}" aria-label="${esc(titulo)}">
-        <header><span class="${classe}">${ICONES[ic]}</span><b>${esc(titulo)}</b><span class="n">${daColuna.length}</span></header>
+      const personalizada = ![ "naoLiberada", "inicial", "concluida"].includes(chave);
+      const editavel = personalizada && store.podeGravar;
+      const nome = coluna.editando === chave
+        ? `<input class="nome-coluna" data-nome-coluna="${esc(chave)}" maxlength="40" value="${esc(titulo)}" aria-label="Nome da coluna">`
+        : editavel ? `<button type="button" class="titulo-coluna" data-renomear-coluna="${esc(chave)}" title="Clique para renomear">${esc(titulo)}</button>` : `<b>${esc(titulo)}</b>`;
+      const nelas = daColuna.length;
+      return `${chave === "concluida" ? novaColunaHtml() : ""}<section class="coluna" data-coluna="${esc(chave)}" aria-label="${esc(titulo)}">
+        <header><span class="${classe}">${ICONES[ic]}</span>${nome}<span class="n">${nelas}</span>
+          ${editavel && coluna.editando !== chave ? `<button type="button" class="tirar" data-retirar-coluna="${esc(chave)}" aria-label="Retirar a coluna ${esc(titulo)}" title="Retirar a coluna">${ICONES.fechar}</button>` : ""}</header>
+        ${coluna.retirando === chave ? `<div class="aviso-confirmar"><p>${nelas ? `${nelas} ${plural(nelas, "ação volta", "ações voltam")} para ${esc(nomeInicial(espaco))}.` : "A coluna está vazia."} Retirar “${esc(titulo)}”?</p>
+          <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-coluna="${esc(chave)}">Retirar</button>
+          <button type="button" class="botao" data-cancelar-coluna>Cancelar</button></div></div>` : ""}
         ${dicas[chave] ? `<p class="tec so-computador">${dicas[chave]}</p>` : ""}
         <div class="coluna-cartoes">${daColuna.map(cartaoHtml).join("") || `<p class="vazio">Nenhuma ação.</p>`}</div>
         ${chave === "inicial" && comRapida() ? rapidaHtml("quadro") : ""}
@@ -841,6 +908,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /* arrastar no quadro (computador): entre a inicial e as personalizadas muda a situação (passo 2.7);
      para Concluídas registra a conclusão; de Concluídas para a inicial desfaz */
   let arrastada = null;
+  /* colunas no próprio quadro (23/10/2026, pedido do responsável): criar, renomear e retirar ali mesmo */
+  const coluna = { editando: null, retirando: null, criando: false };
+  const novoIdDeSituacao = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const linhaDe = (numero) => linhas.find((l) => l.acao.numero === numero);
   const destinoValido = (coluna, numero) => {
     const l = linhaDe(numero);
@@ -1010,6 +1080,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const resumoColunas = t.closest(".botao-colunas");
     if (resumoColunas) { ui.colunasAberto = !resumoColunas.parentElement.open; return; }
     if (t.closest("[data-nova]")) return abrirNova();
+    /* colunas do quadro (23/10/2026) */
+    if (t.closest("[data-criar-coluna]")) { coluna.criando = true; desenharLista(); return lista.querySelector("[data-nova-coluna]")?.focus(); }
+    const renomear = t.closest("[data-renomear-coluna]");
+    if (renomear) {
+      coluna.editando = renomear.dataset.renomearColuna;
+      desenharLista();
+      const campo = lista.querySelector("[data-nome-coluna]");
+      campo?.focus(); campo?.select();
+      return;
+    }
+    const retirar = t.closest("[data-retirar-coluna]");
+    if (retirar) { coluna.retirando = retirar.dataset.retirarColuna; return desenharLista(); }
+    if (t.closest("[data-cancelar-coluna]")) { coluna.retirando = null; return desenharLista(); }
+    const confirmar = t.closest("[data-confirmar-retirar-coluna]");
+    if (confirmar) {
+      coluna.retirando = null;
+      return store.retirarSituacao(espacoId, confirmar.dataset.confirmarRetirarColuna)
+        .then((n) => avisar(n ? `Coluna retirada. ${n} ${plural(n, "ação voltou", "ações voltaram")} para ${nomeInicial(espaco)}.` : "Coluna retirada."))
+        .catch((falha) => avisar(falha.message));
+    }
     const item = t.closest("[data-abrir-acao]");
     if (item) return abrirJanela(Number(item.closest("[data-numero]").dataset.numero));
   };
