@@ -33,9 +33,10 @@ const CAMPOS_OPCIONAIS = [
   ["notas", "Anotações", "Anotações formatadas de cada ação."],
   ["codigos", "Códigos das ações", "Códigos curtos, como LEV, para equipes que conversam por eles. Desligado, as ações aparecem só pelo nome."],
   ["etiquetas", "Etiquetas", "Marcas coloridas, como “Compras” ou “Urgente”, para agrupar e filtrar as ações."],
+  ["documentos", "Documentos e links das ações", "Termos, pareceres e páginas ligados a cada ação, com a identificação no SIPAC/Protocolo ou o link."],
 ];
 /** Campos opcionais desligados por padrão (seção 4.1.4); os demais vêm ligados. */
-const DESLIGADOS_POR_PADRAO = new Set(["codigos", "etiquetas"]);
+const DESLIGADOS_POR_PADRAO = new Set(["codigos", "etiquetas", "documentos"]);
 const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[chave] === true : campos?.[chave] !== false);
 
 /** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void}} opcoes */

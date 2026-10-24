@@ -152,6 +152,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
    */
   /** busca aberta: "dependeDe", "responsaveis" ou null */
   let buscando = null;
+  /** documento em edição na janela (passo 2.10a): id, "novo" ou null */
+  let editandoDoc = null;
   /** campos opcionais abertos em "Mais campos", mesmo vazios */
   const mostrados = new Set();
   /** aba no celular: "detalhes" ou "atividade" */
@@ -282,6 +284,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (campo === "notas") return Boolean(acao.notas);
     if (campo === "checklist") return Boolean(acao.checklist?.length) || checklistAberto;
     if (campo === "etiquetas") return Boolean(acao.etiquetas?.length);
+    if (campo === "documentos") return Boolean(acao.documentos?.length) || editandoDoc != null;
     return true;
   }
   /** Campos opcionais que o espaço usa, na ordem de "Mais campos". */
@@ -294,6 +297,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       campos.notas !== false && ["notas", "Anotações"],
       d.usaCodigos && ["codigo", "Código"],
       usaEtiquetas(d.espaco) && ["etiquetas", "Etiquetas"],
+      campos.documentos === true && ["documentos", "Documentos e links"],
     ].filter(Boolean);
   }
   function maisCamposHtml(acao) {
@@ -380,6 +384,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           ${somenteLeitura() || buscando === "etiquetas" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="etiquetas">${ICONES.mais}Acrescentar</button>`}</div>
         ${buscando === "etiquetas" ? seletorHtml("etiquetas", "Digite o nome da etiqueta") : ""}</div>`);
     }
+    if (campos.documentos === true && visivel(acao, "documentos")) partes.push(documentosHtml(acao));
     if (visivel(acao, "checklist")) partes.push(checklistHtml(acao));
     if (campos.notas !== false && visivel(acao, "notas")) partes.push(notasHtml(acao));
     return partes.join("");
@@ -449,6 +454,42 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       ${pode ? `<form class="checklist-novo" data-checklist-form><input name="novoItemChecklist" maxlength="200" autocomplete="off"
         placeholder="Novo item: escreva e tecle Enter" aria-label="Novo item do checklist"></form>` : ""}
     </div>`;
+  }
+
+  /**
+   * Documentos e links da ação (passo 2.10a; seção 4.2.4): cada um com o nome (que abre o link), a
+   * identificação no SIPAC/Protocolo e a data; "Editar" e × em cada um; "+ Documento" abre um
+   * formulário curto, com Salvar e Cancelar (Esc), porque um documento tem vários campos.
+   */
+  function documentosHtml(acao) {
+    const docs = acao.documentos ?? [];
+    const pode = !somenteLeitura();
+    const formulario = (doc = {}) => `<form class="form-documento" data-form-documento="${esc(doc.id ?? "")}">
+      <input name="nome" maxlength="120" value="${esc(doc.nome ?? "")}" placeholder="Nome, como “Termo de referência”" aria-label="Nome do documento" required>
+      <div class="campos-lado-a-lado">
+        <input name="identificacao" value="${esc(doc.identificacao ?? "")}" placeholder="Nº no SIPAC/Protocolo" aria-label="Identificação no SIPAC/Protocolo">
+        <input type="date" name="data" value="${esc(doc.data ?? "")}" aria-label="Data do documento">
+      </div>
+      <input type="url" name="link" value="${esc(doc.link ?? "")}" placeholder="https://…" aria-label="Link">
+      <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar-documento>Cancelar</button>
+        <span class="tec">Informe a identificação, o link ou os dois.</span></div>
+    </form>`;
+    return `<div class="campo-acao" data-campo="documentos">${rotuloHtml("documentos", "Documentos e links")}
+      <ul class="documentos-acao">${docs.map((doc) => editandoDoc === doc.id ? `<li>${formulario(doc)}</li>` : `<li>
+        <span class="documento-nome">${doc.link && linkSeguro(doc.link) ? `<a href="${esc(doc.link)}" target="_blank" rel="noopener noreferrer">${esc(doc.nome)}</a>` : esc(doc.nome)}
+          ${[doc.identificacao, doc.data ? dataBr(doc.data) : ""].filter(Boolean).length ? `<small class="tec">${esc([doc.identificacao, doc.data ? dataBr(doc.data) : ""].filter(Boolean).join(" · "))}</small>` : ""}</span>
+        ${pode && editandoDoc == null ? `<span class="documento-botoes"><button type="button" class="botao-texto" data-editar-documento="${esc(doc.id)}">Editar</button>
+          <button type="button" class="tirar" data-tirar-documento="${esc(doc.id)}" aria-label="Retirar ${esc(doc.nome)}">${ICONES.fechar}</button></span>` : ""}
+      </li>`).join("")}</ul>
+      ${editandoDoc === "novo" ? formulario() : pode && editandoDoc == null ? `<button type="button" class="chip-campo" data-novo-documento>${ICONES.mais}Documento</button>` : ""}
+    </div>`;
+  }
+  async function salvarDocumento(form) {
+    const dados = Object.fromEntries(["nome", "identificacao", "data", "link"].map((k) => [k, form.elements[k].value]));
+    const id = form.dataset.formDocumento;
+    const ok = await executar(() => (id ? store.alterarDocumentoDaAcao(espacoId, numero, id, dados) : store.acrescentarDocumentoNaAcao(espacoId, numero, dados)),
+      id ? "Documento alterado." : "Documento acrescentado.");
+    if (ok) { editandoDoc = null; desenhar(); }
   }
 
   function notasHtml(acao) {
@@ -808,6 +849,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   function mostrarCampo(campo) {
     if (campo === "checklist") { checklistAberto = true; focoNoChecklist = true; }
     if (campo === "etiquetas") buscando = "etiquetas"; // abre já com a busca
+    if (campo === "documentos") editandoDoc = "novo"; // abre já com o formulário
     mostrados.add(campo);
     desenhar();
     const bloco = corpo.querySelector(`[data-campo="${campo}"]`);
@@ -876,6 +918,13 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (textoItem && !textoItem.isContentEditable) return editarItem(textoItem);
     const dep = t.closest("[data-tirar-dependencia]");
     if (dep) return executar(() => store.retirarDependencia(espacoId, numero, Number(dep.dataset.tirarDependencia)));
+    /* documentos da ação (passo 2.10a) */
+    if (t.closest("[data-novo-documento]")) { editandoDoc = "novo"; desenhar(); return corpo.querySelector('[data-form-documento] [name="nome"]')?.focus(); }
+    const editarDoc = t.closest("[data-editar-documento]");
+    if (editarDoc) { editandoDoc = editarDoc.dataset.editarDocumento; desenhar(); return corpo.querySelector('[data-form-documento] [name="nome"]')?.focus(); }
+    if (t.closest("[data-cancelar-documento]")) { editandoDoc = null; mostrados.delete("documentos"); return desenhar(); }
+    const tirarDoc = t.closest("[data-tirar-documento]");
+    if (tirarDoc) return executar(() => store.retirarDocumentoDaAcao(espacoId, numero, tirarDoc.dataset.tirarDocumento), "Documento retirado.");
     const etq = t.closest("[data-tirar-etiqueta]");
     if (etq) return executar(() => store.retirarEtiquetaDaAcao(espacoId, numero, etq.dataset.tirarEtiqueta));
     const resp = t.closest("[data-tirar-responsavel]");
@@ -900,6 +949,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     e.preventDefault();
     if (e.target.matches("[data-comentar]")) return enviarComentario(e.target);
     if (e.target.matches("[data-editar-comentario]")) return salvarComentario(e.target);
+    if (e.target.matches("[data-form-documento]")) return salvarDocumento(e.target);
     if (!e.target.matches("[data-checklist-form]")) return salvar(e.target);
     const campo = e.target.elements.novoItemChecklist;
     const texto = campo.value.trim();
@@ -926,6 +976,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }
   /* Ctrl+Enter (⌘+Enter) envia o comentário ou salva a edição; Esc desiste da edição */
   corpo.addEventListener("keydown", (e) => {
+    /* Esc no formulário do documento desiste dele, sem fechar a janela (passo 2.10a) */
+    if (e.key === "Escape" && editandoDoc != null && e.target.closest("[data-form-documento]")) {
+      e.preventDefault(); e.stopPropagation();
+      editandoDoc = null; mostrados.delete("documentos");
+      return desenhar();
+    }
     if (e.key === "Escape" && (editandoComentario || apagandoComentario) && e.target.closest("[data-comentarios]")) {
       e.preventDefault(); e.stopPropagation();
       editandoComentario = null; apagandoComentario = null;

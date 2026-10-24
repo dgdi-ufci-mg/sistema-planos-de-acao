@@ -47,6 +47,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const usaFases = opcionais.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
   const usaDescricao = opcionais.descricao !== false;
   const comEtiquetas = usaEtiquetas(espaco); // passo 2.10a: nomes separados por ";"
+  const comDocumentos = opcionais.documentos === true; // passo 2.10a: "nome (link ou identificação)", separados por ";"
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   const pessoa = new Map(responsaveis.map((r) => [r.id, r.sigla || r.nome]));
   const faseEEtapa = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, [f.nome, e.nome]])));
@@ -57,7 +58,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const titulos = ["Número", ...(usaCodigos ? ["Código"] : []), ...(usaFases ? ["Fase", "Etapa"] : []), "Ação",
     ...(usaDescricao ? ["Descrição"] : []), ...(comDependencias ? ["Depende de"] : []),
     ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
-    "Responsáveis", ...(comEtiquetas ? ["Etiquetas"] : []), "Situação", "Atrasada",
+    "Responsáveis", ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), "Situação", "Atrasada",
     ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
   const linhas = [...acoes].sort((a, b) => a.ordem - b.ordem).map((a) => {
     const { c, concluida, inicio, fim } = datas(a);
@@ -69,6 +70,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
       ...(comEstimativas ? [numero(e?.o), numero(e?.m), numero(e?.p), e ? numero(duracaoPert(e)) : ""] : [a.dataLimite ? dataBr(a.dataLimite) : ""]),
       (a.responsaveis ?? []).map((id) => pessoa.get(id)).filter(Boolean).join("; "),
       ...(comEtiquetas ? [etiquetasDaAcao(espaco, a).map((x) => x.nome).join("; ")] : []),
+      ...(comDocumentos ? [(a.documentos ?? []).map((d) => `${d.nome} (${d.link || d.identificacao})`).join("; ")] : []),
       /* situação personalizada, quando houver (passo 2.7) */
       c.situacao === "liberada" ? nomeDoFluxo(espaco, fluxoDe(a, c.situacao, espaco)) : SITUACAO[c.situacao] ?? c.situacao, c.atrasada ? "sim" : "não",
       ...(comEstimativas ? [dataBr(inicio), dataBr(fim), concluida ? "" : numero(Math.max(0, c.folga)), concluida ? "" : (c.critica ? "sim" : "não")] : []),

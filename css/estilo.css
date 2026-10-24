@@ -1392,3 +1392,13 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .lista-etiquetas li input { flex: 1 1 140px; min-width: 0; }
 .lista-etiquetas li select { flex: 0 0 auto; width: auto; }
 .lista-etiquetas li .aviso-confirmar { flex-basis: 100%; }
+
+/* documentos e links da ação (passo 2.10a) */
+.documentos-acao { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.documentos-acao > li { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 6px 10px; border: 1px solid var(--grid); border-radius: 8px; background: var(--surface); }
+.documentos-acao > li:has(.form-documento) { display: block; }
+.documento-nome { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.documento-botoes { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.form-documento { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.form-documento input { width: 100%; min-width: 0; }
+.form-documento .botoes { align-items: center; flex-wrap: wrap; }

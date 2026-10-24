@@ -49,6 +49,7 @@ export function colunasDaPlanilha(d) {
     campos.notas !== false && { chave: "notas", titulo: "Anotações", largura: 16 },
     { chave: "checklist", titulo: "Checklist", largura: 5.5 },
     usaEtiquetas(d.espaco) && { chave: "etiquetas", titulo: "Etiquetas", largura: 9 },
+    campos.documentos === true && { chave: "documentos", titulo: "Documentos e links", largura: 12 },
     { chave: "situacao", titulo: "Situação", largura: 7, calculada: true },
     { chave: "atrasadaDesde", titulo: "Atrasada desde", largura: 7, calculada: true },
     { chave: "liberacaoPrevista", titulo: "Liberação prevista", largura: 7, calculada: true },
@@ -98,6 +99,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         return itens.length ? `${itens.filter((i) => i.feito).length}/${itens.length}` : "";
       }
       case "etiquetas": return etiquetasDaAcao(d.espaco, acao).map((x) => x.nome).join("; ");
+      case "documentos": return (acao.documentos ?? []).map((x) => x.nome).join("; ");
       default: return calculado(acao, chave) ?? acao[chave] ?? "";
     }
   }
@@ -138,6 +140,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     if (chave === "fase") return "A fase vem da etapa: mude a etapa.";
     if (chave === "checklist") return "Itens feitos / total. Edite o checklist na janela da ação.";
     if (chave === "etiquetas") return "Edite as etiquetas na janela da ação.";
+    if (chave === "documentos") return "Edite os documentos e links na janela da ação.";
     if (chave === "notas" && /\n/.test(acao.notas ?? "")) return "Anotações com mais de uma linha: edite na janela da ação.";
     const situacao = d.linhaDe.get(acao.numero)?.situacao;
     if (["o", "m", "p"].includes(chave) && !estimativaLivre(acao, situacao, hoje)) {

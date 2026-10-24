@@ -177,6 +177,10 @@ export function criarBancoLocal() {
     async mudarChecklist(espacoId, numero, mudanca, extra = {}, historico) {
       mudarAcao(espacoId, numero, (a) => ({ ...extra, checklist: mudanca(a.checklist ?? []) }), historico);
     },
+    /** Muda os documentos da ação (passo 2.10a), como o checklist: lê e grava de uma vez. */
+    async mudarDocumentos(espacoId, numero, mudanca, extra = {}, historico) {
+      mudarAcao(espacoId, numero, (a) => ({ ...extra, documentos: mudanca(a.documentos ?? []) }), historico);
+    },
     /** Acrescenta uma estimativa no fim do histórico, sem regravar as anteriores (seção 4.6). */
     async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}, historico) {
       mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }), historico);

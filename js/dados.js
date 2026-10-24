@@ -187,6 +187,33 @@ export function criarStore(banco, opcoes = {}) {
     if (campos.dependeDe?.length && !m.dependencias) throw new ErroDeDados("recurso-desligado", "Este espaço não usa dependências entre ações.");
   }
 
+  /**
+   * Documento da ação (passo 2.10a): nome obrigatório, até 120 caracteres; identificação ou link;
+   * data válida; link seguro (https:// ou http://). Devolve só os campos preenchidos, sem espaços nas pontas.
+   */
+  const documentoValido = (dados) => {
+    const { id: _id, ...campos } = dados ?? {};
+    recusarDesconhecidos(campos, "documentoDaAcao");
+    const doc = Object.fromEntries(Object.entries(campos).map(([k, v]) => [k, String(v ?? "").trim()]).filter(([, v]) => v));
+    if (!doc.nome) throw new ErroDeDados("nome-vazio", "Informe o nome do documento.");
+    if (doc.nome.length > 120) throw new ErroDeDados("nome-longo", "O nome do documento passa de 120 caracteres.");
+    if (!doc.identificacao && !doc.link) throw new ErroDeDados("documento-vazio", "Informe a identificação no SIPAC/Protocolo ou o link.");
+    if (doc.data && !DATA_ISO.test(doc.data)) throw new ErroDeDados("data-invalida", "Data do documento inválida.");
+    if (doc.link && !/^https?:\/\/\S+$/i.test(doc.link)) throw new ErroDeDados("link-invalido", "O link deve começar com https:// ou http://.");
+    return doc;
+  };
+
+  /** Documentos gravados com a ação inteira (restauração, cópias): cada um válido e com id único (passo 2.10a). */
+  const conferirDocumentos = (campos) => {
+    if (!("documentos" in campos)) return;
+    const ids = new Set();
+    for (const d of campos.documentos ?? []) {
+      documentoValido(d);
+      if (!d.id || ids.has(d.id)) throw new ErroDeDados("id-repetido", "Documento da ação com identificador repetido.");
+      ids.add(d.id);
+    }
+  };
+
   /** Etiquetas gravadas na ação inteira (criação, importação): só as do catálogo do espaço, sem repetir (passo 2.10a). */
   async function conferirEtiquetas(espacoId, campos) {
     if (!("etiquetas" in campos)) return;
@@ -281,6 +308,7 @@ export function criarStore(banco, opcoes = {}) {
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o nome da ação.");
       await conferirModelo(espacoId, outros);
       await conferirEtiquetas(espacoId, outros);
+      conferirDocumentos(outros);
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
       if (codigo) validarCodigo(codigo, acoes);
@@ -313,6 +341,7 @@ export function criarStore(banco, opcoes = {}) {
       if (campos.naoAntesDe && campos.naoAntesDe > hoje()) campos = { ...campos, situacaoPersonalizada: null };
       await conferirModelo(espacoId, campos);
       await conferirEtiquetas(espacoId, campos);
+      conferirDocumentos(campos);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
       await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario }, hist);
       if ("responsaveis" in campos) await arrumarTons(espacoId);
@@ -376,6 +405,26 @@ export function criarStore(banco, opcoes = {}) {
       const id = existente?.id ?? await store.criarEtiqueta(espacoId, { nome: n });
       await store.acrescentarEtiquetaNaAcao(espacoId, numero, id);
       return id;
+    },
+    // --- documentos e links da ação (passo 2.10a; seção 16.8): item a item, como o checklist ---
+    /** Acrescenta um documento à ação e devolve o id. Precisa de nome e de identificação ou link. */
+    async acrescentarDocumentoNaAcao(espacoId, numero, dados) {
+      const doc = documentoValido(dados);
+      await exigirAcao(espacoId, numero);
+      const id = novoId();
+      await banco.mudarDocumentos(espacoId, numero, (lista) => [...lista, { id, ...doc }], carimbo(), hist);
+      return id;
+    },
+    /** Troca os dados de um documento da ação (os campos ausentes são apagados). */
+    async alterarDocumentoDaAcao(espacoId, numero, id, dados) {
+      const doc = documentoValido(dados);
+      await banco.mudarDocumentos(espacoId, numero, (lista) => {
+        if (!lista.some((d) => d.id === id)) throw new ErroDeDados("nao-encontrado", "Documento não encontrado nesta ação.");
+        return lista.map((d) => (d.id === id ? { id, ...doc } : d));
+      }, carimbo(), hist);
+    },
+    async retirarDocumentoDaAcao(espacoId, numero, id) {
+      await banco.mudarDocumentos(espacoId, numero, (lista) => lista.filter((d) => d.id !== id), carimbo(), hist);
     },
     // --- checklist da ação (passo 2.8; seção 16.5): item a item, sem regravar os demais ---
     async acrescentarItemNoChecklist(espacoId, numero, texto) {
@@ -878,7 +927,8 @@ export function criarStore(banco, opcoes = {}) {
     "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco",
     "salvarRetrato", "importarAcoes", "restaurarCopia", "importarResponsaveis",
     "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist",
-    "criarEtiqueta", "alterarEtiqueta", "retirarEtiqueta", "acrescentarEtiquetaNaAcao", "retirarEtiquetaDaAcao", "etiquetarAcao"];
+    "criarEtiqueta", "alterarEtiqueta", "retirarEtiqueta", "acrescentarEtiquetaNaAcao", "retirarEtiquetaDaAcao", "etiquetarAcao",
+    "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

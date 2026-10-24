@@ -15,6 +15,8 @@ export const CAMPOS = Object.freeze({
   dataExcluida: ["data", "motivo"],
   calendarioGeral: ["datasExcluidas", "alteradoEm", "alteradoPor"],
   documento: ["nome", "data", "identificacao", "link"],
+  /** Documento ou link de uma ação (passo 2.10a): como o do espaço, com id, porque muda item a item. */
+  documentoDaAcao: ["id", "nome", "data", "identificacao", "link"],
   /** Documento que aprovou o Plano de Ação (passo 2.4a). */
   aprovacao: ["identificacao", "link"],
   /** Situação personalizada do espaço, uma coluna do quadro (passo 2.7). */
@@ -25,10 +27,10 @@ export const CAMPOS = Object.freeze({
   modelo: ["nome", "prazos", "dependencias", "simulacao"],
   fase: ["id", "nome", "etapas"],
   etapa: ["id", "nome"],
-  camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas"],
+  camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao",
-    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist", "etiquetas",
+    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],

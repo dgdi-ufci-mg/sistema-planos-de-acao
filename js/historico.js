@@ -77,6 +77,19 @@ export function descreverRegistro(r, nomes) {
       for (const [id, i] of a) if (!d.has(id)) partes.push(`retirou “${i.texto}”`);
       return partes.length ? `Checklist: ${partes.join("; ")}.` : "Reordenou o checklist.";
     }
+    case "documentos": {
+      /* passo 2.10a: compara documento a documento, pelo id */
+      const a = new Map(lista(antes).map((x) => [x.id, x]));
+      const d = new Map(lista(depois).map((x) => [x.id, x]));
+      const partes = [];
+      for (const [id, x] of d) {
+        const velho = a.get(id);
+        if (!velho) partes.push(`acrescentou “${x.nome}”`);
+        else if (JSON.stringify(velho) !== JSON.stringify(x)) partes.push(velho.nome === x.nome ? `alterou “${x.nome}”` : `alterou “${velho.nome}” (agora “${x.nome}”)`);
+      }
+      for (const [id, x] of a) if (!d.has(id)) partes.push(`retirou “${x.nome}”`);
+      return partes.length ? `Documentos: ${partes.join("; ")}.` : "Reordenou os documentos.";
+    }
     case "estimativas": {
       const a = lista(antes);
       const d = lista(depois);

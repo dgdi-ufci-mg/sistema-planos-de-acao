@@ -109,6 +109,18 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await assert.rejects(banco.mudarChecklist("p1", 9, (l) => l), { codigo: "nao-encontrado" });
     });
 
+    it("documentos da ação: mudanças simultâneas em itens diferentes não se apagam (passo 2.10a)", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarAcao("p1", acao(1, { documentos: [{ id: "a", nome: "A" }] }));
+      await Promise.all([
+        banco.mudarDocumentos("p1", 1, (l) => l.map((d) => (d.id === "a" ? { ...d, link: "https://a" } : d))),
+        banco.mudarDocumentos("p1", 1, (l) => [...l, { id: "b", nome: "B" }]),
+      ]);
+      assert.deepEqual((await banco.lerAcao("p1", 1)).documentos, [{ id: "a", nome: "A", link: "https://a" }, { id: "b", nome: "B" }]);
+      await assert.rejects(banco.mudarDocumentos("p1", 9, (l) => l), { codigo: "nao-encontrado" });
+    });
+
     it("estimativas: acrescenta no fim e só corrige a última se ninguém acrescentou outra", async () => {
       const banco = criarBanco();
       await banco.criarEspaco("p1", { nome: "Espaço 1" });

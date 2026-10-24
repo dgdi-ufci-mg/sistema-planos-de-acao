@@ -181,6 +181,10 @@ export function criarBancoFirestore(db) {
     async mudarChecklist(espacoId, numero, mudanca, extra = {}, historico) {
       await mudarAcao(espacoId, numero, (a) => ({ ...extra, checklist: mudanca(a.checklist ?? []) }), historico);
     },
+    /** Muda os documentos da ação numa transação (passo 2.10a; seção 4.6), como o checklist. */
+    async mudarDocumentos(espacoId, numero, mudanca, extra = {}, historico) {
+      await mudarAcao(espacoId, numero, (a) => ({ ...extra, documentos: mudanca(a.documentos ?? []) }), historico);
+    },
     async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}, historico) {
       await mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }), historico);
     },

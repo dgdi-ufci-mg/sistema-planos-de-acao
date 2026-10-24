@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 129 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 130 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -270,6 +270,7 @@ Saíram da versão 1: `dist` (escolha de distribuição), `statusDate` (a data d
 | `notas` | sim/não | não | Usa as notas das ações | `true` |
 | `codigos` | sim/não | não | Usa os códigos mnemônicos das ações, como `LEV` (seção 4.2). **Ausente: desligado**, ao contrário dos demais | `false` |
 | `etiquetas` | sim/não | não | Usa etiquetas nas ações (4.1.9; passo 2.10a). **Ausente: desligado** | `true` |
+| `documentos` | sim/não | não | Usa documentos e links nas ações (4.2.4; passo 2.10a). **Ausente: desligado**. Não confundir com os documentos do espaço (4.1.2), que estão sempre disponíveis | `true` |
 
 Desligar um campo o esconde do formulário, da tabela e das exportações; os dados já gravados são mantidos.
 
@@ -355,6 +356,7 @@ Chave: o par (espaço, `numero`).
 | `naoAntesDe` | data | não | Data mínima de liberação, "Não começa antes de" (seção 5.1) | `2026-10-19` |
 | `notas` | texto (Markdown) | não | Notas da ação (seção 8.5) | |
 | `checklist` | lista de item do checklist (4.2.2) | não | Itens a cumprir dentro da ação, na ordem em que foram acrescentados (seção 16.5; passo 2.8). Vazio: sem checklist | |
+| `documentos` | lista de documento da ação (4.2.4) | não | Documentos e links da ação, na ordem em que foram acrescentados (passo 2.10a). Vazio: sem documentos | |
 | `etiquetas` | lista de id | não | Ids das etiquetas do catálogo do espaço (4.1.9; passo 2.10a), acrescentados e retirados um a um (seção 4.6). Na tela, aparecem na ordem do catálogo. Vazio: sem etiquetas | |
 | `criadaEm` | momento | sim | Criação da ação. Imutável | |
 | `alteradaEm` | momento | sim | Última gravação na ação (seção 4.6) | |
@@ -415,6 +417,19 @@ Passo 2.9 (seção 16.5). Fica fora do documento da ação, numa coleção próp
 |---|---|---|---|---|
 | `texto` | texto | sim | O texto que valia antes da edição | |
 | `em` | data e hora | sim | Desde quando esse texto valia (a criação ou a edição anterior) | |
+
+#### 4.2.4 Documento da ação: cada item de `documentos`
+
+Passo 2.10a (seção 16.8). Como o documento do espaço (4.1.2), mais o `id`, porque cada documento é acrescentado, alterado e retirado sozinho, sem regravar os demais (seção 4.6), como os itens do checklist. Precisa do nome e de **pelo menos um** entre identificação e link: um documento sem nenhum dos dois não leva a lugar nenhum. O envio do arquivo fica para o sistema definitivo.
+
+<!-- dicionario: documentoDaAcao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do documento na ação. Imutável | `d1a2…` |
+| `nome` | texto | sim | Nome do documento ou do link, até 120 caracteres | `Termo de referência` |
+| `data` | data | não | Data do documento | `2026-10-20` |
+| `identificacao` | texto | não | Número no SIPAC/Protocolo. Obrigatório quando não há link | `23062.004512/2026-10` |
+| `link` | texto (endereço web) | não | Endereço para abrir o documento; começa com `https://` ou `http://`. Obrigatório quando não há identificação | `https://…` |
 
 ### 4.3 Estimativa: cada item de `estimativas`
 
@@ -578,6 +593,7 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Etiqueta | lista `etiquetas` dentro do espaço | tabela `etiqueta`, com `espaco_id` |
 | Etiqueta da ação | lista `etiquetas` dentro da ação | tabela `acao_etiqueta` |
+| Documento da ação | lista `documentos` dentro da ação | tabela `acao_documento` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
 | Histórico de alterações | `espacos/{id}/historico/{id}` | tabela `historico`, com `espaco_id` |
 | Comentário (versões dentro dele) | `espacos/{id}/comentarios/{id}` | tabelas `comentario` e `comentario_versao`, com `espaco_id` e o número da ação |
@@ -591,7 +607,7 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
-- **Fase 2 e seguintes:** campos opcionais da seção 16.8 (`posicaoPrioridade`, `documentos` da ação, `justificativa`, `local`, `dataLimite`; depois, `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos).
+- **Fase 2 e seguintes:** campos opcionais da seção 16.8 (`posicaoPrioridade`, `justificativa`, `local`, `dataLimite`; depois, `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos).
 - **Sistema definitivo (antiga Fase 4):** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
 - **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); comentários (seção 16.5). O checklist entrou no passo 2.8 (4.2.2).
 
@@ -783,6 +799,13 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 - **Planilha:** coluna "Etiquetas", só de leitura (nomes separados por ";"); a edição é na janela da ação.
 - **Importação e exportação:** coluna "Etiquetas" (também "Etiqueta", "Marcadores" e "Tags"), com os nomes separados por ";" (a vírgula pode fazer parte do nome). Na importação, as etiquetas que não existem são criadas, listadas na conferência, e o campo opcional é ligado; na atualização, as etiquetas da linha substituem as da ação, e a mesma lista não conta como mudança. A exportação traz a coluna só com o campo ligado, depois de "Responsáveis".
 - **Histórico:** "Etiquetas: acrescentou 'X'" e "Etiquetas: retirou 'X'"; etiqueta já retirada do catálogo aparece como "etiqueta retirada".
+
+**Documentos e links da ação** (passo 2.10a, com o campo opcional "Documentos e links das ações" ligado; seção 4.2.4):
+- Campo "Documentos e links" na janela da ação, recolhido em "Mais campos" enquanto a ação não tem nenhum; aberto, já vem com o formulário.
+- Cada documento mostra o nome (que abre o link numa aba nova, quando há link seguro), a identificação e a data, com "Editar" e ×. "+ Documento" abre um formulário curto (nome; identificação no SIPAC/Protocolo e data lado a lado; link) com Salvar e Cancelar; Esc desiste. É o único campo da janela com Salvar, porque um documento tem vários campos que só fazem sentido juntos.
+- Recusas, em aviso: sem nome, sem identificação nem link, link que não começa com `https://` ou `http://`.
+- Planilha: coluna "Documentos e links", só de leitura (os nomes). Exportação: coluna "Documentos", com "nome (link ou identificação)" separados por ";", só com o campo ligado. Importação: a coluna não é lida (fica entre as ignoradas), porque um documento tem vários campos.
+- Os cartões não mostram os documentos, para não pesar; eles aparecem na janela da ação.
 
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
@@ -989,6 +1012,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.10. Extração personalizada (seção 16.6).
 2.10a. Campos opcionais: etiquetas, prioridade da equipe (lista ordenada), links e documentos da ação, justificativa e local (seções 16.1 e 16.8). A forma de prazo "data-limite opcional" foi antecipada para o passo 2.4b. Feito em partes, a pedido do responsável (24/10/2026: "pode executar o que não depende de mim"), cada uma publicada à parte:
 - ✔ Parte 1, etiquetas (24/10/2026): campo opcional `etiquetas` (desligado por padrão), catálogo `etiquetas` do espaço (4.1.9) e `etiquetas` da ação (4.2), gravadas uma a uma (4.6). Regras em `js/etiquetas.js`; no Store, `criarEtiqueta`, `alterarEtiqueta`, `retirarEtiqueta` (retira também das ações), `acrescentarEtiquetaNaAcao`, `retirarEtiquetaDaAcao` e `etiquetarAcao` (acrescenta pelo nome, criando se preciso). Telas na seção 8 ("Etiquetas"). Cores: os tons das pessoas, já existentes nos três blocos de cor, para não criar cores novas. Escolhas de tela feitas sem consulta, por serem as mais simples (o responsável pediu para seguir sem depender dele): criação também pela própria ação, como no Trello; filtro por uma etiqueta de cada vez; coluna só de leitura na planilha.
+- ✔ Parte 2, documentos e links da ação (24/10/2026): campo opcional `documentos` (desligado por padrão) e `documentos` da ação (4.2.4), mudados um a um numa leitura e gravação de uma vez (`mudarDocumentos` nos dois bancos, com teste de contrato), como o checklist. No Store, `acrescentarDocumentoNaAcao`, `alterarDocumentoDaAcao` e `retirarDocumentoDaAcao`. Telas na seção 8 ("Documentos e links da ação"). Escolhas feitas sem consulta: formulário com Salvar (e não gravação campo a campo); exige identificação ou link; não aparece nos cartões; não entra na importação.
 2.11. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
 
 ### Fase 3: quadro de tarefas (continua no protótipo)
@@ -1296,7 +1320,7 @@ Os campos opcionais servem à **adesão** (o espaço começa simples) e à **sof
 
 - **Etiquetas** (Fase 2; feito no passo 2.10a, parte 1, seção 4.1.9). Catálogo **por espaço** (nome e cor da paleta), como no Trello e no Planner; cada equipe usa as suas. A ação guarda os ids das etiquetas (`etiquetas`), gravados item a item (seção 4.6); filtro por etiqueta. Previsto: campo `etiquetas` no espaço (lista de {`id`, `nome`, `cor`}) e na ação (lista de id).
 - **Prioridade da equipe** (Fase 2). Sem níveis (P1 a P4, "urgente", "importante"), que sofrem inflação (tudo vira o mais alto) e envelhecem sem revisão; nem estrela, que destaca mas não ordena. Adota-se a **lista ordenada** (o Guia do Scrum fala em backlog ordenado; Linear, Jira e Notion priorizam pela posição): a equipe arrasta as ações na ordenação "Prioridade da equipe", revista a cada mudança de contexto. É separada da "Ordem do espaço" (estrutura de fases e etapas). Nos espaços com cálculo, convive com as prioridades calculadas (seção 7). A posição é guardada como uma chave de ordenação fracionária (campo previsto `posicaoPrioridade`, texto): mover uma ação grava só ela, sem regravar a lista, o que evita conflito entre duas pessoas reordenando ao mesmo tempo. A estrela fica como possibilidade futura, só se a prática pedir. Usos principais: Quadro de tarefas e projetos sem dependências.
-- **Links e documentos da ação** (Fase 2): identificação no SIPAC/Protocolo e link, como nos documentos do espaço (4.1.2). Campo previsto `documentos` na ação.
+- **Links e documentos da ação** (Fase 2; feito no passo 2.10a, parte 2, seção 4.2.4): identificação no SIPAC/Protocolo e link, como nos documentos do espaço (4.1.2). Campo previsto `documentos` na ação.
 - **Justificativa** (por quê) e **Local** (onde), do 5W2H (Fase 2): textos opcionais, pouco usados no geral. Campos previstos `justificativa` e `local`.
 - **Recorrência** (Fase 3, Quadro de tarefas): tarefas que se repetem (por exemplo, relatório mensal), como no Todoist e no Planner.
 - **Custos** (futuro, sem fase; para quando houver amadurecimento):
@@ -1519,3 +1543,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 127 | Passo 2.7: situações personalizadas. Colunas do quadro entre a inicial e Concluídas, com arrastar; etiqueta na lista; filtro; escolha na janela da ação; aviso antes de uma nova dependência tirar a ação da situação; volta à inicial ao concluir, ao perder a liberação ou ao retirar a situação; nome editável da inicial ("A fazer") nos espaços sem dependências. Dicionário: `situacoes` e `nomeInicial` (4.1, 4.1.8), `situacaoPersonalizada` (4.2) |
 | 128 | Ajuste do passo 2.7: colunas criadas ("+ Nova coluna"), renomeadas (clique no título) e retiradas (× com aviso) no próprio quadro. Sem mudança no banco |
 | 129 | Passo 2.10a, parte 1: etiquetas. Campo opcional, catálogo por espaço em "Configurar este espaço", etiquetas na janela da ação (com criação pela busca), nos cartões da lista e do quadro, filtro por etiqueta, coluna na planilha, na importação e na exportação, e registro no histórico. Dicionário: `etiquetas` do espaço (4.1), `etiqueta` (4.1.9), `etiquetas` dos campos opcionais (4.1.4) e da ação (4.2) |
+| 130 | Passo 2.10a, parte 2: documentos e links da ação. Campo opcional, formulário na janela da ação, coluna na planilha e na exportação, registro no histórico. Dicionário: `documentos` dos campos opcionais (4.1.4) e da ação (4.2), `documentoDaAcao` (4.2.4) |
