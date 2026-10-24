@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 146 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 147 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1338,7 +1338,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 ### Fase 3: quadro de tarefas (continua no protótipo)
 
 3.1. ✔ Tipo "Quadro de tarefas": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de tarefas. Feito em 24/10/2026. Decisões do responsável: começa com as colunas A fazer, Fazendo (situação personalizada, renomeável e retirável) e Concluídas; "+ Adicionar tarefa" no pé de cada coluna, menos Concluídas; abre no Quadro, com Lista e Planilha também à mão; sem fases nem etapas. Regras em `js/tipos.js` (o modelo é o do cronograma aberto, fixo; sem fases, Programa nem aprovação) e no Store (`criarEspaco` preenche modelo, colunas e campos; `alterarEspaco` recusa virar ou deixar de ser quadro); vocabulário em `js/vocabulario.js` ("tarefa" no lugar de "ação"); telas na seção 8 ("Quadro de tarefas"); exemplo em `js/exemplo.js` (`carregarExemploDeQuadro`), aberto junto com o do Plano de Ação. Escolha feita sem consulta: o tipo Quadro de tarefas é fixo depois de criado, porque ele traz modelo, colunas e campos próprios.
-3.2. Recorrência de tarefas (seção 16.8).
+3.2. ~~Recorrência de tarefas (seção 16.8).~~ **Cancelado** (decisão do responsável, 24/10/2026): o sistema segue sem tarefas recorrentes.
 
 ### Fase 4: passagem do protótipo à equipe de TI da UFCI-MG
 
@@ -1651,7 +1651,7 @@ Os campos opcionais servem à **adesão** (o espaço começa simples) e à **sof
 - **Prioridade da equipe** (Fase 2; feita no passo 2.10a, parte 4, seção 5.8). Sem níveis (P1 a P4, "urgente", "importante"), que sofrem inflação (tudo vira o mais alto) e envelhecem sem revisão; nem estrela, que destaca mas não ordena. Adota-se a **lista ordenada** (o Guia do Scrum fala em backlog ordenado; Linear, Jira e Notion priorizam pela posição): a equipe arrasta as ações na ordenação "Prioridade da equipe", revista a cada mudança de contexto. É separada da "Ordem do espaço" (estrutura de fases e etapas). Nos espaços com cálculo, convive com as prioridades calculadas (seção 7). A posição é guardada como uma chave de ordenação fracionária (campo previsto `posicaoPrioridade`, texto): mover uma ação grava só ela, sem regravar a lista, o que evita conflito entre duas pessoas reordenando ao mesmo tempo. A estrela fica como possibilidade futura, só se a prática pedir. Usos principais: Quadro de tarefas e projetos sem dependências.
 - **Links e documentos da ação** (Fase 2; feito no passo 2.10a, parte 2, seção 4.2.4): identificação no SIPAC/Protocolo e link, como nos documentos do espaço (4.1.2). Campo previsto `documentos` na ação.
 - **Justificativa** (por quê) e **Local** (onde), do 5W2H (Fase 2; feitos no passo 2.10a, parte 3): textos opcionais, pouco usados no geral. Campos previstos `justificativa` e `local`.
-- **Recorrência** (Fase 3, Quadro de tarefas): tarefas que se repetem (por exemplo, relatório mensal), como no Todoist e no Planner.
+- ~~**Recorrência** (Fase 3, Quadro de tarefas): tarefas que se repetem (por exemplo, relatório mensal), como no Todoist e no Planner.~~ **Cancelada** (decisão do responsável, 24/10/2026): não entra no sistema.
 - **Custos** (futuro, sem fase; para quando houver amadurecimento):
   - na ação, custo previsto (`custoPrevisto`) e uma lista de **lançamentos executados** (`custosExecutados`: data, valor, descrição e, opcionalmente, o número do empenho ou de outro documento), porque a execução acontece ao longo do tempo;
   - no espaço, o orçamento total (`orcamento`);
@@ -1890,3 +1890,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 144 | Passo 2.10, parte 1: extração personalizada, regras e arquivos (tabelas de ações, entregas, alcances e histórico; CSV, .xlsx e .ods sem biblioteca), sem tela (seções 3.1, 12 e 16.6) |
 | 145 | Passo 2.10, parte 2: tela "Extração de dados" na barra lateral (espaços, ações com os campos do dicionário, entregas, alcances, histórico; Excel, LibreOffice, CSV ou PDF pela impressão) (seções 3.1, 8 e 12) |
 | 146 | Passo 3.1: tipo Quadro de tarefas (colunas iniciais, "+ Adicionar tarefa" em cada coluna, abre no Quadro, sem fases, modelo fixo, palavra "tarefa") e exemplo de Quadro de tarefas. Dicionário: valor `quadro` em `tipo` do espaço (4.1) (seções 3.1, 4.1, 8, 12 e 13) |
+| 147 | Passo 3.2 (recorrência de tarefas) cancelado, por decisão do responsável (seções 12 e 16.8). Sem mudança no sistema |
