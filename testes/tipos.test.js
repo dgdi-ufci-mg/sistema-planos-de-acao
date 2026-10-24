@@ -12,8 +12,8 @@ const storeDeTeste = () => {
 const PLANO = { tipo: "planoDeAcao", programa: "Programa de Governança de Dados", aprovacao: { identificacao: "23062.001234/2026-11" } };
 
 describe("Tipos de espaço: regras", () => {
-  it("Plano de Ação vem antes de Projeto, e o padrão é Projeto", () => {
-    assert.deepEqual(Object.keys(TIPOS), ["planoDeAcao", "projeto"]);
+  it("Plano de Ação, Projeto e Quadro de tarefas, nessa ordem; o padrão é Projeto", () => {
+    assert.deepEqual(Object.keys(TIPOS), ["planoDeAcao", "projeto", "quadro"]);
     assert.equal(tipoDe({}), "projeto");
     assert.equal(tipoDe({ tipo: null }), "projeto");
     assert.equal(tipoDe({ tipo: "planoDeAcao" }), "planoDeAcao");
@@ -29,7 +29,7 @@ describe("Tipos de espaço: regras", () => {
   });
 
   it("recusa tipo desconhecido e link inseguro", () => {
-    assert.equal(problemaDoTipo({ tipo: "quadro" }).codigo, "tipo-invalido");
+    assert.equal(problemaDoTipo({ tipo: "lousa" }).codigo, "tipo-invalido");
     assert.equal(problemaDoTipo({ ...PLANO, aprovacao: { identificacao: "1", link: "javascript:alert(1)" } }).codigo, "link-invalido");
     assert.equal(problemaDoTipo({ ...PLANO, aprovacao: { identificacao: "1", link: "https://sipac.ufci.edu.br/x" } }), null);
   });

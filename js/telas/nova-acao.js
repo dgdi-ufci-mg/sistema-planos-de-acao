@@ -15,6 +15,7 @@ import { abrirSuave } from "./movimento.js";
 import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 import { usaEstimativas, usaDependencias } from "../modelos.js";
+import { termos } from "../vocabulario.js";
 
 const MAX_SUGESTOES = 8;
 const decimal = (x) => x.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
@@ -54,10 +55,11 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
   ].filter(Boolean);
   const abertos = new Set();
 
-  const corpo = abrirPainel("Nova ação", `
+  const t = termos(d.espaco); // "tarefa" no Quadro de tarefas (passo 3.1)
+  const corpo = abrirPainel(`Nova ${t.acao}`, `
     <form class="nova-acao" novalidate>
       <input class="rotulo-novo" name="rotulo" maxlength="120" required autocomplete="off"
-        placeholder="Nome da ação" aria-label="Nome da ação">
+        placeholder="Nome da ${t.acao}" aria-label="Nome da ${t.acao}">
       ${comEstimativas ? `<div class="campo"><span>Estimativa <small>(dias úteis, da liberação até a conclusão; pode ficar para depois)</small></span>
         <div class="tres-pontos">
           <label class="campo"><span>Otimista</span><input name="o" type="number" min="0" step="1" inputmode="numeric"></label>

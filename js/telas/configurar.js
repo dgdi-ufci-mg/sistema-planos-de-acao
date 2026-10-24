@@ -119,11 +119,12 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <form class="editor" data-salvar="dados">
           <label class="campo"><span>Nome</span><input name="nome" maxlength="120" value="${esc(espaco.nome)}"></label>
           ${tipoHtml(espaco)}
-          ${resumoDoModelo(espaco)}
+          ${tipoDe(espaco) === "quadro" ? `<input type="hidden" name="inicio" value="${esc(espaco.inicio ?? "")}"><input type="hidden" name="prazoFinal" value="${esc(espaco.prazoFinal ?? "")}">` /* Quadro de tarefas (passo 3.1): sem modelo nem datas à vista */
+            : `${resumoDoModelo(espaco)}
           <div class="campos-lado-a-lado">
             <label class="campo"><span>Início</span><input name="inicio" type="date" value="${esc(espaco.inicio ?? "")}"></label>
             <label class="campo"><span>Prazo final <small>(opcional)</small></span><input name="prazoFinal" type="date" value="${esc(espaco.prazoFinal ?? "")}"></label>
-          </div>
+          </div>`}
           <p class="erro" data-erro hidden></p>
           <div class="botoes"><button class="botao principal" type="submit">Salvar</button></div>
         </form>
@@ -168,7 +169,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       <details class="config" data-secao="campos"${aberta("campos")}>
         <summary><h3>Campos opcionais</h3></summary>
         <p class="tec">Desligar um campo o esconde da tela; o que já foi preenchido é mantido.</p>
-        ${CAMPOS_OPCIONAIS.map(([chave, titulo, dica]) => `<label class="alternar-campo">
+        ${CAMPOS_OPCIONAIS.filter(([chave]) => chave !== "fasesEtapas" || tipoDe(espaco) !== "quadro").map(([chave, titulo, dica]) => `<label class="alternar-campo">
           <input type="checkbox" data-campo-opcional="${chave}"${ligado(campos, chave) ? " checked" : ""}>
           <span><b>${titulo}</b><small>${dica}</small></span></label>`).join("")}
       </details>

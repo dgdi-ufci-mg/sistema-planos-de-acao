@@ -11,9 +11,9 @@ import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
 import { registrosDaMudanca } from "./historico.js";
 import { montarRetrato } from "./retrato.js";
-import { problemaDoTipo, tipoDe } from "./tipos.js";
+import { problemaDoTipo, tipoDe, COLUNAS_INICIAIS_DO_QUADRO } from "./tipos.js";
 import { problemaDaEntrega, problemaDoRegistro, problemaDaSituacao, pendenciasParaEncerrar, entregasAtivas, registrosDa, SITUACAO_INICIAL_DA_ENTREGA } from "./entregas.js";
-import { problemaDoModelo, modeloDe } from "./modelos.js";
+import { problemaDoModelo, modeloDe, montarModelo } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
 import { chaveValida, planejarMovimento } from "./prioridade.js";
 import { camadasDe, problemaDasCamadas, problemaDoInstrumento, problemaDoItem, problemaDosVinculos, subordinadosDe } from "./estrategia.js";
@@ -399,6 +399,13 @@ export function criarStore(banco, opcoes = {}) {
       if (usuario) dados = { ...dados, acessos: { [emailNormal(usuario)]: { papel: "administrador", responsavel: null } } };
       /* espaço novo é restrito, até o administrador abri-lo (passo 2.2; decisão do responsável, 24/10/2026) */
       dados = { visibilidade: "restrita", ...dados };
+      /* Quadro de tarefas (passo 3.1): modelo fixo, sem fases e com as colunas iniciais */
+      if (tipoDe(dados) === "quadro") {
+        dados = {
+          modelo: montarModelo("aberto"), situacoes: COLUNAS_INICIAIS_DO_QUADRO.map((nome) => ({ id: novoId(), nome })), ...dados,
+          camposOpcionais: { ...(dados.camposOpcionais ?? {}), fasesEtapas: false },
+        };
+      }
       validarEspaco(dados, recusarDesconhecidos);
       await conferirVinculos(dados);
       const { nome, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO, ...outros } = dados;
@@ -420,6 +427,10 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(campos, "espaco");
       recusarFixos(campos, FIXOS_DO_ESPACO);
       await exigir(id, "configurar");
+      /* o Quadro de tarefas é escolhido na criação e não muda (passo 3.1) */
+      if ("tipo" in campos && (tipoDe(await banco.lerEspaco(id)) === "quadro") !== (campos.tipo === "quadro")) {
+        throw new ErroDeDados("tipo-fixo", "O Quadro de tarefas é escolhido na criação: um espaço não vira nem deixa de ser Quadro de tarefas.");
+      }
       await conferirVinculos(campos);
       await gravarEspaco(id, campos);
     },

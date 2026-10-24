@@ -17,6 +17,7 @@ import { seletorHtml, ligarSeletores } from "./seletor.js";
 import { descreverRegistro } from "../historico.js";
 import { editarTexto } from "./edicao-no-lugar.js";
 import { usaEstimativas, usaDependencias } from "../modelos.js";
+import { termos } from "../vocabulario.js";
 import { nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
@@ -56,7 +57,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let focoNoChecklist = false;
 
   const inicial = acaoAtual();
-  const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `Ação ${inicial.codigo}` : "Ação", "", {
+  const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
     janela: true,
     aoFechar: () => { fechada = true; pararComentarios?.(); aoFechar(); },
   });
@@ -195,7 +196,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           ${alheia ? `<p class="alteracao-alheia" role="status">${esc(alheia)} alterou esta ação agora.</p>` : ""}
           <div class="campo-acao campo-nome-acao" data-campo="rotulo">
             <textarea class="janela-nome" rows="1" maxlength="120" name="rotulo" data-auto="rotulo" data-original="${esc(acao.rotulo)}"
-              aria-label="Nome da ação"${somenteLeitura() ? " readonly" : ""}>${esc(acao.rotulo)}</textarea>
+              aria-label="Nome da ${termos(d.espaco).acao}"${somenteLeitura() ? " readonly" : ""}>${esc(acao.rotulo)}</textarea>
             ${statusHtml("rotulo")}
           </div>
 
@@ -220,7 +221,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
           <div class="janela-campos">${camposHtml(acao, l, etapas, etapa)}</div>
           ${maisCamposHtml(acao)}
-          ${store.podeGravar && d.perm.excluirAcao ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ação</button></div>` : ""}
+          ${store.podeGravar && d.perm.excluirAcao ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ${termos(d.espaco).acao}</button></div>` : ""}
         </div>
 
         <div class="janela-atividade" aria-label="Atividade">
@@ -234,7 +235,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       </div>`;
     /* título da janela: onde a ação fica (fase e etapa) e o código, em vez de só "Ação" */
     const titulo = [d.usaCodigos && acao.codigo ? acao.codigo : "", d.usaFases ? (etapa ? `${etapa.fase} · ${etapa.nome}` : "Sem fase nem etapa") : ""]
-      .filter(Boolean).join(" · ") || "Ação";
+      .filter(Boolean).join(" · ") || termos(d.espaco).Acao;
     const cabeca = corpo.closest(".painel").querySelector("header h2");
     cabeca.textContent = titulo;
     cabeca.title = titulo;

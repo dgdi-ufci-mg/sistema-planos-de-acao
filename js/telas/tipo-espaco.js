@@ -13,9 +13,16 @@ import { hojeLocal } from "../dados.js";
 /** Campos do tipo, dentro de um formulário. */
 export function tipoHtml(espaco = {}) {
   const atual = tipoDe(espaco);
+  /* Quadro de tarefas (passo 3.1): escolhido só na criação; depois, o tipo não vira nem deixa de ser quadro */
+  const criacao = !espaco.id;
+  if (!criacao && atual === "quadro") {
+    return `<fieldset class="tipo-espaco" data-tipo-espaco><legend>Tipo</legend><input type="hidden" name="tipo" value="quadro">
+      <p class="modelo-resumo"><b>${TIPOS.quadro.nome}</b> <span class="tec">Escolhido na criação; não muda.</span></p></fieldset>`;
+  }
+  const opcoes = Object.entries(TIPOS).filter(([v]) => criacao || v !== "quadro");
   return `<fieldset class="tipo-espaco" data-tipo-espaco>
       <legend>Tipo</legend>
-      <div class="tipo-opcoes">${Object.entries(TIPOS).map(([v, t]) => `
+      <div class="tipo-opcoes">${opcoes.map(([v, t]) => `
         <label class="tipo-opcao"><input type="radio" name="tipo" value="${v}"${v === atual ? " checked" : ""}>
           <span><b>${t.nome}</b><small>${t.explicacao}</small></span></label>`).join("")}</div>
       <div class="tipo-plano" data-tipo-plano${atual === "planoDeAcao" ? "" : " hidden"}>
@@ -56,6 +63,7 @@ function programaCatalogoHtml(espaco, opcoes) {
  */
 async function carregarProgramas(form, { store, espaco = {} }) {
   const lugar = form.querySelector("[data-campo-programa]");
+  if (!lugar) return; // Quadro de tarefas: sem Programa
   let catalogo;
   try { catalogo = await store.lerCatalogo(); } catch { return; }
   const opcoes = opcoesDePrograma(catalogo, hojeLocal(), espaco.vinculos ?? []);

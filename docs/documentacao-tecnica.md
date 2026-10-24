@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 145 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 146 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -85,6 +85,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/acao.js` | Regras da ação: estimativa livre, anteriores possíveis sem ciclo, busca, códigos |
 | `js/entregas.js` | Entregas do Plano de Ação: tipos de meta, situações, validações, alcance atual, avisos de coerência e o que falta para encerrar |
 | `js/extracao.js`, `js/arquivo-planilha.js` | Extração personalizada: as tabelas (ações, entregas, alcances, histórico) e os arquivos CSV, .xlsx e .ods, feitos sem biblioteca |
+| `js/vocabulario.js` | Palavras da tela que mudam com o tipo do espaço: "ação" ou "tarefa" (passo 3.1) |
 | `js/tipos.js` | Tipos de espaço: nomes, tipo padrão, o que cada tipo exige, agrupamento do menu lateral |
 | `js/modelos.js` | Modelos do espaço: estruturado, aberto e personalizado; o que cada espaço usa (estimativas ou data-limite, dependências, simulação) e as opções do cálculo |
 | `js/cronograma.js`, `js/rede.js`, `js/linha-do-tempo.js` | Geometria do cronograma, da rede e da linha do tempo |
@@ -222,7 +223,7 @@ erDiagram
 |---|---|---|---|---|
 | `id` | id | sim | Identificador do espaço. Imutável | `3f2b8c1e-…` |
 | `nome` | texto | sim | Nome do espaço | `PI² · Fase 1` |
-| `tipo` | texto: `planoDeAcao` ou `projeto` | não | Tipo do espaço (seção 16.1; passo 2.4a). **Ausente: `projeto`**, como nos espaços criados antes do passo 2.4a | `planoDeAcao` |
+| `tipo` | texto: `planoDeAcao`, `projeto` ou `quadro` | não | Tipo do espaço (seção 16.1; passo 2.4a; `quadro`, o Quadro de tarefas, desde o passo 3.1). **Ausente: `projeto`**, como nos espaços criados antes do passo 2.4a. O `quadro` é escolhido na criação e não muda: um espaço não vira nem deixa de ser Quadro de tarefas | `planoDeAcao` |
 | `programa` | texto | não | Programa do PEI/PDI que prevê o Plano de Ação, em texto livre. No Plano de Ação, é obrigatório um dos dois: `vinculos` (o catálogo, desde o passo 2.5) ou este texto (planos anteriores ao catálogo, ou catálogo ainda sem Programas); escolher um Programa do catálogo apaga o texto (`null`); no Projeto, vazio | `Programa de Governança de Dados` |
 | `aprovacao` | aprovação (4.1.6) | não | Documento que aprovou o Plano de Ação. **Obrigatório no Plano de Ação**, com a identificação; no Projeto, vazio | |
 | `modelo` | modelo (4.1.7) | não | Como o espaço define prazos, dependências e simulação. Escolhido na criação e **imutável** (passo 2.4b). **Ausente: cronograma estruturado** (estimativas, dependências e simulação), como nos espaços criados antes do passo 2.4b | |
@@ -1107,6 +1108,15 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 - **Extrair:** "Preparando…" enquanto lê e calcula; depois baixa o arquivo `extracao-AAAA-MM-DD` e avisa quantas tabelas e linhas. Recusas em aviso: nenhum espaço, nenhum campo das ações, nada escolhido.
 - O que foi escolhido (o que extrair, os campos e o formato) fica lembrado no aparelho; os espaços, não.
 
+**Quadro de tarefas** (passo 3.1; seção 16.1):
+- **Criação:** terceiro cartão em "Tipo", "Quadro de tarefas" ("Tarefas do dia a dia, em colunas, como no Trello e no Planner, com data-limite opcional. Para uma pessoa ou uma equipe."). Escolhido, somem o Modelo e as datas (o espaço começa hoje, sem prazo final).
+- **Ao abrir:** a visualização Quadro, com as colunas A fazer, Fazendo e Concluídas no espaço novo; Lista e Planilha continuam no menu. Colunas criadas, renomeadas e retiradas no próprio quadro, como nos demais espaços.
+- **"+ Adicionar tarefa"** no pé de cada coluna, menos Concluídas: Enter cria a tarefa naquela coluna e deixa o campo pronto para a próxima; Esc desiste.
+- **Palavra "tarefa"** no lugar de "ação" (seção 16.1): "Nova tarefa", "Adicionar tarefa", "Nome da tarefa", "Excluir tarefa", título da janela, coluna da planilha, "Nenhuma tarefa" e o aviso de tarefas atrasadas.
+- **Barra lateral:** o grupo "Quadros de tarefas", depois de "Projetos".
+- **Configurar este espaço:** o tipo aparece só para leitura ("Escolhido na criação; não muda"), sem Modelo, datas, nem o campo opcional "Fases e etapas". Nos outros tipos, o Quadro de tarefas não aparece entre as opções.
+- **Exemplo:** "Ver um exemplo" passa a abrir também "Exemplo: tarefas da equipe de dados", com sete tarefas em A fazer, Fazendo, Em revisão e Concluídas, duas pessoas e datas-limite (uma vencida).
+
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
 **Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
@@ -1327,7 +1337,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 ### Fase 3: quadro de tarefas (continua no protótipo)
 
-3.1. Tipo "Quadro de tarefas": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de tarefas.
+3.1. ✔ Tipo "Quadro de tarefas": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de tarefas. Feito em 24/10/2026. Decisões do responsável: começa com as colunas A fazer, Fazendo (situação personalizada, renomeável e retirável) e Concluídas; "+ Adicionar tarefa" no pé de cada coluna, menos Concluídas; abre no Quadro, com Lista e Planilha também à mão; sem fases nem etapas. Regras em `js/tipos.js` (o modelo é o do cronograma aberto, fixo; sem fases, Programa nem aprovação) e no Store (`criarEspaco` preenche modelo, colunas e campos; `alterarEspaco` recusa virar ou deixar de ser quadro); vocabulário em `js/vocabulario.js` ("tarefa" no lugar de "ação"); telas na seção 8 ("Quadro de tarefas"); exemplo em `js/exemplo.js` (`carregarExemploDeQuadro`), aberto junto com o do Plano de Ação. Escolha feita sem consulta: o tipo Quadro de tarefas é fixo depois de criado, porque ele traz modelo, colunas e campos próprios.
 3.2. Recorrência de tarefas (seção 16.8).
 
 ### Fase 4: passagem do protótipo à equipe de TI da UFCI-MG
@@ -1361,6 +1371,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 - **Piloto (passo 1.21):** uso real na PI² por algumas semanas, registrando conclusões e reestimativas, para conferir previsões, avisos e telas.
 - **Manual do usuário (passo 1.22):** parado até o responsável liberar. O arquivo `docs/manual-do-usuario.md` ainda descreve a versão 1.
+- **Palavra "tarefa" no Quadro de tarefas** (passo 3.1): trocada nos lugares mais à vista (quadro, lista, botões e janelas de nova tarefa e da tarefa, planilha, avisos de atrasadas); ainda dizem "ação" alguns textos secundários, como o aviso depois de excluir, as mensagens de recusa do Store, a configuração do espaço e o histórico. Ajustar quando o responsável notar algum.
 - **Fases 2 e 3** (seção 12): papéis e visibilidade, encerramento, tipos de espaço, catálogo do PEI/PDI, entregas dos Planos de Ação, situações personalizadas, comentários, extração de dados, campos opcionais e quadro de tarefas.
 - **Fase 4** (seção 12): passagem à equipe de TI, com a documentação conceitual, os casos de referência e o acompanhamento do novo desenvolvimento.
 - **Pontos para reavaliação** (seção 14), com o sistema em uso.
@@ -1878,3 +1889,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 143.1 | Plano de trabalho (seção 12): passos 2.4, 2.5 e 2.6 marcados como feitos. Sem mudança no sistema |
 | 144 | Passo 2.10, parte 1: extração personalizada, regras e arquivos (tabelas de ações, entregas, alcances e histórico; CSV, .xlsx e .ods sem biblioteca), sem tela (seções 3.1, 12 e 16.6) |
 | 145 | Passo 2.10, parte 2: tela "Extração de dados" na barra lateral (espaços, ações com os campos do dicionário, entregas, alcances, histórico; Excel, LibreOffice, CSV ou PDF pela impressão) (seções 3.1, 8 e 12) |
+| 146 | Passo 3.1: tipo Quadro de tarefas (colunas iniciais, "+ Adicionar tarefa" em cada coluna, abre no Quadro, sem fases, modelo fixo, palavra "tarefa") e exemplo de Quadro de tarefas. Dicionário: valor `quadro` em `tipo` do espaço (4.1) (seções 3.1, 4.1, 8, 12 e 13) |

@@ -13,7 +13,7 @@ import { FIREBASE_CONFIG } from "../config.js";
 import { criarBancoLocal } from "./banco/local.js";
 import { conectarFirebase } from "./banco/firebase.js";
 import { criarStore, hojeLocal } from "./dados.js";
-import { carregarExemplo } from "./exemplo.js";
+import { carregarExemplo, carregarExemploDeQuadro } from "./exemplo.js";
 import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
 import { mostrarNavegacao } from "./telas/navegacao.js";
@@ -60,9 +60,11 @@ let usuario = null;
 /** Exemplo: banco em memória à parte, criado na primeira vez que é aberto. */
 let exemplo = null;
 let exemploId = null;
+/** espaços do banco do exemplo (passo 3.1: o Plano de Ação e o Quadro de tarefas de exemplo) */
+const exemplos = new Set();
 let abertoId = null;
 
-const storeDe = (id) => (id && id === exemploId ? exemplo : store);
+const storeDe = (id) => (id && exemplos.has(id) ? exemplo : store);
 const tentar = async (f, padrao) => { try { return await f(); } catch (e) { avisar(e.message); return padrao; } };
 
 /**
@@ -98,7 +100,7 @@ async function atualizarTopo() {
     aoConfigurar: async (id) => {
       if (id !== abertoId && !(await abrirEspaco(id))) return;
       /* contas de acesso só no banco compartilhado; no exemplo, nunca */
-      abrirConfiguracao({ store: storeDe(id), espacoId: id, aoExcluirEspaco: espacoExcluido, criarConta: id !== exemploId && acesso ? acesso.criarConta : null });
+      abrirConfiguracao({ store: storeDe(id), espacoId: id, aoExcluirEspaco: espacoExcluido, criarConta: !exemplos.has(id) && acesso ? acesso.criarConta : null });
     },
     aoNovo: () => boasVindas({ comFormulario: true }),
     comLegenda: Boolean(abertoId),
@@ -142,7 +144,7 @@ function atualizarConexao() {
   if (!acesso) return; // sem banco compartilhado, nada a avisar
   store.definirConexao(conectado);
   avisoConexao.hidden = conectado;
-  document.body.classList.toggle("sem-conexao", !conectado && abertoId !== exemploId);
+  document.body.classList.toggle("sem-conexao", !conectado && !exemplos.has(abertoId));
 }
 const vigia = criarVigiaDeConexao({
   sondar: sondaDoSite(new URL("config.js", location.href).href),
@@ -173,6 +175,8 @@ async function verExemplo() {
   if (!exemplo) {
     exemplo = criarStore(criarBancoLocal());
     exemploId = await carregarExemplo(exemplo);
+    exemplos.add(exemploId);
+    exemplos.add(await carregarExemploDeQuadro(exemplo)); // passo 3.1: o Quadro de tarefas de exemplo, ao lado do Plano de Ação
   }
   await abrirEspaco(exemploId);
 }
@@ -187,7 +191,7 @@ async function abrirEspaco(id) {
   /* espaço restrito (ou institucional, sem login) que a pessoa não pode consultar (passo 2.2) */
   if (!daqui.podeVerEspaco(espaco)) { semAcesso(espaco); return true; }
   abertoId = id;
-  if (id !== exemploId) lembrar(id);
+  if (!exemplos.has(id)) lembrar(id);
   if (location.hash !== `#/espaco/${id}`) history.replaceState(null, "", `#/espaco/${id}`);
   pararEspaco();
   /* sem login, a tela esconde "Nova ação"; as demais gravações são recusadas com aviso */

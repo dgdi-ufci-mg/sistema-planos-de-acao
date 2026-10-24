@@ -13,6 +13,7 @@ import { estimativaLivre, normalizarCodigo } from "../acao.js";
 import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData } from "../planilha.js";
 import { avisar } from "./painel.js";
 import { usaEstimativas, usaDependencias, usaSimulacao } from "../modelos.js";
+import { termos } from "../vocabulario.js";
 import { nomeDoFluxo } from "../situacoes.js";
 import { usaEtiquetas, etiquetasDaAcao } from "../etiquetas.js";
 import { posicoesDaPrioridade } from "../prioridade.js";
@@ -35,7 +36,7 @@ export function colunasDaPlanilha(d) {
     /* revisão de 23/10/2026 (pedido do responsável): número e ação primeiro, parados à esquerda; o rótulo se chama "Ação" aqui */
     { chave: "numero", titulo: "Nº", largura: 3, fixa: true },
     d.usaCodigos && { chave: "codigo", titulo: "Código", largura: 6, fixa: true },
-    { chave: "rotulo", titulo: "Ação", largura: 16, fixa: true, obrigatoria: true },
+    { chave: "rotulo", titulo: termos(d.espaco).Acao, largura: 16, fixa: true, obrigatoria: true },
     d.usaFases && { chave: "fase", titulo: "Fase", largura: 9 },
     d.usaFases && { chave: "etapa", titulo: "Etapa", largura: 10 },
     campos.descricao !== false && { chave: "descricao", titulo: "Descrição", largura: 18 },
@@ -174,7 +175,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         `<option value="${esc(e.id)}"${e.id === v ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</select></td>`;
     }
     const tipo = ["naoAntesDe", "dataLimite", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
-    const dica = !acao && coluna.chave === "rotulo" ? ' placeholder="Nova ação: escreva o nome"' : "";
+    const dica = !acao && coluna.chave === "rotulo" ? ` placeholder="Nova ${termos(d.espaco).acao}: escreva o nome"` : "";
     const inteiro = v && !tipo && v.length > 12 ? ` title="${esc(v)}"` : "";
     const vazia = tipo.includes("date") && !v ? " data-vazia" : ""; // data vazia: sem a máscara dd/mm/aaaa até receber o cursor
     return `${td}<input${tipo} ${comum} value="${esc(v)}" data-original="${esc(v)}"${dica}${inteiro}${vazia}${coluna.chave === "concluidaEm" ? ` max="${hoje}"` : ""}></td>`;

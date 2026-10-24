@@ -7,6 +7,7 @@ import { NOME, INSTITUICAO } from "../identidade.js";
 import { ICONES } from "../icones.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
 import { modeloHtml, ligarModelo, lerModelo } from "./modelo-espaco.js";
+import { abrirSuave, fecharSuave } from "./movimento.js";
 
 const hojeIso = () => {
   const d = new Date();
@@ -47,7 +48,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
           <input name="nome" required maxlength="120" placeholder="Por exemplo: Implantação do novo sistema acadêmico"></label>
         ${tipoHtml()}
         ${modeloHtml()}
-        <div class="campos-lado-a-lado">
+        <div class="campos-lado-a-lado" data-datas-espaco>
           <label class="campo"><span>Início</span><input name="inicio" type="date" required value="${hojeIso()}"></label>
           <label class="campo"><span>Prazo final <small>(opcional)</small></span><input name="prazoFinal" type="date"></label>
         </div>
@@ -84,6 +85,8 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
     /* tipo do espaço (passo 2.4a): no Projeto, nada de Programa nem aprovação */
     const tipo = Object.fromEntries(Object.entries(lerTipo(evento.target)).filter(([, v]) => v != null));
     const dados = { nome: f.nome, inicio: f.inicio, prazoFinal: f.prazoFinal, ...tipo, modelo: lerModelo(evento.target) };
+    /* Quadro de tarefas (passo 3.1): sem modelo nem datas do espaço; começa hoje */
+    if (tipo.tipo === "quadro") { delete dados.modelo; delete dados.prazoFinal; dados.inicio = hojeIso(); }
     if (!dados.nome.trim()) return mostrarErro("Informe o nome do espaço.");
     if (!dados.inicio) return mostrarErro("Informe a data de início.");
     if (dados.prazoFinal && dados.prazoFinal < dados.inicio) return mostrarErro("O prazo final não pode ser antes do início.");
@@ -96,5 +99,16 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
   });
   ligarTipo(formulario.querySelector("form"), { store }); // com o store, o Programa vem do catálogo da estratégia
   ligarModelo(formulario.querySelector("form"));
+  /* Quadro de tarefas: o modelo e as datas somem do formulário */
+  formulario.querySelector("form").addEventListener("change", (e) => {
+    if (e.target.name !== "tipo") return;
+    const quadro = e.target.value === "quadro";
+    for (const sel of ["[data-modelo-espaco]", "[data-datas-espaco]"]) {
+      const el = formulario.querySelector(sel);
+      el.getAnimations().forEach((a) => a.cancel());
+      if (quadro && !el.hidden) fecharSuave(el).then(() => { if (formulario.querySelector('[name="tipo"]:checked')?.value === "quadro") el.hidden = true; });
+      else if (!quadro && el.hidden) { el.hidden = false; abrirSuave(el); }
+    }
+  });
   if (comFormulario && podeCriar) abrirFormulario();
 }

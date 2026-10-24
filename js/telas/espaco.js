@@ -28,6 +28,7 @@ import { desenharCronograma } from "./cronograma.js";
 import { desenharRede } from "./rede.js";
 import { criarTelaDeEntregas } from "./entregas.js";
 import { tipoDe } from "../tipos.js";
+import { termos } from "../vocabulario.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -109,6 +110,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const planilha = criarPlanilha({ store, espacoId, hoje, usuario });
   /* entregas (passo 2.6): lidas ao abrir o espaço, ao entrar na visualização e depois de cada gravação nelas */
   const ehPlano = () => tipoDe(espaco) === "planoDeAcao";
+  /* Quadro de tarefas (passo 3.1): abre no quadro e cria tarefas em qualquer coluna, menos Concluídas */
+  const ehQuadro = () => tipoDe(espaco) === "quadro";
+  let modoInicial = false;
   let lendoEntregas = null;
   async function carregarEntregas() {
     if (!ehPlano()) { ui.entregas = null; return; }
@@ -183,8 +187,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const atrasadas = linhas.filter((l) => l.atrasada).length;
     /* "Barra" e "Mostrar até" à esquerda, alerta de atrasadas à direita, na mesma linha (22/10/2026, pedido do responsável) */
     const alerta = atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
-        ? `Mostrando só ${plural(atrasadas, "a ação atrasada", `as ${atrasadas} ações atrasadas`)}. <u>Mostrar todas</u>`
-        : `<b>${atrasadas} ${plural(atrasadas, "ação atrasada", "ações atrasadas")}.</b> <u>Ver</u>`}</span></button>` : "";
+        ? `Mostrando só ${plural(atrasadas, `a ${termos(espaco).acao} atrasada`, `as ${atrasadas} ${termos(espaco).acoes} atrasadas`)}. <u>Mostrar todas</u>`
+        : `<b>${atrasadas} ${plural(atrasadas, `${termos(espaco).acao} atrasada`, `${termos(espaco).acoes} atrasadas`)}.</b> <u>Ver</u>`}</span></button>` : "";
     const naLista = ui.modo === "lista";
     const comBarra = ui.modo === "quadro" || (naLista && colunas().barras);
     const comExibir = ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
@@ -230,7 +234,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     painelAcoes.innerHTML = `
         <div class="legenda" data-legenda hidden>${legendaHtml(store.podeGravar)}</div>
         <div class="lista" data-lista></div>
-        <button class="botao-flutuante so-celular" type="button" aria-label="Nova ação" data-nova>${ICONES.mais}</button>`;
+        <button class="botao-flutuante so-celular" type="button" aria-label="Nova ${termos(espaco).acao}" data-nova>${ICONES.mais}</button>`;
     ferramentas = barra;
     lista = painelAcoes.querySelector("[data-lista]");
     /* refaz quantas pessoas cabem em cada cartão quando a largura ou a altura da lista muda (janela, grupos abertos) */
@@ -255,6 +259,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   function desenhar() {
     /* o que o modelo do espaço não tem volta ao padrão (só nesta tela; a escolha guardada no aparelho fica) */
+    if (!modoInicial) { modoInicial = true; if (ehQuadro()) ui.modo = "quadro"; }
     if (!modos().some(([v]) => v === ui.modo)) ui.modo = "lista";
     if (!barras().some(([v]) => v === ui.barra)) ui.barra = "tempo";
     if (!ordens().some(([v]) => v === ui.ordem)) ui.ordem = "espaco";
@@ -576,7 +581,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <div class="topo-direita">
         ${atrasadas ? `<button class="chip-atrasadas so-computador" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
           title="${ui.situacao === "atrasada" ? "Mostrar todas as ações" : "Mostrar só as atrasadas"}">${ICONES.atrasada}${atrasadas} ${plural(atrasadas, "atrasada", "atrasadas")}</button>` : ""}
-        <button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ação</button>
+        <button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ${termos(espaco).acao}</button>
       </div>`;
     modoDesenhado = ui.modo;
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
@@ -634,9 +639,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /* ---------- criação rápida (passo 1.14a): nome e Enter, no fim de cada etapa e da coluna Liberadas ---------- */
   /** Sem filtros: com filtro, a ação criada poderia sumir da tela logo ao nascer. */
   const comRapida = () => store.podeGravar !== false && perm.criarAcao && ui.situacao === "todas" && !ui.responsavel && !ui.minhas && !etiquetaAtiva();
-  function rapidaHtml(chave, etapa = "", ondeTexto = "") {
-    return `<form class="linha-rapida" data-rapida="${esc(chave)}" data-etapa="${esc(etapa)}">${ICONES.mais}
-      <input name="rotulo" maxlength="120" autocomplete="off" placeholder="Adicionar ação${ondeTexto}" aria-label="Adicionar ação${ondeTexto}: digite o nome e tecle Enter"></form>`;
+  function rapidaHtml(chave, etapa = "", ondeTexto = "", situacao = "") {
+    const { acao } = termos(espaco);
+    return `<form class="linha-rapida" data-rapida="${esc(chave)}" data-etapa="${esc(etapa)}" data-situacao="${esc(situacao)}">${ICONES.mais}
+      <input name="rotulo" maxlength="120" autocomplete="off" placeholder="Adicionar ${acao}${ondeTexto}" aria-label="Adicionar ${acao}${ondeTexto}: digite o nome e tecle Enter"></form>`;
   }
   function ligarRapida() {
     lista.addEventListener("submit", async (e) => {
@@ -650,11 +656,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       form.rotulo.value = "";
       const naoAntesDe = dataMinimaPadrao(espaco, hoje);
       try {
-        await store.criarAcao(espacoId, {
+        const numero = await store.criarAcao(espacoId, {
           rotulo,
           ...(form.dataset.etapa ? { etapa: form.dataset.etapa } : {}),
           ...(naoAntesDe ? { naoAntesDe } : {}),
         });
+        /* Quadro de tarefas (passo 3.1): criada numa coluna personalizada, já fica nela */
+        if (form.dataset.situacao) await store.mudarSituacao(espacoId, numero, form.dataset.situacao);
       } catch (falha) {
         ui.rapidaTexto = rotulo;
         const atual = lista.querySelector(`[data-rapida="${CSS.escape(ui.rapida)}"] input`);
@@ -859,7 +867,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }
     const rapida = comRapida();
     if (ui.modo === "quadro") corpo = quadroHtml(ls);
-    else if (!ls.length && !rapida) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
+    else if (!ls.length && !rapida) corpo = `<p class="lista-vazia">Nenhuma ${termos(espaco).acao} com esses filtros.</p>`;
     else if (agrupado()) {
       const g = agrupar(ls, espaco.estrutura, { vazias: rapida });
       corpo = g.fases.map(({ fase, etapas, linhas: daFase }) => grupoHtml("fase", fase.id, fase.nome, daFase,
@@ -867,7 +875,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           daEtapa.map(linhaHtml).join("") + (rapida ? rapidaHtml(etapa.id, etapa.id, ` em ${etapa.nome}`) : ""))).join(""))).join("")
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
     } else {
-      corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ações. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ação".</p>`)
+      corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ${termos(espaco).acao}".</p>`)
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
     }
     lista.innerHTML = corpo;
@@ -975,12 +983,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       return `${chave === "concluida" ? novaColunaHtml() : ""}<section class="coluna" data-coluna="${esc(chave)}" aria-label="${esc(titulo)}">
         <header><span class="${classe}">${ICONES[ic]}</span>${nome}<span class="n">${nelas}</span>
           ${editavel && coluna.editando !== chave ? `<button type="button" class="tirar" data-retirar-coluna="${esc(chave)}" aria-label="Retirar a coluna ${esc(titulo)}" title="Retirar a coluna">${ICONES.fechar}</button>` : ""}</header>
-        ${coluna.retirando === chave ? `<div class="aviso-confirmar"><p>${nelas ? `${nelas} ${plural(nelas, "ação volta", "ações voltam")} para ${esc(nomeInicial(espaco))}.` : "A coluna está vazia."} Retirar “${esc(titulo)}”?</p>
+        ${coluna.retirando === chave ? `<div class="aviso-confirmar"><p>${nelas ? `${nelas} ${plural(nelas, `${termos(espaco).acao} volta`, `${termos(espaco).acoes} voltam`)} para ${esc(nomeInicial(espaco))}.` : "A coluna está vazia."} Retirar “${esc(titulo)}”?</p>
           <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-coluna="${esc(chave)}">Retirar</button>
           <button type="button" class="botao" data-cancelar-coluna>Cancelar</button></div></div>` : ""}
         ${dicas[chave] ? `<p class="tec so-computador">${dicas[chave]}</p>` : ""}
-        <div class="coluna-cartoes">${daColuna.map(cartaoHtml).join("") || `<p class="vazio">Nenhuma ação.</p>`}</div>
+        <div class="coluna-cartoes">${daColuna.map(cartaoHtml).join("") || `<p class="vazio">Nenhuma ${termos(espaco).acao}.</p>`}</div>
         ${chave === "inicial" && comRapida() ? rapidaHtml("quadro") : ""}
+        ${personalizada && ehQuadro() && comRapida() ? rapidaHtml(`quadro-${chave}`, "", "", chave) : ""}
       </section>`;
     }).join("")}</div>`;
   }
