@@ -8,7 +8,7 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "visibilidade", "administracaoAssumidaPor", "administracaoAssumidaEm", "nomeInicial", "situacoes", "etiquetas", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
+    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "visibilidade", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes", "nomeInicial", "situacoes", "etiquetas", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
@@ -21,6 +21,10 @@ export const CAMPOS = Object.freeze({
   aprovacao: ["identificacao", "link"],
   /** Situação personalizada do espaço, uma coluna do quadro (passo 2.7). */
   situacao: ["id", "nome"],
+  /** Nomeação de administrador num espaço órfão, pelo Administrador do Sistema (passo 2.3). */
+  nomeacao: ["email", "por", "em"],
+  /** Administradores do Sistema (passo 2.3): documento sistema/administradores, editado só no console. */
+  administradoresDoSistema: ["emails"],
   /** Acesso de um e-mail ao espaço (passo 2.1): o papel e o responsável ligado ao e-mail. */
   acesso: ["papel", "responsavel"],
   /** Etiqueta do catálogo do espaço (passo 2.10a): a ação guarda só o id. */

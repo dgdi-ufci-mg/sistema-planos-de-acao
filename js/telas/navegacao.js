@@ -124,19 +124,26 @@ export function mostrarNavegacao(opcoes) {
 
   /* espaços agrupados por tipo, com o nome do tipo no plural, só os tipos que existem (passo 2.4a);
      sem espaço nenhum, o grupo único "Espaços" */
-  const grupos = espacos.length ? agruparPorTipo(espacos) : [{ titulo: "Espaços", espacos: [] }];
-  document.querySelector(".lateral").innerHTML = `
-    <div class="lateral-conta">${contaHtml}</div>
-    <nav class="lateral-espacos" aria-label="Espaços">
-      ${grupos.map((g) => `<h2 class="lateral-rotulo">${g.titulo}</h2>
-      <ul>${g.espacos.map((e) => `<li class="espaco-item${e.id === abertoId ? " atual" : ""}">
+  /* encerrados (passo 2.3): saem da lista principal e ficam num grupo recolhido no fim (decisão do responsável, 24/10/2026) */
+  const ativos = espacos.filter((e) => !e.encerradoEm);
+  const encerrados = espacos.filter((e) => e.encerradoEm);
+  const grupos = ativos.length ? agruparPorTipo(ativos) : [{ titulo: "Espaços", espacos: [] }];
+  const itemHtml = (e) => `<li class="espaco-item${e.id === abertoId ? " atual" : ""}">
           ${e.id === abertoId
             /* o espaço aberto não é botão: clicar nele não faria nada */
             ? `<span class="espaco-nome" aria-current="page">${esc(e.nome)}</span>`
             : `<button type="button" class="espaco-nome" data-espaco="${esc(e.id)}">${esc(e.nome)}</button>`}
           ${podeConfigurar(e.id) ? `<button type="button" class="espaco-configurar" data-configurar="${esc(e.id)}" aria-label="Configurar ${esc(e.nome)}" title="Configurar este espaço">${ICONES.engrenagem}</button>` : ""}
-        </li>`).join("")}</ul>`).join("")}
+        </li>`;
+  document.querySelector(".lateral").innerHTML = `
+    <div class="lateral-conta">${contaHtml}</div>
+    <nav class="lateral-espacos" aria-label="Espaços">
+      ${grupos.map((g) => `<h2 class="lateral-rotulo">${g.titulo}</h2>
+      <ul>${g.espacos.map(itemHtml).join("")}</ul>`).join("")}
       ${espacos.length ? "" : `<p class="vazio">${!usuario && comLogin ? "Entre com seu e-mail e senha para ver os seus espaços." : "Nenhum espaço seu ainda."}</p>`}
+      ${encerrados.length ? `<details class="lateral-encerrados"${encerrados.some((e) => e.id === abertoId) ? " open" : ""}>
+        <summary class="lateral-rotulo">Encerrados <span class="n">${encerrados.length}</span></summary>
+        <ul>${encerrados.map(itemHtml).join("")}</ul></details>` : ""}
       ${podeCriar ? `<button type="button" class="lateral-acao" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}
       ${opcoes.aoConsulta ? `<button type="button" class="lateral-acao" data-item="consulta" title="Espaços públicos e institucionais de que você não participa">${ICONES.olho}Espaços abertos à consulta${opcoes.nConsulta ? ` <span class="n">${opcoes.nConsulta}</span>` : ""}</button>` : ""}
     </nav>

@@ -12,6 +12,7 @@
  *   espacos/{id}/comentarios/{id}   comentários das ações (seção 4.2.3), nunca apagados
  *   espacos/{id}/retratos/{id}      retrato (seção 4.4): cabeçalho; as ações em .../acoes/{numero}
  *   sistema/calendario              calendário geral
+ *   sistema/administradores         e-mails dos Administradores do Sistema (passo 2.3), editado só no console
  *
  * Recebe o Firestore já iniciado (`db`, API compat), para os testes
  * poderem usar um Firestore falso, em memória (`testes/firebase-falso.js`).
@@ -291,6 +292,11 @@ export function criarBancoFirestore(db) {
     },
     async gravarCalendarioGeral(dados) {
       await calendarioRef().set(copia(dados));
+    },
+    /** Administradores do Sistema (passo 2.3): sistema/administradores, editado só no console do Firebase. */
+    async lerAdministradoresDoSistema() {
+      const s = await db.collection("sistema").doc("administradores").get();
+      return s.exists ? s.data() : null;
     },
 
     // --- tempo real ---

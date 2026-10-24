@@ -236,7 +236,13 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       </details>
 
       <p class="tec">A cópia de segurança de todos os espaços, e a restauração dela, ficam em "Configurar o sistema".</p>
-      ${adm ? '<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>' : ""}`;
+      ${adm ? `<div class="zona-encerrar">
+        ${encerrando ? `<div class="aviso-confirmar"><p>Encerrar o espaço? Ele fica só para consulta, para todos, sai da lista principal (vai para "Encerrados", no fim da barra lateral) e continua acessível. Um administrador pode reabri-lo depois.</p>
+          <div class="botoes"><button class="botao principal" type="button" data-confirmar-encerrar>Encerrar</button><button class="botao" type="button" data-cancelar-encerrar>Cancelar</button></div></div>`
+        : `<button class="botao" type="button" data-encerrar>Encerrar este espaço</button>
+          <p class="tec">Quando o plano termina: fica só para consulta e sai da lista principal. Diferente de excluir.</p>`}
+      </div>
+      <div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>` : ""}`;
   }
 
   /**
@@ -247,6 +253,11 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
    * - os demais: o próprio papel e o aviso de que só o administrador configura.
    */
   function acessoHtml(perm) {
+    if (perm.encerrado) {
+      return `<div class="aviso-papel encerrado">${ICONES.concluida}<span><b>Espaço encerrado</b> em ${dataBr(espaco.encerradoEm.slice(0, 10))}${espaco.encerradoPor ? ` por ${esc(espaco.encerradoPor)}` : ""}.
+        Fica só para consulta, inclusive a configuração. ${perm.reabrir ? "Para mudar algo, reabra." : "Só o administrador do espaço o reabre."}</span>
+        ${perm.reabrir && store.podeGravar ? `<button class="botao principal" type="button" data-reabrir>Reabrir o espaço</button>` : ""}</div>`;
+    }
     if (!store.podeGravar) return "";
     if (perm.livre) {
       return `<div class="aviso-papel">${ICONES.pessoa}<span><b>Este espaço ainda não tem administrador.</b> Enquanto isso, quem entra altera tudo.
@@ -280,8 +291,12 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
           <select data-papel-email="${esc(email)}" aria-label="Papel de ${esc(email)}">${opcoesPapel(a.papel)}</select>
           <button type="button" class="tirar" data-tirar-acesso="${esc(email)}" aria-label="Tirar o acesso de ${esc(email)}">${ICONES.fechar}</button></li>`).join("")}</ul>
         <p class="tec">Por exemplo, quem criou o espaço. Para aparecer nas ações, cadastre a pessoa como responsável com o mesmo e-mail.</p>` : ""}
+      ${espaco.nomeacoes?.length ? `<h4>Nomeações pelo Administrador do Sistema</h4>
+        <ul class="papeis-explicados">${espaco.nomeacoes.map((n) => `<li>${esc(n.email)}, nomeado por ${esc(n.por)} em ${dataBr(n.em.slice(0, 10))}</li>`).join("")}</ul>` : ""}
     </details>`;
   }
+  /** confirmação de "Encerrar este espaço" aberta (passo 2.3) */
+  let encerrando = false;
   /** Grava uma mudança de acesso e redesenha; na recusa (como tirar o último administrador), avisa. */
   async function gravarAcesso(operacao, mensagem) {
     try {
@@ -690,6 +705,11 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       return;
     }
     /* acesso ao espaço (passo 2.1) */
+    /* encerrar e reabrir (passo 2.3) */
+    if (t.dataset.encerrar != null) { encerrando = true; desenhar(); return; }
+    if (t.dataset.cancelarEncerrar != null) { encerrando = false; desenhar(); return; }
+    if (t.dataset.confirmarEncerrar != null) { encerrando = false; await gravarAcesso(() => store.encerrarEspaco(espacoId), "Espaço encerrado. Fica só para consulta."); return; }
+    if (t.dataset.reabrir != null) { await gravarAcesso(() => store.reabrirEspaco(espacoId), "Espaço reaberto."); return; }
     if (t.dataset.assumir != null) { await gravarAcesso(() => store.assumirAdministracao(espacoId), "Você agora é administrador deste espaço."); return; }
     if (t.dataset.tirarAcesso) { await gravarAcesso(() => store.definirPapel(espacoId, t.dataset.tirarAcesso, null), "Acesso retirado."); return; }
     /* etiquetas (passo 2.10a) */

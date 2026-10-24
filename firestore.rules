@@ -19,6 +19,10 @@
 // - comentários (passo 2.9): quem tem papel escreve em nome próprio (e-mail do login, em minúsculas); só o
 //   autor edita ou apaga (esconde), guardando as versões anteriores; o administrador do espaço também apaga;
 //   ninguém apaga do banco; apagado, não muda mais;
+// - espaço encerrado (passo 2.3): só leitura para todos; o administrador só reabre (apaga `encerradoEm`);
+// - Administrador do Sistema (passo 2.3): e-mails em sistema/administradores, documento editado só no console
+//   (em minúsculas); muda o calendário geral e nomeia um administrador num espaço órfão, com registro em
+//   `nomeacoes`; fora isso, não tem passe livre nos espaços;
 // - ninguém apaga documentos: a exclusão é lógica (passo 1.15); histórico e retratos só recebem registros novos;
 // - fora destes caminhos, nada.
 rules_version = '2';
@@ -37,6 +41,11 @@ service cloud.firestore {
     function papelNo(d) {
       return d.get('acessos', {}).get(eu(), {}).get('papel', '');
     }
+    // Administrador do Sistema (passo 2.3)
+    function adminSistema() {
+      let caminho = /databases/$(database)/documents/sistema/administradores;
+      return logado() && exists(caminho) && eu() in get(caminho).data.get('emails', []);
+    }
 
     match /espacos/{espacoId} {
       function esp() {
@@ -54,6 +63,10 @@ service cloud.firestore {
         let v = d.get('visibilidade', 'publica');
         return v == 'publica' || (logado() && (v == 'institucional' || livre(d) || papelNo(d) != ''));
       }
+      // espaço não encerrado (passo 2.3): só nele se grava conteúdo
+      function aberto() {
+        return esp().get('encerradoEm', null) == null;
+      }
       function membro() {
         return logado() && (livre(esp()) || papelNo(esp()) in ['administrador', 'usuario', 'leitor']);
       }
@@ -68,10 +81,28 @@ service cloud.firestore {
 
       allow read: if true;
       allow create: if logado() && request.resource.data.get('acessos', {}).get(eu(), {}).get('papel', '') == 'administrador';
+      // reabrir: o administrador só apaga o encerramento
+      function soReabrir() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['encerradoEm', 'encerradoPor', 'alteradoEm', 'alteradoPor'])
+          && request.resource.data.encerradoEm == null;
+      }
+      // espaço órfão: o Administrador do Sistema acrescenta uma nomeação em nome próprio e o administrador nomeado, e nada mais
+      function soNomeacao() {
+        let antes = resource.data.get('nomeacoes', []);
+        let depois = request.resource.data.nomeacoes;
+        let nova = depois[antes.size()];
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acessos', 'nomeacoes', 'alteradoEm', 'alteradoPor'])
+          && depois.size() == antes.size() + 1 && depois[0:antes.size()] == antes && nova.por == eu()
+          && request.resource.data.acessos.diff(resource.data.get('acessos', {})).affectedKeys().hasOnly([nova.email])
+          && request.resource.data.acessos[nova.email].papel == 'administrador';
+      }
       allow update: if logado() && (
-        livre(resource.data)
-        || papelNo(resource.data) == 'administrador'
-        || (papelNo(resource.data) == 'usuario' && soTonsEEtiquetas()));
+        (resource.data.get('encerradoEm', null) == null && (
+          livre(resource.data)
+          || papelNo(resource.data) == 'administrador'
+          || (papelNo(resource.data) == 'usuario' && soTonsEEtiquetas())))
+        || (resource.data.get('encerradoEm', null) != null && (livre(resource.data) || papelNo(resource.data) == 'administrador') && soReabrir())
+        || (adminSistema() && soNomeacao()));
 
       match /acoes/{numero} {
         function minha() {
@@ -83,33 +114,33 @@ service cloud.firestore {
             && request.resource.data.situacaoPersonalizada == null;
         }
         allow read: if podeVer();
-        allow create: if administra();
-        allow update: if administra()
+        allow create: if aberto() && administra();
+        allow update: if aberto() && (administra()
           || (logado() && papelNo(esp()) == 'usuario'
             && request.resource.data.get('excluidaEm', null) == resource.data.get('excluidaEm', null)
-            && (!esp().get('fechado', false) || minha() || soVoltaAInicial()));
+            && (!esp().get('fechado', false) || minha() || soVoltaAInicial())));
       }
       // responsáveis de cada espaço (passo 1.14b); o usuário cadastra só responsáveis sem login
       match /responsaveis/{responsavelId} {
         allow read: if podeVer();
-        allow create: if administra()
-          || (logado() && papelNo(esp()) == 'usuario' && request.resource.data.get('usuario', null) == null);
-        allow update: if administra();
+        allow create: if aberto() && (administra()
+          || (logado() && papelNo(esp()) == 'usuario' && request.resource.data.get('usuario', null) == null));
+        allow update: if aberto() && administra();
       }
       // histórico de alterações das ações (passo 1.16): só de acréscimo (sem update nem delete)
       match /historico/{registroId} {
         allow read: if podeVer();
-        allow create: if atua();
+        allow create: if aberto() && atua();
       }
       // comentários das ações (passo 2.9): nunca apagados do banco (documentação técnica, seção 4.2.3)
       match /comentarios/{comentarioId} {
         allow read: if podeVer();
-        allow create: if membro()
+        allow create: if aberto() && membro()
           && request.resource.data.autor == eu()
           && request.resource.data.id == comentarioId
           && request.resource.data.versoes.size() == 0
           && !('apagadoEm' in request.resource.data);
-        allow update: if (membro()
+        allow update: if aberto() && ((membro()
           && resource.data.autor == eu()
           && !('apagadoEm' in resource.data)
           && request.resource.data.id == resource.data.id
@@ -124,22 +155,27 @@ service cloud.firestore {
             && !('apagadoEm' in resource.data)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['apagadoEm', 'apagadoPor', 'apagadoComo'])
             && request.resource.data.apagadoComo == 'administrador'
-            && request.resource.data.apagadoPor == eu());
+            && request.resource.data.apagadoPor == eu()));
       }
       // retratos (passo 1.18): cabeçalho e ações, só leitura depois de criados
       match /retratos/{retratoId} {
         allow read: if podeVer();
-        allow create: if atua();
+        allow create: if aberto() && atua();
         match /acoes/{numero} {
           allow read: if podeVer();
-          allow create: if atua();
+          allow create: if aberto() && atua();
         }
       }
     }
-    // calendário geral: até o Administrador do Sistema existir, quem entrou altera
+    // calendário geral: só o Administrador do Sistema altera (passo 2.3)
     match /sistema/calendario {
       allow read: if true;
-      allow create, update: if logado();
+      allow create, update: if adminSistema();
+    }
+    // Administradores do Sistema (passo 2.3): lidos por quem entrou; gravados só no console do Firebase
+    match /sistema/administradores {
+      allow read: if logado();
+      allow write: if false;
     }
   }
 }

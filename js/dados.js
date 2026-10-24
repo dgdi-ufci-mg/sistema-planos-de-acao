@@ -15,7 +15,7 @@ import { problemaDoTipo } from "./tipos.js";
 import { problemaDoModelo, modeloDe } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
 import { chaveValida, planejarMovimento } from "./prioridade.js";
-import { podeVer, participa, problemaDaVisibilidade, permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
+import { encerrado, podeVer, participa, problemaDaVisibilidade, permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
 import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
 
 export { ErroDeDados };
@@ -28,7 +28,7 @@ export const SEMENTE_PADRAO = 20261014;
 const CODIGO_VALIDO = /^[A-Z0-9]{2,8}$/;
 
 /** Campos que não mudam depois de criados. */
-const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero", "modelo", "acessos", "administracaoAssumidaPor", "administracaoAssumidaEm"]; // acessos: por definirPapel e assumirAdministracao (passo 2.1) // modelo: fixo depois de criado (passo 2.4b) // tons e proximoNumero: o sistema cuida deles
+const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero", "modelo", "acessos", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes"]; // acessos: por definirPapel e assumirAdministracao (passo 2.1); encerramento e nomeações: operações próprias (passo 2.3) // modelo: fixo depois de criado (passo 2.4b) // tons e proximoNumero: o sistema cuida deles
 const FIXOS_DA_ACAO = ["numero", "criadaEm"];
 
 /** Código mnemônico: de 2 a 8 letras maiúsculas ou números, sem repetir no espaço. */
@@ -123,6 +123,7 @@ function validarEspaco(e, recusarDesconhecidos) {
   for (const a of Object.values(e.acessos ?? {})) recusarDesconhecidos(a ?? {}, "acesso"); // passo 2.1
   const acessos = problemaDosAcessos(e);
   if (acessos) throw new ErroDeDados(acessos.codigo, acessos.mensagem);
+  for (const n of e.nomeacoes ?? []) recusarDesconhecidos(n, "nomeacao"); // passo 2.3
   const visibilidade = problemaDaVisibilidade(e); // passo 2.2
   if (visibilidade) throw new ErroDeDados(visibilidade.codigo, visibilidade.mensagem);
   if (e.fechado != null && typeof e.fechado !== "boolean") throw new ErroDeDados("valor-invalido", "Aberto ou fechado: informe sim ou não.");
@@ -242,9 +243,11 @@ export function criarStore(banco, opcoes = {}) {
    * @param {"configurar"|"criarAcao"|"excluirAcao"|"priorizar"|"comentar"|"criarResponsavel"|"criarEtiqueta"|"salvarRetrato"|"atualizar"} permissao
    */
   async function exigir(espacoId, permissao, numero = null) {
-    if (!opcoes.exigirLogin) return; // só no banco compartilhado; no exemplo e no modo só na memória, uma pessoa só
     const espaco = await banco.lerEspaco(espacoId);
     if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+    /* encerrado (passo 2.3): só leitura para todos, também no exemplo; só reabrir */
+    if (encerrado(espaco) && permissao !== "reabrir") throw new ErroDeDados("espaco-encerrado", "Este espaço está encerrado: só consulta. Um administrador do espaço pode reabri-lo.");
+    if (!opcoes.exigirLogin) return; // papéis só no banco compartilhado; no exemplo e no modo só na memória, uma pessoa só
     const p = permissoes(espaco, usuario);
     const ok = permissao === "atualizar" ? p.atualizar(numero == null ? null : await banco.lerAcao(espacoId, numero)) : p[permissao];
     if (ok) return;
@@ -256,6 +259,7 @@ export function criarStore(banco, opcoes = {}) {
   }
   /** Grava campos do espaço, com a validação e o carimbo; sem conferir o papel (uso interno). */
   async function gravarEspaco(id, campos) {
+    recusarDesconhecidos(campos, "espaco");
     const atual = await banco.lerEspaco(id);
     if (!atual) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
     validarEspaco({ ...atual, ...campos }, recusarDesconhecidos);
@@ -352,7 +356,7 @@ export function criarStore(banco, opcoes = {}) {
     // --- papéis por espaço (passo 2.1; seção 16.3) ---
     /** O que quem está gravando pode fazer neste espaço (para a tela esconder o que não pode). */
     permissoesEm(espaco) {
-      if (!opcoes.exigirLogin) return { ...permissoes({}, "exemplo@local"), livre: false }; // exemplo e modo só na memória: tudo, sem papéis nem aviso
+      if (!opcoes.exigirLogin) return { ...permissoes({ encerradoEm: espaco?.encerradoEm }, "exemplo@local"), livre: false }; // exemplo e modo só na memória: tudo, sem papéis nem aviso (mas encerrado é só leitura)
       return permissoes(espaco, usuario);
     },
     /**
@@ -366,6 +370,47 @@ export function criarStore(banco, opcoes = {}) {
       if (!semAdministracao(espaco)) throw new ErroDeDados("ja-administrado", "Este espaço já tem administração.");
       const responsaveis = (await banco.listarResponsaveis(espacoId)).filter(ativo);
       await gravarEspaco(espacoId, { acessos: acessosAoAssumir(usuario, responsaveis), administracaoAssumidaPor: usuario, administracaoAssumidaEm: agora() });
+    },
+    // --- encerrar e reabrir; Administrador do Sistema e espaço órfão (passo 2.3; seção 16.3) ---
+    /** Encerra o espaço: fica só para leitura, sai da lista principal e continua acessível. */
+    async encerrarEspaco(espacoId) {
+      await exigir(espacoId, "configurar");
+      await gravarEspaco(espacoId, { encerradoEm: agora(), encerradoPor: usuario });
+    },
+    async reabrirEspaco(espacoId) {
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      if (!encerrado(espaco)) throw new ErroDeDados("nao-encerrado", "Este espaço não está encerrado.");
+      if (opcoes.exigirLogin && !permissoes(espaco, usuario).reabrir) throw new ErroDeDados("sem-permissao", "Só o administrador do espaço pode reabri-lo.");
+      await gravarEspaco(espacoId, { encerradoEm: null, encerradoPor: null });
+    },
+    /**
+     * Se quem está usando é Administrador do Sistema: o e-mail está em sistema/administradores, editado só
+     * no console do Firebase. Fora do banco compartilhado (exemplo, modo só na memória), sim.
+     */
+    async ehAdministradorDoSistema() {
+      if (!opcoes.exigirLogin) return true;
+      if (!usuario) return false;
+      const lista = (await banco.lerAdministradoresDoSistema())?.emails ?? [];
+      return lista.map(emailNormal).includes(emailNormal(usuario));
+    },
+    /**
+     * Espaço órfão (seção 16.3): o Administrador do Sistema nomeia um administrador do espaço, a única
+     * exceção à regra de que ele não tem passe livre. O sistema não sabe quando um administrador deixou de
+     * poder administrar (por exemplo, saiu da instituição): quem nomeia declara, e a nomeação fica registrada
+     * no espaço, para sempre, em `nomeacoes` (quem nomeou, quem foi nomeado e quando).
+     */
+    async nomearAdministrador(espacoId, email) {
+      if (!(await store.ehAdministradorDoSistema())) throw new ErroDeDados("sem-permissao", "Só o Administrador do Sistema nomeia administradores para espaços órfãos.");
+      const e = emailNormal(email);
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new ErroDeDados("login-invalido", "Informe o e-mail de login, como nome@ufci.edu.br.");
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      const ligado = (await banco.listarResponsaveis(espacoId)).find((r) => ativo(r) && r.usuario === e);
+      await gravarEspaco(espacoId, {
+        acessos: { ...(espaco.acessos ?? {}), [e]: { papel: "administrador", responsavel: ligado?.id ?? null } },
+        nomeacoes: [...(espaco.nomeacoes ?? []), { email: e, por: usuario, em: agora() }],
+      });
     },
     /** Muda o papel de um e-mail no espaço; null tira o acesso. O último administrador não sai. */
     async definirPapel(espacoId, email, papel) {
@@ -766,6 +811,8 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Grava a lista inteira de datas do calendário geral, em ordem de data. */
     async alterarCalendarioGeral(datasExcluidas) {
+      /* do Administrador do Sistema (passo 2.3; decisão do responsável, 24/10/2026): vale para todos os espaços */
+      if (!(await store.ehAdministradorDoSistema())) throw new ErroDeDados("sem-permissao", "Só o Administrador do Sistema muda o calendário geral.");
       validarDatasExcluidas(datasExcluidas, recusarDesconhecidos);
       const ordenadas = [...datasExcluidas].sort((a, b) => a.data.localeCompare(b.data));
       await banco.gravarCalendarioGeral({ datasExcluidas: ordenadas, alteradoEm: agora(), alteradoPor: usuario });
@@ -1123,7 +1170,7 @@ export function criarStore(banco, opcoes = {}) {
     "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao", "priorizar",
     /* faltavam (24/10/2026): sem eles, mudar a situação ou comentar sem conexão não dava o aviso de "sem conexão" */
     "mudarSituacao", "retirarSituacao", "comentar", "editarComentario", "apagarComentario",
-    "assumirAdministracao", "definirPapel"];
+    "assumirAdministracao", "definirPapel", "encerrarEspaco", "reabrirEspaco", "nomearAdministrador"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

@@ -31,6 +31,7 @@ export function criarBancoLocal() {
   const ouvintes = new Map();
   /** Calendário geral, o mesmo para todos os espaços. */
   let calendario = null;
+  let administradoresDoSistema = null;
   /** Histórico de alterações das ações (passo 1.16): espacoId → registros, só de acréscimo. */
   const historicoPorEspaco = new Map();
   /** Retratos (passo 1.18): espacoId → (id → {cabecalho, acoes}); só leitura depois de criados. */
@@ -290,6 +291,16 @@ export function criarBancoLocal() {
     async gravarCalendarioGeral(dados) {
       calendario = copia(dados);
       avisarTodos(); // vale para todos os espaços
+    },
+    /**
+     * Administradores do Sistema (passo 2.3): no Firebase, um documento editado só no console.
+     * Aqui, na memória, `gravarAdministradoresDoSistema` existe só para os testes.
+     */
+    async lerAdministradoresDoSistema() {
+      return administradoresDoSistema ? copia(administradoresDoSistema) : null;
+    },
+    async gravarAdministradoresDoSistema(dados) {
+      administradoresDoSistema = copia(dados);
     },
 
     // --- tempo real ---

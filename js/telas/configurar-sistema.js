@@ -2,8 +2,9 @@
  * Configurar o sistema (documentação técnica, seções 5.1 e 8.1): o calendário geral, com as datas sem
  * expediente que valem para todos os espaços, e a cópia de segurança de todos os espaços
  * (passo 1.19a). Aberto pelo menu lateral.
- * Até existirem os papéis (Fase 2), qualquer pessoa conectada pode editar; depois, só o
- * Administrador do Sistema.
+ * Desde o passo 2.3, o calendário geral é do Administrador do Sistema (e-mails em sistema/administradores,
+ * editado só no console do Firebase); os demais o consultam. O Administrador do Sistema vê também
+ * "Espaços e administradores", onde nomeia um administrador para um espaço órfão.
  */
 import { ligarSecoesSuaves } from "./movimento.js";
 import { esc } from "../formato.js";
@@ -14,6 +15,7 @@ import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
 import { baixarArquivo } from "./arquivos.js";
 import { NOME } from "../identidade.js";
 import { normalizar } from "../acao.js";
+import { administradores, nomeDaVisibilidade, visibilidadeDe, semAdministracao } from "../papeis.js";
 
 /**
  * @param {{store: object, hoje: string, aoRestaurar?: () => void, foco?: string}} opcoes
@@ -27,6 +29,10 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
   let novas = new Set(); // datas acrescentadas pelo botão, destacadas até salvar
   const corpo = abrirPainel("Configurar o sistema", "");
   ligarSecoesSuaves(corpo);
+  /* Administrador do Sistema (passo 2.3) */
+  const admSistema = await store.ehAdministradorDoSistema().catch(() => false);
+  let espacos = admSistema ? await store.listarEspacos().catch(() => []) : [];
+  let nomeando = null; // id do espaço com o formulário de nomeação aberto
 
   function desenhar() {
     const porAno = new Map();
@@ -40,23 +46,24 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
         <h3>Calendário geral</h3>
         <p class="tec">Feriados nacionais, recessos e outras datas sem expediente na instituição. Valem para todos os espaços,
           que podem acrescentar datas próprias (feriados locais) e desconsiderar alguma desta lista.</p>
-        <div class="feriados-ano">
+        ${admSistema ? "" : `<p class="aviso-papel">${ICONES.pessoa}<span>Só o Administrador do Sistema altera o calendário geral. Aqui você o consulta.</span></p>`}
+        ${admSistema ? `<div class="feriados-ano">
           <label class="campo"><span>Feriados nacionais de</span>
             <select data-ano>${[anoAtual - 1, anoAtual, anoAtual + 1, anoAtual + 2].map((a) => `<option${a === anoFeriados ? " selected" : ""}>${a}</option>`).join("")}</select></label>
           <button class="botao" type="button" data-feriados>${ICONES.mais}Acrescentar</button>
-        </div>
+        </div>` : ""}
         <form class="editor" data-salvar-calendario>
           ${[...porAno].sort(([a], [b]) => a.localeCompare(b)).map(([ano, itens]) => `<details class="ano-calendario"${novas.size || porAno.size === 1 || ano === String(anoFeriados) || ano === "Sem data" ? " open" : ""}>
             <summary>${esc(ano)} <span class="n">${itens.length}</span></summary>
             <div class="linhas-config">${itens.map(([d, i]) => `<div class="linha-config" data-linha-lista="${i}">
-              <input type="date" data-indice="${i}" data-campo="data" value="${esc(d.data ?? "")}" aria-label="Data">
-              <input data-indice="${i}" data-campo="motivo" value="${esc(d.motivo ?? "")}" placeholder="Motivo" aria-label="Motivo">
-              <button type="button" class="tirar" data-tirar="${i}" aria-label="Retirar a data">${ICONES.fechar}</button>
+              <input type="date" data-indice="${i}" data-campo="data" value="${esc(d.data ?? "")}" aria-label="Data"${admSistema ? "" : " disabled"}>
+              <input data-indice="${i}" data-campo="motivo" value="${esc(d.motivo ?? "")}" placeholder="Motivo" aria-label="Motivo"${admSistema ? "" : " disabled"}>
+              ${admSistema ? `<button type="button" class="tirar" data-tirar="${i}" aria-label="Retirar a data">${ICONES.fechar}</button>` : ""}
             </div>`).join("")}</div>
           </details>`).join("") || `<p class="vazio">Nenhuma data cadastrada.</p>`}
           ${novas.size ? `<p class="aviso">Datas sugeridas, destacadas acima. As marcadas com ⚠️ são pontes prováveis. Revise antes de salvar: confira, corrija e acrescente o que faltar, como recessos e pontos facultativos do ano.</p>` : ""}
           <p class="erro" data-erro hidden></p>
-          <div class="botoes"><button class="botao" type="button" data-acrescentar>${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar calendário</button>${AVISO_PENDENTE}</div>
+          ${admSistema ? `<div class="botoes"><button class="botao" type="button" data-acrescentar>${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar calendário</button>${AVISO_PENDENTE}</div>` : ""}
         </form>
       </section>
       <section class="config">
@@ -71,8 +78,35 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
           <input type="file" accept=".json,application/json" data-arquivo-copia hidden></div>
         ${store.podeGravar ? "" : `<p class="tec">Entre com seu e-mail e senha para restaurar.</p>`}
       </section>
-      <p class="tec">Outras configurações gerais, como usuários e permissões, chegam nas próximas fases.</p>`;
+      ${admSistema ? espacosHtml() : ""}
+      <p class="tec">Os Administradores do Sistema são definidos no console do Firebase (documento sistema/administradores).</p>`;
     marcar();
+  }
+
+  /**
+   * Espaços e administradores (passo 2.3), só para o Administrador do Sistema: cada espaço com os
+   * administradores dele e "Nomear administrador", para um espaço órfão. A nomeação fica registrada no espaço.
+   */
+  function espacosHtml() {
+    const ordenados = [...espacos].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+    return `<section class="config">
+      <h3>Espaços e administradores</h3>
+      <p class="tec">Use "Nomear administrador" só num espaço órfão, quando nenhum administrador dele pode mais administrá-lo (por exemplo,
+        saiu da instituição). A nomeação fica registrada no espaço, com o seu e-mail e a data, e os administradores dele a veem.
+        Nomear não dá a você papel no espaço.</p>
+      <ul class="espacos-sistema">${ordenados.map((e) => {
+        const adms = administradores(e);
+        return `<li>
+          <div><b>${esc(e.nome)}</b> <small class="tec">${esc(nomeDaVisibilidade(visibilidadeDe(e)))}${e.encerradoEm ? " · encerrado" : ""}</small></div>
+          <small>${semAdministracao(e) ? "Sem administração (quem tem login altera tudo, até alguém assumir)."
+            : adms.length ? `Administradores: ${adms.map(esc).join(", ")}` : "<b>Sem administrador.</b>"}</small>
+          ${semAdministracao(e) ? "" : nomeando === e.id ? `<form class="linha-config" data-nomear="${esc(e.id)}">
+              <input type="email" name="email" required placeholder="E-mail do novo administrador" aria-label="E-mail do novo administrador">
+              <button class="botao principal" type="submit">Nomear</button><button class="botao" type="button" data-cancelar-nomear>Cancelar</button></form>`
+            : `<button class="botao-texto" type="button" data-abrir-nomear="${esc(e.id)}">Nomear administrador</button>`}
+        </li>`;
+      }).join("") || `<li class="vazio">Nenhum espaço.</li>`}</ul>
+    </section>`;
   }
   /* ---------- restaurar (passo 1.19b) ---------- */
   async function escolherCopia() {
@@ -136,6 +170,8 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
     const t = e.target.closest("button");
     if (!t) return;
     if (t.matches("[data-copia]")) { baixarCopia(); return; }
+    if (t.dataset.abrirNomear) { nomeando = t.dataset.abrirNomear; desenhar(); corpo.querySelector("[data-nomear] input")?.focus(); return; }
+    if (t.matches("[data-cancelar-nomear]")) { nomeando = null; desenhar(); return; }
     if (t.matches("[data-restaurar]")) { escolherCopia(); return; }
     if (t.matches("[data-feriados]")) {
       const existentes = new Set(rascunho.map((d) => d.data));
@@ -156,6 +192,18 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
   });
   corpo.addEventListener("submit", async (e) => {
     e.preventDefault();
+    /* nomeação num espaço órfão (passo 2.3) */
+    if (e.target.dataset.nomear) {
+      const email = e.target.elements.email.value;
+      try {
+        await store.nomearAdministrador(e.target.dataset.nomear, email);
+        espacos = await store.listarEspacos();
+        nomeando = null;
+        desenhar();
+        avisar(`${email.trim().toLowerCase()} agora é administrador do espaço. A nomeação ficou registrada.`);
+      } catch (falha) { avisar(falha.message); }
+      return;
+    }
     const erro = corpo.querySelector("[data-erro]");
     try {
       await store.alterarCalendarioGeral(rascunho.map((d) => (d.motivo?.trim() ? { data: d.data, motivo: d.motivo.trim() } : { data: d.data })));

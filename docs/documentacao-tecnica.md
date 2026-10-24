@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 136 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 137 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -161,7 +161,8 @@ Regras complementares:
 - **O último administrador não sai:** o Store recusa a mudança de papel, a troca de e-mail ou a exclusão de responsável que deixaria o espaço sem administrador. O banco não confere isso (as regras do Firestore não percorrem o mapa); o espaço órfão é tratado no passo 2.3.
 - Ninguém apaga documentos do banco: a exclusão é lógica (lixeira, seção 4.7). Histórico e retratos só recebem registros novos.
 - Comentários: o autor é sempre o e-mail do login, em minúsculas; o autor edita guardando as versões anteriores (a lista só cresce, com o começo igual); apagado, o comentário não muda mais. A leitura é pública: um comentário "apagado" some da tela, mas continua legível por quem consultar o banco diretamente.
-- Calendário geral: quem tem login altera, até existir o Administrador do Sistema.
+- **Espaço encerrado** (passo 2.3): só leitura para todos, inclusive comentários e retratos; o administrador do espaço só reabre (apaga `encerradoEm`).
+- **Administrador do Sistema** (passo 2.3): os e-mails ficam no documento `sistema/administradores` (campo `emails`, em minúsculas), **editado só no console do Firebase**; todos com login o leem. Ele altera o calendário geral e nomeia um administrador num espaço órfão (acrescenta a si mesmo como autor em `nomeacoes` e um único e-mail como administrador em `acessos`). Fora isso, não tem passe livre nos espaços.
 - **Limitações conhecidas:** (0) a cópia de segurança só leva os espaços que quem a gera pode consultar; os restritos de que não participa ficam de fora (o arquivo diz quantos, em `omitidos`), até existir o Administrador do Sistema; (1) a restauração de uma cópia de segurança no Firebase só recria os espaços em que quem restaura é administrador, e não recria comentários de outras pessoas, nem os já editados ou apagados; para restaurar tudo, o administrador do Firebase precisa relaxar as regras no console durante a restauração e publicá-las de novo em seguida; (2) as regras do passo 2.1 não puderam ser executadas num emulador do Firestore durante o desenvolvimento (o ambiente não baixa o emulador); foram conferidas por leitura, contra a tabela acima, e precisam ser conferidas no uso logo depois de publicadas.
 
 Usuários são cadastrados pela importação de responsáveis (provisório; seção 8.6) ou pelo administrador no console do Firebase. **Obrigatório antes de qualquer uso oficial:** papéis por espaço (administrador, usuário, leitor), visibilidade e proteção da branch `main` (seção 12, passos 2.1 a 2.3 e 2.11). Ao mudar as regras, é preciso publicá-las no console e conferir que entraram em vigor antes de publicar o código que depende delas.
@@ -223,6 +224,9 @@ erDiagram
 | `fechado` | sim/não | não | Espaço fechado: cada Usuário atualiza só as ações em que é responsável (passo 2.1; seção 16.3). **Ausente: aberto** | `true` |
 | `administracaoAssumidaPor` | usuário | não | Quem assumiu a administração de um espaço sem administração (passo 2.1). Imutável | `ana@ufci.edu.br` |
 | `administracaoAssumidaEm` | momento | não | Quando a administração foi assumida. Imutável | |
+| `encerradoEm` | momento | não | Encerramento do espaço (passo 2.3; seção 16.3): só leitura para todos, fora da lista principal, ainda acessível. Vazio: aberto. Muda só por "Encerrar" e "Reabrir" | `2027-04-15T18:00:00.000Z` |
+| `encerradoPor` | usuário | não | Quem encerrou. Vazio ao reabrir | `ana@ufci.edu.br` |
+| `nomeacoes` | lista de nomeação (4.1.11) | não | Administradores nomeados pelo Administrador do Sistema num espaço órfão (passo 2.3), em ordem. Só cresce; mantida pelo sistema | |
 | `nomeInicial` | texto | não | Nome da situação inicial nos espaços sem dependências (seção 16.2; passo 2.7). **Ausente: "A fazer"**. Nos espaços com dependências, a inicial é sempre "Liberada" | `Para fazer` |
 | `situacoes` | lista de situação (4.1.8) | não | Situações personalizadas, na ordem das colunas do quadro, entre a inicial e Concluídas (passo 2.7) | |
 | `etiquetas` | lista de etiqueta (4.1.9) | não | Catálogo de etiquetas do espaço, na ordem de cadastro (passo 2.10a). Só aparece na tela com o campo opcional `etiquetas` ligado | |
@@ -358,6 +362,26 @@ Passo 2.1 (seção 16.3). A chave é o e-mail de login, em minúsculas. O papel 
 |---|---|---|---|---|
 | `papel` | texto: `administrador`, `usuario` ou `leitor` | sim | Administrador do espaço, Usuário ou Leitor (seção 16.3) | `usuario` |
 | `responsavel` | id | não | Responsável (4.5) cujo e-mail de login é a chave. Vazio: e-mail com papel sem cadastro de responsável, como o de quem criou o espaço. Cópia mantida pelo sistema, para as regras do banco conferirem, no espaço fechado, se a pessoa é responsável pela ação; no PostgreSQL, vira junção com a tabela de responsáveis | `3f2b…` |
+
+#### 4.1.11 Nomeação: cada item de `nomeacoes`
+
+Passo 2.3 (seção 16.3). O Administrador do Sistema não tem passe livre nos espaços; a única exceção é nomear um administrador para um espaço órfão. O sistema não sabe quando um administrador deixou de poder administrar (saiu da instituição, por exemplo): quem nomeia declara, e a nomeação fica registrada no espaço, para sempre, visível aos administradores dele.
+
+<!-- dicionario: nomeacao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `email` | usuário | sim | Quem foi nomeado administrador do espaço | `bia@ufci.edu.br` |
+| `por` | usuário | sim | Administrador do Sistema que nomeou | `wesley@ufci.edu.br` |
+| `em` | momento | sim | Quando | |
+
+#### 4.1.12 Administradores do Sistema: o documento `sistema/administradores`
+
+Passo 2.3. Um só documento, **editado só no console do Firebase** (decisão do responsável, 24/10/2026): o sistema lê, ninguém grava pela tela. Quem está na lista muda o calendário geral (4.1.5) e nomeia administradores para espaços órfãos (4.1.11). No sistema definitivo, vira um papel do login institucional.
+
+<!-- dicionario: administradoresDoSistema -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `emails` | lista de usuário | sim | E-mails de login dos Administradores do Sistema, em minúsculas | `["wesley@ufci.edu.br"]` |
 
 ### 4.2 Ação
 
@@ -634,6 +658,8 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Comentário (versões dentro dele) | `espacos/{id}/comentarios/{id}` | tabelas `comentario` e `comentario_versao`, com `espaco_id` e o número da ação |
 | Retrato | cabeçalho em `espacos/{id}/retratos/{id}`; ações em `espacos/{id}/retratos/{id}/acoes/{numero}` | tabelas `retrato`, `retrato_acao` |
 | Calendário geral | documento `sistema/calendario` | tabela `data_excluida_geral` |
+| Administradores do Sistema | documento `sistema/administradores` | papel no login institucional |
+| Nomeação | lista `nomeacoes` dentro do espaço | tabela `nomeacao`, com `espaco_id` |
 | Responsável (criado no sistema) | `espacos/{id}/responsaveis/{id}` | tabela `responsavel`, com `espaco_id` |
 
 Os nomes do Firebase passam a ser em português, porque a versão 2 usa um projeto novo (seção 3.3); os nomes da versão 1 (`projects`, `tasks`, `people`) não são usados. No PostgreSQL, as listas viram tabelas de ligação e as regras da seção 4.6 viram restrições do banco (seção 3.4).
@@ -653,7 +679,7 @@ Entram no dicionário, com tabela marcada e teste, no passo em que forem constru
 ### 5.1 Contagem do tempo
 
 - Prazos em **dias úteis**: de segunda a sexta, descontadas as datas excluídas, que vêm de dois cadastros (decisão do responsável, 21/10/2026):
-  - **Calendário geral**, cuidado pelo Administrador do Sistema em "Configurar o sistema" (menu do usuário): feriados nacionais, recessos e datas da instituição, que valem para todos os espaços. Um botão acrescenta as datas de um ano conforme a lista anual típica do MGI (feriados nacionais e pontos facultativos, inclusive os móveis: Carnaval, Quarta-feira de Cinzas, Paixão de Cristo, Corpus Christi; Dia do Servidor Público, vésperas de Natal e de Ano Novo), para revisão antes de salvar: a lista pode ser corrigida e completada. Os pontos facultativos de parte do dia entram como dia inteiro, por zelo com os prazos. As pontes prováveis (segunda-feira antes de feriado na terça; sexta-feira depois de feriado na quinta) entram com o motivo "⚠️ Ponte provável (ponto facultativo) — confira na portaria do MGI" (decisão do responsável, 21/10/2026). Os anos oferecidos vão do anterior a dois à frente do ano corrente. Até existirem os papéis (Fase 2), qualquer pessoa conectada pode editá-lo.
+  - **Calendário geral**, cuidado pelo Administrador do Sistema em "Configurar o sistema" (menu do usuário): feriados nacionais, recessos e datas da instituição, que valem para todos os espaços. Um botão acrescenta as datas de um ano conforme a lista anual típica do MGI (feriados nacionais e pontos facultativos, inclusive os móveis: Carnaval, Quarta-feira de Cinzas, Paixão de Cristo, Corpus Christi; Dia do Servidor Público, vésperas de Natal e de Ano Novo), para revisão antes de salvar: a lista pode ser corrigida e completada. Os pontos facultativos de parte do dia entram como dia inteiro, por zelo com os prazos. As pontes prováveis (segunda-feira antes de feriado na terça; sexta-feira depois de feriado na quinta) entram com o motivo "⚠️ Ponte provável (ponto facultativo) — confira na portaria do MGI" (decisão do responsável, 21/10/2026). Os anos oferecidos vão do anterior a dois à frente do ano corrente. Desde o passo 2.3, só o Administrador do Sistema o edita (4.1.12); os demais o consultam.
   - **Datas do espaço**, cuidadas pelo administrador do espaço em "Configurar o espaço": feriados locais e exclusões específicas, que complementam o calendário geral. Ali se vê também a lista geral, sem poder editá-la, e se pode **desconsiderar** uma data geral no espaço (por exemplo, um ponto facultativo em que a equipe trabalha).
   - Datas efetivas do espaço = calendário geral, menos as desconsideradas, mais as do espaço.
   - Nas listas editáveis (datas e documentos), o que ainda não foi salvo fica destacado, com o aviso "Alterações não salvas" junto do botão Salvar; ao salvar, volta à aparência normal.
@@ -879,6 +905,13 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 - **Configurar este espaço > Acesso ao espaço**, para o administrador: "Quem consulta", com Pública, Institucional e Restrita (grava ao escolher), antes de "Quem atualiza as ações".
 - **Cópia de segurança:** o aviso diz quantos espaços restritos ficaram de fora.
 
+**Encerrar e reabrir; Administrador do Sistema** (passo 2.3; seção 16.3):
+- **Encerrar:** em "Configurar este espaço", só para o administrador, "Encerrar este espaço", antes de "Excluir este espaço", com a explicação "Quando o plano termina: fica só para consulta e sai da lista principal. Diferente de excluir." e confirmação na própria seção.
+- **Encerrado:** no alto do espaço, em verde, "Espaço encerrado em dd/mm/aaaa por …: só consulta.", com **Reabrir** para o administrador. Tudo fica só para consulta, para todos: some o que grava (como no Leitor, seção 8, "Papéis"), inclusive comentar e salvar retratos. Em "Configurar este espaço", o mesmo aviso, com "Reabrir o espaço", e só as seções de consulta.
+- **Barra lateral:** o grupo **Encerrados**, recolhido, com o número, no fim da lista de espaços; abre sozinho quando o espaço aberto é um encerrado. Em "Espaços abertos à consulta", o encerrado aparece com "· encerrado".
+- **Configurar o sistema**, para quem não é Administrador do Sistema: o calendário geral só para consulta, com o aviso "Só o Administrador do Sistema altera o calendário geral". Para o Administrador do Sistema, o calendário editável e a seção **Espaços e administradores**: cada espaço com a visibilidade, os administradores (ou "Sem administração", ou "Sem administrador") e **Nomear administrador** (e-mail, Nomear, Cancelar), com a explicação de quando usar.
+- **Acesso ao espaço:** quando houver, a lista "Nomeações pelo Administrador do Sistema" (quem, por quem e quando).
+
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
 **Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
@@ -1070,7 +1103,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 2.1. ✔ Papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3). Feito em 24/10/2026. Decisões do responsável: o papel é escolhido na lista de responsáveis (cada pessoa com e-mail de login tem um; para dar só leitura a alguém, cadastra-se a pessoa como responsável, mesmo sem ações); os espaços antigos, como a PI², ganham administrador pelo botão "Assumir a administração" (o primeiro que clicar; os demais responsáveis com e-mail viram usuários), com registro de quem e quando; espaço novo começa aberto; o Leitor comenta. Dados: `acessos`, `fechado` e `administracaoAssumidaPor`/`Em` do espaço (4.1), entidade acesso (4.1.10). Regras em `js/papeis.js`, conferidas pelo Store (`exigir`) e pelo `firestore.rules` (seção 3.6). Telas: seção 8, "Papéis". Escolhas feitas sem consulta, por serem consequência das regras da seção 16.3: o usuário cria responsáveis sem login e etiquetas pela janela da ação, salva retratos e, no espaço fechado, não muda a prioridade da equipe; quem não tem papel só consulta; quem cria o espaço aparece em "Com papel, sem cadastro de responsável" até ser cadastrado como responsável; trocar o e-mail de um responsável leva o papel para o e-mail novo, e excluí-lo tira o acesso. Visibilidade (quem consulta) fica para o passo 2.2.
 2.2. ✔ Visibilidade: pública, institucional ou restrita. Feito em 24/10/2026. Decisões do responsável: espaço novo restrito (só quem tem papel, inclusive o Leitor); a PI² pública (os espaços sem o campo valem como públicos); a barra lateral mostra só os espaços de que a pessoa participa (tem papel, ou o espaço ainda não tem administração), e os públicos e institucionais dos outros ficam numa página própria, "Espaços abertos à consulta", que explica o que são; o cabeçalho do espaço continua legível no banco (seção 3.6), com a proteção completa como requisito do sistema definitivo. Dados: `visibilidade` do espaço (4.1). Regras em `js/papeis.js` (`podeVer`, `participa`) e no `firestore.rules` (leitura das subcoleções). Telas na seção 8 ("Visibilidade"). Escolhas feitas sem consulta: a escolha da visibilidade fica em "Acesso ao espaço", e não no formulário do novo espaço, para manter a criação curta; a cópia de segurança deixa de fora os espaços que não se pode consultar, avisando quantos.
-2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (espaço órfão).
+2.3. ✔ Encerrar e reabrir; regra do último administrador; telas mínimas de administração (espaço órfão). Feito em 24/10/2026. Decisões do responsável: o Administrador do Sistema é definido por uma lista de e-mails num documento do Firebase editado só no console (`sistema/administradores`, 4.1.12); o calendário geral passa a ser só dele; o espaço encerrado fica, para quem participa, num grupo "Encerrados", recolhido, no fim da barra lateral; no espaço encerrado, ninguém comenta. A regra do último administrador já valia desde o passo 2.1 (o Store recusa a mudança que deixaria o espaço sem administrador). Dados: `encerradoEm`, `encerradoPor` e `nomeacoes` do espaço (4.1, 4.1.11). Escolhas feitas sem consulta: o sistema não sabe quando um espaço está órfão (o administrador pode ter saído da instituição sem que nada mude no banco), então o Administrador do Sistema declara, nomeando, e a nomeação fica registrada para sempre e visível aos administradores do espaço; nomear não dá papel a quem nomeia; o encerrado também é só leitura no exemplo; encerrar não exige ainda o registro das entregas (seção 16.7), que chega no passo 2.6; excluir um espaço encerrado exige reabri-lo antes.
 2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1). No menu lateral, os espaços passam a ser agrupados por tipo, cada grupo com o nome do tipo no plural ("Planos de Ação", "Projetos", "Quadros de Tarefas"), só para os tipos que existirem; até lá, um grupo só, "Espaços" (decisão do responsável, 21/10/2026). Dividido em dois em 23/10/2026 (decisão do responsável):
 2.4a. ✔ Tipos de espaço. Feito em 23/10/2026: campos `tipo`, `programa` e `aprovacao` do espaço (seção 4.1, com 4.1.6); regras em `js/tipos.js`, com testes; escolha do tipo na criação e em "Configurar este espaço" (`js/telas/tipo-espaco.js`), em dois cartões com a explicação de cada tipo; no Plano de Ação, o Programa do PEI/PDI (texto livre até o passo 2.5) e o documento de aprovação (identificação obrigatória, link opcional); no Projeto, os dois são apagados. Os espaços que já existiam, como a PI², ficam como Projeto, sem gravação: o tipo ausente vale `projeto` (decisão do responsável). Menu lateral agrupado por tipo; sem espaço nenhum, o grupo "Espaços". Mudar o tipo em "Configurar este espaço" muda o grupo na hora.
 2.4b. ✔ Modelos prontos na criação (seção 16.1): "Cronograma estruturado", "Cronograma aberto" e "Personalizado". Inclui a data-limite opcional, antecipada do passo 2.10a (decisão do responsável, 23/10/2026). Decisões do responsável (23/10/2026): os prazos são por estimativa **ou** por data-limite, nunca os dois no mesmo espaço; o personalizado escolhe os prazos, as dependências e a simulação (só com estimativa); o modelo fica fixo depois de criado, a reavaliar (seção 14, item 5); no cronograma aberto, o indicador "Tempo restante" conta até a data-limite. Em partes:
@@ -1323,7 +1356,7 @@ O carimbo **Atrasada** continua independente das situações.
 
 ### 16.3 Papéis e visibilidade
 
-**Papéis e espaço aberto ou fechado: feitos no passo 2.1; visibilidade, no passo 2.2** (24/10/2026; seções 3.6, 4.1.10 e 12). Fica para o passo 2.3: encerrar e reabrir, último administrador e espaço órfão.
+**Papéis e espaço aberto ou fechado: feitos no passo 2.1; visibilidade, no passo 2.2; encerrar e reabrir, último administrador, Administrador do Sistema e espaço órfão, no passo 2.3** (24/10/2026; seções 3.6, 4.1.10 a 4.1.12 e 12). Fica para o passo 2.6: as exigências sobre as entregas ao encerrar (seção 16.7).
 
 - **Login institucional** (Identificação Única) quando houver o servidor da UFCI-MG. Todo usuário institucional pode criar espaços e é administrador dos espaços que cria.
 - **Papéis por espaço:** Administrador do espaço, Usuário do espaço, Leitor. Sem papel no espaço, a pessoa vê o espaço só se a visibilidade permitir.
@@ -1626,3 +1659,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 134 | Correção: na conferência da importação, "Atualiza:" passa a dizer "data-limite", e não o nome interno `dataLimite` (encontrado no passo 2.10a) |
 | 135 | Passo 2.1: papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado. Papel escolhido na lista de responsáveis; quem cria é administrador; "Assumir a administração" nos espaços antigos; o Store e as regras do banco (`firestore.rules`, a publicar no console) conferem as permissões; o administrador apaga comentários alheios. Dicionário: `acessos`, `fechado`, `administracaoAssumidaPor` e `administracaoAssumidaEm` do espaço (4.1), acesso (4.1.10) |
 | 136 | Passo 2.2: visibilidade do espaço (pública, institucional ou restrita; espaço novo restrito). Barra lateral só com os espaços de que a pessoa participa; página "Espaços abertos à consulta"; tela de sem acesso; escolha em "Acesso ao espaço"; leitura do conteúdo conforme a visibilidade no `firestore.rules` (a publicar no console); cópia de segurança sem os espaços que não se pode consultar. Dicionário: `visibilidade` do espaço (4.1) |
+| 137 | Passo 2.3: encerrar e reabrir o espaço (só leitura para todos, grupo "Encerrados" na barra lateral); Administrador do Sistema por lista de e-mails no console (`sistema/administradores`), dono do calendário geral, que nomeia administrador num espaço órfão, com registro; regras do banco correspondentes (a publicar no console). Dicionário: `encerradoEm`, `encerradoPor` e `nomeacoes` do espaço (4.1), nomeação (4.1.11), Administradores do Sistema (4.1.12) |

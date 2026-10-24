@@ -163,7 +163,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const comBarra = ui.modo === "quadro" || (naLista && colunas().barras);
     const comExibir = ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
     /* papéis (passo 2.1): espaço antigo sem administrador, ou quem vê sem poder alterar */
-    const papelAviso = !store.podeGravar ? ""
+    /* encerrado (passo 2.3): só consulta; o administrador reabre */
+    const quemEncerrou = espaco.encerradoPor ? responsaveis.find((r) => r.usuario === espaco.encerradoPor)?.nome ?? espaco.encerradoPor : "";
+    const papelAviso = perm.encerrado ? `<p class="aviso-papel encerrado">${ICONES.concluida}<span><b>Espaço encerrado</b> em ${dataBr(espaco.encerradoEm.slice(0, 10))}${quemEncerrou ? ` por ${esc(quemEncerrou)}` : ""}: só consulta.</span>
+        ${perm.reabrir && store.podeGravar ? `<button class="botao" type="button" data-reabrir>Reabrir</button>` : ""}</p>`
+      : !store.podeGravar ? ""
       : perm.livre ? `<p class="aviso-papel">${ICONES.pessoa}<span><b>Este espaço ainda não tem administrador.</b> Enquanto isso, quem entra altera tudo. Quem assumir passa a definir o papel de cada pessoa.</span>
           <button class="botao" type="button" data-assumir>Assumir a administração</button></p>`
       : perm.papel === "leitor" ? `<p class="aviso-papel">${ICONES.pessoa}<span>Você é <b>Leitor</b> neste espaço: consulta e comenta, sem alterar.</span></p>`
@@ -1173,6 +1177,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const t = e.target;
     if (t.closest("[data-editando]")) return; // clique dentro do campo em edição
     if (t.closest("[data-puxar]")) return; // o puxador da prioridade arrasta, não abre a ação
+    if (t.closest("[data-reabrir]")) {
+      return store.reabrirEspaco(espacoId).then(() => avisar("Espaço reaberto.")).catch((f) => avisar(f.message));
+    }
     if (t.closest("[data-assumir]")) {
       return store.assumirAdministracao(espacoId).then(() => avisar("Você agora é administrador deste espaço. Os responsáveis com e-mail viraram usuários.")).catch((f) => avisar(f.message));
     }

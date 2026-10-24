@@ -60,24 +60,29 @@ export const administradores = (espaco) => Object.entries(espaco?.acessos ?? {})
  * O que um e-mail pode fazer no espaço. Sem administração, quem tem login pode tudo (regra provisória).
  * @param {object} espaco
  * @param {string|null} email quem está gravando
- * @returns {{configurar: boolean, criarAcao: boolean, excluirAcao: boolean, priorizar: boolean, comentar: boolean,
+ * @returns {{reabrir: boolean, encerrado: boolean, configurar: boolean, criarAcao: boolean, excluirAcao: boolean, priorizar: boolean, comentar: boolean,
  *   criarResponsavel: boolean, criarEtiqueta: boolean, salvarRetrato: boolean, apagarComentarioAlheio: boolean,
  *   atualizar: (acao: object) => boolean, papel: string|null, livre: boolean}}
  */
+/** Espaço encerrado (passo 2.3): só leitura para todos, até um administrador reabrir. */
+export const encerrado = (espaco) => Boolean(espaco?.encerradoEm);
+
 export function permissoes(espaco, email) {
   const livre = Boolean(email) && semAdministracao(espaco);
   const acesso = acessoDe(espaco, email);
   const papel = livre ? null : acesso?.papel ?? null;
-  const adm = livre || papel === "administrador";
-  const usu = adm || papel === "usuario";
+  /* encerrado: ninguém altera nem comenta; o administrador só reabre (decisão do responsável, 24/10/2026) */
+  const fim = encerrado(espaco);
+  const adm = !fim && (livre || papel === "administrador");
+  const usu = adm || (!fim && papel === "usuario");
   return {
-    papel, livre,
+    papel, livre, encerrado: fim, reabrir: fim && (livre || papel === "administrador"),
     configurar: adm, criarAcao: adm, excluirAcao: adm, apagarComentarioAlheio: papel === "administrador",
     /* usuário reordena a prioridade só no espaço aberto: no fechado, mexeria na posição de ações de outros */
-    priorizar: adm || (papel === "usuario" && !fechado(espaco)),
+    priorizar: adm || (!fim && papel === "usuario" && !fechado(espaco)),
     criarResponsavel: usu, criarEtiqueta: usu, salvarRetrato: usu,
-    comentar: usu || papel === "leitor",
-    atualizar: (acao) => adm || (papel === "usuario" && (!fechado(espaco) || Boolean(acesso.responsavel && (acao?.responsaveis ?? []).includes(acesso.responsavel)))),
+    comentar: usu || (!fim && papel === "leitor"),
+    atualizar: (acao) => adm || (!fim && papel === "usuario" && (!fechado(espaco) || Boolean(acesso.responsavel && (acao?.responsaveis ?? []).includes(acesso.responsavel)))),
   };
 }
 

@@ -1440,3 +1440,17 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .sem-acesso { max-width: 560px; margin: 40px auto; }
 .sem-acesso p { margin: 8px 0 14px; }
 .lateral-acao .n { margin-left: auto; font-family: var(--f-dados); font-size: .75rem; color: var(--muted); }
+
+/* Administrador do Sistema (passo 2.3) */
+.espacos-sistema { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.espacos-sistema li { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--grid); border-radius: 8px; overflow-wrap: anywhere; }
+.espacos-sistema li .botao-texto { align-self: flex-start; }
+.lateral-encerrados > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+.lateral-encerrados > summary::-webkit-details-marker { display: none; }
+.lateral-encerrados > summary::before { content: "▸"; font-size: .8em; transition: transform var(--mov-rapido) var(--mov-curva); }
+.lateral-encerrados[open] > summary::before { transform: rotate(90deg); }
+.lateral-encerrados .n { font-family: var(--f-dados); font-size: .75rem; color: var(--muted); }
+.zona-encerrar { margin-top: 18px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.zona-encerrar .tec { margin: 0; }
+.aviso-papel.encerrado { background: var(--ok-soft); }
+.aviso-papel.encerrado > .icone { color: var(--ok-ink); }

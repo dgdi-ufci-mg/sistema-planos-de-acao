@@ -28,7 +28,7 @@ export function abrirConsulta({ espacos, comLogin, aoAbrir }) {
       ${achados.length ? agruparPorTipo(achados).map((g) => `<section class="grupo-consulta"><h3>${g.titulo}</h3>
         <ul class="lista-consulta">${g.espacos.map((e) => `<li><button type="button" class="item-consulta" data-abrir-consulta="${esc(e.id)}">
           <b>${esc(e.nome)}</b>
-          <small class="tec">${esc(nomeDaVisibilidade(visibilidadeDe(e)))}${e.programa ? ` · ${esc(e.programa)}` : ""}</small></button></li>`).join("")}</ul>
+          <small class="tec">${esc(nomeDaVisibilidade(visibilidadeDe(e)))}${e.encerradoEm ? " · encerrado" : ""}${e.programa ? ` · ${esc(e.programa)}` : ""}</small></button></li>`).join("")}</ul>
       </section>`).join("") : `<p class="vazio">${texto ? "Nenhum espaço com essa busca." : "Nenhum espaço aberto à consulta por enquanto."}</p>`}`;
     const busca = corpo.querySelector("[data-busca-consulta]");
     if (busca && document.activeElement !== busca && texto) { busca.focus(); busca.setSelectionRange(texto.length, texto.length); }
