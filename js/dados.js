@@ -1484,6 +1484,26 @@ export function criarStore(banco, opcoes = {}) {
      * num formato próprio, independente do banco (seção 3.3, "A cópia de segurança é a ponte").
      * Só leitura. Formato documentado em `docs/registro-de-execucao.md` (passo 1.19a).
      */
+    /**
+     * Dados para a extração personalizada (passo 2.10; seção 16.6): dos espaços escolhidos que quem está usando
+     * pode consultar, as ações ativas, todos os responsáveis (para os nomes no histórico), o histórico (se pedido)
+     * e, nos Planos de Ação, as entregas ativas e os registros de alcance. Só leitura.
+     * @param {string[]} ids
+     * @param {{historico?: boolean}} [opcoesDaExtracao]
+     */
+    async dadosParaExtracao(ids, { historico = false } = {}) {
+      const espacos = (await banco.listarEspacos()).filter((e) => ativo(e) && ids.includes(e.id) && store.podeVerEspaco(e));
+      return Promise.all(espacos.map(async (espaco) => {
+        const plano = tipoDe(espaco) === "planoDeAcao";
+        return {
+          espaco,
+          acoes: (await banco.listarAcoes(espaco.id)).filter(ativa),
+          responsaveis: await banco.listarResponsaveis(espaco.id),
+          ...(historico ? { historico: await banco.listarHistoricoDoEspaco(espaco.id) } : {}),
+          ...(plano ? { entregas: entregasAtivas(await banco.listarDoEspaco(espaco.id, "entregas")), alcances: await banco.listarDoEspaco(espaco.id, "alcances") } : {}),
+        };
+      }));
+    },
     /** Se quem está usando pode consultar o espaço (passo 2.2); fora do banco compartilhado, sempre. */
     podeVerEspaco(espaco) {
       return !opcoes.exigirLogin || podeVer(espaco, usuario);
