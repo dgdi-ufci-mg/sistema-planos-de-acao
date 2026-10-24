@@ -277,7 +277,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   /* ---------- importar de planilha (passo 1.19b) ---------- */
   let plano = null;
   const NOMES_DOS_CAMPOS = { rotulo: "nome", codigo: "código", descricao: "descrição", etapa: "etapa", naoAntesDe: "“não começa antes de”",
-    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências", etiquetas: "etiquetas", justificativa: "justificativa", local: "local" };
+    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências", etiquetas: "etiquetas", justificativa: "justificativa", local: "local", dataLimite: "data-limite" };
   function conferirImportacao() {
     const texto = corpo.querySelector("[data-importar-texto]").value;
     const modo = corpo.querySelector('[name="modo-importar"]:checked').value;

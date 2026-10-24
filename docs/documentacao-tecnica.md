@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 133 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 134 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1578,3 +1578,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 131 | Passo 2.10a, parte 3: justificativa e local da ação. Dois campos opcionais, campos na janela da ação, colunas na planilha, na importação e na exportação, registro no histórico. Dicionário: `justificativa` e `local` dos campos opcionais (4.1.4) e da ação (4.2) |
 | 132 | Passo 2.10a, parte 4: prioridade da equipe. Campo opcional, ordenação "Prioridade da equipe" com puxador (mouse, dedo e setas), chave fracionária (seção 5.8, nova), coluna na planilha e na exportação, registro no histórico. Dicionário: `prioridade` dos campos opcionais (4.1.4) e `posicaoPrioridade` da ação (4.2). Passo 2.10a concluído |
 | 133 | Correção: mudar e retirar situações e escrever, editar e apagar comentários passam pela mesma recusa das demais gravações sem conexão ou sem login. Antes, sem conexão, essas operações não davam o aviso "Sem conexão com a internet" (encontrado no passo 2.10a) |
+| 134 | Correção: na conferência da importação, "Atualiza:" passa a dizer "data-limite", e não o nome interno `dataLimite` (encontrado no passo 2.10a) |
