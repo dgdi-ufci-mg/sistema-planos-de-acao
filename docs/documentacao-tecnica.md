@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 148 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 149 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1023,10 +1023,13 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 
 **Situações** (passo 2.7): a inicial ("Liberada", ou "A fazer" e renomeável sem dependências), as personalizadas do espaço (colunas do quadro, etiqueta na lista, lista de escolha na janela da ação) e Concluída; configuradas em "Configurar este espaço" > Situações ou no próprio quadro.
 
-**Colunas no quadro** (ajuste de 23/10/2026), só para quem pode gravar no espaço:
-- **"+ Nova coluna"**: uma coluna tracejada logo antes de Concluídas. O clique mostra um campo; Enter cria a situação personalizada no fim da lista (portanto, a nova coluna fica antes de Concluídas); Esc, ou sair do campo vazio, desiste.
-- **Renomear**: clique no título de uma coluna personalizada; Enter ou sair do campo grava; Esc desiste. Nome vazio ou igual ao atual não grava nada.
-- **Retirar**: o × no título abre um aviso dentro da coluna ("N ações voltam para <situação inicial>. Retirar 'X'?"), com Retirar e Cancelar. Retirar devolve as ações à situação inicial, como na configuração.
+**Colunas no quadro** (ajuste de 23/10/2026; revisto em 24/10/2026, depois de uma avaliação de usabilidade pedida pelo responsável, inspirada no Trello, no Planner, no Jira e no GitHub Projects), só para quem pode gravar no espaço:
+- **"+" para nova coluna:** uma faixa estreita (40 px), tracejada, com "+", logo antes de Concluídas, no lugar da antiga coluna inteira reservada ao botão. O clique a abre no lugar, como uma coluna curta: campo "Nome da coluna", **Criar** e **Cancelar**. Criar (ou Enter) acrescenta a situação personalizada e **deixa o campo aberto e vazio para a próxima**, como no Trello; Cancelar, Esc ou sair do campo vazio fecham. No celular, a faixa tem 44 px e o quadro rola até a coluna aberta.
+- **Menu "⋯" no título** de cada coluna personalizada, no lugar do × que ficava sempre à vista: **Renomear**, **Mover para a esquerda**, **Mover para a direita** (desativados nas pontas), **Nova coluna à direita** (abre o mesmo formulário logo depois dela; as seguintes também entram ali, em sequência) e **Retirar a coluna** (em vermelho, separado; abre o aviso de antes, dentro da coluna, com Retirar e Cancelar). O menu fica por cima do quadro, fecha com Esc, com um clique fora ou ao rolar.
+- **Arrastar o título** de uma coluna personalizada (no computador) muda a ordem entre as personalizadas: uma linha verde-azulada mostra de que lado ela vai entrar. No celular e pelo teclado, a ordem muda pelo menu.
+- **Renomear** também pelo clique no próprio título: Enter ou sair do campo grava; Esc desiste. Nome vazio ou igual ao atual não grava nada.
+- **Retirar** devolve as ações (ou tarefas) da coluna à situação inicial, como na configuração.
+- O quadro mantém a rolagem lateral a cada atualização, sem voltar para a primeira coluna.
 - As colunas fixas (Não liberadas, a inicial e Concluídas) não têm esses controles; o nome da inicial muda só na configuração.
 - Os nomes seguem as mesmas regras (até 40 caracteres, sem repetir, sem diferença entre maiúsculas e minúsculas); uma recusa aparece como aviso e o campo continua aberto com o texto digitado.
 
@@ -1903,3 +1906,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 146 | Passo 3.1: tipo Quadro de tarefas (colunas iniciais, "+ Adicionar tarefa" em cada coluna, abre no Quadro, sem fases, modelo fixo, palavra "tarefa") e exemplo de Quadro de tarefas. Dicionário: valor `quadro` em `tipo` do espaço (4.1) (seções 3.1, 4.1, 8, 12 e 13) |
 | 147 | Passo 3.2 (recorrência de tarefas) cancelado, por decisão do responsável (seções 12 e 16.8). Sem mudança no sistema |
 | 148 | Aplicativo instalável pelo navegador (primeiro passo da ideia da seção 13.2): manifesto, ícones, *service worker* sem cache, "Instalar como aplicativo" na barra lateral e no glossário; pendências da seção 13.1 atualizadas (seções 3.1, 8 e 13) |
+| 149 | Colunas do quadro revistas, a pedido do responsável, depois de avaliação de usabilidade: faixa estreita "+" com Criar e Cancelar e campo que continua aberto; menu "⋯" no título (renomear, mover, nova coluna à direita, retirar); arrastar o título para mudar a ordem; rolagem do quadro mantida (seção 8, "Colunas no quadro") |

@@ -1375,9 +1375,37 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .coluna header .tirar svg { width: 14px; height: 14px; }
 .coluna .nome-coluna { flex: 1; min-width: 0; font: inherit; font-size: .95rem; padding: 4px 6px; border: 1px solid var(--accent); border-radius: 6px; background: var(--surface); color: var(--ink); }
 .coluna .aviso-confirmar p { margin: 0 0 6px; }
-.coluna-nova { background: transparent; border-style: dashed; justify-content: flex-start; min-height: 0; }
-.coluna-nova [data-criar-coluna] { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
-.coluna-nova .tec { margin: 0; }
+/* coluna nova (revisão de 24/10/2026): faixa estreita com "+", que abre num formulário curto */
+.coluna-mais { align-self: stretch; min-height: 160px; width: 40px; border: 1px dashed var(--line); border-radius: 12px; background: transparent; color: var(--muted);
+  display: flex; align-items: flex-start; justify-content: center; padding-top: 12px; cursor: pointer; transition: color var(--mov-rapido), border-color var(--mov-rapido), background-color var(--mov-rapido); }
+.coluna-mais:hover, .coluna-mais:focus-visible { color: var(--accent-ink); border-color: var(--accent); background: var(--accent-soft); }
+.coluna-mais .icone { width: 18px; height: 18px; }
+.coluna-nova { min-height: 0; align-self: start; border-color: var(--accent); animation: coluna-entra var(--mov) var(--mov-curva); }
+@keyframes coluna-entra { from { opacity: 0; transform: translateX(-6px); } }
+@media (prefers-reduced-motion: reduce) { .coluna-nova { animation: none; } }
+.form-coluna { display: flex; flex-direction: column; gap: 8px; }
+.form-coluna .nome-coluna { flex: none; width: 100%; box-sizing: border-box; padding: 7px 9px; }
+.form-coluna .botoes { margin: 0; gap: 6px; }
+/* menu "⋯" da coluna */
+.menu-coluna-lugar { position: relative; display: inline-flex; }
+.coluna header .menu-coluna { background: none; border: 0; padding: 3px; color: var(--muted); cursor: pointer; display: inline-flex; border-radius: 6px; }
+.coluna header .menu-coluna:hover, .coluna header .menu-coluna[aria-expanded="true"] { color: var(--ink); background: var(--accent-soft); }
+.coluna header .menu-coluna svg { width: 16px; height: 16px; }
+.menu-da-coluna { position: absolute; top: calc(100% + 4px); right: 0; z-index: 20; min-width: 200px; display: flex; flex-direction: column; padding: 4px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--sombra); font: .9rem var(--f-texto); animation: coluna-entra var(--mov-rapido) var(--mov-curva); }
+.menu-da-coluna button { border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: 6px; cursor: pointer; color: var(--ink); font: inherit; }
+.menu-da-coluna button:hover:not(:disabled), .menu-da-coluna button:focus-visible { background: var(--accent-soft); }
+.menu-da-coluna button:disabled { color: var(--muted); opacity: .55; cursor: default; }
+.menu-da-coluna .perigo { color: var(--crit-ink); border-top: 1px solid var(--grid); border-radius: 0 0 6px 6px; margin-top: 2px; }
+/* arrastar o título da coluna */
+.coluna header.arrastavel { cursor: grab; }
+.coluna.arrastando-coluna { opacity: .5; }
+.coluna.antes { box-shadow: -4px 0 0 var(--accent); }
+.coluna.depois { box-shadow: 4px 0 0 var(--accent); }
+@media (max-width: 640px) {
+  .coluna-mais { flex: 0 0 44px; }
+  .coluna-nova { flex: 0 0 86%; }
+}
 
 /* etiquetas (passo 2.10a): rótulo pequeno no tom da cor (--tom-N), nos cartões, na lista e na janela da ação */
 .etq { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 0 7px; border-radius: 999px; background: var(--etq); color: var(--etq-texto);

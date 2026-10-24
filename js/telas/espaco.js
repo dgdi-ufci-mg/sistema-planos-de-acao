@@ -682,10 +682,21 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         coluna.criando = false; coluna.editando = null;
         return desenharLista();
       }
-      if (e.key !== "Enter") return;
+      if (e.key !== "Enter" || nova) return; // a coluna nova é um formulário: Enter envia
       e.preventDefault();
-      if (nova) criarColuna(nova.value);
-      else { nome.dataset.gravando = "1"; renomearColuna(nome.dataset.nomeColuna, nome.value); }
+      nome.dataset.gravando = "1";
+      renomearColuna(nome.dataset.nomeColuna, nome.value);
+    });
+    /* coluna nova (24/10/2026): "Criar" ou Enter */
+    lista.addEventListener("submit", (e) => {
+      const form = e.target.closest("[data-form-coluna]");
+      if (!form) return;
+      e.preventDefault();
+      criarColuna(form.querySelector("[data-nova-coluna]").value);
+    });
+    /* menu da coluna aberto: Esc fecha */
+    lista.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && coluna.menu) { e.stopPropagation(); coluna.menu = null; desenharLista(); lista.querySelector(`[data-menu-coluna]`)?.focus(); }
     });
     /* sair do campo do nome também grava (como na janela da ação); sair da coluna nova vazia desiste */
     lista.addEventListener("focusout", (e) => {
@@ -878,7 +889,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ${termos(espaco).acao}".</p>`)
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
     }
+    const rolagemDoQuadro = lista.querySelector(".quadro")?.scrollLeft ?? 0; // o redesenho não volta o quadro para a primeira coluna
     lista.innerHTML = corpo;
+    const quadro = lista.querySelector(".quadro");
+    if (quadro) quadro.scrollLeft = rolagemDoQuadro;
     lista.toggleAttribute("data-puxadores", ui.modo === "lista" && puxadores());
     const c = colunas();
     lista.style.setProperty("--colunas", ["18px", "minmax(0, 2.4fr)", c.descricao && "minmax(0, 2.4fr)",
@@ -886,6 +900,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ajustarDonos(lista);
     if (agrupado()) marcarNivel();
     restaurarRapida();
+    /* menu "⋯" da coluna: fixo na tela, para não ser cortado pela rolagem do quadro */
+    const menuColuna = ui.modo === "quadro" && coluna.menu ? lista.querySelector(".menu-da-coluna") : null;
+    if (menuColuna) {
+      const r = menuColuna.parentElement.querySelector("[data-menu-coluna]").getBoundingClientRect();
+      Object.assign(menuColuna.style, { position: "fixed", top: `${r.bottom + 4}px`, left: `${Math.max(8, Math.min(innerWidth - 216, r.right - 208))}px`, right: "auto" });
+      menuColuna.querySelector("button:not(:disabled)")?.focus({ preventScroll: true });
+      const fechar = () => { removeEventListener("scroll", fechar, true); if (coluna.menu) { coluna.menu = null; desenharLista(); } };
+      setTimeout(() => { if (menuColuna.isConnected) addEventListener("scroll", fechar, { capture: true, once: true }); }, 150); // depois da rolagem do próprio redesenho
+    }
+    /* coluna nova aberta: o cursor volta ao campo depois de cada redesenho (por exemplo, depois de criar uma) */
+    const campoNovaColuna = ui.modo === "quadro" && coluna.criando ? lista.querySelector("[data-nova-coluna]") : null;
+    if (campoNovaColuna && !lista.contains(document.activeElement)) {
+      campoNovaColuna.focus({ preventScroll: true });
+      /* rola só o quadro (e não a página) até a coluna nova, se ela estiver fora da vista */
+      const q = lista.querySelector(".quadro");
+      const c = campoNovaColuna.closest(".coluna").getBoundingClientRect();
+      const r = q.getBoundingClientRect();
+      const delta = c.right > r.right ? c.right - r.right + 16 : c.left < r.left ? c.left - r.left - 16 : 0;
+      if (delta) q.scrollBy({ left: delta, behavior: reduzirMovimento() ? "auto" : "smooth" });
+    }
     if (animar && !reduzirMovimento()) animarMudanca(antes);
   }
 
@@ -922,12 +956,33 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     </article>`;
   }
   /** "+ Nova coluna", antes de Concluídas: cria uma situação personalizada (passo 2.7) ali mesmo. */
-  function novaColunaHtml() {
-    if (!store.podeGravar || !perm.configurar) return "";
-    return `<section class="coluna coluna-nova" aria-label="Nova coluna">${coluna.criando
-      ? `<input class="nome-coluna" data-nova-coluna maxlength="40" placeholder="Nome da coluna" aria-label="Nome da nova coluna">
-         <p class="tec">Enter cria; Esc desiste. A coluna é uma situação do espaço, como “Em andamento”.</p>`
-      : `<button type="button" class="botao-texto" data-criar-coluna>${ICONES.mais}Nova coluna</button>`}</section>`;
+  /**
+   * Coluna nova (revisão de 24/10/2026, decisão do responsável, inspirada no Trello, no Planner e no Jira):
+   * fechada, é uma faixa estreita com "+", antes de Concluídas; aberta, um campo com "Criar" e ×, que continua
+   * aberto para a próxima coluna. Pelo menu "⋯" de uma coluna, abre logo à direita dela.
+   * @param {string|null} depois  id da coluna depois da qual a nova entra; null: no fim (antes de Concluídas)
+   */
+  const podeMexerNasColunas = () => store.podeGravar !== false && perm.configurar;
+  const criandoAqui = (depois) => (depois ? coluna.criando?.depois === depois : coluna.criando === true);
+  function novaColunaHtml(depois = null) {
+    if (!podeMexerNasColunas()) return "";
+    if (!criandoAqui(depois)) {
+      return depois ? "" : `<button type="button" class="coluna-mais" data-criar-coluna aria-label="Nova coluna" title="Nova coluna">${ICONES.mais}</button>`;
+    }
+    return `<section class="coluna coluna-nova" aria-label="Nova coluna"><form class="form-coluna" data-form-coluna>
+      <input class="nome-coluna" data-nova-coluna maxlength="40" placeholder="Nome da coluna" aria-label="Nome da nova coluna" autocomplete="off">
+      <div class="botoes"><button class="botao principal" type="submit">Criar</button>
+        <button type="button" class="botao" data-fechar-nova-coluna>Cancelar</button></div>
+    </form></section>`;
+  }
+  /** Muda a ordem das colunas personalizadas: a coluna `id` passa para a posição `para` (0 = primeira depois da inicial). */
+  async function moverColuna(id, para) {
+    const lista_ = [...personalizadasDe(espaco)];
+    const de = lista_.findIndex((x) => x.id === id);
+    if (de < 0 || para < 0 || para >= lista_.length || para === de) return;
+    const [x] = lista_.splice(de, 1);
+    lista_.splice(para, 0, x);
+    await gravarColunas({ situacoes: lista_ });
   }
   async function gravarColunas(mudanca, mensagem) {
     try {
@@ -941,10 +996,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
   async function criarColuna(nome) {
     const n = nome.trim();
-    if (!n) { coluna.criando = false; return desenharLista(); }
-    coluna.criando = false;
-    if (!(await gravarColunas({ situacoes: [...personalizadasDe(espaco), { id: novoIdDeSituacao(), nome: n }] }, `Coluna “${n}” criada.`))) {
-      coluna.criando = true;
+    if (!n) return lista.querySelector("[data-nova-coluna]")?.focus();
+    const atuais = personalizadasDe(espaco);
+    const depois = coluna.criando?.depois ?? null;
+    const id = novoIdDeSituacao();
+    const pos = depois ? atuais.findIndex((x) => x.id === depois) + 1 : atuais.length;
+    const novas = [...atuais.slice(0, pos), { id, nome: n }, ...atuais.slice(pos)];
+    /* o campo continua aberto para a próxima coluna, logo depois da que acabou de entrar (como no Trello) */
+    coluna.criando = depois ? { depois: id } : true;
+    if (!(await gravarColunas({ situacoes: novas }, `Coluna “${n}” criada.`))) {
+      coluna.criando = depois ? { depois } : true;
       desenharLista();
       const campo = lista.querySelector("[data-nova-coluna]");
       if (campo) { campo.value = n; campo.focus(); }
@@ -971,18 +1032,34 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* sem dependências, "Não liberadas" só aparece se alguma ação espera a data mínima */
     const colunas = colunasDoQuadro(espaco);
     if (!colunas.some((c) => c.chave === "naoLiberada") && ls.some((l) => l.fluxo === "naoLiberada")) colunas.unshift({ chave: "naoLiberada", titulo: "Não liberadas" });
-    return `<div class="quadro" style="--colunas-quadro:${colunas.length + (store.podeGravar && perm.configurar ? 1 : 0)}">${colunas.map(({ chave, titulo }) => {
+    const ordem = personalizadasDe(espaco).map((x) => x.id);
+    /* larguras: colunas iguais; a faixa do "+" estreita; a coluna nova aberta, fixa */
+    const larguras = colunas.flatMap(({ chave }) => [
+      ...(chave === "concluida" && podeMexerNasColunas() ? [criandoAqui(null) ? "248px" : "40px"] : []),
+      "minmax(220px, 1fr)",
+      ...(coluna.criando?.depois === chave ? ["248px"] : []),
+    ]);
+    return `<div class="quadro" style="grid-template-columns:${larguras.join(" ")}">${colunas.map(({ chave, titulo }) => {
       const daColuna = ls.filter((l) => l.fluxo === chave);
       const [classe, ic] = icone(chave);
       const personalizada = ![ "naoLiberada", "inicial", "concluida"].includes(chave);
-      const editavel = personalizada && store.podeGravar && perm.configurar;
+      const editavel = personalizada && podeMexerNasColunas();
+      const posicao = ordem.indexOf(chave);
       const nome = coluna.editando === chave
         ? `<input class="nome-coluna" data-nome-coluna="${esc(chave)}" maxlength="40" value="${esc(titulo)}" aria-label="Nome da coluna">`
         : editavel ? `<button type="button" class="titulo-coluna" data-renomear-coluna="${esc(chave)}" title="Clique para renomear">${esc(titulo)}</button>` : `<b>${esc(titulo)}</b>`;
       const nelas = daColuna.length;
+      /* ações da coluna num menu "⋯" (24/10/2026); no computador, o título também se arrasta para mudar a ordem */
+      const menu = editavel && coluna.editando !== chave ? `<span class="menu-coluna-lugar"><button type="button" class="menu-coluna" data-menu-coluna="${esc(chave)}" aria-haspopup="menu" aria-expanded="${coluna.menu === chave}" aria-label="Opções da coluna ${esc(titulo)}" title="Opções da coluna">${ICONES.opcoes}</button>
+        ${coluna.menu === chave ? `<div class="menu-da-coluna" role="menu">
+          <button type="button" role="menuitem" data-renomear-coluna="${esc(chave)}">Renomear</button>
+          <button type="button" role="menuitem" data-mover-coluna="${esc(chave)}" data-para="${posicao - 1}"${posicao <= 0 ? " disabled" : ""}>Mover para a esquerda</button>
+          <button type="button" role="menuitem" data-mover-coluna="${esc(chave)}" data-para="${posicao + 1}"${posicao >= ordem.length - 1 ? " disabled" : ""}>Mover para a direita</button>
+          <button type="button" role="menuitem" data-nova-coluna-depois="${esc(chave)}">Nova coluna à direita</button>
+          <button type="button" role="menuitem" class="perigo" data-retirar-coluna="${esc(chave)}">Retirar a coluna</button>
+        </div>` : ""}</span>` : "";
       return `${chave === "concluida" ? novaColunaHtml() : ""}<section class="coluna" data-coluna="${esc(chave)}" aria-label="${esc(titulo)}">
-        <header><span class="${classe}">${ICONES[ic]}</span>${nome}<span class="n">${nelas}</span>
-          ${editavel && coluna.editando !== chave ? `<button type="button" class="tirar" data-retirar-coluna="${esc(chave)}" aria-label="Retirar a coluna ${esc(titulo)}" title="Retirar a coluna">${ICONES.fechar}</button>` : ""}</header>
+        <header${editavel && coluna.editando !== chave ? ` draggable="true" data-arrastar-coluna="${esc(chave)}" class="arrastavel"` : ""}><span class="${classe}">${ICONES[ic]}</span>${nome}<span class="n">${nelas}</span>${menu}</header>
         ${coluna.retirando === chave ? `<div class="aviso-confirmar"><p>${nelas ? `${nelas} ${plural(nelas, `${termos(espaco).acao} volta`, `${termos(espaco).acoes} voltam`)} para ${esc(nomeInicial(espaco))}.` : "A coluna está vazia."} Retirar “${esc(titulo)}”?</p>
           <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-coluna="${esc(chave)}">Retirar</button>
           <button type="button" class="botao" data-cancelar-coluna>Cancelar</button></div></div>` : ""}
@@ -990,7 +1067,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <div class="coluna-cartoes">${daColuna.map(cartaoHtml).join("") || `<p class="vazio">Nenhuma ${termos(espaco).acao}.</p>`}</div>
         ${chave === "inicial" && comRapida() ? rapidaHtml("quadro") : ""}
         ${personalizada && ehQuadro() && comRapida() ? rapidaHtml(`quadro-${chave}`, "", "", chave) : ""}
-      </section>`;
+      </section>${personalizada ? novaColunaHtml(chave) : ""}`;
     }).join("")}</div>`;
   }
 
@@ -998,7 +1075,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
      para Concluídas registra a conclusão; de Concluídas para a inicial desfaz */
   let arrastada = null;
   /* colunas no próprio quadro (23/10/2026, pedido do responsável): criar, renomear e retirar ali mesmo */
-  const coluna = { editando: null, retirando: null, criando: false };
+  /** criando: false, true (no fim, antes de Concluídas) ou {depois: id}; menu: id da coluna com o "⋯" aberto */
+  const coluna = { editando: null, retirando: null, criando: false, menu: null };
   const novoIdDeSituacao = () => `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   const linhaDe = (numero) => linhas.find((l) => l.acao.numero === numero);
   const destinoValido = (coluna, numero) => {
@@ -1075,7 +1153,51 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       priorizar(todos[i], sem[j - 1] ?? null, sem[j] ?? null);
     });
   }
+  /* arrastar o título de uma coluna personalizada muda a ordem delas (24/10/2026; no computador) */
+  let colunaArrastada = null;
+  function ligarArrasteDeColunas() {
+    const alvoDe = (e) => {
+      const c = e.target.closest?.(".coluna[data-coluna]");
+      return c && colunaArrastada && personalizadasDe(espaco).some((x) => x.id === c.dataset.coluna) ? c : null;
+    };
+    const limpar = () => lista.querySelectorAll(".coluna.antes, .coluna.depois").forEach((c) => c.classList.remove("antes", "depois"));
+    lista.addEventListener("dragstart", (e) => {
+      const h = e.target.closest?.("[data-arrastar-coluna]");
+      if (!h || e.target.closest(".cartao-quadro")) return;
+      colunaArrastada = h.dataset.arrastarColuna;
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", `coluna:${colunaArrastada}`);
+      h.closest(".coluna").classList.add("arrastando-coluna");
+    });
+    lista.addEventListener("dragover", (e) => {
+      const c = alvoDe(e);
+      if (!c) return;
+      e.preventDefault();
+      limpar();
+      if (c.dataset.coluna === colunaArrastada) return;
+      const r = c.getBoundingClientRect();
+      c.classList.add(e.clientX < r.left + r.width / 2 ? "antes" : "depois");
+    });
+    lista.addEventListener("drop", (e) => {
+      const c = alvoDe(e);
+      if (!c) return;
+      e.preventDefault();
+      const ids = personalizadasDe(espaco).map((x) => x.id);
+      const antes = c.classList.contains("antes");
+      limpar();
+      if (c.dataset.coluna === colunaArrastada) return;
+      const semEla = ids.filter((id) => id !== colunaArrastada);
+      const pos = semEla.indexOf(c.dataset.coluna) + (antes ? 0 : 1);
+      moverColuna(colunaArrastada, pos);
+    });
+    lista.addEventListener("dragend", () => {
+      limpar();
+      lista.querySelector(".arrastando-coluna")?.classList.remove("arrastando-coluna");
+      colunaArrastada = null;
+    });
+  }
   function ligarArraste() {
+    ligarArrasteDeColunas();
     lista.addEventListener("dragstart", (e) => {
       const cartao = e.target.closest?.(".cartao-quadro");
       if (!cartao) return;
@@ -1248,7 +1370,17 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (resumoColunas) { ui.colunasAberto = !resumoColunas.parentElement.open; return; }
     if (t.closest("[data-nova]")) return abrirNova();
     /* colunas do quadro (23/10/2026) */
-    if (t.closest("[data-criar-coluna]")) { coluna.criando = true; desenharLista(); return lista.querySelector("[data-nova-coluna]")?.focus(); }
+    /* menu "⋯" da coluna: abre e fecha; um clique fora dele o fecha */
+    const botaoMenu = t.closest("[data-menu-coluna]");
+    if (botaoMenu) { coluna.menu = coluna.menu === botaoMenu.dataset.menuColuna ? null : botaoMenu.dataset.menuColuna; return desenharLista(); }
+    if (coluna.menu && !t.closest(".menu-da-coluna")) { coluna.menu = null; desenharLista(); }
+    if (t.closest(".menu-da-coluna")) coluna.menu = null;
+    if (t.closest("[data-criar-coluna]")) { coluna.criando = true; coluna.editando = null; return desenharLista(); } // o desenho põe o cursor no campo
+    const depoisDe = t.closest("[data-nova-coluna-depois]");
+    if (depoisDe) { coluna.criando = { depois: depoisDe.dataset.novaColunaDepois }; return desenharLista(); }
+    if (t.closest("[data-fechar-nova-coluna]")) { coluna.criando = false; return desenharLista(); }
+    const mover = t.closest("[data-mover-coluna]");
+    if (mover) { desenharLista(); return moverColuna(mover.dataset.moverColuna, Number(mover.dataset.para)); }
     const renomear = t.closest("[data-renomear-coluna]");
     if (renomear) {
       coluna.editando = renomear.dataset.renomearColuna;
@@ -1258,7 +1390,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       return;
     }
     const retirar = t.closest("[data-retirar-coluna]");
-    if (retirar) { coluna.retirando = retirar.dataset.retirarColuna; return desenharLista(); }
+    if (retirar) { coluna.retirando = retirar.dataset.retirarColuna; coluna.menu = null; return desenharLista(); }
     if (t.closest("[data-cancelar-coluna]")) { coluna.retirando = null; return desenharLista(); }
     const confirmar = t.closest("[data-confirmar-retirar-coluna]");
     if (confirmar) {
