@@ -33,10 +33,12 @@ const CAMPOS_OPCIONAIS = [
   ["notas", "Anotações", "Anotações formatadas de cada ação."],
   ["codigos", "Códigos das ações", "Códigos curtos, como LEV, para equipes que conversam por eles. Desligado, as ações aparecem só pelo nome."],
   ["etiquetas", "Etiquetas", "Marcas coloridas, como “Compras” ou “Urgente”, para agrupar e filtrar as ações."],
+  ["justificativa", "Justificativa", "Por que cada ação existe, como uma exigência legal ou um pedido da Direção."],
+  ["local", "Local", "Onde cada ação acontece, como um campus ou um setor."],
   ["documentos", "Documentos e links das ações", "Termos, pareceres e páginas ligados a cada ação, com a identificação no SIPAC/Protocolo ou o link."],
 ];
 /** Campos opcionais desligados por padrão (seção 4.1.4); os demais vêm ligados. */
-const DESLIGADOS_POR_PADRAO = new Set(["codigos", "etiquetas", "documentos"]);
+const DESLIGADOS_POR_PADRAO = new Set(["codigos", "etiquetas", "documentos", "justificativa", "local"]);
 const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[chave] === true : campos?.[chave] !== false);
 
 /** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void}} opcoes */
@@ -274,7 +276,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   /* ---------- importar de planilha (passo 1.19b) ---------- */
   let plano = null;
   const NOMES_DOS_CAMPOS = { rotulo: "nome", codigo: "código", descricao: "descrição", etapa: "etapa", naoAntesDe: "“não começa antes de”",
-    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências", etiquetas: "etiquetas" };
+    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências", etiquetas: "etiquetas", justificativa: "justificativa", local: "local" };
   function conferirImportacao() {
     const texto = corpo.querySelector("[data-importar-texto]").value;
     const modo = corpo.querySelector('[name="modo-importar"]:checked').value;

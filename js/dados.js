@@ -814,14 +814,20 @@ export function criarStore(banco, opcoes = {}) {
         }
         await store.alterarEspaco(espacoId, { etiquetas, camposOpcionais: { ...(espaco.camposOpcionais ?? {}), etiquetas: true } });
       }
+      /* justificativa e local (passo 2.10a): a coluna na planilha liga o campo opcional, como as etapas */
+      const ligar = ["justificativa", "local"].filter((c) => plano.linhas.some((l) => l.campos?.[c]));
+      if (ligar.length) {
+        const espaco = await store.lerEspaco(espacoId);
+        await store.alterarEspaco(espacoId, { camposOpcionais: { ...(espaco.camposOpcionais ?? {}), ...Object.fromEntries(ligar.map((c) => [c, true])) } });
+      }
       const etiquetaIds = (refs) => refs.map((r) => r.id ?? idDaEtiqueta[r.nova]).filter(Boolean);
       const numeroDaLinha = new Map();
       let criadas = 0;
       let atualizadas = 0;
       for (const l of plano.linhas) {
-        const { rotulo, codigo, descricao, etapa, naoAntesDe, dataLimite, responsaveis: resp, estimativa, etiquetas: etq } = l.campos;
+        const { rotulo, codigo, descricao, justificativa, local, etapa, naoAntesDe, dataLimite, responsaveis: resp, estimativa, etiquetas: etq } = l.campos;
         const comuns = {
-          ...(codigo ? { codigo } : {}), ...(descricao ? { descricao } : {}), ...(etapa ? { etapa: etapaId(etapa) } : {}),
+          ...(codigo ? { codigo } : {}), ...(descricao ? { descricao } : {}), ...(justificativa ? { justificativa } : {}), ...(local ? { local } : {}), ...(etapa ? { etapa: etapaId(etapa) } : {}),
           ...(naoAntesDe !== undefined ? { naoAntesDe } : {}), ...(dataLimite !== undefined ? { dataLimite } : {}), ...(resp ? { responsaveis: resp } : {}),
           ...(etq ? { etiquetas: etiquetaIds(etq) } : {}),
         };

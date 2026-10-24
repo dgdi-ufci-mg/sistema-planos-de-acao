@@ -47,6 +47,8 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const usaFases = opcionais.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
   const usaDescricao = opcionais.descricao !== false;
   const comEtiquetas = usaEtiquetas(espaco); // passo 2.10a: nomes separados por ";"
+  const comJustificativa = opcionais.justificativa === true; // passo 2.10a
+  const comLocal = opcionais.local === true;
   const comDocumentos = opcionais.documentos === true; // passo 2.10a: "nome (link ou identificação)", separados por ";"
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   const pessoa = new Map(responsaveis.map((r) => [r.id, r.sigla || r.nome]));
@@ -56,7 +58,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const comDependencias = usaDependencias(espaco);
   const comEstimativas = !usaDataLimite(espaco);
   const titulos = ["Número", ...(usaCodigos ? ["Código"] : []), ...(usaFases ? ["Fase", "Etapa"] : []), "Ação",
-    ...(usaDescricao ? ["Descrição"] : []), ...(comDependencias ? ["Depende de"] : []),
+    ...(usaDescricao ? ["Descrição"] : []), ...(comJustificativa ? ["Justificativa"] : []), ...(comLocal ? ["Local"] : []), ...(comDependencias ? ["Depende de"] : []),
     ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
     "Responsáveis", ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), "Situação", "Atrasada",
     ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
@@ -66,6 +68,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
     const [fase, etapa] = faseEEtapa.get(a.etapa) ?? ["", ""];
     return [a.numero, ...(usaCodigos ? [a.codigo ?? ""] : []), ...(usaFases ? [fase, etapa] : []), a.rotulo,
       ...(usaDescricao ? [a.descricao ?? ""] : []),
+      ...(comJustificativa ? [a.justificativa ?? ""] : []), ...(comLocal ? [a.local ?? ""] : []),
       ...(comDependencias ? [(a.dependeDe ?? []).map((d) => (porNumero.has(d) ? referencia(porNumero.get(d), usaCodigos) : d)).join("; ")] : []),
       ...(comEstimativas ? [numero(e?.o), numero(e?.m), numero(e?.p), e ? numero(duracaoPert(e)) : ""] : [a.dataLimite ? dataBr(a.dataLimite) : ""]),
       (a.responsaveis ?? []).map((id) => pessoa.get(id)).filter(Boolean).join("; "),

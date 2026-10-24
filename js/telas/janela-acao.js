@@ -284,6 +284,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (campo === "notas") return Boolean(acao.notas);
     if (campo === "checklist") return Boolean(acao.checklist?.length) || checklistAberto;
     if (campo === "etiquetas") return Boolean(acao.etiquetas?.length);
+    if (campo === "justificativa") return Boolean(acao.justificativa);
+    if (campo === "local") return Boolean(acao.local);
     if (campo === "documentos") return Boolean(acao.documentos?.length) || editandoDoc != null;
     return true;
   }
@@ -296,6 +298,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       store.podeGravar && ["checklist", "Checklist"],
       campos.notas !== false && ["notas", "Anotações"],
       d.usaCodigos && ["codigo", "Código"],
+      campos.justificativa === true && ["justificativa", "Justificativa"],
+      campos.local === true && ["local", "Local"],
       usaEtiquetas(d.espaco) && ["etiquetas", "Etiquetas"],
       campos.documentos === true && ["documentos", "Documentos e links"],
     ].filter(Boolean);
@@ -364,6 +368,15 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (campos.descricao !== false && visivel(acao, "descricao")) {
       partes.push(`<div class="campo-acao" data-campo="descricao">${rotuloHtml("descricao", "Descrição")}
         <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="O que é esta ação, em poucas linhas">${esc(acao.descricao ?? "")}</textarea></div>`);
+    }
+    /* justificativa e local, do 5W2H (passo 2.10a): textos simples, gravados ao sair do campo */
+    if (campos.justificativa === true && visivel(acao, "justificativa")) {
+      partes.push(`<div class="campo-acao" data-campo="justificativa">${rotuloHtml("justificativa", "Justificativa")}
+        <textarea class="cresce" rows="2" ${atributos("justificativa", acao.justificativa)} aria-label="Justificativa" placeholder="Por que esta ação existe">${esc(acao.justificativa ?? "")}</textarea></div>`);
+    }
+    if (campos.local === true && visivel(acao, "local")) {
+      partes.push(`<div class="campo-acao" data-campo="local">${rotuloHtml("local", "Local")}
+        <input maxlength="200" ${atributos("local", acao.local)} value="${esc(acao.local ?? "")}" aria-label="Local" placeholder="Onde a ação acontece"></div>`);
     }
     if (visivel(acao, "naoAntesDe")) {
       partes.push(`<div class="campo-acao" data-campo="naoAntesDe">${rotuloHtml("naoAntesDe", "Não começa antes de", "naoAntesDe")}
@@ -767,6 +780,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       codigo: () => store.alterarAcao(espacoId, numero, { codigo: normalizarCodigo(texto) || null }),
       etapa: () => store.alterarAcao(espacoId, numero, { etapa: texto || null }),
       descricao: () => store.alterarAcao(espacoId, numero, { descricao: texto.trim() }),
+      justificativa: () => store.alterarAcao(espacoId, numero, { justificativa: texto.trim() }),
+      local: () => store.alterarAcao(espacoId, numero, { local: texto.trim().replace(/\s+/g, " ") }),
       naoAntesDe: () => store.alterarAcao(espacoId, numero, { naoAntesDe: texto || null }),
       dataLimite: () => store.alterarAcao(espacoId, numero, { dataLimite: texto || null }),
       estimativa: () => { const t = lerTres(); return store.corrigirEstimativa(espacoId, numero, { o: Number(t.o), m: Number(t.m), p: Number(t.p) }); },

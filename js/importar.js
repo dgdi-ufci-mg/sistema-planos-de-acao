@@ -23,6 +23,8 @@ const TITULOS = {
   etapa: ["etapa"],
   rotulo: ["acao", "rotulo", "nome", "nome da acao"],
   descricao: ["descricao"],
+  justificativa: ["justificativa", "por que", "porque"],
+  local: ["local", "onde"],
   dependeDe: ["depende de", "dependencias", "anteriores", "predecessores", "predecessoras", "predecessor", "depende"],
   o: ["otimista", "melhor caso"],
   m: ["mais provavel"],
@@ -117,6 +119,11 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     }
     const descricao = celula(c, "descricao");
     if (descricao && descricao !== existente?.descricao) r.campos.descricao = descricao;
+    /* justificativa e local (passo 2.10a): a coluna liga o campo opcional na gravação */
+    for (const campo of ["justificativa", "local"]) {
+      const v = celula(c, campo);
+      if (v && v !== existente?.[campo]) r.campos[campo] = v;
+    }
     const etapa = etapaDe(celula(c, "fase"), celula(c, "etapa"));
     if (etapa && etapa.id !== existente?.etapa) r.campos.etapa = etapa;
     const nao = celula(c, "naoAntesDe");

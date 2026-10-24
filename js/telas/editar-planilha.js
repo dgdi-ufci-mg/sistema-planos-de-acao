@@ -38,6 +38,8 @@ export function colunasDaPlanilha(d) {
     d.usaFases && { chave: "fase", titulo: "Fase", largura: 9 },
     d.usaFases && { chave: "etapa", titulo: "Etapa", largura: 10 },
     campos.descricao !== false && { chave: "descricao", titulo: "Descrição", largura: 18 },
+    campos.justificativa === true && { chave: "justificativa", titulo: "Justificativa", largura: 16 },
+    campos.local === true && { chave: "local", titulo: "Local", largura: 9 },
     dep && { chave: "dependeDe", titulo: "Depende de", largura: 7 },
     { chave: "responsaveis", titulo: "Responsáveis", largura: 9 },
     { chave: "naoAntesDe", titulo: "Não começa antes de", largura: 9 },
@@ -252,6 +254,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         return store.alterarAcao(espacoId, n, { etapa: etapa?.id ?? null });
       }
       case "descricao": return store.alterarAcao(espacoId, n, { descricao: t });
+      case "justificativa": case "local": return store.alterarAcao(espacoId, n, { [chave]: t }); // passo 2.10a
       case "notas": return store.alterarAcao(espacoId, n, { notas: t });
       case "naoAntesDe": case "dataLimite": {
         const data = lerData(t);

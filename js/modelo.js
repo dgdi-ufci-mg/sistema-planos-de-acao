@@ -27,9 +27,9 @@ export const CAMPOS = Object.freeze({
   modelo: ["nome", "prazos", "dependencias", "simulacao"],
   fase: ["id", "nome", "etapas"],
   etapa: ["id", "nome"],
-  camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos"],
+  camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos", "justificativa", "local"],
   acao: [
-    "numero", "codigo", "ordem", "etapa", "rotulo", "descricao",
+    "numero", "codigo", "ordem", "etapa", "rotulo", "descricao", "justificativa", "local",
     "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
