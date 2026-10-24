@@ -4,8 +4,8 @@
  * - No computador, com a barra recolhida (23/10/2026): sem botão no canto; um puxador na borda esquerda
  *   abre a barra, e Ctrl+B (⌘B) abre e recolhe.
  * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços,
- *   cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, "Ajuda e manual"
- *   e "Configurar o sistema".
+ *   cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, "Ajuda e manual",
+ *   "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Configurar o sistema".
  * - No computador, o menu fica ao lado do conteúdo e pode ser recolhido (lembrado neste aparelho);
  *   no celular, abre por cima, com fundo escurecido, e fecha ao escolher algo.
  */
@@ -151,6 +151,7 @@ export function mostrarNavegacao(opcoes) {
       ${opcoes.comLegenda ? `<button type="button" class="lateral-acao" data-item="legenda">${ICONES.legenda}Legenda</button>` : ""}
       <button type="button" class="lateral-acao" data-item="lixeira">${ICONES.lixeira}Lixeira</button>
       <button type="button" class="lateral-acao" data-item="ajuda">${ICONES.ajuda}Ajuda e manual</button>
+      <a class="lateral-acao" href="superior/" title="Módulo Superior: o desdobramento do PEI/PDI até os Planos de Ação">${ICONES.modoRede}Gestão da estratégia</a>
       ${usuario || !comLogin ? `<button type="button" class="lateral-acao" data-item="sistema">${ICONES.sistema}Configurar o sistema</button>` : ""}
     </div>`;
 }

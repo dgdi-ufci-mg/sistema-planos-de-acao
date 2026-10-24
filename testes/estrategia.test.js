@@ -5,12 +5,34 @@ import { criarBancoLocal } from "../js/banco/local.js";
 import { criarBancoFirestore } from "../js/banco/firestore.js";
 import { criarFirestoreFalso } from "./firebase-falso.js";
 import { criarStore } from "../js/dados.js";
-import { CAMADAS_PADRAO, camadasAcima, instrumentoVigente, itemVigente, caminhoAteOTopo, problemaDasCamadas, planejarCatalogo, problemaDosVinculos } from "../js/estrategia.js";
+import { CAMADAS_PADRAO, camadasAcima, instrumentoVigente, itemVigente, caminhoAteOTopo, problemaDasCamadas, planejarCatalogo, problemaDosVinculos, opcoesDePrograma, programaDoEspaco } from "../js/estrategia.js";
 import { normalizar } from "../js/acao.js";
 import { lerColagem } from "../js/planilha.js";
 import { problemaDoTipo } from "../js/tipos.js";
 
 describe("Estratégia: regras", () => {
+  it("opções de Programa do Plano de Ação: última camada, vigentes, mais as que o plano já tem", () => {
+    const instrumentos = [{ id: "velho", inicio: "2015-01-01", fim: "2020-12-31" }];
+    const itens = [
+      { id: "b", camada: "programa", codigo: "PRG10", nome: "B" },
+      { id: "a", camada: "programa", codigo: "PRG2", nome: "A" },
+      { id: "v", camada: "programa", codigo: "PRG1", nome: "Velho", instrumento: "velho" },
+      { id: "x", camada: "programa", codigo: "PRG3", nome: "Excluído", excluidoEm: "2026-01-01" },
+      { id: "p", camada: "politica", codigo: "POL1", nome: "Política" },
+    ];
+    const cat = { camadas: CAMADAS_PADRAO, instrumentos, itens };
+    assert.deepEqual(opcoesDePrograma(cat, "2026-10-24").map((x) => x.id), ["a", "b"]);
+    assert.deepEqual(opcoesDePrograma(cat, "2026-10-24", ["v"]).map((x) => x.id), ["v", "a", "b"]);
+  });
+
+  it("Programa para mostrar: o do catálogo ou, sem vínculo, o texto livre", () => {
+    const cat = { itens: [{ id: "a", codigo: "PRG2", nome: "Painéis" }] };
+    assert.equal(programaDoEspaco({ vinculos: ["a"], programa: null }, cat), "PRG2 · Painéis");
+    assert.equal(programaDoEspaco({ programa: " Programa antigo " }, cat), "Programa antigo");
+    assert.equal(programaDoEspaco({ vinculos: ["a"] }, null), "");
+    assert.equal(programaDoEspaco({}, cat), "");
+  });
+
   it("superiores: a camada logo acima ou, se ela for opcional, também a de cima dela", () => {
     const c = CAMADAS_PADRAO;
     assert.deepEqual(camadasAcima(c, "objetivoEstrategico"), []);

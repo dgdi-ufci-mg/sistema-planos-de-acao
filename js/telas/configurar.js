@@ -97,7 +97,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   function desenhar() {
     desenharSecoes();
     const dados = corpo.querySelector('[data-salvar="dados"]');
-    if (dados) ligarTipo(dados); // Programa e aprovação aparecem só no Plano de Ação (só o administrador vê a seção)
+    if (dados) ligarTipo(dados, { store, espaco }); // Programa e aprovação aparecem só no Plano de Ação (só o administrador vê a seção)
     desenharResponsaveis();
     marcar();
   }

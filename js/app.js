@@ -87,7 +87,7 @@ async function atualizarTopo() {
     abertoId,
     titulo,
     nConsulta: consulta.length,
-    aoConsulta: () => abrirConsulta({ espacos: consulta, comLogin: Boolean(usuario), aoAbrir: abrirEspaco }),
+    aoConsulta: async () => abrirConsulta({ espacos: consulta, comLogin: Boolean(usuario), aoAbrir: abrirEspaco, catalogo: await store.lerCatalogo().catch(() => null) }),
     usuario: usuario ? { email: usuario, nome: ligado?.nome } : null,
     comLogin: Boolean(acesso),
     podeConfigurar: (id) => storeDe(id).podeGravar,
@@ -237,6 +237,7 @@ function boasVindas({ comFormulario = false } = {}) {
     aoVerExemplo: verExemplo,
     comFormulario,
     podeCriar: store.podeGravar,
+    store,
     aoEntrar: entrar,
     /* banco vazio: oferece restaurar uma cópia de segurança (passo 1.19b) */
     aoRestaurar: () => sistema("copia"),

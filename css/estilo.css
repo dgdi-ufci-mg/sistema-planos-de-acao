@@ -1516,3 +1516,4 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .linha-ligar select { flex: 1 1 auto; min-width: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
 .linha-ligar .botao { flex: none; }
 @media (max-width: 520px) { .superior-abas button { padding: 8px 7px; font-size: .9rem; } }
+a.lateral-acao { text-decoration: none; }

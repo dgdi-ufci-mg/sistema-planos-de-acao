@@ -19,10 +19,11 @@ const hojeIso = () => {
  *   podeCriar?: boolean, aoEntrar?: () => void}} acoes
  *   comFormulario: já abre o formulário de criação ("Novo espaço", no menu do espaço);
  *   podeCriar: falso sem login, e o botão de criar vira "Entrar para criar um espaço";
- *   aoCancelar: com o formulário sozinho, "Cancelar" volta para onde a pessoa estava.
+ *   aoCancelar: com o formulário sozinho, "Cancelar" volta para onde a pessoa estava;
+ *   store: para oferecer os Programas do catálogo da estratégia no Plano de Ação (passo 2.5).
  */
 export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario = false, podeCriar = true, aoEntrar, aoCancelar,
-  aoRestaurar = null, verificarVazio = async () => false }) {
+  aoRestaurar = null, verificarVazio = async () => false, store = null }) {
   /* "Novo espaço" (menu lateral): só o formulário, sem o quadro de boas-vindas */
   const soFormulario = comFormulario && podeCriar;
   alvo.innerHTML = `
@@ -93,7 +94,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
       mostrarErro(e.message);
     }
   });
-  ligarTipo(formulario.querySelector("form"));
+  ligarTipo(formulario.querySelector("form"), { store }); // com o store, o Programa vem do catálogo da estratégia
   ligarModelo(formulario.querySelector("form"));
   if (comFormulario && podeCriar) abrirFormulario();
 }

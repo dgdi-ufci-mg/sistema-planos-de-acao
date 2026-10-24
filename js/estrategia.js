@@ -62,6 +62,32 @@ export function itemVigente(item, instrumentos, data) {
 export const rotuloDoItem = (item) => (item ? `${item.codigo ? `${item.codigo} · ` : ""}${item.nome}` : "item retirado");
 
 /**
+ * Itens que um Plano de Ação pode escolher como Programa (passo 2.5, parte 3): os da camada mais baixa (e das
+ * camadas opcionais logo acima dela, como em `camadasAcima`), vigentes na data, mais os que o plano já tem,
+ * mesmo fora da vigência, para não sumirem da escolha. Em ordem de código e nome.
+ * @param {{camadas: object[], instrumentos: object[], itens: object[]}} catalogo
+ * @param {string} data  AAAA-MM-DD
+ * @param {string[]} [atuais]  vínculos que o plano já tem
+ */
+export function opcoesDePrograma({ camadas, instrumentos, itens }, data, atuais = []) {
+  const permitidas = camadasAcima(camadas, null);
+  return itens
+    .filter((x) => !x.excluidoEm && permitidas.includes(x.camada) && (itemVigente(x, instrumentos, data) || atuais.includes(x.id)))
+    .sort((a, b) => String(a.codigo ?? "").localeCompare(String(b.codigo ?? ""), "pt-BR", { numeric: true }) || a.nome.localeCompare(b.nome, "pt-BR"));
+}
+
+/**
+ * Programa de um espaço, para mostrar: o(s) item(ns) do catálogo em `vinculos` ou, sem eles, o texto livre `programa`.
+ * @param {{vinculos?: string[]|null, programa?: string|null}} espaco
+ * @param {{itens: object[]}|null} catalogo
+ */
+export function programaDoEspaco(espaco, catalogo) {
+  const ligados = (espaco?.vinculos ?? []).map((id) => catalogo?.itens.find((x) => x.id === id)).filter(Boolean);
+  if (ligados.length) return ligados.map(rotuloDoItem).join("; ");
+  return espaco?.programa?.trim() || "";
+}
+
+/**
  * Caminho de um item até o topo, seguindo o primeiro superior de cada um (para mostrar onde ele está).
  * @returns {object[]} do topo até o item
  */

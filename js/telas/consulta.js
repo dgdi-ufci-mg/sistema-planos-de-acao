@@ -8,19 +8,22 @@ import { buscar } from "../acao.js";
 import { abrirPainel, fecharPainel } from "./painel.js";
 import { agruparPorTipo } from "../tipos.js";
 import { visibilidadeDe, nomeDaVisibilidade } from "../papeis.js";
+import { programaDoEspaco } from "../estrategia.js";
 
 /** Explicação no alto da página (texto combinado com o responsável em 24/10/2026). */
 export const EXPLICACAO_CONSULTA = "Espaços de que você não participa, mas que os administradores abriram para consulta: os <b>públicos</b>, que qualquer pessoa vê, e os <b>institucionais</b>, que quem tem login na UFCI-MG vê. Os espaços restritos não aparecem aqui.";
 
 /**
- * @param {{espacos: object[], comLogin: boolean, aoAbrir: (id: string) => any}} opcoes
+ * @param {{espacos: object[], comLogin: boolean, aoAbrir: (id: string) => any, catalogo?: object|null}} opcoes
+ *   catalogo: o da estratégia, para mostrar o Programa dos planos ligados a ele (passo 2.5)
  *   espacos: os abertos à consulta para quem está vendo (podeVer e não participa)
  */
-export function abrirConsulta({ espacos, comLogin, aoAbrir }) {
+export function abrirConsulta({ espacos, comLogin, aoAbrir, catalogo = null }) {
+  const programa = (e) => programaDoEspaco(e, catalogo);
   let texto = "";
   const corpo = abrirPainel("Espaços abertos à consulta", "");
   function desenhar() {
-    const achados = buscar([...espacos].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")), texto, (e) => [e.nome, e.programa]);
+    const achados = buscar([...espacos].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")), texto, (e) => [e.nome, programa(e)]);
     corpo.innerHTML = `
       <p class="tec">${EXPLICACAO_CONSULTA}</p>
       ${comLogin ? "" : `<p class="tec">Sem login, aparecem só os públicos. Entre com seu e-mail e senha para ver também os institucionais e os seus espaços.</p>`}
@@ -28,7 +31,7 @@ export function abrirConsulta({ espacos, comLogin, aoAbrir }) {
       ${achados.length ? agruparPorTipo(achados).map((g) => `<section class="grupo-consulta"><h3>${g.titulo}</h3>
         <ul class="lista-consulta">${g.espacos.map((e) => `<li><button type="button" class="item-consulta" data-abrir-consulta="${esc(e.id)}">
           <b>${esc(e.nome)}</b>
-          <small class="tec">${esc(nomeDaVisibilidade(visibilidadeDe(e)))}${e.encerradoEm ? " · encerrado" : ""}${e.programa ? ` · ${esc(e.programa)}` : ""}</small></button></li>`).join("")}</ul>
+          <small class="tec">${esc(nomeDaVisibilidade(visibilidadeDe(e)))}${e.encerradoEm ? " · encerrado" : ""}${programa(e) ? ` · ${esc(programa(e))}` : ""}</small></button></li>`).join("")}</ul>
       </section>`).join("") : `<p class="vazio">${texto ? "Nenhum espaço com essa busca." : "Nenhum espaço aberto à consulta por enquanto."}</p>`}`;
     const busca = corpo.querySelector("[data-busca-consulta]");
     if (busca && document.activeElement !== busca && texto) { busca.focus(); busca.setSelectionRange(texto.length, texto.length); }
