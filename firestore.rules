@@ -1,14 +1,21 @@
-// Regras do Firestore da versão 2 (projeto "sextante-v2"; documentação técnica, passo 1.14).
+// Regras do Firestore da versão 2 (projeto "sextante-v2"; documentação técnica, seção 3.6).
 // Publicar no console do Firebase: Firestore Database > Regras > colar este arquivo > Publicar.
 //
-// Provisórias até os papéis por espaço (passo 2.1), como na versão em uso:
-// - qualquer pessoa consulta;
-// - só quem entrou com e-mail e senha cria e altera;
-// - ninguém apaga: a exclusão é lógica (passo 1.15);
-// - o histórico de alterações só recebe registros novos: ninguém altera nem apaga (passo 1.16);
-// - os retratos só são criados: depois, ninguém altera nem apaga (passo 1.18);
-// - comentários (passo 2.9): quem entrou escreve em nome próprio (e-mail do login, em minúsculas, como o sistema guarda); só o autor edita ou apaga
-//   (esconde), guardando as versões anteriores; ninguém apaga do banco; apagado, não muda mais;
+// Papéis por espaço (passo 2.1; seção 16.3), as mesmas regras de js/papeis.js:
+// - qualquer pessoa consulta (a visibilidade vem no passo 2.2);
+// - o espaço guarda em `acessos` o papel de cada e-mail: administrador, usuario ou leitor;
+// - espaço sem `acessos` (criado antes dos papéis, como a PI²): regra provisória de antes, quem entrou altera
+//   tudo, até alguém assumir a administração (gravar `acessos`);
+// - quem cria um espaço tem de ser administrador dele;
+// - administrador: tudo no espaço;
+// - usuario: atualiza ações (no espaço fechado, só aquelas em que é responsável; nas outras, só a volta à
+//   situação inicial que o sistema faz ao desfazer uma conclusão), sem excluir nem restaurar; cria
+//   responsáveis sem login; acrescenta etiquetas ao catálogo; salva retratos; comenta;
+// - leitor: só comenta;
+// - comentários (passo 2.9): quem tem papel escreve em nome próprio (e-mail do login, em minúsculas); só o
+//   autor edita ou apaga (esconde), guardando as versões anteriores; o administrador do espaço também apaga;
+//   ninguém apaga do banco; apagado, não muda mais;
+// - ninguém apaga documentos: a exclusão é lógica (passo 1.15); histórico e retratos só recebem registros novos;
 // - fora destes caminhos, nada.
 rules_version = '2';
 service cloud.firestore {
@@ -16,33 +23,84 @@ service cloud.firestore {
     function logado() {
       return request.auth != null;
     }
+    function eu() {
+      return request.auth.token.email.lower();
+    }
+    // espaço sem administração: criado antes dos papéis e ainda não assumido
+    function livre(d) {
+      return !('acessos' in d);
+    }
+    function papelNo(d) {
+      return d.get('acessos', {}).get(eu(), {}).get('papel', '');
+    }
+
     match /espacos/{espacoId} {
-      allow read: if true;
-      allow create, update: if logado();
-      match /acoes/{numero} {
-        allow read: if true;
-        allow create, update: if logado();
+      function esp() {
+        return get(/databases/$(database)/documents/espacos/$(espacoId)).data;
       }
-      // responsáveis de cada espaço (passo 1.14b)
+      function administra() {
+        return logado() && (livre(esp()) || papelNo(esp()) == 'administrador');
+      }
+      function atua() {
+        return logado() && (livre(esp()) || papelNo(esp()) in ['administrador', 'usuario']);
+      }
+      function membro() {
+        return logado() && (livre(esp()) || papelNo(esp()) in ['administrador', 'usuario', 'leitor']);
+      }
+      // o usuário muda no espaço só os tons das pessoas e acrescenta etiquetas ao catálogo (sem mudar as que existem)
+      function soTonsEEtiquetas() {
+        let mudou = request.resource.data.diff(resource.data).affectedKeys();
+        let antes = resource.data.get('etiquetas', []);
+        return mudou.hasOnly(['tons', 'etiquetas', 'alteradoEm', 'alteradoPor'])
+          && (!mudou.hasAny(['etiquetas'])
+            || (request.resource.data.etiquetas.size() >= antes.size() && request.resource.data.etiquetas[0:antes.size()] == antes));
+      }
+
+      allow read: if true;
+      allow create: if logado() && request.resource.data.get('acessos', {}).get(eu(), {}).get('papel', '') == 'administrador';
+      allow update: if logado() && (
+        livre(resource.data)
+        || papelNo(resource.data) == 'administrador'
+        || (papelNo(resource.data) == 'usuario' && soTonsEEtiquetas()));
+
+      match /acoes/{numero} {
+        function minha() {
+          return esp().acessos[eu()].get('responsavel', '') in resource.data.get('responsaveis', []);
+        }
+        // ao desfazer uma conclusão, as seguintes voltam à situação inicial (passo 2.7), mesmo sem serem do usuário
+        function soVoltaAInicial() {
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['situacaoPersonalizada', 'alteradaEm', 'alteradaPor'])
+            && request.resource.data.situacaoPersonalizada == null;
+        }
+        allow read: if true;
+        allow create: if administra();
+        allow update: if administra()
+          || (logado() && papelNo(esp()) == 'usuario'
+            && request.resource.data.get('excluidaEm', null) == resource.data.get('excluidaEm', null)
+            && (!esp().get('fechado', false) || minha() || soVoltaAInicial()));
+      }
+      // responsáveis de cada espaço (passo 1.14b); o usuário cadastra só responsáveis sem login
       match /responsaveis/{responsavelId} {
         allow read: if true;
-        allow create, update: if logado();
+        allow create: if administra()
+          || (logado() && papelNo(esp()) == 'usuario' && request.resource.data.get('usuario', null) == null);
+        allow update: if administra();
       }
       // histórico de alterações das ações (passo 1.16): só de acréscimo (sem update nem delete)
       match /historico/{registroId} {
         allow read: if true;
-        allow create: if logado();
+        allow create: if atua();
       }
       // comentários das ações (passo 2.9): nunca apagados do banco (documentação técnica, seção 4.2.3)
       match /comentarios/{comentarioId} {
         allow read: if true;
-        allow create: if logado()
-          && request.resource.data.autor == request.auth.token.email.lower()
+        allow create: if membro()
+          && request.resource.data.autor == eu()
           && request.resource.data.id == comentarioId
           && request.resource.data.versoes.size() == 0
           && !('apagadoEm' in request.resource.data);
-        allow update: if logado()
-          && resource.data.autor == request.auth.token.email.lower()
+        allow update: if (membro()
+          && resource.data.autor == eu()
           && !('apagadoEm' in resource.data)
           && request.resource.data.id == resource.data.id
           && request.resource.data.acao == resource.data.acao
@@ -50,18 +108,25 @@ service cloud.firestore {
           && request.resource.data.criadoEm == resource.data.criadoEm
           && request.resource.data.versoes.size() >= resource.data.versoes.size()
           && request.resource.data.versoes[0:resource.data.versoes.size()] == resource.data.versoes
-          && (!('apagadoPor' in request.resource.data) || request.resource.data.apagadoPor == request.auth.token.email.lower());
+          && (!('apagadoPor' in request.resource.data) || request.resource.data.apagadoPor == eu()))
+          // o administrador do espaço esconde comentários alheios, sem mudar o texto (passo 2.1)
+          || (logado() && papelNo(esp()) == 'administrador'
+            && !('apagadoEm' in resource.data)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['apagadoEm', 'apagadoPor', 'apagadoComo'])
+            && request.resource.data.apagadoComo == 'administrador'
+            && request.resource.data.apagadoPor == eu());
       }
       // retratos (passo 1.18): cabeçalho e ações, só leitura depois de criados
       match /retratos/{retratoId} {
         allow read: if true;
-        allow create: if logado();
+        allow create: if atua();
         match /acoes/{numero} {
           allow read: if true;
-          allow create: if logado();
+          allow create: if atua();
         }
       }
     }
+    // calendário geral: até o Administrador do Sistema existir, quem entrou altera
     match /sistema/calendario {
       allow read: if true;
       allow create, update: if logado();

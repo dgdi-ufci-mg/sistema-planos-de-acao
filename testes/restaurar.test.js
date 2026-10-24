@@ -21,7 +21,7 @@ for (const [nome, criarBanco] of [["memória", () => criarBancoLocal()], ["Fires
       await origem.excluirEspaco(outro);
       const copia = JSON.parse(JSON.stringify(await origem.copiaDeSeguranca()));
 
-      const destino = criarStore(criarBanco(), { usuario: "admin@ufci.edu.br" });
+      const destino = criarStore(criarBanco(), { usuario: "ana@ufci.edu.br" }); // a administradora do espaço restaurado (passo 2.1)
       const resumo = destino.conferirCopia(copia);
       assert.equal(resumo.espacos, 2);
       assert.equal(resumo.retratos, 1);

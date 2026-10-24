@@ -141,6 +141,8 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   function bloqueio(acao, chave) {
     const coluna = colunasDaPlanilha(d).find((c) => c.chave === chave);
     if (coluna?.calculada) return "Calculado pelo sistema.";
+    /* papéis (passo 2.1): Leitor, sem papel, ou Usuário numa ação alheia do espaço fechado */
+    if (d.perm && !d.perm.atualizar(acao)) return d.perm.papel === "usuario" ? "Espaço fechado: você atualiza só as ações em que é responsável." : "Você não pode alterar as ações deste espaço.";
     if (chave === "numero") return "O número é dado pelo sistema e não muda.";
     if (chave === "fase") return "A fase vem da etapa: mude a etapa.";
     if (chave === "checklist") return "Itens feitos / total. Edite o checklist na janela da ação.";
@@ -206,7 +208,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
           <thead><tr>${cols.map(cabecalho).join("")}</tr></thead>
           <tbody>
             ${d.acoes.map((a, i) => `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, i, j, esquerdas[j])).join("")}</tr>`).join("")}
-            <tr class="linha-nova">${cols.map((c, j) => celulaHtml(null, c, d.acoes.length, j, esquerdas[j])).join("")}</tr>
+            ${d.perm && !d.perm.criarAcao ? "" : `<tr class="linha-nova">${cols.map((c, j) => celulaHtml(null, c, d.acoes.length, j, esquerdas[j])).join("")}</tr>`}
           </tbody>
         </table>
       </div>

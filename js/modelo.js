@@ -8,7 +8,7 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "nomeInicial", "situacoes", "etiquetas", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
+    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "administracaoAssumidaPor", "administracaoAssumidaEm", "nomeInicial", "situacoes", "etiquetas", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
@@ -21,6 +21,8 @@ export const CAMPOS = Object.freeze({
   aprovacao: ["identificacao", "link"],
   /** Situação personalizada do espaço, uma coluna do quadro (passo 2.7). */
   situacao: ["id", "nome"],
+  /** Acesso de um e-mail ao espaço (passo 2.1): o papel e o responsável ligado ao e-mail. */
+  acesso: ["papel", "responsavel"],
   /** Etiqueta do catálogo do espaço (passo 2.10a): a ação guarda só o id. */
   etiqueta: ["id", "nome", "cor"],
   /** Modelo de configuração do espaço, fixo depois de criado (passo 2.4b). */

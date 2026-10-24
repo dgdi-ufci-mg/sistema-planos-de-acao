@@ -12,6 +12,7 @@ import { seloHtml } from "./pessoas.js";
 import { avisar } from "./painel.js";
 import { abrirSuave, fecharSuave } from "./movimento.js";
 import { excluirResponsavel } from "./exclusao.js";
+import { PAPEIS, nomeDoPapel, papelDe, semAdministracao } from "../papeis.js";
 
 /**
  * @param {{store: object}} contexto
@@ -46,7 +47,11 @@ export function criarTelaResponsaveis({ store }) {
       </div>
       <label class="campo" data-so-pessoa${tipo === "unidade" ? " hidden" : ""}><span>E-mail de login <small>(opcional)</small></span>
         <input name="usuario" type="email" inputmode="email" autocomplete="off" value="${esc(r?.usuario ?? "")}" placeholder="nome@ufci.edu.br">
-        <small>Liga a pessoa a quem entra no sistema com este e-mail, para funcionar "Minhas ações".</small></label>
+        <small>Liga a pessoa a quem entra no sistema com este e-mail, para funcionar "Minhas ações" e dar a ela um papel no espaço.</small></label>
+      ${semAdministracao(d.espaco) ? "" : `<label class="campo" data-so-pessoa${tipo === "unidade" ? " hidden" : ""}><span>Papel neste espaço</span>
+        <select name="papel">${PAPEIS.map(([v, nome]) => `<option value="${v}"${v === (r?.usuario ? papelDe(d.espaco, r.usuario) ?? "" : "usuario") ? " selected" : ""}>${nome}</option>`).join("")}
+          <option value=""${r?.usuario && !papelDe(d.espaco, r.usuario) ? " selected" : ""}>Sem papel (só consulta)</option></select>
+        <small>Vale só com o e-mail de login. ${PAPEIS.map(([, nome, oQue]) => `${nome}: ${oQue.charAt(0).toLowerCase()}${oQue.slice(1)}`).join(" ")}</small></label>`}
       <p class="erro" data-erro hidden></p>
       <div class="botoes"><button class="botao principal" type="submit">Salvar</button><button class="botao" type="button" data-cancelar-responsavel>Cancelar</button>
         ${r ? '<button class="botao-excluir" type="button" data-excluir-responsavel>Excluir</button>' : ""}</div>
@@ -57,10 +62,18 @@ export function criarTelaResponsaveis({ store }) {
     if (editando === r.id) return formularioHtml(r);
     const n = contagem.get(r.id) ?? 0;
     const detalhes = [r.sigla && r.tipo !== "unidade" ? r.sigla : "", r.setor].filter(Boolean).map(esc).join(" · ");
+    /* só o administrador do espaço edita (passo 2.1) */
+    if (!d.podeEditar) {
+      return `<div class="responsavel">${seloHtml(r, { tons: d.espaco.tons, meus: d.meus })}
+        <div class="responsavel-texto"><b>${esc(r.nome)}</b>${detalhes ? `<span class="tec">${detalhes}</span>` : ""}
+          ${r.tipo === "pessoa" ? `<span class="tec">${r.usuario ? `Login: ${esc(r.usuario)}${semAdministracao(d.espaco) ? "" : ` · ${esc(nomeDoPapel(papelDe(d.espaco, r.usuario)))}`}` : "Sem login"}</span>` : ""}</div>
+        <span class="responsavel-contagem">${n ? `${n} ${plural(n, "ação", "ações")} neste espaço` : "Nenhuma ação neste espaço"}</span>
+      </div>`;
+    }
     return `<div class="responsavel editavel" data-editar-responsavel="${esc(r.id)}" role="button" tabindex="0" title="Clique para editar">
       ${seloHtml(r, { tons: d.espaco.tons, meus: d.meus })}
       <div class="responsavel-texto"><b>${esc(r.nome)}</b>${detalhes ? `<span class="tec">${detalhes}</span>` : ""}
-        ${r.tipo === "pessoa" ? `<span class="tec">${r.usuario ? `Login: ${esc(r.usuario)}` : "Sem login"}</span>` : ""}</div>
+        ${r.tipo === "pessoa" ? `<span class="tec">${r.usuario ? `Login: ${esc(r.usuario)}${semAdministracao(d.espaco) ? "" : ` · ${esc(nomeDoPapel(papelDe(d.espaco, r.usuario)))}`}` : "Sem login"}</span>` : ""}</div>
       <span class="responsavel-contagem">${n ? `${n} ${plural(n, "ação", "ações")} neste espaço` : "Nenhuma ação neste espaço"}</span>
     </div>`;
   }
@@ -81,7 +94,7 @@ export function criarTelaResponsaveis({ store }) {
     alvo.innerHTML = `
       <div class="ferramentas-responsaveis">
         <input type="search" data-busca-responsaveis placeholder="Buscar responsável" aria-label="Buscar responsáveis" value="${esc(texto)}">
-        <button class="botao principal" type="button" data-novo-responsavel>${ICONES.mais}Novo responsável</button>
+        ${d.podeEditar ? `<button class="botao principal" type="button" data-novo-responsavel>${ICONES.mais}Novo responsável</button>` : ""}
       </div>
       <p class="tec">Pessoas e unidades deste espaço; não aparecem nos outros. Pessoas aparecem em círculos com as iniciais; unidades, em quadrados com a sigla.</p>
       ${editando === "novo" ? formularioHtml(null) : ""}
@@ -110,7 +123,7 @@ export function criarTelaResponsaveis({ store }) {
           else el.value = v;
         }
       }
-      novo.querySelector("[data-so-pessoa]").hidden = form.tipo === "unidade";
+      for (const el of novo.querySelectorAll("[data-so-pessoa]")) el.hidden = form.tipo === "unidade";
     }
     if (foco === "busca") {
       const busca = alvo.querySelector("[data-busca-responsaveis]");
@@ -152,6 +165,11 @@ export function criarTelaResponsaveis({ store }) {
         if (f.tipo === "unidade") delete dados.usuario;
         await store.alterarResponsavel(d.espaco.id, form.dataset.formResponsavel, dados);
       }
+      /* papel no espaço (passo 2.1): com e-mail, grava o escolhido, se mudou */
+      if (f.tipo === "pessoa" && dados.usuario && "papel" in f) {
+        const espaco = await store.lerEspaco(d.espaco.id);
+        if ((papelDe(espaco, dados.usuario) ?? "") !== f.papel) await store.definirPapel(d.espaco.id, dados.usuario, f.papel || null);
+      }
       await fechar();
     } catch (e) {
       erro.textContent = e.message;
@@ -183,9 +201,10 @@ export function criarTelaResponsaveis({ store }) {
     });
     alvo.addEventListener("change", (e) => {
       if (e.target.name === "tipo") {
-        const email = e.target.closest("form").querySelector("[data-so-pessoa]");
-        email.hidden = e.target.value === "unidade";
-        if (!email.hidden) abrirSuave(email);
+        for (const bloco of e.target.closest("form").querySelectorAll("[data-so-pessoa]")) {
+          bloco.hidden = e.target.value === "unidade";
+          if (!bloco.hidden) abrirSuave(bloco);
+        }
       }
     });
     alvo.addEventListener("submit", (e) => { e.preventDefault(); salvar(e.target); });

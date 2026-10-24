@@ -26,6 +26,7 @@ import { opcoesDoCalculo, usaSimulacao, usaDependencias } from "../modelos.js";
 import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO } from "../situacoes.js";
 import { resumoDoModelo } from "./modelo-espaco.js";
 import { CORES_ETIQUETA, etiquetasDe, tomDaCor, TAMANHO_DO_NOME } from "../etiquetas.js";
+import { PAPEIS, nomeDoPapel, semAdministracao, fechado } from "../papeis.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
@@ -55,7 +56,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   const meus = () => (store.usuario ? responsaveis.filter((r) => r.usuario === store.usuario).map((r) => r.id) : null);
   const desenharResponsaveis = () => {
     const alvo = corpo.querySelector("[data-responsaveis]");
-    if (alvo) telaResponsaveis.desenhar(alvo, { espaco, acoes, responsaveis, meus: meus() });
+    if (alvo) telaResponsaveis.desenhar(alvo, { espaco, acoes, responsaveis, meus: meus(), podeEditar: store.podeGravar && store.permissoesEm(espaco).configurar });
     const n = corpo.querySelector('[data-secao="responsaveis"] > summary .n');
     if (n) n.textContent = String(responsaveis.length);
   };
@@ -95,14 +96,20 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
 
   function desenhar() {
     desenharSecoes();
-    ligarTipo(corpo.querySelector('[data-salvar="dados"]')); // Programa e aprovação aparecem só no Plano de Ação
+    const dados = corpo.querySelector('[data-salvar="dados"]');
+    if (dados) ligarTipo(dados); // Programa e aprovação aparecem só no Plano de Ação (só o administrador vê a seção)
     desenharResponsaveis();
     marcar();
   }
 
   function desenharSecoes() {
     const campos = espaco.camposOpcionais ?? {};
+    /* papéis (passo 2.1): só o administrador configura; os demais veem responsáveis, retratos e exportação */
+    const perm = store.permissoesEm(espaco);
+    const adm = perm.configurar && store.podeGravar;
     corpo.innerHTML = `
+      ${acessoHtml(perm)}
+      ${adm ? `
       <details class="config" data-secao="dados"${aberta("dados")}>
         <summary><h3>Dados do espaço</h3></summary>
         <form class="editor" data-salvar="dados">
@@ -134,12 +141,12 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
           <p class="erro" data-erro hidden></p>
           <div class="botoes"><button class="botao" type="button" data-acrescentar="datas">${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar</button>${AVISO_PENDENTE}</div>
         </form>
-      </details>
+      </details>` : ""}
 
       <details class="config" data-secao="responsaveis"${aberta("responsaveis")}>
         <summary><h3>Responsáveis</h3><span class="n">${responsaveis.length}</span></summary>
         <div class="responsaveis-do-espaco" data-responsaveis></div>
-        ${store.podeGravar ? `<details class="importar-responsaveis" data-sub="importar-responsaveis"${abertas.has("importar-responsaveis") ? " open" : ""}>
+        ${adm ? `<details class="importar-responsaveis" data-sub="importar-responsaveis"${abertas.has("importar-responsaveis") ? " open" : ""}>
           <summary>Importar responsáveis de planilha</summary>
           <p class="tec">Cole as linhas com a linha de títulos: Nome (obrigatório), Tipo, Sigla, Setor e E-mail. Com e-mail, é uma pessoa e
             ganha a conta de acesso: o sistema manda a ela um e-mail para definir a própria senha. Sem e-mail, informe o tipo (pessoa ou unidade).
@@ -150,7 +157,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         </details>` : ""}
       </details>
 
-      ${ligado(campos, "fasesEtapas") ? estruturaHtml() : ""}
+      ${adm ? `${ligado(campos, "fasesEtapas") ? estruturaHtml() : ""}
       ${situacoesHtml()}
       ${ligado(campos, "etiquetas") ? etiquetasHtml() : ""}
 
@@ -181,7 +188,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
           <p class="erro" data-erro hidden></p>
           <div class="botoes"><button class="botao" type="button" data-acrescentar="documentos">${ICONES.mais}Documento</button><button class="botao principal" type="submit">Salvar</button>${AVISO_PENDENTE}</div>
         </form>
-      </details>
+      </details>` : ""}
 
       ${usaSimulacao(espaco) ? `<details class="config" data-secao="simulacao"${aberta("simulacao")}>
         <summary><h3>Simulação</h3></summary>
@@ -197,14 +204,14 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <summary><h3>Retratos</h3><span class="n">${retratos.length}</span></summary>
         <p class="tec">Um retrato guarda o espaço como está agora, com as datas calculadas, para comparar depois com o andamento real.
           Por exemplo: "Plano aprovado", ou uma revisão do plano. Depois de salvo, ninguém altera.</p>
-        ${store.podeGravar ? `<div class="linha-config">
+        ${store.podeGravar && perm.salvarRetrato ? `<div class="linha-config">
           <input data-nome-retrato maxlength="120" placeholder="Nome do retrato, como “Plano aprovado”" aria-label="Nome do retrato">
           <button class="botao principal" type="button" data-salvar-retrato>Salvar retrato</button>
         </div>` : ""}
         <div data-lista-retratos>${retratosHtml()}</div>
       </details>
 
-      ${store.podeGravar ? `<details class="config" data-secao="importar"${aberta("importar")}>
+      ${adm ? `<details class="config" data-secao="importar"${aberta("importar")}>
         <summary><h3>Importar ações de planilha</h3></summary>
         <p class="tec">Selecione as linhas no Google Planilhas ou no Excel, incluindo a linha de títulos, copie e cole abaixo.
           Colunas reconhecidas: Ação (obrigatória), Número, Código, Fase, Etapa, Descrição, Depende de, Otimista, Mais provável,
@@ -229,7 +236,57 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       </details>
 
       <p class="tec">A cópia de segurança de todos os espaços, e a restauração dela, ficam em "Configurar o sistema".</p>
-      ${store.podeGravar ? '<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>' : ""}`;
+      ${adm ? '<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>' : ""}`;
+  }
+
+  /**
+   * Acesso ao espaço (passo 2.1; seção 16.3), no alto da configuração:
+   * - espaço sem administração: o convite para assumir;
+   * - administrador: os papéis, espaço aberto ou fechado e os e-mails com papel sem cadastro de responsável
+   *   (como o de quem criou o espaço); o papel de cada pessoa se escolhe na lista de responsáveis;
+   * - os demais: o próprio papel e o aviso de que só o administrador configura.
+   */
+  function acessoHtml(perm) {
+    if (!store.podeGravar) return "";
+    if (perm.livre) {
+      return `<div class="aviso-papel">${ICONES.pessoa}<span><b>Este espaço ainda não tem administrador.</b> Enquanto isso, quem entra altera tudo.
+        Quem assumir vira administrador; as pessoas com e-mail entre os responsáveis viram usuárias.</span>
+        <button class="botao principal" type="button" data-assumir>Assumir a administração</button></div>`;
+    }
+    if (!perm.configurar) {
+      return `<p class="aviso-papel">${ICONES.pessoa}<span>Seu papel neste espaço: <b>${esc(nomeDoPapel(perm.papel))}</b>. Só o administrador do espaço muda a configuração;
+        aqui você consulta os responsáveis${perm.salvarRetrato ? ", salva retratos" : ""} e exporta.</span></p>`;
+    }
+    if (semAdministracao(espaco)) return ""; // o exemplo, sem login
+    const ligados = new Set(responsaveis.filter((r) => r.usuario).map((r) => r.usuario));
+    const soltos = Object.entries(espaco.acessos).filter(([email]) => !ligados.has(email));
+    const opcoesPapel = (atual) => PAPEIS.map(([v, nome]) => `<option value="${v}"${v === atual ? " selected" : ""}>${nome}</option>`).join("");
+    return `<details class="config" data-secao="acesso"${aberta("acesso")}>
+      <summary><h3>Acesso ao espaço</h3></summary>
+      <ul class="papeis-explicados">${PAPEIS.map(([, nome, oQue]) => `<li><b>${nome}:</b> ${oQue}</li>`).join("")}</ul>
+      <p class="tec">O papel de cada pessoa se escolhe na lista de responsáveis, abaixo: cada pessoa com e-mail de login tem um. Quem não tem papel só consulta.</p>
+      <div class="opcoes-importar" role="radiogroup" aria-label="Quem atualiza as ações">
+        <label><input type="radio" name="aberto-fechado" value="aberto"${fechado(espaco) ? "" : " checked"}> <span><b>Aberto:</b> todo Usuário atualiza todas as ações.</span></label>
+        <label><input type="radio" name="aberto-fechado" value="fechado"${fechado(espaco) ? " checked" : ""}> <span><b>Fechado:</b> cada Usuário atualiza só as ações em que é responsável.</span></label>
+      </div>
+      ${soltos.length ? `<h4>Com papel, sem cadastro de responsável</h4>
+        <ul class="acessos-soltos">${soltos.map(([email, a]) => `<li><span class="mono">${esc(email)}</span>
+          <select data-papel-email="${esc(email)}" aria-label="Papel de ${esc(email)}">${opcoesPapel(a.papel)}</select>
+          <button type="button" class="tirar" data-tirar-acesso="${esc(email)}" aria-label="Tirar o acesso de ${esc(email)}">${ICONES.fechar}</button></li>`).join("")}</ul>
+        <p class="tec">Por exemplo, quem criou o espaço. Para aparecer nas ações, cadastre a pessoa como responsável com o mesmo e-mail.</p>` : ""}
+    </details>`;
+  }
+  /** Grava uma mudança de acesso e redesenha; na recusa (como tirar o último administrador), avisa. */
+  async function gravarAcesso(operacao, mensagem) {
+    try {
+      await operacao();
+      await recarregar();
+      desenhar();
+      if (mensagem) avisar(mensagem);
+    } catch (falha) {
+      avisar(falha.message);
+      desenhar();
+    }
   }
 
   /* ---------- importar responsáveis, com as contas de acesso (passos 1.14d e 1.19b) ---------- */
@@ -523,6 +580,16 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       if (!(await gravarSituacoes({ situacoes: lista }, "Situação renomeada."))) e.target.value = personalizadasDe(espaco).find((x) => x.id === id)?.nome ?? "";
       return;
     }
+    /* acesso ao espaço (passo 2.1) */
+    if (e.target.name === "aberto-fechado") {
+      await gravarAcesso(() => store.alterarEspaco(espacoId, { fechado: e.target.value === "fechado" }),
+        e.target.value === "fechado" ? "Espaço fechado: cada usuário atualiza só as suas ações." : "Espaço aberto: todo usuário atualiza todas as ações.");
+      return;
+    }
+    if (e.target.dataset.papelEmail) {
+      await gravarAcesso(() => store.definirPapel(espacoId, e.target.dataset.papelEmail, e.target.value), "Papel alterado.");
+      return;
+    }
     /* etiquetas (passo 2.10a): nome ao sair do campo; cor ao escolher */
     if (e.target.dataset.nomeEtiqueta) {
       const id = e.target.dataset.nomeEtiqueta;
@@ -611,6 +678,9 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       } catch (falha) { avisar(falha.message); }
       return;
     }
+    /* acesso ao espaço (passo 2.1) */
+    if (t.dataset.assumir != null) { await gravarAcesso(() => store.assumirAdministracao(espacoId), "Você agora é administrador deste espaço."); return; }
+    if (t.dataset.tirarAcesso) { await gravarAcesso(() => store.definirPapel(espacoId, t.dataset.tirarAcesso, null), "Acesso retirado."); return; }
     /* etiquetas (passo 2.10a) */
     if (t.dataset.retirarEtiqueta) { retirandoEtiqueta = t.dataset.retirarEtiqueta; desenhar(); return; }
     if (t.dataset.cancelarRetirarEtiqueta != null) { retirandoEtiqueta = null; desenhar(); return; }
@@ -708,6 +778,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   pararDeAcompanhar = store.acompanharEspaco(espacoId, (dados) => {
     responsaveis = dados.responsaveis;
     acoes = dados.acoes;
+    if (dados.espaco) espaco = dados.espaco; // os papéis (passo 2.1) ficam no espaço e aparecem na lista de responsáveis
     desenharResponsaveis();
   });
 }

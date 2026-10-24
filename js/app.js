@@ -192,7 +192,7 @@ function boasVindas({ comFormulario = false } = {}) {
   pararEspaco();
   pararEspaco = () => {};
   abertoId = null;
-  document.body.classList.remove("so-leitura");
+  document.body.classList.remove("so-leitura", "sem-criar-acao");
   if (!comFormulario) esquecer(); // ao cancelar o novo espaço, volta ao que estava aberto
   history.replaceState(null, "", location.pathname + location.search);
   mostrarBoasVindas(principal, {

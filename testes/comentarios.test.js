@@ -19,6 +19,7 @@ describe("Comentários", () => {
   it("comenta com autor e data, na ordem em que foram escritos", async () => {
     const { ana, bia } = cenario();
     const e = await ana.criarEspaco({ nome: "E" });
+    await ana.criarResponsavel(e, { tipo: "pessoa", nome: "Bia", usuario: "bia@ufci.edu.br" }); // Bia é Usuária do espaço (passo 2.1)
     const n = await ana.criarAcao(e, { rotulo: "A" });
     await ana.comentar(e, n, "  Mandei o ofício.  ");
     await bia.comentar(e, n, "Recebido.");
@@ -30,6 +31,7 @@ describe("Comentários", () => {
   it("recusa comentário vazio, longo, sem login ou em ação que não existe", async () => {
     const { ana, anonimo } = cenario();
     const e = await ana.criarEspaco({ nome: "E" });
+    await ana.criarResponsavel(e, { tipo: "pessoa", nome: "Bia", usuario: "bia@ufci.edu.br" }); // Bia é Usuária do espaço (passo 2.1)
     const n = await ana.criarAcao(e, { rotulo: "A" });
     await assert.rejects(ana.comentar(e, n, "   "), { codigo: "comentario-vazio" });
     await assert.rejects(ana.comentar(e, n, "x".repeat(4001)), { codigo: "comentario-longo" });
@@ -40,6 +42,7 @@ describe("Comentários", () => {
   it("editar guarda a versão anterior; só o autor edita", async () => {
     const { ana, bia } = cenario();
     const e = await ana.criarEspaco({ nome: "E" });
+    await ana.criarResponsavel(e, { tipo: "pessoa", nome: "Bia", usuario: "bia@ufci.edu.br" }); // Bia é Usuária do espaço (passo 2.1)
     const n = await ana.criarAcao(e, { rotulo: "A" });
     const id = await ana.comentar(e, n, "Versão 1");
     await ana.editarComentario(e, id, "Versão 2");
@@ -55,6 +58,7 @@ describe("Comentários", () => {
   it("apagar só esconde: o texto e as versões ficam; depois, nada muda", async () => {
     const { ana, bia } = cenario();
     const e = await ana.criarEspaco({ nome: "E" });
+    await ana.criarResponsavel(e, { tipo: "pessoa", nome: "Bia", usuario: "bia@ufci.edu.br" }); // Bia é Usuária do espaço (passo 2.1)
     const n = await ana.criarAcao(e, { rotulo: "A" });
     const id = await ana.comentar(e, n, "Texto");
     await assert.rejects(bia.apagarComentario(e, id), { codigo: "sem-permissao" });
@@ -69,6 +73,7 @@ describe("Comentários", () => {
   it("vão para a cópia de segurança e voltam na restauração, e não entram nos retratos", async () => {
     const { ana } = cenario();
     const e = await ana.criarEspaco({ nome: "E" });
+    await ana.criarResponsavel(e, { tipo: "pessoa", nome: "Bia", usuario: "bia@ufci.edu.br" }); // Bia é Usuária do espaço (passo 2.1)
     const n = await ana.criarAcao(e, { rotulo: "A" });
     const id = await ana.comentar(e, n, "Guardar");
     await ana.editarComentario(e, id, "Guardado");

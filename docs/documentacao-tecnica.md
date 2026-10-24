@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 134 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 135 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -143,13 +143,25 @@ Ficam para o sistema definitivo (seção 12, fase 4): o programa do servidor, qu
 
 ### 3.6 Permissões
 
-Regras provisórias do Firestore (`firestore.rules`), até os papéis por espaço (seção 12, passo 2.1):
+Papéis por espaço desde o passo 2.1 (seção 16.3). As mesmas regras estão em dois lugares, que precisam mudar juntos: no `Store` (`js/papeis.js` e a função `exigir` de `js/dados.js`), que recusa com mensagem clara e é testado pelo `node --test`, e no `firestore.rules`, que recusa no próprio banco o que alguém tentasse gravar por fora da tela.
 
-- qualquer pessoa consulta;
-- só quem entrou com e-mail e senha cria e altera;
-- ninguém apaga: a exclusão é lógica (lixeira, seção 4.7);
-- o histórico de alterações e os retratos só recebem registros novos: ninguém altera nem apaga;
-- comentários (passo 2.9; seção 4.2.3): quem entrou cria em nome próprio (o `autor` tem de ser o e-mail do login, em minúsculas), sem versões nem marca de apagado; só o autor altera, sem mudar `id`, `acao`, `autor` e `criadoEm`, e com as versões anteriores preservadas (a lista só cresce, com o começo igual ao que já existia); apagado, o comentário não muda mais; ninguém apaga do banco. A leitura é pública, como o resto do sistema: um comentário "apagado" some da tela, mas continua legível por quem consultar o banco diretamente. **Limitação conhecida:** a restauração de uma cópia de segurança no Firebase não consegue recriar comentários de outras pessoas, nem os já editados ou apagados, porque as regras exigem que o autor seja quem está gravando; para restaurar tudo, o administrador precisa relaxar essa regra no console durante a restauração e publicá-la de novo em seguida.
+| Quem | No espaço | Nas ações | Responsáveis | Comentários | Retratos |
+|---|---|---|---|---|---|
+| Qualquer pessoa, mesmo sem login | consulta | consulta | consulta | lê | consulta |
+| Com login, sem papel no espaço | consulta | consulta | consulta | lê | consulta |
+| **Leitor** | consulta | consulta | consulta | escreve, edita e apaga os próprios | consulta |
+| **Usuário** | muda só os tons das pessoas e acrescenta etiquetas ao catálogo (sem mudar as que existem) | atualiza (no espaço fechado, só as ações em que é responsável); não cria, não exclui nem restaura; no fechado, não muda a prioridade da equipe | cadastra só responsáveis sem login (pela janela da ação) | como o Leitor | salva |
+| **Administrador do espaço** | tudo: configuração, papéis, aberto ou fechado, exclusão | tudo | tudo | como o Leitor, e apaga (esconde) os alheios, marcados "apagado pelo administrador do espaço" | salva |
+
+Regras complementares:
+- **Criar espaço:** qualquer pessoa com login; quem cria é gravado como administrador (`acessos`), e o banco recusa a criação sem isso.
+- **Espaço sem administração** (sem `acessos`, criado antes do passo 2.1, como a PI²): vale a regra provisória de antes, em que quem tem login altera tudo, inclusive gravar `acessos`, que é o "Assumir a administração".
+- **Espaço fechado, ao desfazer uma conclusão:** as ações seguintes voltam à situação inicial (passo 2.7). O banco aceita essa única mudança (só `situacaoPersonalizada` para vazio) também nas ações em que o usuário não é responsável.
+- **O último administrador não sai:** o Store recusa a mudança de papel, a troca de e-mail ou a exclusão de responsável que deixaria o espaço sem administrador. O banco não confere isso (as regras do Firestore não percorrem o mapa); o espaço órfão é tratado no passo 2.3.
+- Ninguém apaga documentos do banco: a exclusão é lógica (lixeira, seção 4.7). Histórico e retratos só recebem registros novos.
+- Comentários: o autor é sempre o e-mail do login, em minúsculas; o autor edita guardando as versões anteriores (a lista só cresce, com o começo igual); apagado, o comentário não muda mais. A leitura é pública: um comentário "apagado" some da tela, mas continua legível por quem consultar o banco diretamente.
+- Calendário geral: quem tem login altera, até existir o Administrador do Sistema.
+- **Limitações conhecidas:** (1) a restauração de uma cópia de segurança no Firebase só recria os espaços em que quem restaura é administrador, e não recria comentários de outras pessoas, nem os já editados ou apagados; para restaurar tudo, o administrador do Firebase precisa relaxar as regras no console durante a restauração e publicá-las de novo em seguida; (2) as regras do passo 2.1 não puderam ser executadas num emulador do Firestore durante o desenvolvimento (o ambiente não baixa o emulador); foram conferidas por leitura, contra a tabela acima, e precisam ser conferidas no uso logo depois de publicadas.
 
 Usuários são cadastrados pela importação de responsáveis (provisório; seção 8.6) ou pelo administrador no console do Firebase. **Obrigatório antes de qualquer uso oficial:** papéis por espaço (administrador, usuário, leitor), visibilidade e proteção da branch `main` (seção 12, passos 2.1 a 2.3 e 2.11). Ao mudar as regras, é preciso publicá-las no console e conferir que entraram em vigor antes de publicar o código que depende delas.
 
@@ -205,6 +217,10 @@ erDiagram
 | `programa` | texto | não | Programa do PEI/PDI que prevê o Plano de Ação. **Obrigatório no Plano de Ação**; no Projeto, vazio. Texto livre provisório, até o catálogo do passo 2.5 | `Programa de Governança de Dados` |
 | `aprovacao` | aprovação (4.1.6) | não | Documento que aprovou o Plano de Ação. **Obrigatório no Plano de Ação**, com a identificação; no Projeto, vazio | |
 | `modelo` | modelo (4.1.7) | não | Como o espaço define prazos, dependências e simulação. Escolhido na criação e **imutável** (passo 2.4b). **Ausente: cronograma estruturado** (estimativas, dependências e simulação), como nos espaços criados antes do passo 2.4b | |
+| `acessos` | mapa de e-mail → acesso (4.1.10) | não | Quem tem papel no espaço (passo 2.1; seção 16.3): para cada e-mail de login, em minúsculas, o papel e o responsável ligado a ele. Mantido pelo sistema (papéis na lista de responsáveis), não editado direto. **Ausente: espaço sem administração**, criado antes do passo 2.1, em que vale a regra provisória (quem tem login altera tudo) até alguém assumir a administração | `{"ana@ufci.edu.br": {"papel": "administrador", "responsavel": "3f2b…"}}` |
+| `fechado` | sim/não | não | Espaço fechado: cada Usuário atualiza só as ações em que é responsável (passo 2.1; seção 16.3). **Ausente: aberto** | `true` |
+| `administracaoAssumidaPor` | usuário | não | Quem assumiu a administração de um espaço sem administração (passo 2.1). Imutável | `ana@ufci.edu.br` |
+| `administracaoAssumidaEm` | momento | não | Quando a administração foi assumida. Imutável | |
 | `nomeInicial` | texto | não | Nome da situação inicial nos espaços sem dependências (seção 16.2; passo 2.7). **Ausente: "A fazer"**. Nos espaços com dependências, a inicial é sempre "Liberada" | `Para fazer` |
 | `situacoes` | lista de situação (4.1.8) | não | Situações personalizadas, na ordem das colunas do quadro, entre a inicial e Concluídas (passo 2.7) | |
 | `etiquetas` | lista de etiqueta (4.1.9) | não | Catálogo de etiquetas do espaço, na ordem de cadastro (passo 2.10a). Só aparece na tela com o campo opcional `etiquetas` ligado | |
@@ -312,7 +328,7 @@ Passo 2.4b (seção 16.1). Escolhido na criação, entre três modelos, e fixo d
 
 #### 4.1.8 Situação personalizada: cada item de `situacoes`
 
-Passo 2.7 (seção 16.2). Subtipos de Liberada, como "Em andamento", "Em teste" e "Em revisão", criados no espaço (até os papéis, por quem tem login; depois, pelo administrador do espaço). Viram colunas do quadro, na ordem da lista. Os nomes não se repetem, nem com a inicial, "Não liberada" e "Concluída", e têm até 40 caracteres. Retirar uma situação devolve as ações que estavam nela à situação inicial.
+Passo 2.7 (seção 16.2). Subtipos de Liberada, como "Em andamento", "Em teste" e "Em revisão", criados no espaço pelo administrador do espaço (até o passo 2.1, por quem tinha login). Viram colunas do quadro, na ordem da lista. Os nomes não se repetem, nem com a inicial, "Não liberada" e "Concluída", e têm até 40 caracteres. Retirar uma situação devolve as ações que estavam nela à situação inicial.
 
 <!-- dicionario: situacao -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
@@ -330,6 +346,16 @@ Passo 2.10a (seção 16.8). Catálogo **por espaço**, como no Trello e no Plann
 | `id` | id | sim | Identificador da etiqueta, usado no campo `etiquetas` da ação. Imutável | `t1a2…` |
 | `nome` | texto | sim | Nome na tela, até 30 caracteres, único no espaço | `Compras` |
 | `cor` | texto: `verde`, `azul`, `laranja`, `lilas`, `vermelho`, `turquesa`, `rosa` ou `oliva` | sim | Cor da etiqueta. Na tela, cada cor usa um dos tons das pessoas (`--tom-N`, seção 8.3), que já existem nos temas claro e escuro: verde 6, azul 7, laranja 5, lilás 4, vermelho 1, turquesa 2, rosa 8, oliva 3. Etiqueta nova: a cor menos usada no catálogo, nesta ordem | `verde` |
+
+#### 4.1.10 Acesso: cada valor de `acessos`
+
+Passo 2.1 (seção 16.3). A chave é o e-mail de login, em minúsculas. O papel é escolhido na lista de responsáveis (decisão do responsável, 24/10/2026): cada pessoa com e-mail ganha um papel no espaço, Usuário por padrão. Quem cria o espaço é o primeiro administrador, mesmo sem ser responsável (aparece sem responsável ligado). O espaço tem sempre pelo menos um administrador: o Store recusa a mudança que deixaria o espaço sem nenhum. Regras em `js/papeis.js` e, no banco, em `firestore.rules`.
+
+<!-- dicionario: acesso -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `papel` | texto: `administrador`, `usuario` ou `leitor` | sim | Administrador do espaço, Usuário ou Leitor (seção 16.3) | `usuario` |
+| `responsavel` | id | não | Responsável (4.5) cujo e-mail de login é a chave. Vazio: e-mail com papel sem cadastro de responsável, como o de quem criou o espaço. Cópia mantida pelo sistema, para as regras do banco conferirem, no espaço fechado, se a pessoa é responsável pela ação; no PostgreSQL, vira junção com a tabela de responsáveis | `3f2b…` |
 
 ### 4.2 Ação
 
@@ -599,6 +625,7 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Etiqueta | lista `etiquetas` dentro do espaço | tabela `etiqueta`, com `espaco_id` |
 | Etiqueta da ação | lista `etiquetas` dentro da ação | tabela `acao_etiqueta` |
+| Acesso (papel por espaço) | mapa `acessos` dentro do espaço | tabela `acesso`, chave (`espaco_id`, e-mail), com o papel; o responsável ligado sai da tabela `responsavel` |
 | Documento da ação | lista `documentos` dentro da ação | tabela `acao_documento` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
 | Histórico de alterações | `espacos/{id}/historico/{id}` | tabela `historico`, com `espaco_id` |
@@ -836,6 +863,13 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 - Sem permissão de gravar, a ordenação aparece, mas sem puxadores. O quadro, o cronograma e as demais visualizações não mudam.
 - Planilha: coluna "Prioridade da equipe", só de leitura, com a posição (1, 2, 3…) das ações que já têm posição. Exportação: a mesma coluna, depois de "Responsáveis". Importação: não lida (a posição é feita arrastando).
 
+**Papéis** (passo 2.1; seção 16.3):
+- **No alto do espaço**, um aviso conforme o papel de quem entrou: no espaço sem administração, "Este espaço ainda não tem administrador", com o botão **Assumir a administração**; para o Leitor, "Você é Leitor neste espaço: consulta e comenta, sem alterar"; para quem tem login sem papel, "só consulta"; para o Usuário num espaço fechado, "você atualiza só as ações em que é responsável". O administrador e o Usuário do espaço aberto não veem aviso.
+- **O que some para quem não pode:** "Nova ação" e as linhas de criação rápida (só o administrador cria ações); na janela da ação, os campos ficam só de leitura e somem Reestimar, Registrar conclusão e Excluir (Leitor, sem papel, ou Usuário numa ação alheia do espaço fechado); no quadro, arrastar cartões e criar, renomear e retirar colunas; o puxador da prioridade; Alt+clique para editar no lugar; na lixeira, Restaurar.
+- **Comentários:** quem tem papel escreve; quem tem login sem papel vê "Só quem tem papel neste espaço comenta". O administrador vê "Apagar" também nos comentários dos outros, com confirmação.
+- **Configurar este espaço**, para o administrador: no alto, a seção **Acesso ao espaço**, com o que cada papel faz, a escolha **Aberto** ou **Fechado** (grava ao escolher) e a lista **Com papel, sem cadastro de responsável** (e-mail, papel e ×), como o e-mail de quem criou o espaço. Na lista de responsáveis, cada pessoa com login mostra o papel ("Login: … · Usuário"), e o formulário tem **Papel neste espaço** (Administrador do espaço, Usuário, Leitor ou "Sem papel (só consulta)"). Uma recusa, como tirar o último administrador, aparece em aviso.
+- **Configurar este espaço**, para os demais: o aviso "Seu papel neste espaço: …", a lista de responsáveis só para consulta, a simulação, os retratos (o Usuário salva) e a exportação.
+
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
 **Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
@@ -1025,7 +1059,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 ### Fase 2: organização e permissões (obrigatória antes do uso oficial; continua no protótipo, decisão do responsável de 23/10/2026)
 
-2.1. Papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3).
+2.1. ✔ Papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado, com as regras de acesso do banco correspondentes (seção 16.3). Feito em 24/10/2026. Decisões do responsável: o papel é escolhido na lista de responsáveis (cada pessoa com e-mail de login tem um; para dar só leitura a alguém, cadastra-se a pessoa como responsável, mesmo sem ações); os espaços antigos, como a PI², ganham administrador pelo botão "Assumir a administração" (o primeiro que clicar; os demais responsáveis com e-mail viram usuários), com registro de quem e quando; espaço novo começa aberto; o Leitor comenta. Dados: `acessos`, `fechado` e `administracaoAssumidaPor`/`Em` do espaço (4.1), entidade acesso (4.1.10). Regras em `js/papeis.js`, conferidas pelo Store (`exigir`) e pelo `firestore.rules` (seção 3.6). Telas: seção 8, "Papéis". Escolhas feitas sem consulta, por serem consequência das regras da seção 16.3: o usuário cria responsáveis sem login e etiquetas pela janela da ação, salva retratos e, no espaço fechado, não muda a prioridade da equipe; quem não tem papel só consulta; quem cria o espaço aparece em "Com papel, sem cadastro de responsável" até ser cadastrado como responsável; trocar o e-mail de um responsável leva o papel para o e-mail novo, e excluí-lo tira o acesso. Visibilidade (quem consulta) fica para o passo 2.2.
 2.2. Visibilidade: pública, institucional ou restrita.
 2.3. Encerrar e reabrir; regra do último administrador; telas mínimas de administração (espaço órfão).
 2.4. Tipos de espaço e modelos prontos; estimativas opcionais e previsões desligáveis (seção 16.1). No menu lateral, os espaços passam a ser agrupados por tipo, cada grupo com o nome do tipo no plural ("Planos de Ação", "Projetos", "Quadros de Tarefas"), só para os tipos que existirem; até lá, um grupo só, "Espaços" (decisão do responsável, 21/10/2026). Dividido em dois em 23/10/2026 (decisão do responsável):
@@ -1150,7 +1184,7 @@ Os itens abaixo mantêm a numeração original (1 a 4, da linha do tempo, aprova
 20. A seção começa recolhida na janela da ação; o autor aparece pelo nome do responsável ligado ao e-mail.
 
 **Retratos (passo 1.18)**
-21. Qualquer pessoa com login salva retratos, até existirem os papéis (passo 2.1).
+21. Qualquer pessoa com login salva retratos, até existirem os papéis (passo 2.1). Desde o passo 2.1, administradores e usuários do espaço.
 22. Não há como excluir retrato, nem os manuais.
 23. A comparação com retrato fica só no cronograma, com uma linha cinza fina sob cada barra.
 
@@ -1280,6 +1314,8 @@ O carimbo **Atrasada** continua independente das situações.
 
 ### 16.3 Papéis e visibilidade
 
+**Papéis e espaço aberto ou fechado: feitos no passo 2.1** (24/10/2026; seções 3.6, 4.1.10 e 12). Ficam para os passos seguintes: visibilidade (2.2) e encerrar e reabrir, último administrador e espaço órfão (2.3).
+
 - **Login institucional** (Identificação Única) quando houver o servidor da UFCI-MG. Todo usuário institucional pode criar espaços e é administrador dos espaços que cria.
 - **Papéis por espaço:** Administrador do espaço, Usuário do espaço, Leitor. Sem papel no espaço, a pessoa vê o espaço só se a visibilidade permitir.
 - **Responsáveis sem login** continuam existindo: pessoa, equipe ou unidade.
@@ -1303,7 +1339,7 @@ Ninguém altera nem apaga o histórico, nem o Administrador do Sistema. O regist
   - **Histórico próprio:** cada edição de um comentário guarda a versão anterior; a tela mostra a última, com a indicação "editado".
   - **Apagar é só esconder:** o autor do comentário ou o administrador do espaço pode "apagar", e o comentário some da tela de todos os usuários. Mas ele **nunca é apagado do banco**, com todas as versões: uma eventual injúria, calúnia ou difamação precisa poder ser recuperada pelas autoridades competentes, por pedido formal à equipe de TI, fora do sistema. No lugar, a conversa mostra "Comentário apagado pelo autor" ou "Comentário apagado pelo administrador do espaço", com a data, para ninguém esconder nada em silêncio.
   - **Fora dos retratos:** os comentários já são o próprio histórico, por isso não são copiados nos retratos.
-  - **Feito no passo 2.9** (23/10/2026; detalhes na seção 12 e na seção 4.2.3). Até os papéis (passo 2.1), só o autor apaga; "apagado pelo administrador do espaço" fica previsto no dado (`apagadoComo`).
+  - **Feito no passo 2.9** (23/10/2026; detalhes na seção 12 e na seção 4.2.3). Desde o passo 2.1, o administrador do espaço também apaga comentários alheios ("apagado pelo administrador do espaço").
 
 ### 16.6 Relatórios e extração de dados
 
@@ -1579,3 +1615,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 132 | Passo 2.10a, parte 4: prioridade da equipe. Campo opcional, ordenação "Prioridade da equipe" com puxador (mouse, dedo e setas), chave fracionária (seção 5.8, nova), coluna na planilha e na exportação, registro no histórico. Dicionário: `prioridade` dos campos opcionais (4.1.4) e `posicaoPrioridade` da ação (4.2). Passo 2.10a concluído |
 | 133 | Correção: mudar e retirar situações e escrever, editar e apagar comentários passam pela mesma recusa das demais gravações sem conexão ou sem login. Antes, sem conexão, essas operações não davam o aviso "Sem conexão com a internet" (encontrado no passo 2.10a) |
 | 134 | Correção: na conferência da importação, "Atualiza:" passa a dizer "data-limite", e não o nome interno `dataLimite` (encontrado no passo 2.10a) |
+| 135 | Passo 2.1: papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado. Papel escolhido na lista de responsáveis; quem cria é administrador; "Assumir a administração" nos espaços antigos; o Store e as regras do banco (`firestore.rules`, a publicar no console) conferem as permissões; o administrador apaga comentários alheios. Dicionário: `acessos`, `fechado`, `administracaoAssumidaPor` e `administracaoAssumidaEm` do espaço (4.1), acesso (4.1.10) |

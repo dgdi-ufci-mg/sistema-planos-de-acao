@@ -22,7 +22,11 @@ export function abrirLixeira({ store, espacoId = null, storeEspacos, aoRestaurar
       espacoId ? store.listarResponsaveis(espacoId) : [],
     ]);
     const quem = (email) => esc(responsaveis.find((r) => r.usuario === email)?.nome ?? email);
-    const pode = (s) => s.podeGravar;
+    /* restaurar é do administrador do espaço (passo 2.1) */
+    const aqui = espacoId ? await store.lerEspaco(espacoId) : null;
+    const podeAqui = Boolean(aqui) && store.podeGravar && store.permissoesEm(aqui).configurar;
+    const pode = (s) => (s === store ? podeAqui : s.podeGravar);
+    const podeEspaco = (e) => storeEspacos.podeGravar && storeEspacos.permissoesEm(e).configurar;
     /* feminino para ação, masculino para responsável e espaço */
     const item = (nome, por, em, atributos, podeRestaurar, feminino = false) => `<li class="item-lixeira">
       <span class="item-lixeira-texto"><b>${esc(nome)}</b><small>${feminino ? "Excluída" : "Excluído"}${por ? ` por ${quem(por)}` : ""} em ${quando(em)}</small></span>
@@ -35,7 +39,7 @@ export function abrirLixeira({ store, espacoId = null, storeEspacos, aoRestaurar
         ${lixo.responsaveis.length ? `<h4>Responsáveis</h4><ul>${lixo.responsaveis.map((r) => item(r.nome, r.excluidoPor, r.excluidoEm, `data-restaurar-responsavel="${esc(r.id)}"`, pode(store))).join("")}</ul>` : ""}
       </section>` : ""}
       <section class="secao-lixeira"><h3>Espaços excluídos</h3>
-        ${espacos.length ? `<ul>${espacos.map((e) => item(e.nome, e.excluidoPor, e.excluidoEm, `data-restaurar-espaco="${esc(e.id)}"`, pode(storeEspacos))).join("")}</ul>`
+        ${espacos.length ? `<ul>${espacos.map((e) => item(e.nome, e.excluidoPor, e.excluidoEm, `data-restaurar-espaco="${esc(e.id)}"`, podeEspaco(e))).join("")}</ul>`
           : '<p class="vazio">Nenhum espaço excluído.</p>'}
       </section>`;
   }

@@ -97,6 +97,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   if (!["tempo", "execucao", "revisao"].includes(ui.barra)) ui.barra = "tempo";
   let chaveSim = null;
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
+  /** o que quem está vendo pode fazer neste espaço (papéis, passo 2.1; js/papeis.js) */
+  let perm;
   let janela = null;
   /** janela "Nova ação" aberta: fica aberta entre criações e recebe as mudanças do banco */
   let novaJanela = null;
@@ -126,11 +128,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
     usaCodigos = espaco.camposOpcionais?.codigos === true; // desligado por padrão (seção 4.2)
     etapaDe = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
+    perm = store.permissoesEm(espaco);
+    /* só o administrador cria ações (passo 2.1): some o "Nova ação" */
+    document.body.classList.toggle("sem-criar-acao", !perm.criarAcao);
   }
 
   /** Dados prontos para a janela da ação. */
   const dadosDaJanela = () => ({
-    espaco, acoes, responsaveis, cal, caminho, pessoas, meus, usaFases,
+    espaco, acoes, responsaveis, cal, caminho, pessoas, meus, usaFases, perm,
     linhaDe: new Map(linhas.map((l) => [l.acao.numero, l])),
     usaCodigos,
   });
@@ -157,7 +162,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const naLista = ui.modo === "lista";
     const comBarra = ui.modo === "quadro" || (naLista && colunas().barras);
     const comExibir = ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
-    return `${alerta || agrupado() || comExibir || comBarra ? `<div class="cabeca-linha"><div class="cabeca-controles">${comExibir ? colunasHtml() : ""}${comBarra ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
+    /* papéis (passo 2.1): espaço antigo sem administrador, ou quem vê sem poder alterar */
+    const papelAviso = !store.podeGravar ? ""
+      : perm.livre ? `<p class="aviso-papel">${ICONES.pessoa}<span><b>Este espaço ainda não tem administrador.</b> Enquanto isso, quem entra altera tudo. Quem assumir passa a definir o papel de cada pessoa.</span>
+          <button class="botao" type="button" data-assumir>Assumir a administração</button></p>`
+      : perm.papel === "leitor" ? `<p class="aviso-papel">${ICONES.pessoa}<span>Você é <b>Leitor</b> neste espaço: consulta e comenta, sem alterar.</span></p>`
+      : !perm.papel && store.usuario ? `<p class="aviso-papel">${ICONES.pessoa}<span>Você não tem papel neste espaço: só consulta. Para participar, peça a um administrador do espaço.</span></p>`
+      : perm.papel === "usuario" && espaco.fechado ? `<p class="aviso-papel">${ICONES.pessoa}<span>Espaço <b>fechado</b>: você atualiza só as ações em que é responsável.</span></p>` : "";
+    return `${papelAviso}${alerta || agrupado() || comExibir || comBarra ? `<div class="cabeca-linha"><div class="cabeca-controles">${comExibir ? colunasHtml() : ""}${comBarra ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -585,7 +597,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /* ---------- criação rápida (passo 1.14a): nome e Enter, no fim de cada etapa e da coluna Liberadas ---------- */
   /** Sem filtros: com filtro, a ação criada poderia sumir da tela logo ao nascer. */
-  const comRapida = () => store.podeGravar !== false && ui.situacao === "todas" && !ui.responsavel && !ui.minhas && !etiquetaAtiva();
+  const comRapida = () => store.podeGravar !== false && perm.criarAcao && ui.situacao === "todas" && !ui.responsavel && !ui.minhas && !etiquetaAtiva();
   function rapidaHtml(chave, etapa = "", ondeTexto = "") {
     return `<form class="linha-rapida" data-rapida="${esc(chave)}" data-etapa="${esc(etapa)}">${ICONES.mais}
       <input name="rotulo" maxlength="120" autocomplete="off" placeholder="Adicionar ação${ondeTexto}" aria-label="Adicionar ação${ondeTexto}: digite o nome e tecle Enter"></form>`;
@@ -849,7 +861,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function cartaoHtml(l) {
     const a = l.acao;
     const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus, todos: true });
-    const arrastavel = l.situacao !== "naoLiberada";
+    const arrastavel = l.situacao !== "naoLiberada" && store.podeGravar !== false && perm.atualizar(a);
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
@@ -861,7 +873,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
   /** "+ Nova coluna", antes de Concluídas: cria uma situação personalizada (passo 2.7) ali mesmo. */
   function novaColunaHtml() {
-    if (!store.podeGravar) return "";
+    if (!store.podeGravar || !perm.configurar) return "";
     return `<section class="coluna coluna-nova" aria-label="Nova coluna">${coluna.criando
       ? `<input class="nome-coluna" data-nova-coluna maxlength="40" placeholder="Nome da coluna" aria-label="Nome da nova coluna">
          <p class="tec">Enter cria; Esc desiste. A coluna é uma situação do espaço, como “Em andamento”.</p>`
@@ -909,11 +921,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* sem dependências, "Não liberadas" só aparece se alguma ação espera a data mínima */
     const colunas = colunasDoQuadro(espaco);
     if (!colunas.some((c) => c.chave === "naoLiberada") && ls.some((l) => l.fluxo === "naoLiberada")) colunas.unshift({ chave: "naoLiberada", titulo: "Não liberadas" });
-    return `<div class="quadro" style="--colunas-quadro:${colunas.length + (store.podeGravar ? 1 : 0)}">${colunas.map(({ chave, titulo }) => {
+    return `<div class="quadro" style="--colunas-quadro:${colunas.length + (store.podeGravar && perm.configurar ? 1 : 0)}">${colunas.map(({ chave, titulo }) => {
       const daColuna = ls.filter((l) => l.fluxo === chave);
       const [classe, ic] = icone(chave);
       const personalizada = ![ "naoLiberada", "inicial", "concluida"].includes(chave);
-      const editavel = personalizada && store.podeGravar;
+      const editavel = personalizada && store.podeGravar && perm.configurar;
       const nome = coluna.editando === chave
         ? `<input class="nome-coluna" data-nome-coluna="${esc(chave)}" maxlength="40" value="${esc(titulo)}" aria-label="Nome da coluna">`
         : editavel ? `<button type="button" class="titulo-coluna" data-renomear-coluna="${esc(chave)}" title="Clique para renomear">${esc(titulo)}</button>` : `<b>${esc(titulo)}</b>`;
@@ -940,13 +952,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const linhaDe = (numero) => linhas.find((l) => l.acao.numero === numero);
   const destinoValido = (coluna, numero) => {
     const l = linhaDe(numero);
-    if (!l || coluna === l.fluxo) return false;
+    if (!l || coluna === l.fluxo || !perm.atualizar(l.acao)) return false;
     if (l.situacao === "liberada") return coluna !== "naoLiberada";
     return l.situacao === "concluida" && coluna === "inicial";
   };
   /* ---------- prioridade da equipe (passo 2.10a; seção 5.8): arrastar pelo puxador, com o mouse, o dedo ou as setas ---------- */
   /** Puxadores à vista: ordenação "Prioridade da equipe", campo ligado, na lista e com permissão de gravar. */
-  const puxadores = () => ui.ordem === "prioridade" && espaco.camposOpcionais?.prioridade === true && ui.modo === "lista" && store.podeGravar !== false;
+  const puxadores = () => ui.ordem === "prioridade" && espaco.camposOpcionais?.prioridade === true && ui.modo === "lista" && store.podeGravar !== false && perm.priorizar;
   /** Ações irmãs do item (a mesma etapa, ou a lista inteira sem fases), na ordem da tela. */
   const irmaosDe = (item) => [...item.parentElement.querySelectorAll(":scope > .item")];
   let puxando = null;
@@ -1161,6 +1173,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const t = e.target;
     if (t.closest("[data-editando]")) return; // clique dentro do campo em edição
     if (t.closest("[data-puxar]")) return; // o puxador da prioridade arrasta, não abre a ação
+    if (t.closest("[data-assumir]")) {
+      return store.assumirAdministracao(espacoId).then(() => avisar("Você agora é administrador deste espaço. Os responsáveis com e-mail viraram usuários.")).catch((f) => avisar(f.message));
+    }
     /* Alt+clique num campo editável: edita ali mesmo (22/10/2026) */
     const campo = e.altKey && store.podeGravar ? t.closest("[data-editar]") : null;
     if (campo) { e.preventDefault(); return editarNoLugar(campo); }
@@ -1232,6 +1247,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const numero = Number(no.dataset.numero);
     const acao = acoes.find((a) => a.numero === numero);
     if (!acao) return;
+    if (!perm.atualizar(acao)) { avisar(perm.papel === "leitor" ? "Você é Leitor neste espaço: pode consultar e comentar, sem alterar." : "Você não pode alterar esta ação."); return; }
     const tipo = campo.dataset.editar;
     if (tipo === "responsaveis") {
       return escolherParticipantes(campo, {

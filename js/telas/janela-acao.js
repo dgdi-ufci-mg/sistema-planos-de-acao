@@ -85,11 +85,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <h4>Comentários${visiveis ? ` <span class="n">${visiveis}</span>` : ""}</h4>
       ${comentarios === null ? `<p class="vazio">Carregando…</p>` : lista.length ? `<ol class="conversa">${lista.map(comentarioHtml).join("")}</ol>`
         : `<p class="vazio">Nenhum comentário ainda.</p>`}
-      ${usuario ? `<form class="comentar" data-comentar>
+      ${usuario && d.perm.comentar ? `<form class="comentar" data-comentar>
           <textarea name="novoComentario" rows="2" maxlength="4000" placeholder="Escreva um comentário" aria-label="Novo comentário"></textarea>
           <div class="comentar-pe"><small class="tec">Ctrl+Enter envia. Quem consulta o espaço vê os comentários.</small>
             <button class="botao principal" type="submit">Comentar</button></div>
-        </form>` : `<p class="tec">Entre com seu e-mail e senha para comentar.</p>`}
+        </form>` : usuario ? `<p class="tec">Só quem tem papel neste espaço comenta.</p>` : `<p class="tec">Entre com seu e-mail e senha para comentar.</p>`}
     </section>`;
   }
   function comentarioHtml(c) {
@@ -115,7 +115,13 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
             <button type="button" class="botao-texto perigo" data-confirmar-apagar="${esc(c.id)}">Apagar</button>
             <button type="button" class="botao-texto" data-cancelar-comentario>Cancelar</button></div>`
         : `<div class="comentario-acoes"><button type="button" class="botao-texto" data-editar-comentario-id="${esc(c.id)}">Editar</button>
-            <button type="button" class="botao-texto" data-apagar-comentario="${esc(c.id)}">Apagar</button></div>`) : ""}
+            <button type="button" class="botao-texto" data-apagar-comentario="${esc(c.id)}">Apagar</button></div>`)
+      /* o administrador do espaço também apaga (esconde) comentários alheios (passo 2.1; seção 16.5) */
+      : d.perm.apagarComentarioAlheio && store.podeGravar ? (apagandoComentario === c.id
+        ? `<div class="comentario-acoes confirmar">Apagar este comentário de outra pessoa? Ele some para todos, com o aviso "apagado pelo administrador do espaço".
+            <button type="button" class="botao-texto perigo" data-confirmar-apagar="${esc(c.id)}">Apagar</button>
+            <button type="button" class="botao-texto" data-cancelar-comentario>Cancelar</button></div>`
+        : `<div class="comentario-acoes"><button type="button" class="botao-texto" data-apagar-comentario="${esc(c.id)}">Apagar</button></div>`) : ""}
     </li>`;
   }
   /** Redesenha só a conversa (sem perder o que está sendo digitado nela). */
@@ -161,7 +167,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /** situação da última gravação de um campo: {campo, tipo: "salvando"|"salvo"|"erro", texto} */
   let status = null;
   let tempoStatus = null;
-  const somenteLeitura = () => !store.podeGravar;
+  /* papéis (passo 2.1): o Leitor, quem não tem papel e, no espaço fechado, o Usuário nas ações dos outros só consultam */
+  const somenteLeitura = () => !store.podeGravar || !d.perm.atualizar(acaoAtual());
 
   function desenhar() {
     const acao = acaoAtual();
@@ -213,7 +220,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
           <div class="janela-campos">${camposHtml(acao, l, etapas, etapa)}</div>
           ${maisCamposHtml(acao)}
-          ${store.podeGravar ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ação</button></div>` : ""}
+          ${store.podeGravar && d.perm.excluirAcao ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ação</button></div>` : ""}
         </div>
 
         <div class="janela-atividade" aria-label="Atividade">
@@ -295,7 +302,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return [
       campos.descricao !== false && ["descricao", "Descrição"],
       ["naoAntesDe", "Não começa antes de"],
-      store.podeGravar && ["checklist", "Checklist"],
+      !somenteLeitura() && ["checklist", "Checklist"],
       campos.notas !== false && ["notas", "Anotações"],
       d.usaCodigos && ["codigo", "Código"],
       campos.justificativa === true && ["justificativa", "Justificativa"],
@@ -451,7 +458,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
    */
   function checklistHtml(acao) {
     const itens = acao.checklist ?? [];
-    const pode = store.podeGravar;
+    const pode = !somenteLeitura();
     if (!itens.length && !checklistAberto) {
       return pode ? `<div class="campo-acao"><span class="campo-nome">Checklist</span>
         <button type="button" class="botao-texto" data-abrir-checklist>${ICONES.mais}Adicionar checklist</button></div>` : "";

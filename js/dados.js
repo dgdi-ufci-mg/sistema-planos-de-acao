@@ -15,6 +15,7 @@ import { problemaDoTipo } from "./tipos.js";
 import { problemaDoModelo, modeloDe } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
 import { chaveValida, planejarMovimento } from "./prioridade.js";
+import { permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
 import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
 
 export { ErroDeDados };
@@ -27,7 +28,7 @@ export const SEMENTE_PADRAO = 20261014;
 const CODIGO_VALIDO = /^[A-Z0-9]{2,8}$/;
 
 /** Campos que não mudam depois de criados. */
-const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero", "modelo"]; // modelo: fixo depois de criado (passo 2.4b) // tons e proximoNumero: o sistema cuida deles
+const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero", "modelo", "acessos", "administracaoAssumidaPor", "administracaoAssumidaEm"]; // acessos: por definirPapel e assumirAdministracao (passo 2.1) // modelo: fixo depois de criado (passo 2.4b) // tons e proximoNumero: o sistema cuida deles
 const FIXOS_DA_ACAO = ["numero", "criadaEm"];
 
 /** Código mnemônico: de 2 a 8 letras maiúsculas ou números, sem repetir no espaço. */
@@ -119,6 +120,10 @@ function validarEspaco(e, recusarDesconhecidos) {
   const modelo = problemaDoModelo(e.modelo); // passo 2.4b
   if (modelo) throw new ErroDeDados(modelo.codigo, modelo.mensagem);
   for (const s of e.situacoes ?? []) recusarDesconhecidos(s, "situacao"); // passo 2.7
+  for (const a of Object.values(e.acessos ?? {})) recusarDesconhecidos(a ?? {}, "acesso"); // passo 2.1
+  const acessos = problemaDosAcessos(e);
+  if (acessos) throw new ErroDeDados(acessos.codigo, acessos.mensagem);
+  if (e.fechado != null && typeof e.fechado !== "boolean") throw new ErroDeDados("valor-invalido", "Aberto ou fechado: informe sim ou não.");
   const situacoes = problemaDasSituacoes(e);
   if (situacoes) throw new ErroDeDados(situacoes.codigo, situacoes.mensagem);
   for (const x of e.etiquetas ?? []) recusarDesconhecidos(x, "etiqueta"); // passo 2.10a
@@ -229,6 +234,45 @@ export function criarStore(banco, opcoes = {}) {
     if (lista.some((id) => !catalogo.has(id))) throw new ErroDeDados("nao-encontrado", "Etiqueta não encontrada neste espaço.");
   }
 
+  /**
+   * Papéis por espaço (passo 2.1; js/papeis.js): recusa o que o papel de quem grava não permite.
+   * Sem login e sem exigir login (o exemplo, sem ninguém entrar), não há controle, como antes.
+   * @param {"configurar"|"criarAcao"|"excluirAcao"|"priorizar"|"comentar"|"criarResponsavel"|"criarEtiqueta"|"salvarRetrato"|"atualizar"} permissao
+   */
+  async function exigir(espacoId, permissao, numero = null) {
+    if (!opcoes.exigirLogin && !usuario) return;
+    const espaco = await banco.lerEspaco(espacoId);
+    if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+    const p = permissoes(espaco, usuario);
+    const ok = permissao === "atualizar" ? p.atualizar(numero == null ? null : await banco.lerAcao(espacoId, numero)) : p[permissao];
+    if (ok) return;
+    if (!p.papel) throw new ErroDeDados("sem-permissao", "Você não tem papel neste espaço. Peça a um administrador do espaço.");
+    if (p.papel === "leitor") throw new ErroDeDados("sem-permissao", "Você é Leitor neste espaço: pode consultar e comentar, sem alterar.");
+    if (permissao === "atualizar") throw new ErroDeDados("sem-permissao", "Este espaço é fechado: você só atualiza as ações em que é responsável.");
+    if (permissao === "priorizar") throw new ErroDeDados("sem-permissao", "Neste espaço fechado, só o administrador muda a prioridade da equipe.");
+    throw new ErroDeDados("sem-permissao", "Só o administrador do espaço pode fazer isso.");
+  }
+  /** Grava campos do espaço, com a validação e o carimbo; sem conferir o papel (uso interno). */
+  async function gravarEspaco(id, campos) {
+    const atual = await banco.lerEspaco(id);
+    if (!atual) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+    validarEspaco({ ...atual, ...campos }, recusarDesconhecidos);
+    const mudanca = { ...campos };
+    if ("nome" in mudanca) mudanca.nome = mudanca.nome.trim();
+    await banco.alterarEspaco(id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
+  }
+  /**
+   * Acessos depois de uma mudança, conferindo que sobra administrador (o último não sai; seção 16.3).
+   * Espaço sem administração não muda: lá ainda não há papéis.
+   */
+  async function mudarAcessos(espacoId, mudanca) {
+    const espaco = await banco.lerEspaco(espacoId);
+    if (semAdministracao(espaco)) return;
+    const acessos = mudanca(structuredClone(espaco.acessos));
+    if (!administradores({ acessos }).length) throw new ErroDeDados("ultimo-administrador", "O espaço ficaria sem administrador. Escolha outro administrador antes.");
+    await gravarEspaco(espacoId, { acessos });
+  }
+
   /** Texto de um comentário: sem espaços nas pontas, não vazio, até 4.000 caracteres. */
   const textoDoComentario = (texto) => {
     const t = String(texto ?? "").trim();
@@ -275,6 +319,9 @@ export function criarStore(banco, opcoes = {}) {
     /** Cria um espaço. Semente e número de simulações ficam fixos daqui em diante. */
     async criarEspaco(dados) {
       recusarDesconhecidos(dados, "espaco");
+      recusarFixos(dados, ["acessos", "administracaoAssumidaPor", "administracaoAssumidaEm"]);
+      /* quem cria é o primeiro administrador (passo 2.1); sem login (o exemplo), o espaço fica sem papéis */
+      if (usuario) dados = { ...dados, acessos: { [emailNormal(usuario)]: { papel: "administrador", responsavel: null } } };
       validarEspaco(dados, recusarDesconhecidos);
       const { nome, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO, ...outros } = dados;
       const id = novoId();
@@ -294,12 +341,42 @@ export function criarStore(banco, opcoes = {}) {
     async alterarEspaco(id, campos) {
       recusarDesconhecidos(campos, "espaco");
       recusarFixos(campos, FIXOS_DO_ESPACO);
-      const atual = await banco.lerEspaco(id);
-      if (!atual) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
-      validarEspaco({ ...atual, ...campos }, recusarDesconhecidos);
-      const mudanca = { ...campos };
-      if ("nome" in mudanca) mudanca.nome = mudanca.nome.trim();
-      await banco.alterarEspaco(id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
+      await exigir(id, "configurar");
+      await gravarEspaco(id, campos);
+    },
+
+    // --- papéis por espaço (passo 2.1; seção 16.3) ---
+    /** O que quem está gravando pode fazer neste espaço (para a tela esconder o que não pode). */
+    permissoesEm(espaco) {
+      if (!opcoes.exigirLogin && !usuario) return { ...permissoes({}, "exemplo@local"), livre: false }; // exemplo sem login: tudo, sem papéis nem aviso
+      return permissoes(espaco, usuario);
+    },
+    /**
+     * Espaço sem administração (criado antes dos papéis): quem tem login assume. Vira administrador;
+     * as demais pessoas com e-mail entre os responsáveis viram usuários. Fica registrado quem e quando.
+     */
+    async assumirAdministracao(espacoId) {
+      if (!usuario) throw new ErroDeDados("sem-login", "Entre com seu e-mail e senha para assumir a administração.");
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      if (!semAdministracao(espaco)) throw new ErroDeDados("ja-administrado", "Este espaço já tem administração.");
+      const responsaveis = (await banco.listarResponsaveis(espacoId)).filter(ativo);
+      await gravarEspaco(espacoId, { acessos: acessosAoAssumir(usuario, responsaveis), administracaoAssumidaPor: usuario, administracaoAssumidaEm: agora() });
+    },
+    /** Muda o papel de um e-mail no espaço; null tira o acesso. O último administrador não sai. */
+    async definirPapel(espacoId, email, papel) {
+      await exigir(espacoId, "configurar");
+      const e = emailNormal(email);
+      if (papel != null && !papelValido(papel)) throw new ErroDeDados("papel-invalido", `Papel desconhecido: “${papel}”.`);
+      const espaco = await banco.lerEspaco(espacoId);
+      if (semAdministracao(espaco)) throw new ErroDeDados("sem-administracao", "Assuma a administração do espaço antes de definir papéis.");
+      const ligado = (await banco.listarResponsaveis(espacoId)).find((r) => ativo(r) && r.usuario === e);
+      if (!espaco.acessos[e] && !ligado) throw new ErroDeDados("nao-encontrado", "Este e-mail não está entre os responsáveis do espaço.");
+      await mudarAcessos(espacoId, (acessos) => {
+        if (papel == null) delete acessos[e];
+        else acessos[e] = { papel, responsavel: ligado?.id ?? acessos[e]?.responsavel ?? null };
+        return acessos;
+      });
     },
 
     // --- ações ---
@@ -308,6 +385,7 @@ export function criarStore(banco, opcoes = {}) {
      * reservado pelo banco). O código mnemônico é opcional e, se houver, não pode repetir.
      */
     async criarAcao(espacoId, dados) {
+      await exigir(espacoId, "criarAcao");
       recusarDesconhecidos(dados, "acao");
       recusarFixos(dados, FIXOS_DA_ACAO);
       const { rotulo, codigo, ...outros } = dados;
@@ -341,6 +419,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Grava só os campos informados, com data e autor da alteração. */
     async alterarAcao(espacoId, numero, campos) {
+      await exigir(espacoId, "atualizar", numero);
       recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
       if ("situacaoPersonalizada" in campos) throw new ErroDeDados("campo-fixo", "A situação muda por mudarSituacao.");
@@ -357,25 +436,30 @@ export function criarStore(banco, opcoes = {}) {
 
     // --- listas da ação: item a item (seção 4.6) ---
     async acrescentarResponsavelNaAcao(espacoId, numero, responsavelId) {
+      await exigir(espacoId, "atualizar", numero);
       await banco.acrescentarNaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo(), hist);
       await arrumarTons(espacoId);
     },
     async retirarResponsavelDaAcao(espacoId, numero, responsavelId) {
+      await exigir(espacoId, "atualizar", numero);
       await banco.retirarDaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo(), hist);
       await arrumarTons(espacoId);
     },
     // --- etiquetas (passo 2.10a; seção 16.8): catálogo do espaço e etiquetas da ação, uma a uma ---
     /** Cria uma etiqueta no catálogo do espaço e devolve o id. Sem cor, a menos usada. */
     async criarEtiqueta(espacoId, { nome, cor } = {}) {
+      await exigir(espacoId, "criarEtiqueta");
       const espaco = await banco.lerEspaco(espacoId);
       if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
       const n = String(nome ?? "").trim();
       const id = novoId();
-      await store.alterarEspaco(espacoId, { etiquetas: [...etiquetasDe(espaco), { id, nome: n, cor: cor ?? proximaCor(espaco) }] });
+      /* o usuário também cria etiquetas, pela ação: o catálogo só cresce (passo 2.1) */
+      await gravarEspaco(espacoId, { etiquetas: [...etiquetasDe(espaco), { id, nome: n, cor: cor ?? proximaCor(espaco) }] });
       return id;
     },
     /** Muda o nome ou a cor de uma etiqueta do catálogo. */
     async alterarEtiqueta(espacoId, id, campos) {
+      await exigir(espacoId, "configurar");
       recusarDesconhecidos(campos, "etiqueta");
       recusarFixos(campos, ["id"]);
       const espaco = await banco.lerEspaco(espacoId);
@@ -385,6 +469,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Retira a etiqueta do catálogo e das ações que a usam. Devolve em quantas ações ativas ela estava. */
     async retirarEtiqueta(espacoId, id) {
+      await exigir(espacoId, "configurar");
       const espaco = await banco.lerEspaco(espacoId);
       if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
       const com = (await banco.listarAcoes(espacoId)).filter((a) => (a.etiquetas ?? []).includes(id));
@@ -393,12 +478,14 @@ export function criarStore(banco, opcoes = {}) {
       return com.filter(ativa).length;
     },
     async acrescentarEtiquetaNaAcao(espacoId, numero, id) {
+      await exigir(espacoId, "atualizar", numero);
       const espaco = await banco.lerEspaco(espacoId);
       if (!etiquetasDe(espaco).some((x) => x.id === id)) throw new ErroDeDados("nao-encontrado", "Etiqueta não encontrada neste espaço.");
       await exigirAcao(espacoId, numero);
       await banco.acrescentarNaLista(espacoId, numero, "etiquetas", [id], carimbo(), hist);
     },
     async retirarEtiquetaDaAcao(espacoId, numero, id) {
+      await exigir(espacoId, "atualizar", numero);
       await banco.retirarDaLista(espacoId, numero, "etiquetas", [id], carimbo(), hist);
     },
     /**
@@ -406,6 +493,7 @@ export function criarStore(banco, opcoes = {}) {
      * Devolve o id. É o "+ Acrescentar" da janela da ação.
      */
     async etiquetarAcao(espacoId, numero, nome) {
+      await exigir(espacoId, "atualizar", numero);
       const n = String(nome ?? "").trim();
       if (!n) throw new ErroDeDados("nome-vazio", "Escreva o nome da etiqueta.");
       if (n.length > TAMANHO_DO_NOME) throw new ErroDeDados("nome-longo", `O nome da etiqueta passa de ${TAMANHO_DO_NOME} caracteres.`);
@@ -420,6 +508,7 @@ export function criarStore(banco, opcoes = {}) {
      * Na primeira vez, as ações sem posição até a vizinha de cima também recebem a sua (planejarMovimento).
      */
     async priorizar(espacoId, numero, vizinhas = {}) {
+      await exigir(espacoId, "priorizar");
       const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
       if (!acoes.some((a) => a.numero === numero)) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
       for (const v of [vizinhas.depoisDe, vizinhas.antesDe]) {
@@ -432,6 +521,7 @@ export function criarStore(banco, opcoes = {}) {
     // --- documentos e links da ação (passo 2.10a; seção 16.8): item a item, como o checklist ---
     /** Acrescenta um documento à ação e devolve o id. Precisa de nome e de identificação ou link. */
     async acrescentarDocumentoNaAcao(espacoId, numero, dados) {
+      await exigir(espacoId, "atualizar", numero);
       const doc = documentoValido(dados);
       await exigirAcao(espacoId, numero);
       const id = novoId();
@@ -440,6 +530,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Troca os dados de um documento da ação (os campos ausentes são apagados). */
     async alterarDocumentoDaAcao(espacoId, numero, id, dados) {
+      await exigir(espacoId, "atualizar", numero);
       const doc = documentoValido(dados);
       await banco.mudarDocumentos(espacoId, numero, (lista) => {
         if (!lista.some((d) => d.id === id)) throw new ErroDeDados("nao-encontrado", "Documento não encontrado nesta ação.");
@@ -447,10 +538,12 @@ export function criarStore(banco, opcoes = {}) {
       }, carimbo(), hist);
     },
     async retirarDocumentoDaAcao(espacoId, numero, id) {
+      await exigir(espacoId, "atualizar", numero);
       await banco.mudarDocumentos(espacoId, numero, (lista) => lista.filter((d) => d.id !== id), carimbo(), hist);
     },
     // --- checklist da ação (passo 2.8; seção 16.5): item a item, sem regravar os demais ---
     async acrescentarItemNoChecklist(espacoId, numero, texto) {
+      await exigir(espacoId, "atualizar", numero);
       const t = String(texto ?? "").trim();
       if (!t) throw new ErroDeDados("checklist-vazio", "Escreva o item do checklist.");
       await exigirAcao(espacoId, numero);
@@ -459,14 +552,17 @@ export function criarStore(banco, opcoes = {}) {
       return id;
     },
     async marcarItemDoChecklist(espacoId, numero, id, feito) {
+      await exigir(espacoId, "atualizar", numero);
       await banco.mudarChecklist(espacoId, numero, (lista) => lista.map((i) => (i.id === id ? { ...i, feito: Boolean(feito) } : i)), carimbo(), hist);
     },
     async alterarItemDoChecklist(espacoId, numero, id, texto) {
+      await exigir(espacoId, "atualizar", numero);
       const t = String(texto ?? "").trim();
       if (!t) throw new ErroDeDados("checklist-vazio", "Escreva o item do checklist.");
       await banco.mudarChecklist(espacoId, numero, (lista) => lista.map((i) => (i.id === id ? { ...i, texto: t } : i)), carimbo(), hist);
     },
     async retirarItemDoChecklist(espacoId, numero, id) {
+      await exigir(espacoId, "atualizar", numero);
       await banco.mudarChecklist(espacoId, numero, (lista) => lista.filter((i) => i.id !== id), carimbo(), hist);
     },
     // --- comentários da ação (passo 2.9; seção 16.5): com autor e data; nunca apagados do banco ---
@@ -479,6 +575,7 @@ export function criarStore(banco, opcoes = {}) {
         aoMudar(lista.sort((a, b) => a.criadoEm.localeCompare(b.criadoEm) || a.id.localeCompare(b.id))));
     },
     async comentar(espacoId, numero, texto) {
+      await exigir(espacoId, "comentar");
       const t = textoDoComentario(texto);
       if (!usuario) throw new ErroDeDados("sem-login", "Entre com seu e-mail e senha para comentar.");
       await exigirAcao(espacoId, numero);
@@ -488,6 +585,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Edita o próprio comentário; a versão anterior fica guardada em `versoes`. */
     async editarComentario(espacoId, id, texto) {
+      await exigir(espacoId, "comentar");
       const t = textoDoComentario(texto);
       await banco.mudarComentario(espacoId, id, (c) => {
         exigirAutor(c);
@@ -497,7 +595,13 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** "Apaga" o próprio comentário: some da tela, mas fica no banco, com todas as versões. */
     async apagarComentario(espacoId, id) {
+      await exigir(espacoId, "comentar");
+      const espaco = await banco.lerEspaco(espacoId);
       await banco.mudarComentario(espacoId, id, (c) => {
+        /* o administrador do espaço também apaga (esconde) comentários alheios (passo 2.1; seção 16.5) */
+        if (!c.apagadoEm && usuario && c.autor !== usuario && permissoes(espaco, usuario).apagarComentarioAlheio) {
+          return { apagadoEm: agora(), apagadoPor: usuario, apagadoComo: "administrador" };
+        }
         exigirAutor(c);
         return { apagadoEm: agora(), apagadoPor: usuario, apagadoComo: "autor" };
       });
@@ -505,6 +609,7 @@ export function criarStore(banco, opcoes = {}) {
 
     /** Acrescenta uma ação anterior. Recusa a própria ação, código inexistente e ciclo. */
     async acrescentarDependencia(espacoId, numero, anterior) {
+      await exigir(espacoId, "atualizar", numero);
       await conferirModelo(espacoId, { dependeDe: [anterior] });
       const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
       if (anterior === numero) throw new ErroDeDados("ciclo", "Uma ação não pode depender dela mesma.");
@@ -521,12 +626,14 @@ export function criarStore(banco, opcoes = {}) {
       await banco.acrescentarNaLista(espacoId, numero, "dependeDe", [anterior], { ...carimbo(), ...(sai ? { situacaoPersonalizada: null } : {}) }, hist);
     },
     async retirarDependencia(espacoId, numero, anterior) {
+      await exigir(espacoId, "atualizar", numero);
       await banco.retirarDaLista(espacoId, numero, "dependeDe", [anterior], carimbo(), hist);
     },
 
     // --- estimativas e conclusão (seções 4.3, 5.3 e 5.4) ---
     /** Reestimativa: tempo que falta, a partir de hoje; entra no fim do histórico. */
     async reestimar(espacoId, numero, { o, m, p, motivo = "" }) {
+      await exigir(espacoId, "atualizar", numero);
       validarEstimativa({ o, m, p });
       await conferirModelo(espacoId, { estimativas: [{ o, m, p }] });
       await exigirAcao(espacoId, numero);
@@ -538,6 +645,7 @@ export function criarStore(banco, opcoes = {}) {
      * Quem chama decide se pode (estimativaLivre, em js/acao.js). Sem estimativa, cria a primeira.
      */
     async corrigirEstimativa(espacoId, numero, { o, m, p }) {
+      await exigir(espacoId, "atualizar", numero);
       validarEstimativa({ o, m, p });
       await conferirModelo(espacoId, { estimativas: [{ o, m, p }] });
       const { estimativas = [] } = await exigirAcao(espacoId, numero);
@@ -548,6 +656,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Registra a conclusão. A data não pode ser futura. */
     async concluir(espacoId, numero, data) {
+      await exigir(espacoId, "atualizar", numero);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data de conclusão.");
       if (data > hoje()) throw new ErroDeDados("data-futura", "A data de conclusão não pode ser depois de hoje.");
       const atual = await exigirAcao(espacoId, numero);
@@ -555,6 +664,7 @@ export function criarStore(banco, opcoes = {}) {
       await banco.alterarAcao(espacoId, numero, { concluidaEm: data, ...(atual.situacaoPersonalizada ? { situacaoPersonalizada: null } : {}), ...carimbo() }, hist);
     },
     async desfazerConclusao(espacoId, numero) {
+      await exigir(espacoId, "atualizar", numero);
       await exigirAcao(espacoId, numero);
       await banco.alterarAcao(espacoId, numero, { concluidaEm: null, ...carimbo() }, hist);
       /* as seguintes ainda não concluídas deixam de estar liberadas e voltam à inicial (passo 2.7) */
@@ -568,6 +678,7 @@ export function criarStore(banco, opcoes = {}) {
      * não concluída, com as anteriores concluídas (se o espaço usa dependências) e a data mínima já chegada.
      */
     async mudarSituacao(espacoId, numero, id) {
+      await exigir(espacoId, "atualizar", numero);
       const espaco = await banco.lerEspaco(espacoId);
       if (id != null && !personalizadasDe(espaco).some((s) => s.id === id)) throw new ErroDeDados("nao-encontrado", "Situação não encontrada neste espaço.");
       const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
@@ -582,6 +693,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Retira uma situação personalizada; as ações nela voltam à inicial. Devolve quantas voltaram. */
     async retirarSituacao(espacoId, id) {
+      await exigir(espacoId, "configurar");
       const espaco = await banco.lerEspaco(espacoId);
       if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
       const nela = (await banco.listarAcoes(espacoId)).filter((a) => a.situacaoPersonalizada === id);
@@ -597,11 +709,16 @@ export function criarStore(banco, opcoes = {}) {
       const { nome, sigla = "", usuario: login, ...outros } = dados;
       if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Informe o nome do responsável.");
       validarTipo(dados);
+      /* com login, dá acesso ao espaço: só o administrador; sem login, também o usuário (pela janela da ação) */
+      await exigir(espacoId, login ? "configurar" : "criarResponsavel");
       if (login) validarLogin(login, (await banco.listarResponsaveis(espacoId)).filter(ativo));
-      return banco.criarResponsavel(espacoId, novoId(), {
+      const id = await banco.criarResponsavel(espacoId, novoId(), {
         ...outros, nome: nome.trim(), sigla: sigla.trim(), ...(login ? { usuario: login.trim().toLowerCase() } : {}),
         criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario,
       });
+      /* pessoa com e-mail ganha papel no espaço: Usuário, ou o que o e-mail já tinha (passo 2.1) */
+      if (login) await mudarAcessos(espacoId, (acessos) => ({ ...acessos, [emailNormal(login)]: { papel: acessos[emailNormal(login)]?.papel ?? "usuario", responsavel: id } }));
+      return id;
     },
     listarResponsaveis: async (espacoId) => (await banco.listarResponsaveis(espacoId)).filter(ativo),
     /**
@@ -623,6 +740,18 @@ export function criarStore(banco, opcoes = {}) {
         validarLogin(mudanca.usuario, todos.filter((r) => r.id !== id && ativo(r)));
       } else if ("usuario" in mudanca) mudanca.usuario = null;
       validarTipo({ ...atual, ...mudanca });
+      await exigir(espacoId, "configurar");
+      /* e-mail trocado: o papel passa para o e-mail novo; o antigo perde o acesso (passo 2.1) */
+      const antigo = atual.usuario ? emailNormal(atual.usuario) : null;
+      const novo = "usuario" in mudanca ? (mudanca.usuario ? emailNormal(mudanca.usuario) : null) : antigo;
+      if (novo !== antigo) {
+        await mudarAcessos(espacoId, (acessos) => {
+          const papel = (antigo && acessos[antigo]?.responsavel === id ? acessos[antigo].papel : null) ?? acessos[novo]?.papel ?? "usuario";
+          if (antigo && acessos[antigo]?.responsavel === id) delete acessos[antigo];
+          if (novo) acessos[novo] = { papel, responsavel: id };
+          return acessos;
+        });
+      }
       await banco.alterarResponsavel(espacoId, id, { ...mudanca, alteradoEm: agora(), alteradoPor: usuario });
     },
 
@@ -650,6 +779,7 @@ export function criarStore(banco, opcoes = {}) {
      * da excluída (a sequência continua); sem, só perdem a dependência.
      */
     async excluirAcao(espacoId, numero, { religar = false } = {}) {
+      await exigir(espacoId, "excluirAcao");
       const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
       const acao = acoes.find((a) => a.numero === numero);
       if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
@@ -664,6 +794,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Volta a ação da lixeira; as ligações alteradas na exclusão não são refeitas. */
     async restaurarAcao(espacoId, numero) {
+      await exigir(espacoId, "excluirAcao");
       const acoes = await banco.listarAcoes(espacoId);
       const acao = acoes.find((a) => a.numero === numero);
       if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
@@ -676,8 +807,12 @@ export function criarStore(banco, opcoes = {}) {
     },
     /** Exclui o responsável do espaço; nas ações dele, `substituto` entra no lugar ou ele só sai. */
     async excluirResponsavel(espacoId, id, { substituto = null } = {}) {
+      await exigir(espacoId, "configurar");
       const todos = (await banco.listarResponsaveis(espacoId)).filter(ativo);
-      if (!todos.some((r) => r.id === id)) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
+      const excluido = todos.find((r) => r.id === id);
+      if (!excluido) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
+      /* excluído, perde o acesso ao espaço (passo 2.1); o último administrador não sai */
+      if (excluido.usuario) await mudarAcessos(espacoId, (acessos) => { if (acessos[emailNormal(excluido.usuario)]?.responsavel === id) delete acessos[emailNormal(excluido.usuario)]; return acessos; });
       if (substituto && (substituto === id || !todos.some((r) => r.id === substituto))) {
         throw new ErroDeDados("nao-encontrado", "Escolha outro responsável para a substituição.");
       }
@@ -692,14 +827,18 @@ export function criarStore(banco, opcoes = {}) {
       const todos = await banco.listarResponsaveis(espacoId);
       const r = todos.find((x) => x.id === id);
       if (!r) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
+      await exigir(espacoId, "configurar");
       if (r.usuario) validarLogin(r.usuario, todos.filter((x) => x.id !== id && ativo(x)));
       await banco.alterarResponsavel(espacoId, id, { excluidoEm: null, excluidoPor: null, alteradoEm: agora(), alteradoPor: usuario });
+      /* restaurado, volta como Usuário, se o e-mail não tiver outro papel (passo 2.1) */
+      if (r.usuario) await mudarAcessos(espacoId, (acessos) => ({ ...acessos, [emailNormal(r.usuario)]: { papel: acessos[emailNormal(r.usuario)]?.papel ?? "usuario", responsavel: id } }));
     },
     /**
      * Retira fases ou etapas que têm ações: as ações vão para `destino` (id de uma etapa que fica)
      * ou ficam sem fase nem etapa (destino null). `ids`: as etapas e, se for o caso, a fase.
      */
     async excluirEtapas(espacoId, ids, { destino = null } = {}) {
+      await exigir(espacoId, "configurar");
       const espaco = await banco.lerEspaco(espacoId);
       const fora = new Set(ids);
       const estrutura = (espaco.estrutura ?? [])
@@ -715,10 +854,12 @@ export function criarStore(banco, opcoes = {}) {
       await banco.alterarEspaco(espacoId, { estrutura, alteradoEm: agora(), alteradoPor: usuario });
     },
     async excluirEspaco(id) {
+      await exigir(id, "configurar");
       if (!(await store.lerEspaco(id))) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
       await banco.alterarEspaco(id, { excluidoEm: agora(), excluidoPor: usuario, alteradoEm: agora(), alteradoPor: usuario });
     },
     async restaurarEspaco(id) {
+      await exigir(id, "configurar");
       await banco.alterarEspaco(id, { excluidoEm: null, excluidoPor: null, alteradoEm: agora(), alteradoPor: usuario });
     },
     /** Histórico de alterações de uma ação (passo 1.16), do mais antigo ao mais recente. */
@@ -781,6 +922,7 @@ export function criarStore(banco, opcoes = {}) {
      * "existente"); sem ela (exemplo, memória), as contas ficam de fora. Uma linha que falhe não impede as outras.
      */
     async importarResponsaveis(espacoId, plano, { criarConta = null } = {}) {
+      await exigir(espacoId, "configurar");
       const r = { criados: 0, ligados: 0, contasCriadas: 0, contasExistentes: 0, falhas: [] };
       for (const l of plano.linhas) {
         try {
@@ -807,6 +949,7 @@ export function criarStore(banco, opcoes = {}) {
      * @returns {Promise<{criadas: number, atualizadas: number, falhas: {linha: number, mensagem: string}[]}>}
      */
     async importarAcoes(espacoId, plano) {
+      await exigir(espacoId, "configurar");
       const falhas = [];
       const tentar = async (linha, f) => { try { await f(); return true; } catch (e) { falhas.push({ linha, mensagem: e.message }); return false; } };
       /* fases e etapas novas */
@@ -891,6 +1034,7 @@ export function criarStore(banco, opcoes = {}) {
      * Só leitura depois de salvo. Devolve o id.
      */
     async salvarRetrato(espacoId, nome) {
+      await exigir(espacoId, "salvarRetrato");
       if (!nome?.trim()) throw new ErroDeDados("nome-vazio", "Dê um nome ao retrato, como “Plano aprovado”.");
       const espaco = await store.lerEspaco(espacoId);
       if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
@@ -959,7 +1103,8 @@ export function criarStore(banco, opcoes = {}) {
     "criarEtiqueta", "alterarEtiqueta", "retirarEtiqueta", "acrescentarEtiquetaNaAcao", "retirarEtiquetaDaAcao", "etiquetarAcao",
     "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao", "priorizar",
     /* faltavam (24/10/2026): sem eles, mudar a situação ou comentar sem conexão não dava o aviso de "sem conexão" */
-    "mudarSituacao", "retirarSituacao", "comentar", "editarComentario", "apagarComentario"];
+    "mudarSituacao", "retirarSituacao", "comentar", "editarComentario", "apagarComentario",
+    "assumirAdministracao", "definirPapel"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {
