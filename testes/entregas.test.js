@@ -192,5 +192,33 @@ for (const [nome, criarBanco] of [
       assert.equal(r.entregas[0].id, e);
       assert.equal(r.alcances.length, 1);
     });
+
+    it("a ação se liga a uma entrega ativa do mesmo plano, com registro no histórico", async () => {
+      const { ana, id } = await cenario();
+      const e = await ana.criarEntrega(id, { titulo: "A", tipoMeta: "padrao" });
+      const n = await ana.criarAcao(id, { rotulo: "Fazer", entregaDoPlano: e });
+      assert.equal((await ana.listarAcoes(id)).find((a) => a.numero === n).entregaDoPlano, e);
+      await assert.rejects(ana.alterarAcao(id, n, { entregaDoPlano: "outra" }), { codigo: "entrega-invalida" });
+      await ana.alterarAcao(id, n, { entregaDoPlano: null });
+      const hist = await ana.listarHistorico(id, n);
+      assert.ok(hist.some((r) => r.campo === "entregaDoPlano"));
+    });
+
+    it("continuar uma entrega Em andamento de outro Plano de Ação (caminho A)", async () => {
+      const { ana, id } = await cenario();
+      const antigo = await ana.criarEspaco({ nome: "Plano 2025", inicio: "2025-01-06", tipo: "planoDeAcao", programa: "Programa X", aprovacao: { identificacao: "2" } });
+      const origem = await ana.criarEntrega(antigo, { titulo: "POPs", tipoMeta: "quantitativa", meta: 10 });
+      assert.deepEqual(await ana.listarEntregasParaContinuar(id), []); // ainda Não iniciada
+      await ana.mudarSituacaoDaEntrega(antigo, origem, { situacao: "emAndamento" });
+      const opcoes = await ana.listarEntregasParaContinuar(id);
+      assert.deepEqual(opcoes.map((o) => [o.espaco.id, o.entrega.id]), [[antigo, origem]]);
+      const nova = await ana.criarEntrega(id, { titulo: "POPs (continuação)", tipoMeta: "quantitativa", meta: 10, continuaDe: { espaco: antigo, entrega: origem } });
+      assert.deepEqual((await ana.listarEntregas(id)).find((e) => e.id === nova).continuaDe, { espaco: antigo, entrega: origem });
+      await assert.rejects(ana.criarEntrega(id, { titulo: "De novo", tipoMeta: "padrao", continuaDe: { espaco: antigo, entrega: origem } }), { codigo: "ja-continuada" });
+      await assert.rejects(ana.criarEntrega(id, { titulo: "X", tipoMeta: "padrao", continuaDe: { espaco: id, entrega: nova } }), { codigo: "continuacao-invalida" });
+      await assert.rejects(ana.criarEntrega(id, { titulo: "X", tipoMeta: "padrao", continuaDe: { espaco: antigo, entrega: "nada" } }), { codigo: "nao-encontrado" });
+      await assert.rejects(ana.alterarEntrega(id, nova, { continuaDe: null }), { codigo: "campo-fixo" });
+      assert.deepEqual(await ana.listarEntregasParaContinuar(id), []);
+    });
   });
 }

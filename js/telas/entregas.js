@@ -21,10 +21,10 @@ export const seloDaSituacao = (situacao) =>
 
 /**
  * Cria a tela das entregas de um espaço. `desenhar` refaz a lista; o painel aberto acompanha os dados.
- * @param {{store: object, espacoId: string, hoje: string, aoMudar: () => Promise<void>}} opcoes
- *   aoMudar: relê entregas e registros e redesenha (depois de cada gravação)
+ * @param {{store: object, espacoId: string, hoje: string, aoMudar: () => Promise<void>, aoAbrirAcao?: (numero: number) => void}} opcoes
+ *   aoMudar: relê entregas e registros e redesenha (depois de cada gravação); aoAbrirAcao: abre a janela de uma ação ligada
  */
-export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar }) {
+export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAcao = () => {} }) {
   /** dados mais recentes: espaco, entregas, alcances, responsaveis, perm, meus */
   let d = null;
   /** painel aberto: id da entrega e o formulário à vista */
@@ -102,6 +102,7 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar }) {
     const temAlcance = e && registrosDa(e.id, d.alcances).length > 0;
     const tipo = e?.tipoMeta ?? "quantitativa";
     return `<form class="editor form-entrega" data-form-cadastro>
+      ${e ? "" : '<div data-continuar></div>'}
       <label class="campo"><span>Título</span><input name="titulo" maxlength="200" required value="${esc(e?.titulo ?? "")}" placeholder="O que se quer alcançar"></label>
       <label class="campo"><span>Descrição <small>(opcional)</small></span><textarea name="descricao" rows="2" maxlength="2000">${esc(e?.descricao ?? "")}</textarea></label>
       <fieldset class="tipo-meta"${temAlcance ? " disabled" : ""}><legend>Tipo de meta</legend>
@@ -141,19 +142,67 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar }) {
       form.querySelector("[data-rotulo-meta]").textContent = v === "percentual" ? "Meta (%)" : "Meta";
     });
   }
+  /**
+   * Continuar uma entrega de outro Plano de Ação (caminho A da seção 16.7): as "Em andamento" dos planos que
+   * a pessoa consulta. Escolher uma preenche o cadastro com os dados dela, que podem ser mudados.
+   */
+  async function oferecerContinuacao(form) {
+    let opcoes = [];
+    try { opcoes = await store.listarEntregasParaContinuar(espacoId); } catch { return; }
+    const lugar = form.querySelector("[data-continuar]");
+    if (!opcoes.length || !lugar?.isConnected) return;
+    lugar.innerHTML = `<label class="campo"><span>Continua uma entrega de outro Plano de Ação? <small>(opcional)</small></span>
+      <select name="continuaDe"><option value="">Não: entrega nova</option>
+        ${opcoes.map((o, i) => `<option value="${i}">${esc(o.espaco.nome)}${o.espaco.encerradoEm ? " (encerrado)" : ""} › ${esc(o.entrega.titulo)}</option>`).join("")}</select>
+      <small>Entregas “Em andamento” de outros planos. A ligação fica registrada e mostra a trajetória da entrega.</small></label>`;
+    form.continuacoes = opcoes;
+    lugar.querySelector("select").addEventListener("change", (ev) => {
+      const o = opcoes[Number(ev.target.value)];
+      if (!o) return;
+      const x = o.entrega;
+      form.titulo.value = x.titulo;
+      form.descricao.value = x.descricao ?? "";
+      const tipo = form.querySelector(`[name="tipoMeta"][value="${x.tipoMeta}"]`);
+      if (tipo) { tipo.checked = true; tipo.dispatchEvent(new Event("change", { bubbles: true })); }
+      form.meta.value = x.meta ?? "";
+      form.unidade.value = x.unidade ?? "";
+    });
+  }
   function abrirCadastro() {
     const corpo = abrirPainel("Nova entrega", cadastroHtml(null));
     const form = corpo.querySelector("form");
     ligarTipoDeMeta(form);
+    oferecerContinuacao(form);
     form.querySelector('[name="titulo"]').focus();
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
+      const dados = lerCadastro(form, null);
+      const escolhida = form.continuacoes?.[Number(form.continuaDe?.value)];
+      if (form.continuaDe?.value && escolhida) dados.continuaDe = { espaco: escolhida.espaco.id, entrega: escolhida.entrega.id };
       let id = null;
-      if (await gravar(async () => { id = await store.criarEntrega(espacoId, lerCadastro(form, null)); }, "Entrega cadastrada.")) abrirEntrega(id);
+      if (await gravar(async () => { id = await store.criarEntrega(espacoId, dados); }, "Entrega cadastrada.")) abrirEntrega(id);
     });
+  }
+  /** "Continua a entrega X do plano Y": lida do outro plano, depois de desenhar o painel. */
+  async function preencherOrigem(lugar, continuaDe) {
+    try {
+      const [plano, entregas] = await Promise.all([store.lerEspaco(continuaDe.espaco), store.listarEntregas(continuaDe.espaco)]);
+      const x = entregas.find((y) => y.id === continuaDe.entrega);
+      if (!lugar.isConnected) return;
+      lugar.innerHTML = plano && x ? `Continua a entrega <b>${esc(x.titulo)}</b>, do Plano de Ação <a href="#/espaco/${esc(plano.id)}">${esc(plano.nome)}</a> ${seloDaSituacao(x.situacao ?? SITUACAO_INICIAL)}`
+        : "Continua uma entrega de outro Plano de Ação que você não pode consultar.";
+    } catch {
+      if (lugar.isConnected) lugar.textContent = "Continua uma entrega de outro Plano de Ação que você não pode consultar.";
+    }
   }
 
   /* ---------- painel da entrega ---------- */
+  /** Ações do plano ligadas à entrega (campo "Entrega do Plano de Ação" da ação). */
+  function acoesLigadasHtml(e) {
+    const ligadas = (d.acoes ?? []).filter((a) => a.entregaDoPlano === e.id);
+    if (!ligadas.length) return "";
+    return `<h4>Ações ligadas</h4><ul class="acoes-ligadas">${ligadas.map((a) => `<li><button type="button" class="botao-texto" data-abrir-acao-ligada="${a.numero}">${a.concluidaEm ? ICONES.concluida : ""}${esc(a.rotulo)}</button></li>`).join("")}</ul>`;
+  }
   function evidenciaHtml(v) {
     const ref = v.link ? `<a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer">${esc(v.identificacao || v.link)}</a>` : esc(v.identificacao);
     return `<li>${esc(v.descricao)}: ${ref}</li>`;
@@ -257,6 +306,7 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar }) {
       corpo.innerHTML = `<div class="painel-entrega">
         <div class="entrega-topo"><h3>${esc(e.titulo)}</h3>${seloDaSituacao(e.situacao ?? SITUACAO_INICIAL)}</div>
         ${e.descricao ? `<p>${esc(e.descricao)}</p>` : ""}
+        ${e.continuaDe ? '<p class="entrega-origem" data-origem>Continua uma entrega de outro Plano de Ação…</p>' : ""}
         <dl class="ficha-estrategia">
           <div><dt>Meta</dt><dd>${esc(textoDaMeta(e))} <small class="tec">${esc(TIPOS_DE_META[e.tipoMeta]?.nome ?? "")}</small></dd></div>
           ${e.prazo ? `<div><dt>Prazo</dt><dd>${dataBr(e.prazo)}</dd></div>` : ""}
@@ -270,12 +320,17 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar }) {
           <button class="botao" type="button" data-modo-entrega="situacao">Mudar situação</button>
           <button class="botao" type="button" data-modo-entrega="editar">Editar</button></div>` : ""}
         ${formulario}
+        ${aberta.modo ? "" : '<div data-acoes-ligadas></div>'}
         ${aberta.modo ? "" : historicoHtml(e)}
         ${pode() && !aberta.modo && !temAlcance ? `<div class="zona-exclusao">${aberta.excluindo
           ? `<div class="aviso-confirmar"><p>Excluir esta entrega? Use só para corrigir um cadastro errado; uma entrega que deixou de fazer sentido se marca como Cancelada.</p>
             <div class="botoes"><button class="botao principal" type="button" data-confirmar-excluir-entrega>Excluir</button><button class="botao" type="button" data-cancelar-excluir-entrega>Cancelar</button></div></div>`
           : '<button class="botao-excluir" type="button" data-excluir-entrega>Excluir entrega</button>'}</div>` : ""}
       </div>`;
+      const origem = corpo.querySelector("[data-origem]");
+      if (origem) preencherOrigem(origem, e.continuaDe);
+      const ligadas = corpo.querySelector("[data-acoes-ligadas]");
+      if (ligadas) ligadas.innerHTML = acoesLigadasHtml(e);
       const form = corpo.querySelector("form");
       if (form?.matches("[data-form-cadastro]")) ligarTipoDeMeta(form);
       if (form?.matches("[data-form-situacao]")) ligarSituacao(form, e);
@@ -284,8 +339,10 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar }) {
     redesenharPainel = desenharPainel;
     const voltar = () => { aberta.modo = null; aberta.excluindo = false; corpo.innerHTML = ""; desenharPainel(); };
     corpo.addEventListener("click", async (ev) => {
+      if (ev.target.closest('a[href^="#/espaco/"]')) { fecharPainel(); return; } // vai para o outro plano
       const t = ev.target.closest("button");
       if (!t) return;
+      if (t.dataset.abrirAcaoLigada) { const n = Number(t.dataset.abrirAcaoLigada); fecharPainel(); aoAbrirAcao(n); return; }
       if (t.dataset.modoEntrega) { aberta.modo = t.dataset.modoEntrega; corpo.innerHTML = ""; desenharPainel(); return; }
       if (t.matches("[data-voltar]")) { voltar(); return; }
       if (t.matches("[data-mais-evidencia]")) { corpo.querySelector("[data-evidencias]").insertAdjacentHTML("beforeend", evidenciaFormHtml()); return; }

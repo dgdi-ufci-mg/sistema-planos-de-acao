@@ -260,6 +260,12 @@ async function abrirInicio() {
   boasVindas();
 }
 
+/* link para outro espaço dentro do sistema (passo 2.6: "Continua a entrega X, do Plano de Ação Y") */
+window.addEventListener("hashchange", () => {
+  const id = location.hash.match(/^#\/espaco\/([\w-]+)$/)?.[1];
+  if (id && id !== abertoId && store) abrirEspaco(id);
+});
+
 async function partida() {
   if (FIREBASE_CONFIG) {
     try {

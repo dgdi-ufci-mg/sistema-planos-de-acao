@@ -53,6 +53,8 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   let responsaveis = await store.listarResponsaveis(espacoId);
   /** retratos do espaço (passo 1.18), do mais recente ao mais antigo */
   let retratos = await store.listarRetratos(espacoId).catch(() => []);
+  /* entregas do Plano de Ação (passo 2.6), para a coluna da exportação */
+  const entregas = tipoDe(espaco) === "planoDeAcao" ? await store.listarEntregas(espacoId).catch(() => []) : [];
   /** responsáveis do espaço (seção 4.5): a mesma tela de antes, agora numa seção deste painel */
   const telaResponsaveis = criarTelaResponsaveis({ store });
   const meus = () => (store.usuario ? responsaveis.filter((r) => r.usuario === store.usuario).map((r) => r.id) : null);
@@ -758,7 +760,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     if (t.dataset.importarResponsaveis != null) { importarResponsaveis(t); return; }
     if (t.dataset.importar != null) { importar(t); return; }
     if (t.dataset.exportar) {
-      const dados = { espaco, acoes, responsaveis, geral, hoje: hojeLocal() };
+      const dados = { espaco, acoes, responsaveis, geral, hoje: hojeLocal(), entregas };
       const planilha = t.dataset.exportar === "planilha";
       copiarTexto(planilha ? planilhaDoEspaco(dados) : mermaidDoEspaco(dados), corpo.querySelector("[data-exportado]"),
         planilha ? "Copiado. Cole na primeira célula de uma planilha vazia." : "Fluxograma copiado.");

@@ -52,6 +52,8 @@ export function descreverRegistro(r, nomes) {
     /* passo 2.10a */
     case "justificativa": return depois ? "Alterou a justificativa." : "Apagou a justificativa.";
     case "local": return depois ? `Mudou o local para “${depois}”.` : "Apagou o local.";
+    /* passo 2.6 */
+    case "entregaDoPlano": return depois ? `Ligou a ação à entrega “${nomes.entrega?.(depois) ?? "entrega excluída"}”.` : "Desligou a ação da entrega do Plano de Ação.";
     case "notas": return "Alterou as anotações.";
     case "etapa": return `Mudou a etapa${antes ? ` de “${nomes.etapa(antes)}”` : ""} para ${depois ? `“${nomes.etapa(depois)}”` : "sem fase nem etapa"}.`;
     case "ordem": return "Mudou a posição na ordem do espaço.";

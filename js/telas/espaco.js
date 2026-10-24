@@ -123,11 +123,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     })();
     await lendoEntregas;
     lendoEntregas = null;
+    janela?.atualizar(dadosDaJanela());
     if (!base) return;
     cabeca.innerHTML = cabecaHtml();
     if (ui.modo === "entregas") desenharLista();
   }
-  const telaEntregas = criarTelaDeEntregas({ store, espacoId, hoje, aoMudar: carregarEntregas });
+  const telaEntregas = criarTelaDeEntregas({ store, espacoId, hoje, aoMudar: carregarEntregas, aoAbrirAcao: (n) => abrirJanela(n) });
   let comAcoes = null;
   let ferramentas, lista, legenda, cabeca;
 
@@ -160,7 +161,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /** Dados prontos para a janela da ação. */
   const dadosDaJanela = () => ({
-    espaco, acoes, responsaveis, cal, caminho, pessoas, meus, usaFases, perm,
+    espaco, acoes, responsaveis, cal, caminho, pessoas, meus, usaFases, perm, entregas: ui.entregas,
     linhaDe: new Map(linhas.map((l) => [l.acao.numero, l])),
     usaCodigos,
   });
@@ -852,7 +853,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (ui.modo === "linha") { desenharLinhaDoTempo(lista, { espaco, cal, sim, hoje, temAcoes: acoes.length > 0 }); return; }
     if (ui.modo === "entregas") {
       if (ui.entregas === null) { lista.innerHTML = '<p class="tec">Lendo as entregas…</p>'; carregarEntregas(); return; }
-      telaEntregas.desenhar(lista, { espaco, entregas: ui.entregas, alcances: ui.alcances, responsaveis, perm, meus });
+      telaEntregas.desenhar(lista, { espaco, acoes, entregas: ui.entregas, alcances: ui.alcances, responsaveis, perm, meus });
       ajustarDonos(lista);
       return;
     }

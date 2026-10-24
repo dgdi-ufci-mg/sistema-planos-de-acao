@@ -293,6 +293,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (campo === "etiquetas") return Boolean(acao.etiquetas?.length);
     if (campo === "justificativa") return Boolean(acao.justificativa);
     if (campo === "local") return Boolean(acao.local);
+    if (campo === "entregaDoPlano") return Boolean(acao.entregaDoPlano);
     if (campo === "documentos") return Boolean(acao.documentos?.length) || editandoDoc != null;
     return true;
   }
@@ -309,6 +310,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       campos.local === true && ["local", "Local"],
       usaEtiquetas(d.espaco) && ["etiquetas", "Etiquetas"],
       campos.documentos === true && ["documentos", "Documentos e links"],
+      d.entregas?.length && ["entregaDoPlano", "Entrega do Plano de Ação"],
     ].filter(Boolean);
   }
   function maisCamposHtml(acao) {
@@ -384,6 +386,18 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (campos.local === true && visivel(acao, "local")) {
       partes.push(`<div class="campo-acao" data-campo="local">${rotuloHtml("local", "Local")}
         <input maxlength="200" ${atributos("local", acao.local)} value="${esc(acao.local ?? "")}" aria-label="Local" placeholder="Onde a ação acontece"></div>`);
+    }
+    /* entrega do Plano de Ação a que a ação contribui (passo 2.6): opcional e discreta, em "Mais campos" */
+    if (d.entregas && (d.entregas.length || acao.entregaDoPlano) && visivel(acao, "entregaDoPlano")) {
+      const atual = acao.entregaDoPlano ?? "";
+      const existe = !atual || d.entregas.some((x) => x.id === atual);
+      partes.push(`<div class="campo-acao" data-campo="entregaDoPlano">${rotuloHtml("entregaDoPlano", "Entrega do Plano de Ação", "entrega")}
+        <select ${atributos("entregaDoPlano", atual)} aria-label="Entrega do Plano de Ação">
+          <option value="">Nenhuma</option>
+          ${existe ? "" : `<option value="${esc(atual)}" selected>(entrega excluída)</option>`}
+          ${d.entregas.map((x) => `<option value="${esc(x.id)}"${x.id === atual ? " selected" : ""}>${esc(x.titulo)}</option>`).join("")}
+        </select>
+        <span class="tec">O resultado do plano para o qual esta ação contribui.</span></div>`);
     }
     if (visivel(acao, "naoAntesDe")) {
       partes.push(`<div class="campo-acao" data-campo="naoAntesDe">${rotuloHtml("naoAntesDe", "Não começa antes de", "naoAntesDe")}
@@ -623,6 +637,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       etapa: (id) => etapas.get(id) ?? "etapa retirada",
       situacao: (id) => personalizadasDe(d.espaco).find((x) => x.id === id)?.nome ?? "situação retirada",
       etiqueta: (id) => etiquetasDe(d.espaco).find((x) => x.id === id)?.nome ?? "etiqueta retirada",
+      entrega: (id) => d.entregas?.find((x) => x.id === id)?.titulo ?? "entrega excluída",
     };
     const quem = (email) => (email ? d.responsaveis.find((r) => r.usuario === email)?.nome ?? email : "Sem login");
     const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -789,6 +804,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       descricao: () => store.alterarAcao(espacoId, numero, { descricao: texto.trim() }),
       justificativa: () => store.alterarAcao(espacoId, numero, { justificativa: texto.trim() }),
       local: () => store.alterarAcao(espacoId, numero, { local: texto.trim().replace(/\s+/g, " ") }),
+      entregaDoPlano: () => store.alterarAcao(espacoId, numero, { entregaDoPlano: texto || null }),
       naoAntesDe: () => store.alterarAcao(espacoId, numero, { naoAntesDe: texto || null }),
       dataLimite: () => store.alterarAcao(espacoId, numero, { dataLimite: texto || null }),
       estimativa: () => { const t = lerTres(); return store.corrigirEstimativa(espacoId, numero, { o: Number(t.o), m: Number(t.m), p: Number(t.p) }); },

@@ -317,6 +317,7 @@ export function criarStore(banco, opcoes = {}) {
       titulo: String(d.titulo ?? "").trim(), descricao: texto(d.descricao), tipoMeta: d.tipoMeta,
       meta: d.tipoMeta === "padrao" ? null : d.meta ?? null, unidade: d.tipoMeta === "quantitativa" ? texto(d.unidade) : null,
       prazo: d.prazo || null, responsaveis: d.responsaveis ?? [], ...(d.ordem != null ? { ordem: d.ordem } : {}),
+      ...(d.continuaDe ? { continuaDe: { espaco: d.continuaDe.espaco, entrega: d.continuaDe.entrega } } : {}),
     };
     if (!parcial) return e;
     const vieram = new Set(Object.keys(d));
@@ -328,6 +329,31 @@ export function criarStore(banco, opcoes = {}) {
     if (!ids?.length) return;
     const ativos = new Set((await banco.listarResponsaveis(espacoId)).filter(ativo).map((r) => r.id));
     if (ids.some((id) => !ativos.has(id))) throw new ErroDeDados("responsavel-invalido", "Responsável não encontrado neste espaço.");
+  }
+  /** Entrega do Plano de Ação a que a ação contribui (passo 2.6): uma entrega ativa do mesmo espaço. */
+  async function conferirEntregaDaAcao(espacoId, campos) {
+    if (campos.entregaDoPlano == null) return;
+    const ativas = entregasAtivas(await banco.listarDoEspaco(espacoId, "entregas"));
+    if (!ativas.some((e) => e.id === campos.entregaDoPlano)) throw new ErroDeDados("entrega-invalida", "Entrega do Plano de Ação não encontrada neste espaço.");
+  }
+  /**
+   * Continuação de uma entrega de outro Plano de Ação (passo 2.6, caminho A da seção 16.7): a entrega
+   * de origem existe, é de outro Plano de Ação e ainda não foi continuada neste espaço.
+   */
+  async function conferirContinuacao(espacoId, continuaDe) {
+    if (continuaDe == null) return;
+    recusarDesconhecidos(continuaDe, "continuacao");
+    if (!continuaDe.espaco || !continuaDe.entrega) throw new ErroDeDados("continuacao-invalida", "Continuação inválida.");
+    if (continuaDe.espaco === espacoId) throw new ErroDeDados("continuacao-invalida", "A entrega continuada é de outro Plano de Ação.");
+    const origem = await banco.lerEspaco(continuaDe.espaco);
+    if (!origem || !ativo(origem) || tipoDe(origem) !== "planoDeAcao") throw new ErroDeDados("nao-encontrado", "Plano de Ação de origem não encontrado.");
+    if (!entregasAtivas(await banco.listarDoEspaco(continuaDe.espaco, "entregas")).some((e) => e.id === continuaDe.entrega)) {
+      throw new ErroDeDados("nao-encontrado", "Entrega de origem não encontrada.");
+    }
+    const aqui = entregasAtivas(await banco.listarDoEspaco(espacoId, "entregas"));
+    if (aqui.some((e) => e.continuaDe?.espaco === continuaDe.espaco && e.continuaDe?.entrega === continuaDe.entrega)) {
+      throw new ErroDeDados("ja-continuada", "Esta entrega já é continuada neste Plano de Ação.");
+    }
   }
   async function conferirEntrega(espacoId, entrega) {
     const p = problemaDaEntrega(entrega);
@@ -641,6 +667,7 @@ export function criarStore(banco, opcoes = {}) {
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o nome da ação.");
       await conferirModelo(espacoId, outros);
       await conferirEtiquetas(espacoId, outros);
+      await conferirEntregaDaAcao(espacoId, outros);
       conferirDocumentos(outros);
       conferirPosicao(outros);
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
@@ -676,6 +703,7 @@ export function criarStore(banco, opcoes = {}) {
       if (campos.naoAntesDe && campos.naoAntesDe > hoje()) campos = { ...campos, situacaoPersonalizada: null };
       await conferirModelo(espacoId, campos);
       await conferirEtiquetas(espacoId, campos);
+      await conferirEntregaDaAcao(espacoId, campos);
       conferirDocumentos(campos);
       conferirPosicao(campos);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
@@ -1307,6 +1335,7 @@ export function criarStore(banco, opcoes = {}) {
       if (tipoDe(await banco.lerEspaco(espacoId)) !== "planoDeAcao") throw new ErroDeDados("so-plano-de-acao", "Entregas são do Plano de Ação.");
       const entrega = limparEntrega(dados);
       await conferirEntrega(espacoId, entrega);
+      await conferirContinuacao(espacoId, dados.continuaDe ?? null);
       const existentes = await banco.listarDoEspaco(espacoId, "entregas");
       const id = novoId();
       await banco.criarNoEspaco(espacoId, "entregas", id, {
@@ -1320,7 +1349,7 @@ export function criarStore(banco, opcoes = {}) {
     async alterarEntrega(espacoId, id, campos) {
       await exigir(espacoId, "configurar");
       recusarDesconhecidos(campos, "entrega");
-      recusarFixos(campos, ["id", "situacao", "justificativa", "mudancasDeSituacao", "criadaEm", "excluidaEm", "excluidaPor"]);
+      recusarFixos(campos, ["id", "situacao", "justificativa", "mudancasDeSituacao", "continuaDe", "criadaEm", "excluidaEm", "excluidaPor"]);
       const temAlcance = registrosDa(id, await banco.listarDoEspaco(espacoId, "alcances")).length > 0;
       let conferir = null;
       await banco.mudarNoEspaco(espacoId, "entregas", id, (atual) => {
@@ -1357,6 +1386,24 @@ export function criarStore(banco, opcoes = {}) {
           alteradaEm: em, alteradaPor: usuario,
         };
       });
+    },
+    /**
+     * Entregas de outros Planos de Ação que podem ser continuadas aqui (caminho A da seção 16.7): as "Em andamento"
+     * dos Planos de Ação que quem está usando pode consultar, menos as já continuadas neste espaço.
+     * @returns {Promise<{espaco: {id: string, nome: string, encerradoEm?: string}, entrega: object}[]>}
+     */
+    async listarEntregasParaContinuar(espacoId) {
+      const aqui = entregasAtivas(await banco.listarDoEspaco(espacoId, "entregas"));
+      const jaContinuada = (espaco, entrega) => aqui.some((e) => e.continuaDe?.espaco === espaco && e.continuaDe?.entrega === entrega);
+      const planos = (await banco.listarEspacos()).filter((e) => ativo(e) && e.id !== espacoId && tipoDe(e) === "planoDeAcao" && store.podeVerEspaco(e));
+      const listas = await Promise.all(planos.map(async (e) => {
+        try {
+          return entregasAtivas(await banco.listarDoEspaco(e.id, "entregas"))
+            .filter((x) => x.situacao === "emAndamento" && !jaContinuada(e.id, x.id))
+            .map((entrega) => ({ espaco: { id: e.id, nome: e.nome, ...(e.encerradoEm ? { encerradoEm: e.encerradoEm } : {}) }, entrega }));
+        } catch { return []; } // sem permissão de leitura: fica de fora
+      }));
+      return listas.flat().sort((a, b) => a.espaco.nome.localeCompare(b.espaco.nome, "pt-BR") || (a.entrega.ordem ?? 0) - (b.entrega.ordem ?? 0));
     },
     /** Exclusão lógica, só da entrega sem alcance registrado (a que já tem alcance se cancela, com justificativa). */
     async excluirEntrega(espacoId, id) {

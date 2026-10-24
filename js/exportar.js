@@ -38,10 +38,11 @@ function calcular({ espaco, acoes, geral, hoje }) {
 const referencia = (a, usaCodigos) => (usaCodigos && a.codigo ? a.codigo : String(a.numero));
 
 /**
- * @param {{espaco: object, acoes: object[], responsaveis: object[], geral: object, hoje: string}} dados
+ * @param {{espaco: object, acoes: object[], responsaveis: object[], geral: object, hoje: string, entregas?: object[]}} dados
+ *   entregas: as do Plano de Ação (passo 2.6); com elas, a coluna "Entrega do Plano de Ação"
  * @returns {string} linhas separadas por tabulação, com a linha de títulos
  */
-export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
+export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, entregas = [] }) {
   const { datas } = calcular({ espaco, acoes, geral, hoje });
   const opcionais = espaco.camposOpcionais ?? {};
   const usaCodigos = opcionais.codigos === true;
@@ -52,6 +53,8 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const posicao = opcionais.prioridade === true ? posicoesDaPrioridade(acoes) : null; // passo 2.10a: 1, 2, 3…
   const comLocal = opcionais.local === true;
   const comDocumentos = opcionais.documentos === true; // passo 2.10a: "nome (link ou identificação)", separados por ";"
+  const comEntrega = entregas.length > 0 || acoes.some((a) => a.entregaDoPlano); // passo 2.6: o título da entrega
+  const tituloDaEntrega = (id) => (id ? entregas.find((e) => e.id === id)?.titulo ?? "(entrega excluída)" : "");
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   const pessoa = new Map(responsaveis.map((r) => [r.id, r.sigla || r.nome]));
   const faseEEtapa = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, [f.nome, e.nome]])));
@@ -62,7 +65,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const titulos = ["Número", ...(usaCodigos ? ["Código"] : []), ...(usaFases ? ["Fase", "Etapa"] : []), "Ação",
     ...(usaDescricao ? ["Descrição"] : []), ...(comJustificativa ? ["Justificativa"] : []), ...(comLocal ? ["Local"] : []), ...(comDependencias ? ["Depende de"] : []),
     ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
-    "Responsáveis", ...(posicao ? ["Prioridade da equipe"] : []), ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), "Situação", "Atrasada",
+    "Responsáveis", ...(posicao ? ["Prioridade da equipe"] : []), ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), ...(comEntrega ? ["Entrega do Plano de Ação"] : []), "Situação", "Atrasada",
     ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
   const linhas = [...acoes].sort((a, b) => a.ordem - b.ordem).map((a) => {
     const { c, concluida, inicio, fim } = datas(a);
@@ -77,6 +80,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
       ...(posicao ? [posicao.get(a.numero) ?? ""] : []),
       ...(comEtiquetas ? [etiquetasDaAcao(espaco, a).map((x) => x.nome).join("; ")] : []),
       ...(comDocumentos ? [(a.documentos ?? []).map((d) => `${d.nome} (${d.link || d.identificacao})`).join("; ")] : []),
+      ...(comEntrega ? [tituloDaEntrega(a.entregaDoPlano)] : []),
       /* situação personalizada, quando houver (passo 2.7) */
       c.situacao === "liberada" ? nomeDoFluxo(espaco, fluxoDe(a, c.situacao, espaco)) : SITUACAO[c.situacao] ?? c.situacao, c.atrasada ? "sim" : "não",
       ...(comEstimativas ? [dataBr(inicio), dataBr(fim), concluida ? "" : numero(Math.max(0, c.folga)), concluida ? "" : (c.critica ? "sim" : "não")] : []),

@@ -44,7 +44,7 @@ export const CAMPOS = Object.freeze({
   camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos", "justificativa", "local", "prioridade"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao", "justificativa", "local",
-    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "posicaoPrioridade",
+    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "posicaoPrioridade", "entregaDoPlano",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
@@ -54,9 +54,11 @@ export const CAMPOS = Object.freeze({
   /** Entrega do Plano de Ação (passo 2.6): coleção espacos/{id}/entregas. */
   entrega: [
     "id", "ordem", "titulo", "descricao", "tipoMeta", "meta", "unidade", "prazo", "responsaveis",
-    "situacao", "justificativa", "mudancasDeSituacao", "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
+    "situacao", "justificativa", "mudancasDeSituacao", "continuaDe", "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   mudancaDeSituacao: ["situacao", "justificativa", "em", "por"],
+  /** Entrega de outro Plano de Ação que esta continua (caminho A da seção 16.7). */
+  continuacao: ["espaco", "entrega"],
   /** Registro de alcance de uma entrega (passo 2.6): coleção espacos/{id}/alcances, só de acréscimo. */
   registroDeAlcance: ["id", "entrega", "data", "valor", "descricao", "evidencias", "realizadores", "registradoEm", "registradoPor"],
   evidencia: ["descricao", "identificacao", "link"],

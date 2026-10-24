@@ -1,7 +1,8 @@
 /**
  * Telas do módulo Superior (passo 2.5; documentação técnica, seções 4.11 e 8): a gestão da estratégia.
  * Quatro abas:
- * - Desdobramento: a árvore do catálogo, de cima para baixo, com os Planos de Ação ligados no fim; cada item
+ * - Desdobramento: a árvore do catálogo, de cima para baixo, com os Planos de Ação ligados no fim e, sob cada
+ *   um, as entregas, com a situação e o alcance (passo 2.6); cada item
  *   abre um painel com camada, instrumento, superiores, subordinados e Planos de Ação;
  * - Instrumentos: PEI, PDI, políticas…, com vigência e prorrogações;
  * - Camadas: o modelo do desdobramento;
@@ -14,6 +15,8 @@ import { normalizar } from "../acao.js";
 import { lerColagem } from "../planilha.js";
 import { abrirPainel, fecharPainel, avisar } from "../telas/painel.js";
 import { tipoDe } from "../tipos.js";
+import { alcanceAtual, textoDoValor } from "../entregas.js";
+import { seloDaSituacao } from "../telas/entregas.js";
 import {
   camadasAcima, instrumentoVigente, itemVigente, rotuloDoItem, caminhoAteOTopo, subordinadosDe, itensPorCamada, planejarCatalogo,
 } from "../estrategia.js";
@@ -30,6 +33,8 @@ export function mostrarSuperior(alvo, { store, hoje }) {
   let cat = { camadas: [], instrumentos: [], itens: [] };
   let gestor = false;
   let planos = [];
+  /** entregas e registros de alcance de cada Plano de Ação que a pessoa consulta (passo 2.6): id → {entregas, alcances} */
+  let entregasDe = new Map();
   /** rascunho das camadas, editado até "Salvar camadas" */
   let rascunho = null;
   let planoImportacao = null;
@@ -38,6 +43,9 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     [cat, gestor] = await Promise.all([store.lerCatalogo(), store.ehGestorDaEstrategia().catch(() => false)]);
     const espacos = await store.listarEspacos().catch(() => []);
     planos = espacos.filter((e) => tipoDe(e) === "planoDeAcao" && e.vinculos?.length);
+    entregasDe = new Map(await Promise.all(planos.filter((e) => store.podeVerEspaco(e)).map(async (e) => {
+      try { return [e.id, { entregas: await store.listarEntregas(e.id), alcances: await store.listarAlcances(e.id) }]; } catch { return [e.id, null]; }
+    })));
     rascunho = structuredClone(cat.camadas);
     desenhar();
   }
@@ -88,11 +96,25 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       ${temFilhos && !fechado ? `<ul>${filhos.map((f) => noHtml(f, proximo)).join("")}${ligados.map(planoHtml).join("")}</ul>` : ""}
     </li>`;
   }
+  /** Entregas de um Plano de Ação, sob ele na árvore (passo 2.6): situação e alcance; sem entregas, "rascunho". */
+  function entregasDoPlanoHtml(e) {
+    const dados = entregasDe.get(e.id);
+    if (!dados) return "";
+    if (!dados.entregas.length) return "";
+    return `<ul class="entregas-no-plano">${dados.entregas.map((x) => {
+      const a = alcanceAtual(x, dados.alcances);
+      return `<li><span class="entrega-no-plano-nome">${esc(x.titulo)}</span> ${seloDaSituacao(x.situacao ?? "naoIniciada")}
+        <small class="tec">${a ? `${esc(textoDoValor(x, a.valor))}${x.tipoMeta === "padrao" ? "" : ` (${Math.round(a.fracao * 100)}%)`}` : "sem alcance registrado"}</small></li>`;
+    }).join("")}</ul>`;
+  }
   function planoHtml(e) {
     const visivel = store.podeVerEspaco(e);
+    const dados = entregasDe.get(e.id);
+    const rascunho = dados && !dados.entregas.length;
     return `<li class="no-estrategia no-plano"><div class="no-linha"><span class="no-seta vazia"></span>
-      ${visivel ? `<a class="item-estrategia plano" href="../#/espaco/${esc(e.id)}"><span class="item-estrategia-nome">${esc(e.nome)}</span><small class="tec">Plano de Ação${e.encerradoEm ? " · encerrado" : ""}</small></a>`
-        : `<span class="item-estrategia plano"><span class="item-estrategia-nome">Plano de Ação restrito</span><small class="tec">Só quem participa dele vê o nome.</small></span>`}</div></li>`;
+      ${visivel ? `<a class="item-estrategia plano" href="../#/espaco/${esc(e.id)}"><span class="item-estrategia-nome">${esc(e.nome)}</span><small class="tec">Plano de Ação${e.encerradoEm ? " · encerrado" : ""}${rascunho ? " · rascunho, sem entregas" : dados ? ` · ${dados.entregas.length} ${plural(dados.entregas.length, "entrega", "entregas")}` : ""}</small></a>`
+        : `<span class="item-estrategia plano"><span class="item-estrategia-nome">Plano de Ação restrito</span><small class="tec">Só quem participa dele vê o nome.</small></span>`}</div>
+      ${visivel ? entregasDoPlanoHtml(e) : ""}</li>`;
   }
   function arvoreHtml() {
     const ativos = cat.itens.filter(vale);
