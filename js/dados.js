@@ -11,7 +11,8 @@ import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
 import { registrosDaMudanca } from "./historico.js";
 import { montarRetrato } from "./retrato.js";
-import { problemaDoTipo } from "./tipos.js";
+import { problemaDoTipo, tipoDe } from "./tipos.js";
+import { problemaDaEntrega, problemaDoRegistro, problemaDaSituacao, pendenciasParaEncerrar, entregasAtivas, registrosDa, SITUACAO_INICIAL_DA_ENTREGA } from "./entregas.js";
 import { problemaDoModelo, modeloDe } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
 import { chaveValida, planejarMovimento } from "./prioridade.js";
@@ -309,6 +310,31 @@ export function criarStore(banco, opcoes = {}) {
     if (!usuario || c.autor !== usuario) throw new ErroDeDados("sem-permissao", "Só quem escreveu o comentário pode mudá-lo.");
   };
 
+  /** Campos do cadastro da entrega, aparados; `parcial`: só os que vieram (alteração). */
+  const limparEntrega = (d, parcial = false) => {
+    const texto = (v) => { const t = String(v ?? "").trim(); return t || null; };
+    const e = {
+      titulo: String(d.titulo ?? "").trim(), descricao: texto(d.descricao), tipoMeta: d.tipoMeta,
+      meta: d.tipoMeta === "padrao" ? null : d.meta ?? null, unidade: d.tipoMeta === "quantitativa" ? texto(d.unidade) : null,
+      prazo: d.prazo || null, responsaveis: d.responsaveis ?? [], ...(d.ordem != null ? { ordem: d.ordem } : {}),
+    };
+    if (!parcial) return e;
+    const vieram = new Set(Object.keys(d));
+    if (vieram.has("tipoMeta")) { vieram.add("meta"); vieram.add("unidade"); }
+    return Object.fromEntries(Object.entries(e).filter(([c]) => vieram.has(c)));
+  };
+  /** Responsáveis citados na entrega ou no registro: os do espaço, ativos. */
+  async function conferirResponsaveisDaEntrega(espacoId, ids) {
+    if (!ids?.length) return;
+    const ativos = new Set((await banco.listarResponsaveis(espacoId)).filter(ativo).map((r) => r.id));
+    if (ids.some((id) => !ativos.has(id))) throw new ErroDeDados("responsavel-invalido", "Responsável não encontrado neste espaço.");
+  }
+  async function conferirEntrega(espacoId, entrega) {
+    const p = problemaDaEntrega(entrega);
+    if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+    await conferirResponsaveisDaEntrega(espacoId, entrega.responsaveis);
+  }
+
   const recusarFixos = (campos, fixos) => {
     const proibido = Object.keys(campos).find((campo) => fixos.includes(campo));
     if (proibido) throw new ErroDeDados("campo-fixo", `O campo "${proibido}" não pode ser alterado.`);
@@ -394,6 +420,11 @@ export function criarStore(banco, opcoes = {}) {
     /** Encerra o espaço: fica só para leitura, sai da lista principal e continua acessível. */
     async encerrarEspaco(espacoId) {
       await exigir(espacoId, "configurar");
+      /* Plano de Ação (passo 2.6, seção 16.7): só com as entregas em dia */
+      if (tipoDe(await banco.lerEspaco(espacoId)) === "planoDeAcao") {
+        const faltas = pendenciasParaEncerrar(await banco.listarDoEspaco(espacoId, "entregas"), await banco.listarDoEspaco(espacoId, "alcances"));
+        if (faltas.length) throw new ErroDeDados("entregas-pendentes", `Antes de encerrar, complete o registro das entregas: ${faltas.map((f) => f.mensagem).join(" ")}`);
+      }
       await gravarEspaco(espacoId, { encerradoEm: agora(), encerradoPor: usuario });
     },
     async reabrirEspaco(espacoId) {
@@ -1094,7 +1125,7 @@ export function criarStore(banco, opcoes = {}) {
      * @returns {{espacos: number, acoes: number, responsaveis: number, retratos: number, registros: number, geradaEm: string}}
      */
     conferirCopia(copia) {
-      if (copia?.formato !== "sextante-copia-de-seguranca" || ![1, 2, 3].includes(copia.versao) || !Array.isArray(copia.espacos)) {
+      if (copia?.formato !== "sextante-copia-de-seguranca" || ![1, 2, 3, 4].includes(copia.versao) || !Array.isArray(copia.espacos)) {
         throw new ErroDeDados("copia-invalida", "Este arquivo não é uma cópia de segurança do sistema.");
       }
       const resumo = { espacos: 0, acoes: 0, responsaveis: 0, retratos: 0, registros: 0, geradaEm: copia.geradaEm };
@@ -1105,6 +1136,8 @@ export function criarStore(banco, opcoes = {}) {
         recusarDesconhecidos(e.espaco, "espaco");
         for (const a of e.acoes) recusarDesconhecidos(a, "acao");
         for (const r of e.responsaveis) recusarDesconhecidos(r, "responsavel");
+        for (const x of e.entregas ?? []) recusarDesconhecidos(x, "entrega");
+        for (const x of e.alcances ?? []) recusarDesconhecidos(x, "registroDeAlcance");
         resumo.espacos++;
         resumo.acoes += e.acoes.length;
         resumo.responsaveis += e.responsaveis.length;
@@ -1136,6 +1169,8 @@ export function criarStore(banco, opcoes = {}) {
         for (const a of e.acoes) await banco.criarAcao(id, a);
         if (e.historico?.length) await banco.gravarHistorico(id, e.historico);
         for (const c of e.comentarios ?? []) await banco.criarComentario(id, c);
+        for (const x of e.entregas ?? []) await banco.criarNoEspaco(id, "entregas", x.id, x);
+        for (const x of e.alcances ?? []) await banco.criarNoEspaco(id, "alcances", x.id, x);
         for (const { acoes, ...cabecalho } of e.retratos ?? []) await banco.criarRetrato(id, cabecalho, acoes ?? []);
       }
       return resumo;
@@ -1254,6 +1289,106 @@ export function criarStore(banco, opcoes = {}) {
       return { criadas, atualizadas, falhas };
     },
 
+    // --- entregas do Plano de Ação e registro do alcance (passo 2.6; seções 4.12 e 16.7) ---
+    /** Entregas ativas do espaço, na ordem. */
+    async listarEntregas(espacoId) {
+      return entregasAtivas(await banco.listarDoEspaco(espacoId, "entregas"));
+    },
+    /** Registros de alcance do espaço, do mais antigo ao mais recente (de cada entrega, o último é o alcance atual). */
+    async listarAlcances(espacoId) {
+      return (await banco.listarDoEspaco(espacoId, "alcances"))
+        .sort((a, b) => a.data.localeCompare(b.data) || a.registradoEm.localeCompare(b.registradoEm) || a.id.localeCompare(b.id));
+    },
+    /** Cadastra uma entrega (só o administrador; só no Plano de Ação). Começa "Não iniciada". Devolve o id. */
+    async criarEntrega(espacoId, dados) {
+      await exigir(espacoId, "configurar");
+      recusarDesconhecidos(dados, "entrega");
+      recusarFixos(dados, ["id", "situacao", "justificativa", "mudancasDeSituacao", "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor"]);
+      if (tipoDe(await banco.lerEspaco(espacoId)) !== "planoDeAcao") throw new ErroDeDados("so-plano-de-acao", "Entregas são do Plano de Ação.");
+      const entrega = limparEntrega(dados);
+      await conferirEntrega(espacoId, entrega);
+      const existentes = await banco.listarDoEspaco(espacoId, "entregas");
+      const id = novoId();
+      await banco.criarNoEspaco(espacoId, "entregas", id, {
+        ...entrega, ordem: Math.max(0, ...existentes.map((e) => e.ordem ?? 0)) + 1,
+        situacao: SITUACAO_INICIAL_DA_ENTREGA, justificativa: null, mudancasDeSituacao: [],
+        criadaEm: agora(), alteradaEm: agora(), alteradaPor: usuario,
+      });
+      return id;
+    },
+    /** Muda o cadastro (título, descrição, meta, prazo, responsáveis, ordem). Com alcance registrado, a meta e o tipo não mudam. */
+    async alterarEntrega(espacoId, id, campos) {
+      await exigir(espacoId, "configurar");
+      recusarDesconhecidos(campos, "entrega");
+      recusarFixos(campos, ["id", "situacao", "justificativa", "mudancasDeSituacao", "criadaEm", "excluidaEm", "excluidaPor"]);
+      const temAlcance = registrosDa(id, await banco.listarDoEspaco(espacoId, "alcances")).length > 0;
+      let conferir = null;
+      await banco.mudarNoEspaco(espacoId, "entregas", id, (atual) => {
+        if (atual.excluidaEm) throw new ErroDeDados("nao-encontrado", "Entrega não encontrada.");
+        const mudanca = limparEntrega({ ...campos }, true);
+        if (temAlcance && ["tipoMeta", "meta", "unidade"].some((c) => c in mudanca && mudanca[c] !== atual[c])) {
+          throw new ErroDeDados("meta-com-alcance", "A entrega já tem alcance registrado: a meta e o tipo de meta não mudam mais.");
+        }
+        const p = problemaDaEntrega({ ...atual, ...mudanca });
+        if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+        conferir = { ...atual, ...mudanca };
+        return { ...mudanca, alteradaEm: agora(), alteradaPor: usuario };
+      });
+      if (conferir) await conferirResponsaveisDaEntrega(espacoId, conferir.responsaveis);
+    },
+    /**
+     * Muda a situação (só o administrador), com as exigências que valem a qualquer momento: alcance registrado
+     * para "Alcançada" e "Parcialmente alcançada"; justificativa para "Parcialmente alcançada", "Não alcançada"
+     * e "Cancelada". Na "Não iniciada", a justificativa é opcional (exigida ao encerrar). Cada mudança fica em
+     * `mudancasDeSituacao`.
+     */
+    async mudarSituacaoDaEntrega(espacoId, id, { situacao, justificativa = null }) {
+      await exigir(espacoId, "configurar");
+      const registros = await banco.listarDoEspaco(espacoId, "alcances");
+      const texto = String(justificativa ?? "").trim() || null;
+      await banco.mudarNoEspaco(espacoId, "entregas", id, (atual) => {
+        if (atual.excluidaEm) throw new ErroDeDados("nao-encontrado", "Entrega não encontrada.");
+        const p = problemaDaSituacao(atual, { situacao, justificativa: texto }, registros);
+        if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+        const em = agora();
+        return {
+          situacao, justificativa: texto,
+          mudancasDeSituacao: [...(atual.mudancasDeSituacao ?? []), { situacao, justificativa: texto, em, por: usuario }],
+          alteradaEm: em, alteradaPor: usuario,
+        };
+      });
+    },
+    /** Exclusão lógica, só da entrega sem alcance registrado (a que já tem alcance se cancela, com justificativa). */
+    async excluirEntrega(espacoId, id) {
+      await exigir(espacoId, "configurar");
+      if (registrosDa(id, await banco.listarDoEspaco(espacoId, "alcances")).length) {
+        throw new ErroDeDados("entrega-com-alcance", "A entrega já tem alcance registrado: em vez de excluir, marque como Cancelada, com a justificativa.");
+      }
+      await banco.mudarNoEspaco(espacoId, "entregas", id, () => ({ excluidaEm: agora(), excluidaPor: usuario }));
+    },
+    /**
+     * Registra o alcance de uma entrega (só o administrador): data, valor, descrição, evidências e quem realizou.
+     * Só de acréscimo: nada se altera depois; o registro mais recente é o alcance atual. Devolve o id.
+     */
+    async registrarAlcance(espacoId, entregaId, dados) {
+      await exigir(espacoId, "configurar");
+      recusarDesconhecidos(dados, "registroDeAlcance");
+      for (const v of dados.evidencias ?? []) recusarDesconhecidos(v, "evidencia");
+      const entrega = (await banco.listarDoEspaco(espacoId, "entregas")).find((e) => e.id === entregaId && !e.excluidaEm);
+      if (!entrega) throw new ErroDeDados("nao-encontrado", "Entrega não encontrada.");
+      const limpa = (v) => Object.fromEntries(Object.entries({ descricao: String(v.descricao ?? "").trim(), identificacao: String(v.identificacao ?? "").trim(), link: String(v.link ?? "").trim() }).filter(([, x]) => x));
+      const registro = {
+        entrega: entregaId, data: dados.data, valor: dados.valor, descricao: String(dados.descricao ?? "").trim(),
+        evidencias: (dados.evidencias ?? []).map(limpa), realizadores: dados.realizadores ?? [],
+      };
+      const p = problemaDoRegistro(registro, entrega);
+      if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+      await conferirResponsaveisDaEntrega(espacoId, registro.realizadores);
+      const id = novoId();
+      await banco.criarNoEspaco(espacoId, "alcances", id, { ...registro, registradoEm: agora(), registradoPor: usuario });
+      return id;
+    },
+
     // --- retratos (seção 4.4; passo 1.18) ---
     /**
      * Salva um retrato manual: a cópia integral do espaço agora, com os resultados calculados.
@@ -1269,7 +1404,13 @@ export function criarStore(banco, opcoes = {}) {
         geral: await store.lerCalendarioGeral(), hoje: hoje(),
       });
       const id = novoId();
-      await banco.criarRetrato(espacoId, { id, nome: nome.trim().slice(0, 120), origem: "manual", criadoEm: agora(), criadoPor: usuario, ...cabecalho }, acoes);
+      /* entregas e registros de alcance do Plano de Ação (passo 2.6), também congelados */
+      const entregas = await store.listarEntregas(espacoId);
+      const alcances = await store.listarAlcances(espacoId);
+      await banco.criarRetrato(espacoId, {
+        id, nome: nome.trim().slice(0, 120), origem: "manual", criadoEm: agora(), criadoPor: usuario, ...cabecalho,
+        entregas, alcances,
+      }, acoes);
       return id;
     },
     /** Retratos do espaço, do mais recente ao mais antigo (só os cabeçalhos). */
@@ -1314,7 +1455,7 @@ export function criarStore(banco, opcoes = {}) {
       const omitidos = todos.length - espacos.length;
       return {
         formato: "sextante-copia-de-seguranca",
-        versao: 3, // 2: com o histórico de alterações (passo 1.16), os retratos (passo 1.18) e os comentários (passo 2.9); 3: com o catálogo da estratégia (passo 2.5)
+        versao: 4, // 2: com o histórico de alterações (passo 1.16), os retratos (passo 1.18) e os comentários (passo 2.9); 3: com o catálogo da estratégia (passo 2.5); 4: com as entregas e os registros de alcance (passo 2.6)
         geradaEm: agora(),
         geradaPor: usuario ?? null,
         ...(omitidos ? { omitidos } : {}),
@@ -1332,6 +1473,9 @@ export function criarStore(banco, opcoes = {}) {
           historico: (await banco.listarHistoricoDoEspaco(espaco.id)).sort((a, b) => a.em.localeCompare(b.em) || a.id.localeCompare(b.id)),
           /* comentários, inclusive os apagados e as versões anteriores (passo 2.9) */
           comentarios: (await banco.listarComentariosDoEspaco(espaco.id)).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm) || a.id.localeCompare(b.id)),
+          /* entregas, inclusive as excluídas, e registros de alcance (passo 2.6) */
+          entregas: (await banco.listarDoEspaco(espaco.id, "entregas")).sort((a, b) => a.id.localeCompare(b.id)),
+          alcances: (await banco.listarDoEspaco(espaco.id, "alcances")).sort((a, b) => a.id.localeCompare(b.id)),
           retratos: await Promise.all((await banco.listarRetratos(espaco.id)).sort((a, b) => a.criadoEm.localeCompare(b.criadoEm)).map(async (r) => ({
             ...r, acoes: (await banco.listarAcoesDoRetrato(espaco.id, r.id)).sort((a, b) => a.numero - b.numero),
           }))),
@@ -1353,7 +1497,8 @@ export function criarStore(banco, opcoes = {}) {
     "mudarSituacao", "retirarSituacao", "comentar", "editarComentario", "apagarComentario",
     "assumirAdministracao", "definirPapel", "encerrarEspaco", "reabrirEspaco", "nomearAdministrador",
     "alterarCamadas", "criarInstrumento", "alterarInstrumento", "prorrogarInstrumento", "excluirInstrumento",
-    "criarItemEstrategico", "alterarItemEstrategico", "ligarSuperior", "desligarSuperior", "excluirItemEstrategico", "importarCatalogo"];
+    "criarItemEstrategico", "alterarItemEstrategico", "ligarSuperior", "desligarSuperior", "excluirItemEstrategico", "importarCatalogo",
+    "criarEntrega", "alterarEntrega", "mudarSituacaoDaEntrega", "excluirEntrega", "registrarAlcance"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

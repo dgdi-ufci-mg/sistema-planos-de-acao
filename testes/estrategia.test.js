@@ -181,7 +181,7 @@ for (const [nome, criarBanco, definirAdmins] of [
       const { gestor } = await cenario();
       await gestor.criarItemEstrategico({ camada: "programa", codigo: "P1", nome: "Programa" });
       const copia = JSON.parse(JSON.stringify(await gestor.copiaDeSeguranca()));
-      assert.equal(copia.versao, 3);
+      assert.equal(copia.versao, 4);
       assert.equal(copia.estrategia.itens.length, 1);
       const destino = criarStore(criarBanco(), { usuario: "gestor@ufci.edu.br" });
       await destino.restaurarCopia(copia);

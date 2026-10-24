@@ -51,13 +51,22 @@ export const CAMPOS = Object.freeze({
   /** Comentário de uma ação (passo 2.9): nunca apagado do banco; editar guarda a versão anterior. */
   comentario: ["id", "acao", "autor", "texto", "criadoEm", "editadoEm", "versoes", "apagadoEm", "apagadoPor", "apagadoComo"],
   comentarioVersao: ["texto", "em"],
+  /** Entrega do Plano de Ação (passo 2.6): coleção espacos/{id}/entregas. */
+  entrega: [
+    "id", "ordem", "titulo", "descricao", "tipoMeta", "meta", "unidade", "prazo", "responsaveis",
+    "situacao", "justificativa", "mudancasDeSituacao", "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
+  ],
+  mudancaDeSituacao: ["situacao", "justificativa", "em", "por"],
+  /** Registro de alcance de uma entrega (passo 2.6): coleção espacos/{id}/alcances, só de acréscimo. */
+  registroDeAlcance: ["id", "entrega", "data", "valor", "descricao", "evidencias", "realizadores", "registradoEm", "registradoPor"],
+  evidencia: ["descricao", "identificacao", "link"],
   /** Item do checklist da ação (passo 2.8). */
   checklistItem: ["id", "texto", "feito"],
   /** Histórico de alterações das ações (passo 1.16): só de acréscimo. */
   historico: ["id", "entidade", "chave", "tipo", "campo", "antes", "depois", "em", "por"],
   retrato: [
     "id", "nome", "origem", "criadoEm", "criadoPor",
-    "semente", "simulacoes", "versaoCalculo", "espaco", "datasExcluidasEfetivas", "responsaveis", "resumo",
+    "semente", "simulacoes", "versaoCalculo", "espaco", "datasExcluidasEfetivas", "responsaveis", "resumo", "entregas", "alcances",
   ],
   /** Cada ação do retrato: todos os campos de `acao` mais estes valores calculados. */
   retratoAcaoCalculos: [

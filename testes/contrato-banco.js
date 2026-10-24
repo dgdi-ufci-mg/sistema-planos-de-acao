@@ -126,6 +126,26 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await assert.rejects(banco.mudarNaColecao("instrumentos", "x", () => ({})), { codigo: "nao-encontrado" });
     });
 
+    it("entregas e alcances do espaço: separados por espaço; criar não sobrescreve; mudar lê e grava de uma vez (passo 2.6)", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarEspaco("p2", { nome: "Espaço 2" });
+      await banco.criarNoEspaco("p1", "entregas", "e1", { titulo: "Um", mudancasDeSituacao: [] });
+      await assert.rejects(banco.criarNoEspaco("p1", "entregas", "e1", { titulo: "Outro" }), { codigo: "id-ocupado" });
+      await banco.criarNoEspaco("p1", "alcances", "a1", { entrega: "e1", valor: 3 });
+      assert.deepEqual(await banco.listarDoEspaco("p2", "entregas"), []);
+      await Promise.all([
+        banco.mudarNoEspaco("p1", "entregas", "e1", (x) => ({ mudancasDeSituacao: [...x.mudancasDeSituacao, "s1"] })),
+        banco.mudarNoEspaco("p1", "entregas", "e1", (x) => ({ mudancasDeSituacao: [...x.mudancasDeSituacao, "s2"] })),
+      ]);
+      const [lida] = await banco.listarDoEspaco("p1", "entregas");
+      assert.equal(lida.id, "e1");
+      assert.deepEqual([...lida.mudancasDeSituacao].sort(), ["s1", "s2"]);
+      assert.equal((await banco.listarDoEspaco("p1", "alcances"))[0].valor, 3);
+      await assert.rejects(banco.mudarNoEspaco("p1", "alcances", "x", () => ({})), { codigo: "nao-encontrado" });
+      await assert.rejects(banco.listarDoEspaco("p1", "outra"), { codigo: "colecao-desconhecida" });
+    });
+
     it("documentos da ação: mudanças simultâneas em itens diferentes não se apagam (passo 2.10a)", async () => {
       const banco = criarBanco();
       await banco.criarEspaco("p1", { nome: "Espaço 1" });

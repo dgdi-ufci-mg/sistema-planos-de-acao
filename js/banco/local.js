@@ -53,6 +53,14 @@ export function criarBancoLocal() {
     if (!comentariosPorEspaco.has(espacoId)) comentariosPorEspaco.set(espacoId, new Map());
     return comentariosPorEspaco.get(espacoId);
   };
+  /** Entregas do Plano de Ação e registros de alcance (passo 2.6): espacoId → nome da coleção → (id → documento). */
+  const NO_ESPACO = ["entregas", "alcances"];
+  const noEspacoPorEspaco = new Map();
+  const noEspaco = (espacoId, nome) => {
+    if (!NO_ESPACO.includes(nome)) throw new ErroDeDados("colecao-desconhecida", `Coleção ${nome} desconhecida.`);
+    if (!noEspacoPorEspaco.has(espacoId)) noEspacoPorEspaco.set(espacoId, Object.fromEntries(NO_ESPACO.map((n) => [n, new Map()])));
+    return noEspacoPorEspaco.get(espacoId)[nome];
+  };
   /** Quem acompanha os comentários de uma ação: "espacoId|numero" → funções. */
   const ouvintesDeComentarios = new Map();
   const daAcao = (espacoId, numero) => [...comentariosDo(espacoId).values()].filter((c) => c.acao === numero).map(copia);
@@ -270,6 +278,24 @@ export function criarBancoLocal() {
       ouvintesDeComentarios.get(chave).add(aoMudar);
       aoMudar(daAcao(espacoId, numero));
       return () => ouvintesDeComentarios.get(chave)?.delete(aoMudar);
+    },
+
+    // --- entregas e registros de alcance de cada espaço (passo 2.6): `nome` é "entregas" ou "alcances" ---
+    async listarDoEspaco(espacoId, nome) {
+      return [...noEspaco(espacoId, nome).values()].map(copia);
+    },
+    async criarNoEspaco(espacoId, nome, id, dados) {
+      exigirEspaco(espacoId);
+      const lista = noEspaco(espacoId, nome);
+      if (lista.has(id)) throw new ErroDeDados("id-ocupado", `Já existe ${id} em ${nome}.`);
+      lista.set(id, { ...copia(dados), id });
+    },
+    /** Lê e muda de uma vez (`mudanca` recebe o atual e devolve os campos novos). */
+    async mudarNoEspaco(espacoId, nome, id, mudanca) {
+      const lista = noEspaco(espacoId, nome);
+      const atual = lista.get(id);
+      if (!atual) throw new ErroDeDados("nao-encontrado", "Item não encontrado.");
+      lista.set(id, { ...atual, ...copia(mudanca(copia(atual))) });
     },
 
     // --- responsáveis: de cada espaço (seção 4.5) ---

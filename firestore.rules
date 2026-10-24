@@ -25,6 +25,8 @@
 //   `nomeacoes`; fora isso, não tem passe livre nos espaços;
 // - catálogo da estratégia (passo 2.5): sistema/estrategia (camadas), instrumentos/{id} e itensEstrategicos/{id};
 //   qualquer pessoa consulta; só o Gestor da Estratégia altera (provisoriamente, o Administrador do Sistema);
+// - entregas do Plano de Ação (passo 2.6): só o administrador do espaço cadastra, altera e muda a situação;
+//   registros de alcance só de acréscimo, pelo administrador, em nome próprio; nada disso no espaço encerrado;
 // - ninguém apaga documentos: a exclusão é lógica (passo 1.15); histórico e retratos só recebem registros novos;
 // - fora destes caminhos, nada.
 rules_version = '2';
@@ -163,6 +165,16 @@ service cloud.firestore {
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['apagadoEm', 'apagadoPor', 'apagadoComo'])
             && request.resource.data.apagadoComo == 'administrador'
             && request.resource.data.apagadoPor == eu()));
+      }
+      // entregas do Plano de Ação (passo 2.6): o administrador cadastra e muda; exclusão lógica
+      match /entregas/{entregaId} {
+        allow read: if podeVer();
+        allow create, update: if aberto() && administra();
+      }
+      // registros de alcance das entregas (passo 2.6): só de acréscimo, pelo administrador, em nome próprio
+      match /alcances/{alcanceId} {
+        allow read: if podeVer();
+        allow create: if aberto() && administra() && request.resource.data.registradoPor == eu();
       }
       // retratos (passo 1.18): cabeçalho e ações, só leitura depois de criados
       match /retratos/{retratoId} {

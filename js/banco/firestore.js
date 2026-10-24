@@ -10,6 +10,8 @@
  *   espacos/{id}/responsaveis/{id}  responsável do espaço (seção 4.5)
  *   espacos/{id}/historico/{id}     histórico de alterações das ações (seção 4.2.1), só de acréscimo
  *   espacos/{id}/comentarios/{id}   comentários das ações (seção 4.2.3), nunca apagados
+ *   espacos/{id}/entregas/{id}      entregas do Plano de Ação (passo 2.6, seção 4.12)
+ *   espacos/{id}/alcances/{id}      registros de alcance das entregas, só de acréscimo
  *   espacos/{id}/retratos/{id}      retrato (seção 4.4): cabeçalho; as ações em .../acoes/{numero}
  *   sistema/calendario              calendário geral
  *   sistema/administradores         e-mails dos Administradores do Sistema (passo 2.3), editado só no console
@@ -59,6 +61,10 @@ export function criarBancoFirestore(db) {
   const historicoRef = (espacoId) => espacoRef(espacoId).collection("historico");
   const retratosRef = (espacoId) => espacoRef(espacoId).collection("retratos");
   const comentariosRef = (espacoId) => espacoRef(espacoId).collection("comentarios");
+  const noEspacoRef = (espacoId, nome) => {
+    if (!["entregas", "alcances"].includes(nome)) throw new ErroDeDados("colecao-desconhecida", `Coleção ${nome} desconhecida.`);
+    return espacoRef(espacoId).collection(nome);
+  };
 
   /** Na mesma transação da mudança, grava os registros do histórico (um não existe sem o outro). */
   const registrar = (t, espacoId, historico, antes, depois) => {
@@ -239,6 +245,27 @@ export function criarBancoFirestore(db) {
       }
     },
     /** Todos os registros do espaço (cópia de segurança). */
+    // --- entregas e registros de alcance de cada espaço (passo 2.6): `nome` é "entregas" ou "alcances" ---
+    async listarDoEspaco(espacoId, nome) {
+      return (await noEspacoRef(espacoId, nome).get()).docs.map((d) => d.data());
+    },
+    async criarNoEspaco(espacoId, nome, id, dados) {
+      const ref = noEspacoRef(espacoId, nome).doc(id);
+      await db.runTransaction(async (t) => {
+        if ((await t.get(ref)).exists) throw new ErroDeDados("id-ocupado", `Já existe ${id} em ${nome}.`);
+        t.set(ref, { ...copia(dados), id });
+      });
+    },
+    /** Numa transação: lê, calcula os campos novos e grava só eles (seção 4.6). */
+    async mudarNoEspaco(espacoId, nome, id, mudanca) {
+      const ref = noEspacoRef(espacoId, nome).doc(id);
+      await db.runTransaction(async (t) => {
+        const s = await t.get(ref);
+        if (!s.exists) throw new ErroDeDados("nao-encontrado", "Item não encontrado.");
+        t.update(ref, copia(mudanca(copia(s.data()))));
+      });
+    },
+
     // --- comentários das ações (passo 2.9) ---
     async criarComentario(espacoId, comentario) {
       await db.runTransaction(async (t) => {

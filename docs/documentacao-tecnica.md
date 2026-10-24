@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 140 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 141 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -83,6 +83,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/simulacao.js` | Monte Carlo beta-PERT, prioridades, chave da simulação (reaproveitamento) |
 | `js/lista.js` | Linhas da lista: filtros, ordens, agrupamento por fase e etapa, resumos |
 | `js/acao.js` | Regras da ação: estimativa livre, anteriores possíveis sem ciclo, busca, códigos |
+| `js/entregas.js` | Entregas do Plano de Ação: tipos de meta, situações, validações, alcance atual, avisos de coerência e o que falta para encerrar |
 | `js/tipos.js` | Tipos de espaço: nomes, tipo padrão, o que cada tipo exige, agrupamento do menu lateral |
 | `js/modelos.js` | Modelos do espaço: estruturado, aberto e personalizado; o que cada espaço usa (estimativas ou data-limite, dependências, simulação) e as opções do cálculo |
 | `js/cronograma.js`, `js/rede.js`, `js/linha-do-tempo.js` | Geometria do cronograma, da rede e da linha do tempo |
@@ -164,6 +165,7 @@ Regras complementares:
 - Ninguém apaga documentos do banco: a exclusão é lógica (lixeira, seção 4.7). Histórico e retratos só recebem registros novos.
 - Comentários: o autor é sempre o e-mail do login, em minúsculas; o autor edita guardando as versões anteriores (a lista só cresce, com o começo igual); apagado, o comentário não muda mais. A leitura é pública: um comentário "apagado" some da tela, mas continua legível por quem consultar o banco diretamente.
 - **Espaço encerrado** (passo 2.3): só leitura para todos, inclusive comentários e retratos; o administrador do espaço só reabre (apaga `encerradoEm`).
+- **Entregas do Plano de Ação** (passo 2.6; seção 4.12): consultadas como o conteúdo do espaço; só o administrador do espaço cadastra, altera e muda a situação; os registros de alcance são só de acréscimo, pelo administrador e em nome próprio (`registradoPor` igual ao e-mail do login). Nada disso no espaço encerrado. As exigências da situação e do encerramento ficam só no Store.
 - **Catálogo da estratégia** (passo 2.5; seção 4.11): `sistema/estrategia`, `instrumentos` e `itensEstrategicos` são consultados por qualquer pessoa e gravados só pelo Gestor da Estratégia (provisoriamente, o Administrador do Sistema). O Store confere também as regras do catálogo (camadas permitidas nas ligações, códigos, vigência); o banco, só quem grava.
 - **Administrador do Sistema** (passo 2.3): os e-mails ficam no documento `sistema/administradores` (campo `emails`, em minúsculas), **editado só no console do Firebase**; todos com login o leem. Ele altera o calendário geral e nomeia um administrador num espaço órfão (acrescenta a si mesmo como autor em `nomeacoes` e um único e-mail como administrador em `acessos`). Fora isso, não tem passe livre nos espaços.
 - **Limitações conhecidas:** (0) a cópia de segurança só leva os espaços que quem a gera pode consultar; os restritos de que não participa ficam de fora (o arquivo diz quantos, em `omitidos`), até existir o Administrador do Sistema; (1) a restauração de uma cópia de segurança no Firebase só recria os espaços em que quem restaura é administrador, e não recria comentários de outras pessoas, nem os já editados ou apagados; para restaurar tudo, o administrador do Firebase precisa relaxar as regras no console durante a restauração e publicá-las de novo em seguida; (2) as regras do passo 2.1 não puderam ser executadas num emulador do Firestore durante o desenvolvimento (o ambiente não baixa o emulador); foram conferidas por leitura, contra a tabela acima, e precisam ser conferidas no uso logo depois de publicadas.
@@ -531,6 +533,8 @@ O retrato é guardado em duas partes: o cabeçalho, abaixo, e um registro por a�
 | `datasExcluidasEfetivas` | lista de data excluída (4.1.1) | sim | Datas excluídas que valiam no cálculo naquele momento: calendário geral, menos as desconsideradas, mais as do espaço. O calendário geral pode mudar depois; sem esta cópia, refazer o cálculo daria outro resultado | |
 | `responsaveis` | lista de responsável (4.5) | sim | Cópia integral dos responsáveis citados nas ações, para os nomes continuarem legíveis | |
 | `resumo` | resumo do retrato (4.4.2) | sim | Resultado do espaço naquele momento | |
+| `entregas` | lista de entrega (4.12) | sim | Cópia das entregas ativas do Plano de Ação naquele momento (passo 2.6); vazia no Projeto | |
+| `alcances` | lista de registro de alcance (4.12) | sim | Cópia dos registros de alcance naquele momento (passo 2.6); vazia no Projeto | |
 
 Os retratos **automáticos não podem ser excluídos** à mão, para o histórico usado no Data Lakehouse não ter buracos. O retrato automático depende de um programa no servidor; chega com o servidor da UFCI-MG (passo 4.4). No Firebase gratuito, só há retratos manuais.
 
@@ -660,6 +664,8 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
 | Histórico de alterações | `espacos/{id}/historico/{id}` | tabela `historico`, com `espaco_id` |
 | Comentário (versões dentro dele) | `espacos/{id}/comentarios/{id}` | tabelas `comentario` e `comentario_versao`, com `espaco_id` e o número da ação |
+| Entrega (mudanças de situação dentro dela) | `espacos/{id}/entregas/{id}` | tabelas `entrega`, `entrega_responsavel` e `entrega_situacao`, com `espaco_id` |
+| Registro de alcance (evidências dentro dele) | `espacos/{id}/alcances/{id}` | tabelas `alcance`, `alcance_evidencia` e `alcance_realizador` |
 | Retrato | cabeçalho em `espacos/{id}/retratos/{id}`; ações em `espacos/{id}/retratos/{id}/acoes/{numero}` | tabelas `retrato`, `retrato_acao` |
 | Calendário geral | documento `sistema/calendario` | tabela `data_excluida_geral` |
 | Administradores do Sistema | documento `sistema/administradores` | papel no login institucional |
@@ -755,6 +761,66 @@ Passo 2.5 (seção 16.1). O catálogo do PEI/PDI é **comum a todos os espaços*
 | `alteradoPor` | usuário | não | Autor da última gravação | |
 | `excluidoEm` | momento | não | Exclusão lógica | |
 | `excluidoPor` | usuário | não | Quem excluiu | |
+
+### 4.12 Entregas do Plano de Ação e registros de alcance
+
+Passo 2.6 (seção 16.7). Duas coleções dentro do espaço, só no **Plano de Ação**: as **entregas** (`espacos/{id}/entregas/{id}`), os resultados do plano que importam para o PEI/PDI, e os **registros de alcance** (`espacos/{id}/alcances/{id}`), só de acréscimo. Regras puras em `js/entregas.js`; operações no Store (`listarEntregas`, `listarAlcances`, `criarEntrega`, `alterarEntrega`, `mudarSituacaoDaEntrega`, `excluirEntrega`, `registrarAlcance`). **Só o administrador do espaço** cadastra, altera, muda a situação e registra o alcance (decisão do responsável, 24/10/2026, confirmando a de 20/10/2026: o registro é uma declaração do administrador). Entram na cópia de segurança (versão 4) e nos retratos (4.4).
+
+- **Situação:** começa "Não iniciada" e muda só por `mudarSituacaoDaEntrega`, que confere as exigências de qualquer momento (tabela da seção 16.7): "Alcançada" e "Parcialmente alcançada" exigem pelo menos um registro de alcance (e todo registro tem evidência); "Parcialmente alcançada", "Não alcançada" e "Cancelada" exigem justificativa. Na "Não iniciada", a justificativa é opcional até o encerramento. Cada mudança fica em `mudancasDeSituacao`.
+- **Meta fixa depois do primeiro alcance:** com alcance registrado, `tipoMeta`, `meta` e `unidade` não mudam, para os registros continuarem comparáveis.
+- **Exclusão lógica** só da entrega sem alcance registrado; a que já tem alcance se marca como "Cancelada", com a justificativa.
+- **Alcance atual:** o registro mais recente (pela data do alcance; no mesmo dia, pela ordem de registro). Fração da meta: valor ÷ meta nas metas percentuais e quantitativas (pode passar de 1); 1 ou 0 na entrega padrão.
+- **Aviso de coerência** (não impede gravar): "Alcançada" abaixo da meta; "Parcialmente alcançada" na meta ou em zero; "Não alcançada" com valor acima de zero; "Não iniciada" com algum registro.
+- **Encerrar o Plano de Ação** exige pelo menos uma entrega ativa, justificativa em cada "Não iniciada" e pelo menos um registro de alcance em cada "Em andamento"; o Store recusa com a lista do que falta. Exigir pelo menos uma entrega para encerrar foi escolha técnica, coerente com o cadastro obrigatório (seção 16.7). As regras do banco não conferem isso.
+
+<!-- dicionario: entrega -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador da entrega. Imutável | |
+| `ordem` | número | sim | Posição na lista de entregas do plano | `1` |
+| `titulo` | texto | sim | O que se quer alcançar, até 200 caracteres | `Procedimentos-Padrão publicados` |
+| `descricao` | texto | não | Detalhes, até 2.000 caracteres | |
+| `tipoMeta` | texto: `percentual`, `quantitativa` ou `padrao` | sim | Tipo de meta, como no PGD (seção 16.7) | `quantitativa` |
+| `meta` | número | não | Meta: na percentual, de 0 a 100 (%); na quantitativa, maior que zero. Vazio na entrega padrão | `10` |
+| `unidade` | texto | não | Unidade da meta quantitativa, até 40 caracteres | `POPs` |
+| `prazo` | data | não | Data prevista para a entrega | `2027-03-31` |
+| `responsaveis` | lista de id | sim | Responsáveis do espaço (4.5) pela entrega; pode ser vazia | |
+| `situacao` | texto: `naoIniciada`, `emAndamento`, `alcancada`, `parcialmenteAlcancada`, `naoAlcancada` ou `cancelada` | sim | Situação atual (tabela da seção 16.7) | `emAndamento` |
+| `justificativa` | texto | não | Justificativa da situação atual, até 2.000 caracteres | `Mudança de prioridade no Conselho` |
+| `mudancasDeSituacao` | lista de mudança de situação (abaixo) | sim | Cada mudança de situação, em ordem; só cresce | |
+| `criadaEm` | momento | sim | Criação. Imutável | |
+| `alteradaEm` | momento | sim | Última gravação | |
+| `alteradaPor` | usuário | não | Autor da última gravação | |
+| `excluidaEm` | momento | não | Exclusão lógica | |
+| `excluidaPor` | usuário | não | Quem excluiu | |
+
+<!-- dicionario: mudancaDeSituacao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `situacao` | texto (valores de `situacao`, acima) | sim | Situação escolhida | `cancelada` |
+| `justificativa` | texto | não | Justificativa dada junto | |
+| `em` | momento | sim | Quando | |
+| `por` | usuário | não | Quem mudou | |
+
+<!-- dicionario: registroDeAlcance -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do registro. Imutável, como todo o registro | |
+| `entrega` | id | sim | Entrega a que se refere | |
+| `data` | data | sim | Data do alcance (não a do registro) | `2026-12-10` |
+| `valor` | número, ou sim/não na entrega padrão | sim | Valor alcançado até essa data: na percentual, de 0 a 100; na quantitativa, a partir de zero | `7` |
+| `descricao` | texto | sim | O que foi alcançado, até 2.000 caracteres | `Sete POPs publicados no portal` |
+| `evidencias` | lista de evidência (abaixo) | sim | Pelo menos uma | |
+| `realizadores` | lista de id | sim | Quem realizou: responsáveis do espaço (pessoas, equipes ou unidades); pode ser vazia | |
+| `registradoEm` | momento | sim | Quando foi registrado | |
+| `registradoPor` | usuário | sim | Quem registrou: o e-mail do login (o banco confere) | `ana@ufci.edu.br` |
+
+<!-- dicionario: evidencia -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `descricao` | texto | sim | O que a evidência mostra | `Portaria de publicação` |
+| `identificacao` | texto | não | Número no SIPAC/Protocolo. Obrigatório quando não há link | `23062.000001/2026-10` |
+| `link` | texto (endereço web) | não | Começa com `https://` ou `http://`. Obrigatório quando não há identificação. O envio de arquivo vem com o servidor da UFCI-MG (passo 4.3) | |
 
 ## 5. Regras de cálculo
 
@@ -1094,7 +1160,7 @@ Construir um Gantt e uma rede interativos sem biblioteca externa é o maior trab
 - **Importar ações de planilha** ("Configurar este espaço"): colar a planilha a partir da linha de títulos; as colunas são reconhecidas pelo nome, em qualquer ordem (para o nome da ação, "Ação", "Rótulo", "Nome" ou "Nome da ação"). Antes de gravar, a conferência aponta erros (código inválido ou repetido, nome repetido, dependência que não existe, ciclo) e avisos. Quem importa escolhe entre só criar ações novas ou também atualizar as existentes. Dependências por código da planilha, número ou nome, nessa ordem. Fases e etapas que faltam são criadas. Detalhes no passo 1.19b da seção 12.
 - **Importar responsáveis de planilha:** Nome (obrigatório), Tipo, Sigla, Setor e E-mail. Com e-mail, é pessoa e ganha a conta de acesso, criada numa instância separada do Firebase, sem guardar sessão; a senha é sorteada e descartada, e a pessoa recebe o e-mail para definir a sua. Sem e-mail, o tipo precisa vir na planilha. Provisório até os papéis por espaço (seção 12, passo 2.1).
 - **Exportar:** "Copiar para planilha" e "Copiar fluxograma" (Mermaid), por cópia para colar.
-- **Cópia de segurança** ("Configurar o sistema"): arquivo `sextante-copia-de-seguranca`, versão 3, com os espaços que quem a gera pode consultar (inclusive a lixeira), ações, responsáveis, histórico, comentários e retratos, o calendário geral e, desde o passo 2.5, o catálogo da estratégia (`estrategia`: modelo, instrumentos e itens, inclusive os excluídos), que só é restaurado num banco sem catálogo. Arquivos das versões 1 e 2 continuam aceitos. A restauração só é feita num banco sem nenhum espaço, para nunca misturar nem sobrescrever dados.
+- **Cópia de segurança** ("Configurar o sistema"): arquivo `sextante-copia-de-seguranca`, versão 4, com os espaços que quem a gera pode consultar (inclusive a lixeira), ações, responsáveis, histórico, comentários e retratos, o calendário geral e, desde o passo 2.5, o catálogo da estratégia (`estrategia`: modelo, instrumentos e itens, inclusive os excluídos), que só é restaurado num banco sem catálogo, e, desde o passo 2.6, as entregas (inclusive as excluídas) e os registros de alcance de cada espaço. Arquivos das versões 1 a 3 continuam aceitos. A restauração só é feita num banco sem nenhum espaço, para nunca misturar nem sobrescrever dados.
 
 ---
 
@@ -1206,7 +1272,10 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 - ✔ Parte 1, dados e regras (24/10/2026): `js/estrategia.js` (camadas permitidas, vigência, caminho até o topo, validações, conferência da importação por planilha); no Store, `lerCatalogo`, `alterarCamadas`, `criarInstrumento`, `alterarInstrumento`, `prorrogarInstrumento`, `excluirInstrumento`, `criarItemEstrategico`, `alterarItemEstrategico`, `ligarSuperior`, `desligarSuperior`, `excluirItemEstrategico` e `importarCatalogo`, e `vinculos` do espaço conferidos contra o catálogo; o Plano de Ação aceita o Programa do catálogo ou, como antes, em texto livre; bancos com o documento do modelo e as coleções do catálogo (testes de contrato); cópia de segurança versão 3, com o catálogo; regras do banco (a publicar no console). Sem tela ainda.
 - ✔ Parte 2, o módulo Superior (24/10/2026): página `/superior/`, com as abas Desdobramento (árvore e painel do item), Instrumentos (com prorrogação), Camadas e Importar (seção 8, "Módulo Superior"); sem o Firebase, um catálogo de exemplo na memória. Sem mudança no banco nem nas regras.
 - ✔ Parte 3, o Programa do catálogo no Plano de Ação (24/10/2026): na criação e em "Configurar este espaço", o Programa é escolhido numa lista com os Programas vigentes do catálogo (`opcoesDePrograma`, em `js/estrategia.js`), com o caminho até o topo; um plano com Programa digitado antes do catálogo mantém o texto como opção até ser trocado; com o catálogo sem Programas vigentes, o campo continua de texto livre. "Espaços abertos à consulta" mostra o Programa do catálogo (`programaDoEspaco`). Na barra lateral, o link "Gestão da estratégia". Sem mudança no banco nem nas regras.
-2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
+2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Decisões do responsável em 24/10/2026: o plano sem entregas é criado normalmente, com o aviso fixo "sem entregas cadastradas" e, no módulo Superior, a marca "rascunho, sem entregas"; as entregas ficam numa visualização própria, "Entregas", no menu das visualizações, com o alcance em barras; só o administrador registra o alcance; entram já neste passo a ligação da ação a uma entrega, a continuação de uma entrega de um plano anterior (caminho A) e as entregas sob cada Plano de Ação no Superior. Em três partes:
+- ✔ Parte 1, dados e regras (24/10/2026): entidades `entrega` e `registroDeAlcance` (seção 4.12), em `js/entregas.js` e no Store, com testes das regras e dos dois bancos (contrato); encerrar o Plano de Ação exige as entregas em dia; cópia de segurança versão 4 e retratos com as entregas; regras do banco (a publicar no console). Sem tela ainda.
+- Parte 2: a visualização Entregas (cadastro, situação, registro do alcance com evidências, barras), o aviso "sem entregas cadastradas" e o que falta ao encerrar, na tela; exemplo de Plano de Ação com entregas.
+- Parte 3: a ação ligada a uma entrega; continuar uma entrega de um plano anterior; as entregas no módulo Superior.
 2.7. ✔ Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2). Feito em 23/10/2026. Decisões do responsável: a inicial se chama "A fazer" nos espaços sem dependências, com nome editável (nos espaços com dependências, continua "Liberada"); até os papéis (passo 2.1), quem tem login cria, renomeia, reordena e retira as situações; retirar uma situação devolve as ações dela à inicial, com aviso de quantas. Dados: `situacoes` e `nomeInicial` do espaço (4.1, 4.1.8) e `situacaoPersonalizada` da ação (4.2); regras em `js/situacoes.js`; no Store, `mudarSituacao` (só para ação liberada) e `retirarSituacao`; a personalizada é apagada quando a ação é concluída, ganha uma anterior não concluída, tem a data mínima levada para o futuro ou tem uma anterior com a conclusão desfeita, e assim a ação volta sempre à inicial. Telas: seção "Situações" em "Configurar este espaço" (lista com as fixas, as personalizadas editáveis com ↑ ↓ e ×, e "Nova situação" com Enter); quadro com uma coluna por situação (arrastar entre a inicial e as personalizadas muda a situação; para Concluídas, registra a conclusão; de Concluídas para a inicial, desfaz); na lista, a etiqueta da personalizada sob o nome; no filtro, as liberadas se abrem na inicial e em cada personalizada (nos espaços sem dependências, "Liberadas" passa a "Em aberto"); na janela da ação, a situação vira uma lista de escolha na ação liberada; ao acrescentar uma anterior não concluída numa ação em situação personalizada, um aviso pede confirmação antes de gravar; planilha, exportação e histórico mostram o nome da situação. Ícone das personalizadas: círculo com um quarto marcado. Ajuste 128 (pedido do responsável, 23/10/2026): as colunas também se criam, renomeiam e retiram no próprio quadro, além de em "Configurar este espaço" > Situações.
 2.8. ✔ Checklist. Feito no lote de 22/10/2026 (antes dos passos 2.1 a 2.7, por não depender deles nem de regras novas no banco): campo `checklist` da ação (4.2.2); na janela da ação, "Adicionar checklist", itens com caixa de marcar, texto editável com um clique e ×; progresso "feitos/total" nos cartões da lista e do quadro.
 2.9. ✔ Comentários. Feito em 23/10/2026, a pedido do responsável (antes dos passos 2.5 a 2.7): entidade `comentario` (seção 4.2.3), na coleção `espacos/{id}/comentarios`, com regras próprias no `firestore.rules` (seção 3.6); no Store, `comentar`, `editarComentario`, `apagarComentario`, `listarComentarios` e `acompanharComentarios` (tempo real), com testes do contrato dos dois bancos e das regras de negócio. Na janela da ação, a seção "Comentários", entre as anotações e o histórico de estimativas: conversa do mais antigo ao mais novo, com nome (o do responsável ligado ao e-mail, ou o começo do e-mail), data e hora e a marca "editado"; os comentários de quem está vendo ficam à direita, em verde-azulado, com "Editar" e "Apagar" (com confirmação na própria linha); apagado, fica só "Comentário apagado pelo autor em …"; Ctrl+Enter envia; endereços da web viram links. A seção aparece quando o espaço tem duas ou mais pessoas com login (responsáveis com e-mail, mais quem entrou) ou quando já há comentários; sem login, ela mostra a conversa e "Entre com seu e-mail e senha para comentar". Os comentários entram na cópia de segurança e não entram nos retratos.
@@ -1452,7 +1521,7 @@ O carimbo **Atrasada** continua independente das situações.
 
 ### 16.3 Papéis e visibilidade
 
-**Papéis e espaço aberto ou fechado: feitos no passo 2.1; visibilidade, no passo 2.2; encerrar e reabrir, último administrador, Administrador do Sistema e espaço órfão, no passo 2.3** (24/10/2026; seções 3.6, 4.1.10 a 4.1.12 e 12). Fica para o passo 2.6: as exigências sobre as entregas ao encerrar (seção 16.7).
+**Papéis e espaço aberto ou fechado: feitos no passo 2.1; visibilidade, no passo 2.2; encerrar e reabrir, último administrador, Administrador do Sistema e espaço órfão, no passo 2.3** (24/10/2026; seções 3.6, 4.1.10 a 4.1.12 e 12). As exigências sobre as entregas ao encerrar o Plano de Ação entraram no passo 2.6 (seções 4.12 e 16.7).
 
 - **Login institucional** (Identificação Única) quando houver o servidor da UFCI-MG. Todo usuário institucional pode criar espaços e é administrador dos espaços que cria.
 - **Papéis por espaço:** Administrador do espaço, Usuário do espaço, Leitor. Sem papel no espaço, a pessoa vê o espaço só se a visibilidade permitir.
@@ -1759,3 +1828,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 138 | Passo 2.5, parte 1: catálogo da estratégia (camadas, instrumentos, itens e ligações), sem tela; vínculo do Plano de Ação com o catálogo; cópia de segurança versão 3; regras do banco (a publicar no console). Dicionário: `vinculos` do espaço (4.1) e seção 4.11 nova (`modeloEstrategia`, `camada`, `instrumento`, `prorrogacao`, `itemEstrategico`). Corrigida a data no cabeçalho deste documento |
 | 139 | Passo 2.5, parte 2: módulo Superior (`/superior/`), com a árvore do desdobramento, o painel do item, os instrumentos com prorrogação, as camadas e a importação por planilha; catálogo de exemplo sem o Firebase (seções 3.1, 8 e 12) |
 | 140 | Passo 2.5, parte 3: o Plano de Ação escolhe o Programa no catálogo da estratégia (lista dos vigentes, com o caminho até o topo; texto livre só com o catálogo sem Programas, ou para manter o de antes); Programa do catálogo em "Espaços abertos à consulta"; link "Gestão da estratégia" na barra lateral (seções 4.1, 8 e 12) |
+| 141 | Passo 2.6, parte 1: entregas do Plano de Ação e registros de alcance (dados, regras e Store, sem tela); encerrar o Plano de Ação exige as entregas em dia; cópia de segurança versão 4; retratos com as entregas; regras do banco (a publicar no console). Dicionário: seção 4.12 nova (`entrega`, `mudancaDeSituacao`, `registroDeAlcance`, `evidencia`) e `entregas` e `alcances` do retrato (4.4). Decisões do passo registradas na seção 12 |
