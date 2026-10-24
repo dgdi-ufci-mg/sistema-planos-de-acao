@@ -14,6 +14,7 @@ import { montarRetrato } from "./retrato.js";
 import { problemaDoTipo } from "./tipos.js";
 import { problemaDoModelo, modeloDe } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
+import { chaveValida, planejarMovimento } from "./prioridade.js";
 import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
 
 export { ErroDeDados };
@@ -214,6 +215,11 @@ export function criarStore(banco, opcoes = {}) {
     }
   };
 
+  /** Posição na prioridade da equipe (passo 2.10a): chave fracionária válida, ou vazia. */
+  const conferirPosicao = (campos) => {
+    if (campos.posicaoPrioridade != null && !chaveValida(campos.posicaoPrioridade)) throw new ErroDeDados("posicao-invalida", "Posição de prioridade inválida.");
+  };
+
   /** Etiquetas gravadas na ação inteira (criação, importação): só as do catálogo do espaço, sem repetir (passo 2.10a). */
   async function conferirEtiquetas(espacoId, campos) {
     if (!("etiquetas" in campos)) return;
@@ -309,6 +315,7 @@ export function criarStore(banco, opcoes = {}) {
       await conferirModelo(espacoId, outros);
       await conferirEtiquetas(espacoId, outros);
       conferirDocumentos(outros);
+      conferirPosicao(outros);
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
       if (codigo) validarCodigo(codigo, acoes);
@@ -342,6 +349,7 @@ export function criarStore(banco, opcoes = {}) {
       await conferirModelo(espacoId, campos);
       await conferirEtiquetas(espacoId, campos);
       conferirDocumentos(campos);
+      conferirPosicao(campos);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
       await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario }, hist);
       if ("responsaveis" in campos) await arrumarTons(espacoId);
@@ -405,6 +413,21 @@ export function criarStore(banco, opcoes = {}) {
       const id = existente?.id ?? await store.criarEtiqueta(espacoId, { nome: n });
       await store.acrescentarEtiquetaNaAcao(espacoId, numero, id);
       return id;
+    },
+    // --- prioridade da equipe (passo 2.10a; seção 16.8): chave fracionária, grava só a ação movida ---
+    /**
+     * Põe a ação entre `depoisDe` e `antesDe` (números das vizinhas na ordem de prioridade; null nas pontas).
+     * Na primeira vez, as ações sem posição até a vizinha de cima também recebem a sua (planejarMovimento).
+     */
+    async priorizar(espacoId, numero, vizinhas = {}) {
+      const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
+      if (!acoes.some((a) => a.numero === numero)) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
+      for (const v of [vizinhas.depoisDe, vizinhas.antesDe]) {
+        if (v != null && (v === numero || !acoes.some((a) => a.numero === v))) throw new ErroDeDados("nao-encontrado", `Ação ${v} não encontrada.`);
+      }
+      for (const g of planejarMovimento(acoes, numero, vizinhas)) {
+        await banco.alterarAcao(espacoId, g.numero, { posicaoPrioridade: g.posicaoPrioridade, ...carimbo() }, hist);
+      }
     },
     // --- documentos e links da ação (passo 2.10a; seção 16.8): item a item, como o checklist ---
     /** Acrescenta um documento à ação e devolve o id. Precisa de nome e de identificação ou link. */
@@ -934,7 +957,7 @@ export function criarStore(banco, opcoes = {}) {
     "salvarRetrato", "importarAcoes", "restaurarCopia", "importarResponsaveis",
     "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist",
     "criarEtiqueta", "alterarEtiqueta", "retirarEtiqueta", "acrescentarEtiquetaNaAcao", "retirarEtiquetaDaAcao", "etiquetarAcao",
-    "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao"];
+    "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao", "priorizar"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

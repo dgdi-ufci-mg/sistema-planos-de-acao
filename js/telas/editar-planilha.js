@@ -15,6 +15,7 @@ import { avisar } from "./painel.js";
 import { usaEstimativas, usaDependencias, usaSimulacao } from "../modelos.js";
 import { nomeDoFluxo } from "../situacoes.js";
 import { usaEtiquetas, etiquetasDaAcao } from "../etiquetas.js";
+import { posicoesDaPrioridade } from "../prioridade.js";
 
 const SITUACOES = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
 
@@ -50,6 +51,7 @@ export function colunasDaPlanilha(d) {
     { chave: "concluidaEm", titulo: "Concluída em", largura: 9 },
     campos.notas !== false && { chave: "notas", titulo: "Anotações", largura: 16 },
     { chave: "checklist", titulo: "Checklist", largura: 5.5 },
+    campos.prioridade === true && { chave: "prioridade", titulo: "Prioridade da equipe", largura: 6.5 },
     usaEtiquetas(d.espaco) && { chave: "etiquetas", titulo: "Etiquetas", largura: 9 },
     campos.documentos === true && { chave: "documentos", titulo: "Documentos e links", largura: 12 },
     { chave: "situacao", titulo: "Situação", largura: 7, calculada: true },
@@ -102,6 +104,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       }
       case "etiquetas": return etiquetasDaAcao(d.espaco, acao).map((x) => x.nome).join("; ");
       case "documentos": return (acao.documentos ?? []).map((x) => x.nome).join("; ");
+      case "prioridade": return String(posicoesDaPrioridade(d.acoes).get(acao.numero) ?? "");
       default: return calculado(acao, chave) ?? acao[chave] ?? "";
     }
   }
@@ -143,6 +146,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     if (chave === "checklist") return "Itens feitos / total. Edite o checklist na janela da ação.";
     if (chave === "etiquetas") return "Edite as etiquetas na janela da ação.";
     if (chave === "documentos") return "Edite os documentos e links na janela da ação.";
+    if (chave === "prioridade") return "Posição na prioridade da equipe. Mude arrastando a ação na lista, ordenada por “Prioridade da equipe”.";
     if (chave === "notas" && /\n/.test(acao.notas ?? "")) return "Anotações com mais de uma linha: edite na janela da ação.";
     const situacao = d.linhaDe.get(acao.numero)?.situacao;
     if (["o", "m", "p"].includes(chave) && !estimativaLivre(acao, situacao, hoje)) {

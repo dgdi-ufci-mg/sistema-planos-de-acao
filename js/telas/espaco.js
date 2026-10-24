@@ -41,6 +41,7 @@ const BOTOES_DE_FILTRO = [
 ];
 const ORDENS = [
   ["espaco", "Ordem do espaço"],
+  ["prioridade", "Prioridade da equipe"], // passo 2.10a, com o campo opcional ligado
   ["execucao", "Índice de criticidade"],
   ["revisao", "Contribuição para a incerteza"],
   ["conclusao", "Conclusão prevista"],
@@ -199,6 +200,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ferramentas.onchange = aoMudarControle;
     ferramentas.onclick = aoClicarNaBarra;
     ligarArraste();
+    ligarPrioridade();
     lista.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
     });
@@ -281,7 +283,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /** Indicadores que o espaço tem: os dois índices vêm da simulação (passo 2.4b). */
   const barras = () => (usaSimulacao(espaco) ? BARRAS : BARRAS.filter(([v]) => v === "tempo"));
   /** Ordens que o espaço tem; no espaço com data-limite, "Conclusão prevista" vira "Data-limite". */
-  const ordens = () => ORDENS.filter(([v]) => usaSimulacao(espaco) || !["execucao", "revisao"].includes(v))
+  const ordens = () => ORDENS.filter(([v]) => (usaSimulacao(espaco) || !["execucao", "revisao"].includes(v)) && (v !== "prioridade" || espaco.camposOpcionais?.prioridade === true))
     .map(([v, t]) => [v, v === "conclusao" && usaDataLimite(espaco) ? "Data-limite" : t]);
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
   const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a incerteza" }; /* nomes técnicos de volta (22/10/2026) */
@@ -724,7 +726,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       : `<span class="${s.classe}" title="${s.texto}" aria-label="${s.texto}">${ICONES[s.icone]}</span>`; // só o ícone, também na não liberada
     const c = colunas();
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
-      <div class="linha" role="button" tabindex="0" data-abrir-acao>
+      <div class="linha" role="button" tabindex="0" data-abrir-acao>${puxadores() ? `<button type="button" class="puxador" data-puxar="${a.numero}"
+        aria-label="Mudar a prioridade de ${esc(a.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a prioridade">${ICONES.puxador}</button>` : ""}
         <div class="sit">${sit}</div>
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
@@ -814,6 +817,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
     }
     lista.innerHTML = corpo;
+    lista.toggleAttribute("data-puxadores", ui.modo === "lista" && puxadores());
     const c = colunas();
     lista.style.setProperty("--colunas", ["18px", "minmax(0, 2.4fr)", c.descricao && "minmax(0, 2.4fr)",
       c.participantes && "minmax(0, 1.5fr)", c.barras && "minmax(0, 1.6fr)"].filter(Boolean).join(" "));
@@ -940,6 +944,74 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (l.situacao === "liberada") return coluna !== "naoLiberada";
     return l.situacao === "concluida" && coluna === "inicial";
   };
+  /* ---------- prioridade da equipe (passo 2.10a; seção 5.8): arrastar pelo puxador, com o mouse, o dedo ou as setas ---------- */
+  /** Puxadores à vista: ordenação "Prioridade da equipe", campo ligado, na lista e com permissão de gravar. */
+  const puxadores = () => ui.ordem === "prioridade" && espaco.camposOpcionais?.prioridade === true && ui.modo === "lista" && store.podeGravar !== false;
+  /** Ações irmãs do item (a mesma etapa, ou a lista inteira sem fases), na ordem da tela. */
+  const irmaosDe = (item) => [...item.parentElement.querySelectorAll(":scope > .item")];
+  let puxando = null;
+  const limparAlvos = () => lista.querySelectorAll(".solta-antes, .solta-depois").forEach((x) => x.classList.remove("solta-antes", "solta-depois"));
+  /** Move a ação para entre as vizinhas e devolve o foco ao puxador dela depois do redesenho. */
+  async function priorizar(numero, depoisDe, antesDe) {
+    try {
+      await store.priorizar(espacoId, numero, { depoisDe, antesDe });
+      setTimeout(() => lista.querySelector(`[data-puxar="${numero}"]`)?.focus(), 60);
+    } catch (falha) {
+      avisar(falha.message);
+    }
+  }
+  function ligarPrioridade() {
+    lista.addEventListener("pointerdown", (e) => {
+      const puxador = e.target.closest?.("[data-puxar]");
+      if (!puxador || e.button > 0) return;
+      e.preventDefault();
+      const item = puxador.closest(".item");
+      puxador.setPointerCapture(e.pointerId);
+      puxando = { numero: Number(item.dataset.numero), item, irmaos: irmaosDe(item).filter((x) => x !== item), indice: null };
+      item.classList.add("puxando");
+    });
+    lista.addEventListener("pointermove", (e) => {
+      if (!puxando) return;
+      const { irmaos } = puxando;
+      let i = irmaos.findIndex((x) => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+      if (i < 0) i = irmaos.length;
+      puxando.indice = i;
+      limparAlvos();
+      if (i < irmaos.length) irmaos[i].classList.add("solta-antes"); else irmaos.at(-1)?.classList.add("solta-depois");
+      /* perto da borda da tela, rola a página */
+      if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 70) window.scrollBy(0, 14);
+    });
+    const soltar = (cancelar) => {
+      if (!puxando) return;
+      const { numero, item, irmaos, indice } = puxando;
+      puxando = null;
+      item.classList.remove("puxando");
+      limparAlvos();
+      if (cancelar || indice == null) return;
+      const depoisDe = irmaos[indice - 1] ? Number(irmaos[indice - 1].dataset.numero) : null;
+      const antesDe = irmaos[indice] ? Number(irmaos[indice].dataset.numero) : null;
+      const todos = irmaosDe(item);
+      const pos = todos.indexOf(item);
+      const [cima, baixo] = [todos[pos - 1], todos[pos + 1]].map((x) => (x ? Number(x.dataset.numero) : null));
+      if (cima === depoisDe && baixo === antesDe) return; // soltou onde estava
+      priorizar(numero, depoisDe, antesDe);
+    };
+    lista.addEventListener("pointerup", () => soltar(false));
+    lista.addEventListener("pointercancel", () => soltar(true));
+    /* setas no puxador: sobe ou desce uma posição entre as irmãs */
+    lista.addEventListener("keydown", (e) => {
+      const puxador = e.target.closest?.("[data-puxar]");
+      if (!puxador || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+      e.preventDefault(); e.stopPropagation();
+      const item = puxador.closest(".item");
+      const todos = irmaosDe(item).map((x) => Number(x.dataset.numero));
+      const i = todos.indexOf(Number(item.dataset.numero));
+      const j = e.key === "ArrowUp" ? i - 1 : i + 1;
+      if (j < 0 || j >= todos.length) return;
+      const sem = todos.filter((_, k) => k !== i);
+      priorizar(todos[i], sem[j - 1] ?? null, sem[j] ?? null);
+    });
+  }
   function ligarArraste() {
     lista.addEventListener("dragstart", (e) => {
       const cartao = e.target.closest?.(".cartao-quadro");
@@ -1088,6 +1160,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   alvo.onclick = (e) => { // onclick, e não addEventListener: cada espaço aberto substitui o anterior
     const t = e.target;
     if (t.closest("[data-editando]")) return; // clique dentro do campo em edição
+    if (t.closest("[data-puxar]")) return; // o puxador da prioridade arrasta, não abre a ação
     /* Alt+clique num campo editável: edita ali mesmo (22/10/2026) */
     const campo = e.altKey && store.podeGravar ? t.closest("[data-editar]") : null;
     if (campo) { e.preventDefault(); return editarNoLugar(campo); }

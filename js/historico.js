@@ -55,6 +55,7 @@ export function descreverRegistro(r, nomes) {
     case "notas": return "Alterou as anotações.";
     case "etapa": return `Mudou a etapa${antes ? ` de “${nomes.etapa(antes)}”` : ""} para ${depois ? `“${nomes.etapa(depois)}”` : "sem fase nem etapa"}.`;
     case "ordem": return "Mudou a posição na ordem do espaço.";
+    case "posicaoPrioridade": return "Mudou a posição na prioridade da equipe.";
     case "dependeDe": return mudancaDeLista("Depende de", nomes.acao);
     case "responsaveis": return mudancaDeLista("Responsáveis", nomes.responsavel);
     /* passo 2.10a: etiqueta já retirada do catálogo aparece como "etiqueta retirada" */

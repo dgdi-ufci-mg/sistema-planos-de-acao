@@ -4,12 +4,13 @@
  */
 import { estimativaVigente } from "./calculo.js";
 import { fluxoDe } from "./situacoes.js";
+import { compararPrioridade } from "./prioridade.js";
 
 /** Situações dos filtros, na ordem dos botões. "atrasada" é carimbo, não situação. */
 export const FILTROS = ["todas", "liberada", "atrasada", "naoLiberada", "concluida"];
 
 /** Ordenações oferecidas. "espaco" é a ordem cadastrada, com fases e etapas. */
-export const ORDENS = ["espaco", "execucao", "revisao", "conclusao"];
+export const ORDENS = ["espaco", "prioridade", "execucao", "revisao", "conclusao"];
 
 /**
  * Junta o cadastro de cada ação com o que foi calculado para ela.
@@ -87,6 +88,8 @@ export function ordenar(linhas, ordem = "espaco") {
     revisao: desc("revisao"),
     /* sem data (ação sem data-limite, passo 2.4b): vai para o fim */
     conclusao: (a, b) => (a.conclusao ?? "\uffff").localeCompare(b.conclusao ?? "\uffff") || pos(a) - pos(b),
+    /* prioridade da equipe (passo 2.10a): pela chave; sem chave, no fim, na ordem do espaço */
+    prioridade: (a, b) => compararPrioridade(a.acao, b.acao),
   }[ordem];
   return [...linhas].sort(comparar);
 }

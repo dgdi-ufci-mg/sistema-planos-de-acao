@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 131 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 132 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -272,6 +272,7 @@ Saíram da versão 1: `dist` (escolha de distribuição), `statusDate` (a data d
 | `etiquetas` | sim/não | não | Usa etiquetas nas ações (4.1.9; passo 2.10a). **Ausente: desligado** | `true` |
 | `justificativa` | sim/não | não | Usa a justificativa das ações, o "por quê" do 5W2H (passo 2.10a). **Ausente: desligado** | `true` |
 | `local` | sim/não | não | Usa o local das ações, o "onde" do 5W2H (passo 2.10a). **Ausente: desligado** | `true` |
+| `prioridade` | sim/não | não | Usa a prioridade da equipe: a ordenação "Prioridade da equipe", em que a equipe arrasta as ações (passo 2.10a). **Ausente: desligado** | `true` |
 | `documentos` | sim/não | não | Usa documentos e links nas ações (4.2.4; passo 2.10a). **Ausente: desligado**. Não confundir com os documentos do espaço (4.1.2), que estão sempre disponíveis | `true` |
 
 Desligar um campo o esconde do formulário, da tabela e das exportações; os dados já gravados são mantidos.
@@ -360,6 +361,7 @@ Chave: o par (espaço, `numero`).
 | `naoAntesDe` | data | não | Data mínima de liberação, "Não começa antes de" (seção 5.1) | `2026-10-19` |
 | `notas` | texto (Markdown) | não | Notas da ação (seção 8.5) | |
 | `checklist` | lista de item do checklist (4.2.2) | não | Itens a cumprir dentro da ação, na ordem em que foram acrescentados (seção 16.5; passo 2.8). Vazio: sem checklist | |
+| `posicaoPrioridade` | texto | não | Posição da ação na prioridade da equipe (passo 2.10a; seção 5.8): chave de ordenação fracionária, em base 36 ("0" a "9" e "a" a "z"), sem terminar em "0", comparada em ordem alfabética. Mantida pelo sistema quando a ação é arrastada; não é digitada. Vazia: a ação vem depois das que têm posição, na ordem do espaço | `i`, `iz`, `0i` |
 | `documentos` | lista de documento da ação (4.2.4) | não | Documentos e links da ação, na ordem em que foram acrescentados (passo 2.10a). Vazio: sem documentos | |
 | `etiquetas` | lista de id | não | Ids das etiquetas do catálogo do espaço (4.1.9; passo 2.10a), acrescentados e retirados um a um (seção 4.6). Na tela, aparecem na ordem do catálogo. Vazio: sem etiquetas | |
 | `criadaEm` | momento | sim | Criação da ação. Imutável | |
@@ -611,7 +613,7 @@ Os nomes do Firebase passam a ser em português, porque a versão 2 usa um proje
 
 Entram no dicionário, com tabela marcada e teste, no passo em que forem construídas.
 
-- **Fase 2 e seguintes:** campos opcionais da seção 16.8 (`posicaoPrioridade`, `dataLimite`; depois, `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos).
+- **Fase 2 e seguintes:** campos opcionais futuros da seção 16.8: `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos.
 - **Sistema definitivo (antiga Fase 4):** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
 - **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); comentários (seção 16.5). O checklist entrou no passo 2.8 (4.2.2).
 
@@ -679,6 +681,20 @@ Tudo é recalculado a cada mudança: conclusão, reestimativa ou edição. A est
 - **Saem da tela o SSI e a crucialidade** como números próprios. A contribuição para a variância é a forma padrão e mais comunicável de responder à pergunta que os dois respondiam (seção 15.4).
 
 ---
+
+### 5.8 Prioridade da equipe: ordem por chave fracionária
+
+Passo 2.10a (seção 16.8). Não é cálculo do sistema: é a ordem que a equipe escolhe, arrastando as ações. Fica aqui porque a regra de posição precisa ser reproduzida exatamente. Regras em `js/prioridade.js`.
+
+- **Chave:** cada ação pode ter `posicaoPrioridade`, um texto com dígitos da base 36 (`0`–`9`, `a`–`z`), que nunca termina em `0`. A ordem é a alfabética das chaves (comparação simples de textos, caractere a caractere, como no JavaScript e no `COLLATE "C"` do PostgreSQL).
+- **Ordem completa:** primeiro as ações com chave, da menor para a maior; depois as sem chave, na ordem do espaço (`ordem`). Duas ações com a mesma chave (possível só se duas pessoas moverem ao mesmo tempo para o mesmo lugar) ficam na ordem do espaço.
+- **Chave entre duas** (`chaveEntre(a, b)`, com `a` < `b`; `a` ausente = início; `b` ausente = fim): percorre as posições `i` = 0, 1, 2…; em cada uma, `da` é o dígito de `a` (0 se `a` acabou) e `db` o de `b` (36 se `b` acabou ou já deixou de limitar). Se `da` = `db`, copia o dígito e segue. Senão, o meio `⌊(da + db) / 2⌋`: se for maior que `da`, a chave é o que foi copiado mais o dígito do meio, e termina. Se não for (`db` = `da` + 1), copia `da`, e daí em diante `b` deixa de limitar (`db` = 36). Exemplos: entre nada e nada, `i`; depois de `i`, `r`; antes de `i`, `9`; entre `i` e `j`, `ii`; entre `az` e `b`, `azi`; antes de `1`, `0i`.
+- **Mover uma ação** para entre as vizinhas `depoisDe` e `antesDe` (as ações logo acima e logo abaixo de onde ela foi solta, na ordem de prioridade, sem contar ela mesma):
+  1. se a de cima ainda não tem chave, as ações sem chave, na ordem completa, até ela (inclusive), recebem chaves em sequência, cada uma `chaveEntre(última chave, fim)`; isso só acontece na primeira vez em que se mexe nessa parte da lista;
+  2. a ação movida recebe `chaveEntre(chave de cima, chave de baixo)`; a de baixo sem chave conta como fim;
+  3. se as duas vizinhas tiverem chaves iguais ou fora de ordem (duas pessoas mexendo ao mesmo tempo), a de baixo é ignorada e a ação fica logo depois da de cima.
+- **Gravação:** só a ação movida (mais, na primeira vez, as que receberam chave no passo 1), cada uma com carimbo e registro no histórico ("Mudou a posição na prioridade da equipe"). Nada regrava a lista inteira, por isso duas pessoas reordenando ao mesmo tempo não apagam o trabalho uma da outra (seção 4.6).
+- **Tamanho:** cada inserção no mesmo intervalo pode alongar a chave em um caractere; na prática, poucas dezenas de caracteres mesmo com muito uso. Não há rebalanceamento.
 
 ## 6. Situações e carimbo
 
@@ -812,6 +828,13 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 - Os cartões não mostram os documentos, para não pesar; eles aparecem na janela da ação.
 
 **Justificativa e local** (passo 2.10a, cada um com o seu campo opcional ligado): campos "Justificativa" (caixa de texto que cresce) e "Local" (uma linha, até 200 caracteres) na janela da ação, recolhidos em "Mais campos" enquanto vazios; gravam ao sair do campo, como a descrição. Colunas editáveis na planilha; colunas "Justificativa" e "Local" na exportação e na importação (também "Por quê" e "Onde"); a coluna na importação liga o campo opcional. Na tela, os nomes ficam sem a sigla 5W2H, para não exigir o termo técnico.
+
+**Prioridade da equipe** (passo 2.10a, com o campo opcional ligado; regra na seção 5.8):
+- Nova ordenação "Prioridade da equipe", logo depois de "Ordem do espaço", em Classificar e filtrar e no painel do celular. Separada da ordem do espaço: arrastar aqui não muda fases, etapas nem a ordem do espaço.
+- Nessa ordenação, na lista, cada ação ganha à esquerda um **puxador** (seis pontos). Arrastar o puxador (mouse ou dedo) mostra uma linha verde-azulada onde a ação vai entrar; ao soltar, a ação fica ali. Com o puxador em foco, as setas para cima e para baixo sobem ou descem uma posição. Clicar no puxador não abre a ação.
+- Com fases e etapas, a ação se move dentro da própria etapa (os separadores continuam, como em qualquer ordenação). Com filtros, as vizinhas são as que estão à vista.
+- Sem permissão de gravar, a ordenação aparece, mas sem puxadores. O quadro, o cronograma e as demais visualizações não mudam.
+- Planilha: coluna "Prioridade da equipe", só de leitura, com a posição (1, 2, 3…) das ações que já têm posição. Exportação: a mesma coluna, depois de "Responsáveis". Importação: não lida (a posição é feita arrastando).
 
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
@@ -1016,10 +1039,11 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.8. ✔ Checklist. Feito no lote de 22/10/2026 (antes dos passos 2.1 a 2.7, por não depender deles nem de regras novas no banco): campo `checklist` da ação (4.2.2); na janela da ação, "Adicionar checklist", itens com caixa de marcar, texto editável com um clique e ×; progresso "feitos/total" nos cartões da lista e do quadro.
 2.9. ✔ Comentários. Feito em 23/10/2026, a pedido do responsável (antes dos passos 2.5 a 2.7): entidade `comentario` (seção 4.2.3), na coleção `espacos/{id}/comentarios`, com regras próprias no `firestore.rules` (seção 3.6); no Store, `comentar`, `editarComentario`, `apagarComentario`, `listarComentarios` e `acompanharComentarios` (tempo real), com testes do contrato dos dois bancos e das regras de negócio. Na janela da ação, a seção "Comentários", entre as anotações e o histórico de estimativas: conversa do mais antigo ao mais novo, com nome (o do responsável ligado ao e-mail, ou o começo do e-mail), data e hora e a marca "editado"; os comentários de quem está vendo ficam à direita, em verde-azulado, com "Editar" e "Apagar" (com confirmação na própria linha); apagado, fica só "Comentário apagado pelo autor em …"; Ctrl+Enter envia; endereços da web viram links. A seção aparece quando o espaço tem duas ou mais pessoas com login (responsáveis com e-mail, mais quem entrou) ou quando já há comentários; sem login, ela mostra a conversa e "Entre com seu e-mail e senha para comentar". Os comentários entram na cópia de segurança e não entram nos retratos.
 2.10. Extração personalizada (seção 16.6).
-2.10a. Campos opcionais: etiquetas, prioridade da equipe (lista ordenada), links e documentos da ação, justificativa e local (seções 16.1 e 16.8). A forma de prazo "data-limite opcional" foi antecipada para o passo 2.4b. Feito em partes, a pedido do responsável (24/10/2026: "pode executar o que não depende de mim"), cada uma publicada à parte:
+2.10a. ✔ Campos opcionais: etiquetas, prioridade da equipe (lista ordenada), links e documentos da ação, justificativa e local (seções 16.1 e 16.8). A forma de prazo "data-limite opcional" foi antecipada para o passo 2.4b. Feito em partes, a pedido do responsável (24/10/2026: "pode executar o que não depende de mim"), cada uma publicada à parte:
 - ✔ Parte 1, etiquetas (24/10/2026): campo opcional `etiquetas` (desligado por padrão), catálogo `etiquetas` do espaço (4.1.9) e `etiquetas` da ação (4.2), gravadas uma a uma (4.6). Regras em `js/etiquetas.js`; no Store, `criarEtiqueta`, `alterarEtiqueta`, `retirarEtiqueta` (retira também das ações), `acrescentarEtiquetaNaAcao`, `retirarEtiquetaDaAcao` e `etiquetarAcao` (acrescenta pelo nome, criando se preciso). Telas na seção 8 ("Etiquetas"). Cores: os tons das pessoas, já existentes nos três blocos de cor, para não criar cores novas. Escolhas de tela feitas sem consulta, por serem as mais simples (o responsável pediu para seguir sem depender dele): criação também pela própria ação, como no Trello; filtro por uma etiqueta de cada vez; coluna só de leitura na planilha.
 - ✔ Parte 2, documentos e links da ação (24/10/2026): campo opcional `documentos` (desligado por padrão) e `documentos` da ação (4.2.4), mudados um a um numa leitura e gravação de uma vez (`mudarDocumentos` nos dois bancos, com teste de contrato), como o checklist. No Store, `acrescentarDocumentoNaAcao`, `alterarDocumentoDaAcao` e `retirarDocumentoDaAcao`. Telas na seção 8 ("Documentos e links da ação"). Escolhas feitas sem consulta: formulário com Salvar (e não gravação campo a campo); exige identificação ou link; não aparece nos cartões; não entra na importação.
 - ✔ Parte 3, justificativa e local (24/10/2026): campos opcionais `justificativa` e `local` (desligados por padrão) e os campos de mesmo nome na ação (4.2), gravados por `alterarAcao`. Telas na seção 8 ("Justificativa e local"). Escolha feita sem consulta: um campo opcional para cada um, e não um só "5W2H", porque o responsável os listou separados e espaços diferentes podem querer só um deles.
+- ✔ Parte 4, prioridade da equipe (24/10/2026): campo opcional `prioridade` (desligado por padrão) e `posicaoPrioridade` da ação (4.2), com a regra da chave fracionária na seção 5.8 e em `js/prioridade.js`; no Store, `priorizar` (grava só a ação movida; na primeira vez, também as de cima sem posição). Ordenação "Prioridade da equipe" com puxador na lista (seção 8, "Prioridade da equipe"). Escolhas feitas sem consulta: puxador próprio, que funciona com mouse, dedo e teclado (o arrastar nativo do navegador não funciona no celular); só na lista; sem rebalancear as chaves. Com isso, o passo 2.10a está completo.
 2.11. Proteção da `main`: com o uso oficial, mudanças só por *pull request* (gatilho do AGENTS.md).
 
 ### Fase 3: quadro de tarefas (continua no protótipo)
@@ -1326,7 +1350,7 @@ Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
 Os campos opcionais servem à **adesão** (o espaço começa simples) e à **sofisticação gradual** do uso. Todos são desligados por padrão, salvo indicação, e nenhum pode atrapalhar as demais funções. Como o banco aceita campos novos sem migração, entram quando forem construídos; aqui fica o desenho, para ninguém construir algo que o contrarie.
 
 - **Etiquetas** (Fase 2; feito no passo 2.10a, parte 1, seção 4.1.9). Catálogo **por espaço** (nome e cor da paleta), como no Trello e no Planner; cada equipe usa as suas. A ação guarda os ids das etiquetas (`etiquetas`), gravados item a item (seção 4.6); filtro por etiqueta. Previsto: campo `etiquetas` no espaço (lista de {`id`, `nome`, `cor`}) e na ação (lista de id).
-- **Prioridade da equipe** (Fase 2). Sem níveis (P1 a P4, "urgente", "importante"), que sofrem inflação (tudo vira o mais alto) e envelhecem sem revisão; nem estrela, que destaca mas não ordena. Adota-se a **lista ordenada** (o Guia do Scrum fala em backlog ordenado; Linear, Jira e Notion priorizam pela posição): a equipe arrasta as ações na ordenação "Prioridade da equipe", revista a cada mudança de contexto. É separada da "Ordem do espaço" (estrutura de fases e etapas). Nos espaços com cálculo, convive com as prioridades calculadas (seção 7). A posição é guardada como uma chave de ordenação fracionária (campo previsto `posicaoPrioridade`, texto): mover uma ação grava só ela, sem regravar a lista, o que evita conflito entre duas pessoas reordenando ao mesmo tempo. A estrela fica como possibilidade futura, só se a prática pedir. Usos principais: Quadro de tarefas e projetos sem dependências.
+- **Prioridade da equipe** (Fase 2; feita no passo 2.10a, parte 4, seção 5.8). Sem níveis (P1 a P4, "urgente", "importante"), que sofrem inflação (tudo vira o mais alto) e envelhecem sem revisão; nem estrela, que destaca mas não ordena. Adota-se a **lista ordenada** (o Guia do Scrum fala em backlog ordenado; Linear, Jira e Notion priorizam pela posição): a equipe arrasta as ações na ordenação "Prioridade da equipe", revista a cada mudança de contexto. É separada da "Ordem do espaço" (estrutura de fases e etapas). Nos espaços com cálculo, convive com as prioridades calculadas (seção 7). A posição é guardada como uma chave de ordenação fracionária (campo previsto `posicaoPrioridade`, texto): mover uma ação grava só ela, sem regravar a lista, o que evita conflito entre duas pessoas reordenando ao mesmo tempo. A estrela fica como possibilidade futura, só se a prática pedir. Usos principais: Quadro de tarefas e projetos sem dependências.
 - **Links e documentos da ação** (Fase 2; feito no passo 2.10a, parte 2, seção 4.2.4): identificação no SIPAC/Protocolo e link, como nos documentos do espaço (4.1.2). Campo previsto `documentos` na ação.
 - **Justificativa** (por quê) e **Local** (onde), do 5W2H (Fase 2; feitos no passo 2.10a, parte 3): textos opcionais, pouco usados no geral. Campos previstos `justificativa` e `local`.
 - **Recorrência** (Fase 3, Quadro de tarefas): tarefas que se repetem (por exemplo, relatório mensal), como no Todoist e no Planner.
@@ -1552,3 +1576,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 129 | Passo 2.10a, parte 1: etiquetas. Campo opcional, catálogo por espaço em "Configurar este espaço", etiquetas na janela da ação (com criação pela busca), nos cartões da lista e do quadro, filtro por etiqueta, coluna na planilha, na importação e na exportação, e registro no histórico. Dicionário: `etiquetas` do espaço (4.1), `etiqueta` (4.1.9), `etiquetas` dos campos opcionais (4.1.4) e da ação (4.2) |
 | 130 | Passo 2.10a, parte 2: documentos e links da ação. Campo opcional, formulário na janela da ação, coluna na planilha e na exportação, registro no histórico. Dicionário: `documentos` dos campos opcionais (4.1.4) e da ação (4.2), `documentoDaAcao` (4.2.4) |
 | 131 | Passo 2.10a, parte 3: justificativa e local da ação. Dois campos opcionais, campos na janela da ação, colunas na planilha, na importação e na exportação, registro no histórico. Dicionário: `justificativa` e `local` dos campos opcionais (4.1.4) e da ação (4.2) |
+| 132 | Passo 2.10a, parte 4: prioridade da equipe. Campo opcional, ordenação "Prioridade da equipe" com puxador (mouse, dedo e setas), chave fracionária (seção 5.8, nova), coluna na planilha e na exportação, registro no histórico. Dicionário: `prioridade` dos campos opcionais (4.1.4) e `posicaoPrioridade` da ação (4.2). Passo 2.10a concluído |

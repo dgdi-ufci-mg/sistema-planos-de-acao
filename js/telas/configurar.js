@@ -32,13 +32,14 @@ const CAMPOS_OPCIONAIS = [
   ["descricao", "Descrição", "Texto completo de cada ação."],
   ["notas", "Anotações", "Anotações formatadas de cada ação."],
   ["codigos", "Códigos das ações", "Códigos curtos, como LEV, para equipes que conversam por eles. Desligado, as ações aparecem só pelo nome."],
+  ["prioridade", "Prioridade da equipe", "A equipe põe as ações em ordem de importância, arrastando-as na ordenação “Prioridade da equipe”."],
   ["etiquetas", "Etiquetas", "Marcas coloridas, como “Compras” ou “Urgente”, para agrupar e filtrar as ações."],
   ["justificativa", "Justificativa", "Por que cada ação existe, como uma exigência legal ou um pedido da Direção."],
   ["local", "Local", "Onde cada ação acontece, como um campus ou um setor."],
   ["documentos", "Documentos e links das ações", "Termos, pareceres e páginas ligados a cada ação, com a identificação no SIPAC/Protocolo ou o link."],
 ];
 /** Campos opcionais desligados por padrão (seção 4.1.4); os demais vêm ligados. */
-const DESLIGADOS_POR_PADRAO = new Set(["codigos", "etiquetas", "documentos", "justificativa", "local"]);
+const DESLIGADOS_POR_PADRAO = new Set(["codigos", "prioridade", "etiquetas", "documentos", "justificativa", "local"]);
 const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[chave] === true : campos?.[chave] !== false);
 
 /** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void}} opcoes */

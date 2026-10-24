@@ -8,6 +8,8 @@ const svg = (conteudo) =>
   `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${conteudo}</svg>`;
 
 export const ICONES = Object.freeze({
+  /** Puxador (prioridade da equipe, passo 2.10a): seis pontos, para arrastar. */
+  puxador: svg('<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>'),
   /** Modo Lista: linhas com marcadores. */
   modoLista: svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r=".6"/><circle cx="4.5" cy="12" r=".6"/><circle cx="4.5" cy="18" r=".6"/>'),
   /** Modo Quadro: três colunas de alturas diferentes, como um Kanban. */

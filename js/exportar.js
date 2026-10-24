@@ -8,6 +8,7 @@
  */
 import { criarCalendario, datasEfetivas } from "./calendario.js";
 import { usaEtiquetas, etiquetasDaAcao } from "./etiquetas.js";
+import { posicoesDaPrioridade } from "./prioridade.js";
 import { caminhoCritico, estimativaVigente, duracaoPert } from "./calculo.js";
 import { dataBr } from "./formato.js";
 import { opcoesDoCalculo, usaDataLimite, usaDependencias } from "./modelos.js";
@@ -48,6 +49,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const usaDescricao = opcionais.descricao !== false;
   const comEtiquetas = usaEtiquetas(espaco); // passo 2.10a: nomes separados por ";"
   const comJustificativa = opcionais.justificativa === true; // passo 2.10a
+  const posicao = opcionais.prioridade === true ? posicoesDaPrioridade(acoes) : null; // passo 2.10a: 1, 2, 3…
   const comLocal = opcionais.local === true;
   const comDocumentos = opcionais.documentos === true; // passo 2.10a: "nome (link ou identificação)", separados por ";"
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
@@ -60,7 +62,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const titulos = ["Número", ...(usaCodigos ? ["Código"] : []), ...(usaFases ? ["Fase", "Etapa"] : []), "Ação",
     ...(usaDescricao ? ["Descrição"] : []), ...(comJustificativa ? ["Justificativa"] : []), ...(comLocal ? ["Local"] : []), ...(comDependencias ? ["Depende de"] : []),
     ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
-    "Responsáveis", ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), "Situação", "Atrasada",
+    "Responsáveis", ...(posicao ? ["Prioridade da equipe"] : []), ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), "Situação", "Atrasada",
     ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
   const linhas = [...acoes].sort((a, b) => a.ordem - b.ordem).map((a) => {
     const { c, concluida, inicio, fim } = datas(a);
@@ -72,6 +74,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
       ...(comDependencias ? [(a.dependeDe ?? []).map((d) => (porNumero.has(d) ? referencia(porNumero.get(d), usaCodigos) : d)).join("; ")] : []),
       ...(comEstimativas ? [numero(e?.o), numero(e?.m), numero(e?.p), e ? numero(duracaoPert(e)) : ""] : [a.dataLimite ? dataBr(a.dataLimite) : ""]),
       (a.responsaveis ?? []).map((id) => pessoa.get(id)).filter(Boolean).join("; "),
+      ...(posicao ? [posicao.get(a.numero) ?? ""] : []),
       ...(comEtiquetas ? [etiquetasDaAcao(espaco, a).map((x) => x.nome).join("; ")] : []),
       ...(comDocumentos ? [(a.documentos ?? []).map((d) => `${d.nome} (${d.link || d.identificacao})`).join("; ")] : []),
       /* situação personalizada, quando houver (passo 2.7) */

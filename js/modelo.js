@@ -27,10 +27,10 @@ export const CAMPOS = Object.freeze({
   modelo: ["nome", "prazos", "dependencias", "simulacao"],
   fase: ["id", "nome", "etapas"],
   etapa: ["id", "nome"],
-  camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos", "justificativa", "local"],
+  camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos", "justificativa", "local", "prioridade"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao", "justificativa", "local",
-    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos",
+    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "posicaoPrioridade",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
