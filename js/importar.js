@@ -13,6 +13,7 @@ import { normalizar } from "./acao.js";
 import { estimativaLivre } from "./acao.js";
 import { usaEstimativas, usaDependencias } from "./modelos.js";
 import { lerColagem, lerData, lerResponsaveis } from "./planilha.js";
+import { etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
 
 /** Títulos aceitos para cada coluna (sem acentos, minúsculas). */
 const TITULOS = {
@@ -29,6 +30,7 @@ const TITULOS = {
   responsaveis: ["responsaveis", "responsavel"],
   naoAntesDe: ["nao comeca antes de", "nao antes de"],
   dataLimite: ["data-limite", "data limite", "prazo", "data de entrega"],
+  etiquetas: ["etiquetas", "etiqueta", "marcadores", "tags"],
 };
 const colunaDe = (titulo) => {
   const t = normalizar(titulo).replace(/[º°.:]/g, "").replace(/\s+/g, " ").trim();
@@ -46,7 +48,8 @@ const inteiro = (texto) => {
  * @param {{texto: string, espaco: object, acoes: object[], responsaveis: object[], hoje: string,
  *   situacaoDe: (numero: number) => string, modo: "criar"|"atualizar"}} dados
  *   acoes: ativas; situacaoDe: situação calculada de cada ação existente (para saber se a estimativa ainda é livre)
- * @returns {{linhas: object[], etapasNovas: {fase: string, etapa: string}[], ignoradas: string[], erro: string|null}}
+ * @returns {{linhas: object[], etapasNovas: {fase: string, etapa: string}[], etiquetasNovas: string[], ignoradas: string[], erro: string|null}}
+ *   etiquetasNovas (passo 2.10a): nomes das etiquetas que não existem no espaço e serão criadas
  */
 export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, situacaoDe, modo }) {
   const tabela = lerColagem(texto).filter((l) => l.some((c) => c.trim()));
@@ -73,6 +76,17 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     const nova = etapasNovas.find((e) => normalizar(e.etapa) === normalizar(etapa) && normalizar(e.fase) === normalizar(fase || "Sem fase"));
     if (!nova) etapasNovas.push({ fase: fase || "Sem fase", etapa });
     return { nova: etapasNovas.findIndex((e) => normalizar(e.etapa) === normalizar(etapa) && normalizar(e.fase) === normalizar(fase || "Sem fase")) };
+  };
+
+  /* etiquetas (passo 2.10a): as que existem, pelo nome; as que faltam serão criadas. Separadas só por ";",
+     porque a vírgula pode fazer parte do nome */
+  const etiquetasNovas = [];
+  const etiquetaDe = (nome) => {
+    const achada = etiquetaPorNome(espaco, nome);
+    if (achada) return { id: achada.id };
+    let i = etiquetasNovas.findIndex((n) => normalizar(n) === normalizar(nome));
+    if (i < 0) i = etiquetasNovas.push(nome) - 1;
+    return { nova: i };
   };
 
   /* primeira passada: cada linha, sua ação existente (pelo número, pelo código ou pelo nome) e os campos */
@@ -140,6 +154,18 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
           } else r.campos.estimativa = { o, m, p };
         }
       }
+    }
+    const etqTexto = celula(c, "etiquetas");
+    if (etqTexto) {
+      const refs = [];
+      for (const nome of etqTexto.split(/[;\n]/).map((t) => t.trim()).filter(Boolean)) {
+        if (nome.length > TAMANHO_DO_NOME) { r.avisos.push(`A etiqueta “${nome.slice(0, TAMANHO_DO_NOME)}…” passa de ${TAMANHO_DO_NOME} caracteres: fica de fora.`); continue; }
+        const ref = etiquetaDe(nome);
+        if (!refs.some((x) => x.id === ref.id && x.nova === ref.nova)) refs.push(ref);
+      }
+      const atuais = existente?.etiquetas ?? [];
+      const iguais = refs.every((x) => x.id) && refs.length === atuais.length && refs.every((x) => atuais.includes(x.id));
+      if (!iguais) r.campos.etiquetas = refs;
     }
     r.dependeDeTexto = celula(c, "dependeDe");
     if (r.dependeDeTexto && !usaDependencias(espaco)) {
@@ -236,5 +262,5 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     delete l.codigoPlanilha;
     if (l.tipo === "atualiza" && !Object.keys(l.campos).length) { l.tipo = "ignorada"; l.avisos.push("Sem mudança."); }
   }
-  return { linhas, etapasNovas, ignoradas, erro: null };
+  return { linhas, etapasNovas, etiquetasNovas, ignoradas, erro: null };
 }

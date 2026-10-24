@@ -65,11 +65,13 @@ export function contar(linhas) {
 
 /**
  * @param {object[]} linhas
- * @param {{situacao?: string, responsavel?: string, minhas?: string[]}} filtros
+ * @param {{situacao?: string, responsavel?: string, minhas?: string[], etiqueta?: string}} filtros
  *   minhas: ids dos responsáveis ligados ao usuário ("Minhas ações"); ausente: filtro desligado
+ *   etiqueta: id de uma etiqueta do espaço (passo 2.10a); vazio: filtro desligado
  */
-export function filtrar(linhas, { situacao = "todas", responsavel = "", minhas } = {}) {
+export function filtrar(linhas, { situacao = "todas", responsavel = "", minhas, etiqueta = "" } = {}) {
   return linhas.filter((l) =>
+    (!etiqueta || (l.acao.etiquetas ?? []).includes(etiqueta)) &&
     (situacao === "todas" || (situacao === "atrasada" ? l.atrasada : situacao.startsWith("fluxo:") ? `fluxo:${l.fluxo}` === situacao : l.situacao === situacao)) &&
     (!responsavel || l.acao.responsaveis.includes(responsavel)) &&
     (!minhas || l.acao.responsaveis.some((id) => minhas.includes(id))));

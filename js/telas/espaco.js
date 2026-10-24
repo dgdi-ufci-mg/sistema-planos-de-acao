@@ -9,6 +9,8 @@ import { criarCalendario, datasEfetivas } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
 import { simular, chaveDaSimulacao } from "../simulacao.js";
 import { colunasDoQuadro, nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
+import { usaEtiquetas, etiquetasDe, etiquetasDaAcao } from "../etiquetas.js";
+import { etiquetaHtml } from "./etiqueta-html.js";
 import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo } from "../modelos.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
@@ -69,7 +71,7 @@ function lerColunas() {
 }
 
 export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra }) {
-  const ui = { modo: "lista", situacao: "todas", responsavel: "", minhas: false, ordem: "espaco", recolhidos: new Set(), legenda: false,
+  const ui = { modo: "lista", situacao: "todas", responsavel: "", minhas: false, etiqueta: "", ordem: "espaco", recolhidos: new Set(), legenda: false,
     /** painel aberto sob um botão da barra: "filtrar", "ordenar" ou null */
     pop: null,
     /** aproximação do cronograma: "semanas" ou "meses" */
@@ -135,9 +137,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /* separadores de fases e etapas em qualquer ordenação: a ordem escolhida vale dentro de cada etapa.
      Só somem ao desligar "Fases e etapas" em Campos opcionais (decisão do responsável, 22/10/2026) */
   const agrupado = () => usaFases && ui.modo === "lista";
-  const ativos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0);
+  const ativos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (etiquetaAtiva() ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0);
+  /* filtro por etiqueta (passo 2.10a): só com o campo ligado e a etiqueta ainda no catálogo */
+  const etiquetaAtiva = () => (usaEtiquetas(espaco) && etiquetasDe(espaco).some((x) => x.id === ui.etiqueta) ? ui.etiqueta : "");
   const visiveis = () => ordenar(filtrar(linhas, {
-    situacao: ui.situacao, responsavel: ui.responsavel, minhas: ui.minhas ? meus : undefined,
+    situacao: ui.situacao, responsavel: ui.responsavel, minhas: ui.minhas ? meus : undefined, etiqueta: etiquetaAtiva(),
   }), ui.ordem);
 
   const faltam = () => linhas.filter((l) => l.semEstimativa).length;
@@ -246,6 +250,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <option value="">Todos os responsáveis</option>
         ${responsaveis.map((r) => `<option value="${esc(r.id)}"${ui.responsavel === r.id ? " selected" : ""}>${esc(r.sigla ? `${r.sigla} · ${r.nome}` : r.nome)}</option>`).join("")}
       </select>
+      ${etiquetaFiltroHtml(false)}
       <select data-ctl="ordem" aria-label="Ordenar">
         ${ordens().map(([v, t]) => `<option value="${v}"${ui.ordem === v ? " selected" : ""}>${t}</option>`).join("")}
       </select>`}`;
@@ -369,7 +374,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
 
   /** Filtros ativos (situação, responsável, "Minhas ações"), para o número no funil. */
-  const filtrosAtivos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0);
+  const filtrosAtivos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (etiquetaAtiva() ? 1 : 0);
 
   function situacoesHtml() {
     const n = contar(linhas);
@@ -389,6 +394,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${responsaveis.map((r) => `<option value="${esc(r.id)}"${ui.responsavel === r.id ? " selected" : ""}>${esc(r.sigla ? `${r.sigla} · ${r.nome}` : r.nome)}</option>`).join("")}
       </select></label>`;
   }
+  /** Filtro por etiqueta (passo 2.10a), só no espaço que usa etiquetas e tem alguma. */
+  function etiquetaFiltroHtml(comRotulo = true) {
+    if (!usaEtiquetas(espaco) || !etiquetasDe(espaco).length) return "";
+    const select = `<select data-ctl="etiqueta"${comRotulo ? "" : ' aria-label="Etiqueta"'}>
+        <option value="">${comRotulo ? "Todas" : "Todas as etiquetas"}</option>
+        ${etiquetasDe(espaco).map((x) => `<option value="${esc(x.id)}"${etiquetaAtiva() === x.id ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}
+      </select>`;
+    return comRotulo ? `<label class="campo-pop"><span>Etiqueta</span>${select}</label>` : select;
+  }
   function ordensHtml() {
     return ordens().map(([v, t]) => `<button class="opcao" type="button" data-ordem="${v}" aria-pressed="${ui.ordem === v}"><span class="opcao-icone">${ui.ordem === v ? ICONES.marcado : ""}</span><span class="opcao-texto">${t}</span></button>`).join("");
   }
@@ -399,6 +413,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <h3>Classificar por</h3><div class="opcoes-lista">${ordensHtml()}</div>
         <h3>Filtrar por situação</h3><div class="opcoes-lista">${situacoesHtml()}</div>
         ${responsavelHtml()}
+        ${etiquetaFiltroHtml()}
         ${filtrosAtivos() ? '<button class="botao discreto" type="button" data-limpar-filtros>Limpar filtros</button>' : ""}
       </div>`;
     }
@@ -406,6 +421,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       return `<div class="popover" data-popover role="dialog" aria-label="Filtrar">
         <h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div>
         ${responsavelHtml()}
+        ${etiquetaFiltroHtml()}
         ${filtrosAtivos() ? '<button class="botao discreto" type="button" data-limpar-filtros>Limpar filtros</button>' : ""}
       </div>`;
     }
@@ -528,7 +544,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (filtro) return mudar("situacao", filtro.dataset.filtro);
     const ordem = t.closest("[data-ordem]");
     if (ordem) return mudar("ordem", ordem.dataset.ordem);
-    if (t.closest("[data-limpar-filtros]")) { ui.responsavel = ""; ui.minhas = false; return mudar("situacao", "todas"); }
+    if (t.closest("[data-limpar-filtros]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; return mudar("situacao", "todas"); }
     if (t.closest("[data-opcoes]")) return abrirOpcoes();
     if (t.closest("[data-nova]")) { ui.pop = null; desenharFerramentas(); return abrirNova(); }
     const barra = t.closest("[data-barra]");
@@ -567,7 +583,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /* ---------- criação rápida (passo 1.14a): nome e Enter, no fim de cada etapa e da coluna Liberadas ---------- */
   /** Sem filtros: com filtro, a ação criada poderia sumir da tela logo ao nascer. */
-  const comRapida = () => store.podeGravar !== false && ui.situacao === "todas" && !ui.responsavel && !ui.minhas;
+  const comRapida = () => store.podeGravar !== false && ui.situacao === "todas" && !ui.responsavel && !ui.minhas && !etiquetaAtiva();
   function rapidaHtml(chave, etapa = "", ondeTexto = "") {
     return `<form class="linha-rapida" data-rapida="${esc(chave)}" data-etapa="${esc(etapa)}">${ICONES.mais}
       <input name="rotulo" maxlength="120" autocomplete="off" placeholder="Adicionar ação${ondeTexto}" aria-label="Adicionar ação${ondeTexto}: digite o nome e tecle Enter"></form>`;
@@ -691,6 +707,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const feitos = itens.filter((i) => i.feito).length;
     return `<small class="nota-checklist${feitos === itens.length ? " completo" : ""}" title="Checklist: ${feitos} de ${itens.length} itens feitos">${ICONES.checklist}${feitos}/${itens.length}</small>`;
   };
+  /** Etiquetas da ação no cartão e na linha (passo 2.10a), na ordem do catálogo. */
+  const etiquetasNota = (a) => {
+    if (!usaEtiquetas(espaco) || !a.etiquetas?.length) return "";
+    const lista = etiquetasDaAcao(espaco, a);
+    return lista.length ? `<span class="etqs">${lista.map((x) => etiquetaHtml(x)).join("")}</span>` : "";
+  };
   function linhaHtml(l) {
     const a = l.acao;
     const s = SITUACOES[l.situacao];
@@ -707,7 +729,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
-            l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a)].join("")}</div>
+            l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a), etiquetasNota(a)].join("")}</div>
         ${c.descricao ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
         ${c.participantes ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras ? barraHtml(l) : ""}
@@ -827,7 +849,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
-          l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${checklistNota(a)}</div>
+          l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${checklistNota(a)}${etiquetasNota(a)}</div>
         <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div></div>
         ${l.situacao === "concluida" ? "" : barraHtml(l)}
       </div>
@@ -1038,7 +1060,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       if (modo) mudarModo(modo.dataset.modo);
       const filtro = e.target.closest("[data-filtro]");
       if (filtro) mudar("situacao", filtro.dataset.filtro);
-      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.situacao = "todas"; mudar("ordem", "espaco"); }
+      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.situacao = "todas"; mudar("ordem", "espaco"); }
     });
   }
 

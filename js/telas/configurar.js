@@ -25,15 +25,17 @@ import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
 import { opcoesDoCalculo, usaSimulacao, usaDependencias } from "../modelos.js";
 import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO } from "../situacoes.js";
 import { resumoDoModelo } from "./modelo-espaco.js";
+import { CORES_ETIQUETA, etiquetasDe, tomDaCor, TAMANHO_DO_NOME } from "../etiquetas.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
   ["descricao", "Descrição", "Texto completo de cada ação."],
   ["notas", "Anotações", "Anotações formatadas de cada ação."],
   ["codigos", "Códigos das ações", "Códigos curtos, como LEV, para equipes que conversam por eles. Desligado, as ações aparecem só pelo nome."],
+  ["etiquetas", "Etiquetas", "Marcas coloridas, como “Compras” ou “Urgente”, para agrupar e filtrar as ações."],
 ];
 /** Campos opcionais desligados por padrão (seção 4.1.4); os demais vêm ligados. */
-const DESLIGADOS_POR_PADRAO = new Set(["codigos"]);
+const DESLIGADOS_POR_PADRAO = new Set(["codigos", "etiquetas"]);
 const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[chave] === true : campos?.[chave] !== false);
 
 /** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void}} opcoes */
@@ -146,6 +148,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
 
       ${ligado(campos, "fasesEtapas") ? estruturaHtml() : ""}
       ${situacoesHtml()}
+      ${ligado(campos, "etiquetas") ? etiquetasHtml() : ""}
 
       <details class="config" data-secao="campos"${aberta("campos")}>
         <summary><h3>Campos opcionais</h3></summary>
@@ -270,7 +273,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   /* ---------- importar de planilha (passo 1.19b) ---------- */
   let plano = null;
   const NOMES_DOS_CAMPOS = { rotulo: "nome", codigo: "código", descricao: "descrição", etapa: "etapa", naoAntesDe: "“não começa antes de”",
-    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências" };
+    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências", etiquetas: "etiquetas" };
   function conferirImportacao() {
     const texto = corpo.querySelector("[data-importar-texto]").value;
     const modo = corpo.querySelector('[name="modo-importar"]:checked').value;
@@ -291,6 +294,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     return `<div class="previa-importacao">
       <p><b>${novas} ${plural(novas, "ação nova", "ações novas")}</b> e <b>${atualiza} ${plural(atualiza, "atualização", "atualizações")}</b>.
         ${plano.etapasNovas.length ? `Etapas novas, criadas na importação: ${plano.etapasNovas.map((e) => esc(`${e.fase} · ${e.etapa}`)).join("; ")}.` : ""}
+        ${plano.etiquetasNovas?.length ? `Etiquetas novas, criadas na importação: ${plano.etiquetasNovas.map((n) => `“${esc(n)}”`).join("; ")}.` : ""}
         ${plano.ignoradas.length ? `<span class="tec">Colunas ignoradas: ${plano.ignoradas.map(esc).join(", ")}.</span>` : ""}</p>
       <ul>${plano.linhas.map((l) => `<li class="${l.tipo}">
         <span class="tec">Linha ${l.linha}</span> <b>${esc(l.rotulo || "(sem nome)")}</b>
@@ -381,6 +385,48 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       ${pode ? `<input class="nova-situacao" data-nova-situacao maxlength="40" placeholder="Nova situação: escreva e tecle Enter" aria-label="Nova situação">` : ""}
     </details>`;
   }
+  /**
+   * Etiquetas (passo 2.10a; seção 4.1.9): catálogo do espaço, com o campo opcional ligado. Cada mudança
+   * grava na hora: nome (ao sair do campo), cor (ao escolher), retirar (com aviso se houver ações com
+   * ela) e acrescentar (Enter).
+   */
+  let retirandoEtiqueta = null;
+  function etiquetasHtml() {
+    const lista = etiquetasDe(espaco);
+    const pode = store.podeGravar;
+    const com = (id) => acoes.filter((a) => (a.etiquetas ?? []).includes(id)).length;
+    const amostra = (cor) => `<span class="amostra-etiqueta" style="--etq:var(--tom-${tomDaCor(cor)});--etq-texto:var(--tom-${tomDaCor(cor)}-texto)" aria-hidden="true"></span>`;
+    return `<details class="config" data-secao="etiquetas"${aberta("etiquetas")}>
+      <summary><h3>Etiquetas</h3><span class="n">${lista.length}</span></summary>
+      <p class="tec">Marcas coloridas para agrupar e filtrar as ações. Também podem ser criadas na própria ação.</p>
+      <ul class="lista-etiquetas">${lista.map((x) => `<li>
+        ${amostra(x.cor)}
+        ${pode ? `<input data-nome-etiqueta="${esc(x.id)}" maxlength="${TAMANHO_DO_NOME}" value="${esc(x.nome)}" aria-label="Nome da etiqueta">
+          <select data-cor-etiqueta="${esc(x.id)}" aria-label="Cor de ${esc(x.nome)}">${CORES_ETIQUETA.map(([cor, nome]) => `<option value="${cor}"${cor === x.cor ? " selected" : ""}>${nome}</option>`).join("")}</select>
+          <button type="button" class="tirar" data-retirar-etiqueta="${esc(x.id)}" aria-label="Retirar ${esc(x.nome)}">${ICONES.fechar}</button>`
+          : `<span>${esc(x.nome)}</span>`}
+        ${retirandoEtiqueta === x.id ? `<div class="aviso-confirmar">
+          <p>${com(x.id) ? `${com(x.id)} ${plural(com(x.id), "ação perde", "ações perdem")} esta etiqueta.` : "Nenhuma ação tem esta etiqueta."} Retirar “${esc(x.nome)}”?</p>
+          <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-etiqueta="${esc(x.id)}">Retirar</button>
+            <button type="button" class="botao" data-cancelar-retirar-etiqueta>Cancelar</button></div></div>` : ""}
+      </li>`).join("") || `<li class="vazio">Nenhuma etiqueta.</li>`}</ul>
+      ${pode ? `<input class="nova-situacao" data-nova-etiqueta maxlength="${TAMANHO_DO_NOME}" placeholder="Nova etiqueta: escreva e tecle Enter" aria-label="Nova etiqueta">` : ""}
+    </details>`;
+  }
+  /** Grava uma mudança das etiquetas e redesenha; na recusa, avisa e devolve false. */
+  async function gravarEtiqueta(operacao, mensagem) {
+    try {
+      await operacao();
+      await recarregar();
+      desenhar();
+      if (mensagem) avisar(mensagem);
+      return true;
+    } catch (falha) {
+      avisar(falha.message);
+      return false;
+    }
+  }
+
   async function gravarSituacoes(mudanca, mensagem) {
     try {
       await store.alterarEspaco(espacoId, mudanca);
@@ -473,6 +519,18 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       if (!(await gravarSituacoes({ situacoes: lista }, "Situação renomeada."))) e.target.value = personalizadasDe(espaco).find((x) => x.id === id)?.nome ?? "";
       return;
     }
+    /* etiquetas (passo 2.10a): nome ao sair do campo; cor ao escolher */
+    if (e.target.dataset.nomeEtiqueta) {
+      const id = e.target.dataset.nomeEtiqueta;
+      if (!(await gravarEtiqueta(() => store.alterarEtiqueta(espacoId, id, { nome: e.target.value }), "Etiqueta renomeada."))) {
+        e.target.value = etiquetasDe(espaco).find((x) => x.id === id)?.nome ?? "";
+      }
+      return;
+    }
+    if (e.target.dataset.corEtiqueta) {
+      await gravarEtiqueta(() => store.alterarEtiqueta(espacoId, e.target.dataset.corEtiqueta, { cor: e.target.value }));
+      return;
+    }
     if (e.target.matches("[data-nome-inicial]")) {
       const nome = e.target.value.trim();
       if (!(await gravarSituacoes({ nomeInicial: nome || NOME_INICIAL_PADRAO }, "Situação inicial renomeada."))) e.target.value = nomeInicial(espaco);
@@ -549,6 +607,16 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       } catch (falha) { avisar(falha.message); }
       return;
     }
+    /* etiquetas (passo 2.10a) */
+    if (t.dataset.retirarEtiqueta) { retirandoEtiqueta = t.dataset.retirarEtiqueta; desenhar(); return; }
+    if (t.dataset.cancelarRetirarEtiqueta != null) { retirandoEtiqueta = null; desenhar(); return; }
+    if (t.dataset.confirmarRetirarEtiqueta) {
+      retirandoEtiqueta = null;
+      let n = 0;
+      await gravarEtiqueta(async () => { n = await store.retirarEtiqueta(espacoId, t.dataset.confirmarRetirarEtiqueta); });
+      avisar(n ? `Etiqueta retirada de ${n} ${plural(n, "ação", "ações")} e do espaço.` : "Etiqueta retirada.");
+      return;
+    }
     if (t.dataset.salvarRetrato != null) {
       const campo = corpo.querySelector("[data-nome-retrato]");
       t.disabled = true;
@@ -615,6 +683,13 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       if (await gravarSituacoes({ situacoes: [...personalizadasDe(espaco), { id: novoId("s"), nome }] }, `Situação “${nome}” criada.`)) {
         corpo.querySelector("[data-nova-situacao]")?.focus();
       }
+      return;
+    }
+    if (e.key === "Enter" && e.target.matches("[data-nova-etiqueta]")) {
+      e.preventDefault();
+      const nome = e.target.value.trim();
+      if (!nome) return;
+      if (await gravarEtiqueta(() => store.criarEtiqueta(espacoId, { nome }), `Etiqueta “${nome}” criada.`)) corpo.querySelector("[data-nova-etiqueta]")?.focus();
       return;
     }
     if (e.key === "Enter" && e.target.matches("[data-nome-retrato]")) { e.preventDefault(); corpo.querySelector("[data-salvar-retrato]")?.click(); }

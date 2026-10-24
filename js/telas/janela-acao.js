@@ -18,6 +18,8 @@ import { descreverRegistro } from "../historico.js";
 import { editarTexto } from "./edicao-no-lugar.js";
 import { usaEstimativas, usaDependencias } from "../modelos.js";
 import { nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
+import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
+import { etiquetaHtml } from "./etiqueta-html.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -279,6 +281,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (campo === "codigo") return Boolean(acao.codigo);
     if (campo === "notas") return Boolean(acao.notas);
     if (campo === "checklist") return Boolean(acao.checklist?.length) || checklistAberto;
+    if (campo === "etiquetas") return Boolean(acao.etiquetas?.length);
     return true;
   }
   /** Campos opcionais que o espaço usa, na ordem de "Mais campos". */
@@ -290,6 +293,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       store.podeGravar && ["checklist", "Checklist"],
       campos.notas !== false && ["notas", "Anotações"],
       d.usaCodigos && ["codigo", "Código"],
+      usaEtiquetas(d.espaco) && ["etiquetas", "Etiquetas"],
     ].filter(Boolean);
   }
   function maisCamposHtml(acao) {
@@ -366,6 +370,15 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       partes.push(`<div class="campo-acao" data-campo="codigo">${rotuloHtml("codigo", "Código")}
         <input class="mono" maxlength="12" autocomplete="off" autocapitalize="characters" ${atributos("codigo", acao.codigo)} value="${esc(acao.codigo ?? "")}" aria-label="Código">
         <span class="tec">De 2 a 8 letras ou números, sem repetir no espaço. Vazio: sem código.</span></div>`);
+    }
+    /* etiquetas (passo 2.10a): como os responsáveis, com busca que também cria a etiqueta */
+    if (usaEtiquetas(d.espaco) && visivel(acao, "etiquetas")) {
+      partes.push(`<div class="campo-acao" data-campo="etiquetas">${rotuloHtml("etiquetas", "Etiquetas")}
+        <div class="etiquetas">${etiquetasDaAcao(d.espaco, acao).map((x) => etiquetaHtml(x, somenteLeitura() ? ""
+          : `<button type="button" class="tirar" data-tirar-etiqueta="${esc(x.id)}" aria-label="Retirar ${esc(x.nome)}">${ICONES.fechar}</button>`)).join("")
+          || `<span class="vazio">Nenhuma etiqueta.</span>`}
+          ${somenteLeitura() || buscando === "etiquetas" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="etiquetas">${ICONES.mais}Acrescentar</button>`}</div>
+        ${buscando === "etiquetas" ? seletorHtml("etiquetas", "Digite o nome da etiqueta") : ""}</div>`);
     }
     if (visivel(acao, "checklist")) partes.push(checklistHtml(acao));
     if (campos.notas !== false && visivel(acao, "notas")) partes.push(notasHtml(acao));
@@ -548,6 +561,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       responsavel: (id) => d.pessoas.get(id)?.nome ?? "um responsável excluído",
       etapa: (id) => etapas.get(id) ?? "etapa retirada",
       situacao: (id) => personalizadasDe(d.espaco).find((x) => x.id === id)?.nome ?? "situação retirada",
+      etiqueta: (id) => etiquetasDe(d.espaco).find((x) => x.id === id)?.nome ?? "etiqueta retirada",
     };
     const quem = (email) => (email ? d.responsaveis.find((r) => r.usuario === email)?.nome ?? email : "Sem login");
     const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -597,6 +611,21 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <p>“${esc(nomeTexto(a))}” ainda não foi concluída. Com ela como anterior, esta ação passa para <b>Não liberada</b> e sai de <b>${esc(nomeDoFluxo(d.espaco, l.fluxo))}</b>. Quando a anterior terminar, ela volta para ${esc(nomeInicial(d.espaco))}.</p>
       <div class="botoes"><button class="botao principal" type="button" data-confirmar-anterior>Acrescentar assim mesmo</button>
         <button class="botao" type="button" data-desistir-anterior>Desistir</button></div></div>`;
+  }
+
+  /** Etiquetas do espaço que a ação ainda não tem, e "Criar etiqueta" para um nome novo (passo 2.10a). */
+  function opcoesDeEtiquetas(texto) {
+    const acao = acaoAtual();
+    const ja = new Set(acao.etiquetas ?? []);
+    const achadas = buscar(etiquetasDe(d.espaco).filter((x) => !ja.has(x.id)), texto, (x) => [x.nome]).slice(0, MAX_SUGESTOES)
+      .map((x) => ({ html: etiquetaHtml(x), escolher: () => store.acrescentarEtiquetaNaAcao(espacoId, numero, x.id) }));
+    const nome = texto.trim();
+    if (nome && !etiquetaPorNome(d.espaco, nome)) {
+      achadas.push(nome.length > TAMANHO_DO_NOME
+        ? { html: `<span class="tec">O nome passa de ${TAMANHO_DO_NOME} caracteres.</span>`, escolher: () => {} }
+        : { html: `${ICONES.mais} Criar a etiqueta “${esc(nome)}”`, escolher: () => store.etiquetarAcao(espacoId, numero, nome) });
+    }
+    return achadas;
   }
 
   function opcoesDe(nome, texto) {
@@ -778,6 +807,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /** Abre um campo recolhido em "Mais campos" e põe o cursor nele. */
   function mostrarCampo(campo) {
     if (campo === "checklist") { checklistAberto = true; focoNoChecklist = true; }
+    if (campo === "etiquetas") buscando = "etiquetas"; // abre já com a busca
     mostrados.add(campo);
     desenhar();
     const bloco = corpo.querySelector(`[data-campo="${campo}"]`);
@@ -846,6 +876,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (textoItem && !textoItem.isContentEditable) return editarItem(textoItem);
     const dep = t.closest("[data-tirar-dependencia]");
     if (dep) return executar(() => store.retirarDependencia(espacoId, numero, Number(dep.dataset.tirarDependencia)));
+    const etq = t.closest("[data-tirar-etiqueta]");
+    if (etq) return executar(() => store.retirarEtiquetaDaAcao(espacoId, numero, etq.dataset.tirarEtiqueta));
     const resp = t.closest("[data-tirar-responsavel]");
     if (resp) return executar(() => store.retirarResponsavelDaAcao(espacoId, numero, resp.dataset.tirarResponsavel));
     if (t.closest("[data-desfazer-conclusao]")) {
@@ -980,6 +1012,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       vazio: "Nenhuma ação disponível. Ficam de fora a própria ação, as que já são anteriores e as que dependem dela.",
     },
     responsaveis: { opcoes: (texto) => opcoesDe("responsaveis", texto), vazio: "Digite um nome para buscar ou cadastrar." },
+    etiquetas: { opcoes: (texto) => opcoesDeEtiquetas(texto), vazio: "Digite o nome de uma etiqueta nova." },
   }, { aoErro: (e) => avisar(e.message) });
 
   desenhar();

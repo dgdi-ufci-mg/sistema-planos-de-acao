@@ -54,6 +54,8 @@ export function descreverRegistro(r, nomes) {
     case "ordem": return "Mudou a posição na ordem do espaço.";
     case "dependeDe": return mudancaDeLista("Depende de", nomes.acao);
     case "responsaveis": return mudancaDeLista("Responsáveis", nomes.responsavel);
+    /* passo 2.10a: etiqueta já retirada do catálogo aparece como "etiqueta retirada" */
+    case "etiquetas": return mudancaDeLista("Etiquetas", (id) => `“${nomes.etiqueta?.(id) ?? "etiqueta retirada"}”`);
     case "naoAntesDe": return depois ? `“Não começa antes de” passou a ${dataBr(depois)}.` : "Retirou a data de “Não começa antes de”.";
     case "concluidaEm": return depois ? `Registrou a conclusão em ${dataBr(depois)}.` : "Desfez a conclusão.";
     /* passo 2.7: nomes vindos do espaço; uma situação já retirada aparece como "situação retirada" */

@@ -7,6 +7,7 @@
  * Recebe só as ações ativas (o `Store` já filtra as excluídas).
  */
 import { criarCalendario, datasEfetivas } from "./calendario.js";
+import { usaEtiquetas, etiquetasDaAcao } from "./etiquetas.js";
 import { caminhoCritico, estimativaVigente, duracaoPert } from "./calculo.js";
 import { dataBr } from "./formato.js";
 import { opcoesDoCalculo, usaDataLimite, usaDependencias } from "./modelos.js";
@@ -45,6 +46,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const usaCodigos = opcionais.codigos === true;
   const usaFases = opcionais.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
   const usaDescricao = opcionais.descricao !== false;
+  const comEtiquetas = usaEtiquetas(espaco); // passo 2.10a: nomes separados por ";"
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   const pessoa = new Map(responsaveis.map((r) => [r.id, r.sigla || r.nome]));
   const faseEEtapa = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, [f.nome, e.nome]])));
@@ -55,7 +57,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
   const titulos = ["Número", ...(usaCodigos ? ["Código"] : []), ...(usaFases ? ["Fase", "Etapa"] : []), "Ação",
     ...(usaDescricao ? ["Descrição"] : []), ...(comDependencias ? ["Depende de"] : []),
     ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
-    "Responsáveis", "Situação", "Atrasada",
+    "Responsáveis", ...(comEtiquetas ? ["Etiquetas"] : []), "Situação", "Atrasada",
     ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
   const linhas = [...acoes].sort((a, b) => a.ordem - b.ordem).map((a) => {
     const { c, concluida, inicio, fim } = datas(a);
@@ -66,6 +68,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje }) {
       ...(comDependencias ? [(a.dependeDe ?? []).map((d) => (porNumero.has(d) ? referencia(porNumero.get(d), usaCodigos) : d)).join("; ")] : []),
       ...(comEstimativas ? [numero(e?.o), numero(e?.m), numero(e?.p), e ? numero(duracaoPert(e)) : ""] : [a.dataLimite ? dataBr(a.dataLimite) : ""]),
       (a.responsaveis ?? []).map((id) => pessoa.get(id)).filter(Boolean).join("; "),
+      ...(comEtiquetas ? [etiquetasDaAcao(espaco, a).map((x) => x.nome).join("; ")] : []),
       /* situação personalizada, quando houver (passo 2.7) */
       c.situacao === "liberada" ? nomeDoFluxo(espaco, fluxoDe(a, c.situacao, espaco)) : SITUACAO[c.situacao] ?? c.situacao, c.atrasada ? "sim" : "não",
       ...(comEstimativas ? [dataBr(inicio), dataBr(fim), concluida ? "" : numero(Math.max(0, c.folga)), concluida ? "" : (c.critica ? "sim" : "não")] : []),

@@ -1377,3 +1377,18 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .coluna-nova { background: transparent; border-style: dashed; justify-content: flex-start; min-height: 0; }
 .coluna-nova [data-criar-coluna] { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
 .coluna-nova .tec { margin: 0; }
+
+/* etiquetas (passo 2.10a): rótulo pequeno no tom da cor (--tom-N), nos cartões, na lista e na janela da ação */
+.etq { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; padding: 0 7px; border-radius: 999px; background: var(--etq); color: var(--etq-texto);
+  font-size: .72rem; font-weight: 600; line-height: 1.55; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.etq .tirar { color: inherit; padding: 0; margin-right: -3px; background: none; border: 0; cursor: pointer; display: inline-flex; opacity: .75; }
+.etq .tirar:hover { opacity: 1; }
+.etq .tirar svg { width: 12px; height: 12px; }
+.etqs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.campo-acao .etiquetas .etq { font-size: .8rem; padding: 2px 9px; }
+.amostra-etiqueta { width: 14px; height: 14px; border-radius: 50%; background: var(--etq); border: 1px solid var(--etq-texto); flex: none; }
+.lista-etiquetas { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lista-etiquetas li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lista-etiquetas li input { flex: 1 1 140px; min-width: 0; }
+.lista-etiquetas li select { flex: 0 0 auto; width: auto; }
+.lista-etiquetas li .aviso-confirmar { flex-basis: 100%; }

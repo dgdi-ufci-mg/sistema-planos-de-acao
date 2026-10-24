@@ -14,6 +14,7 @@ import { montarRetrato } from "./retrato.js";
 import { problemaDoTipo } from "./tipos.js";
 import { problemaDoModelo, modeloDe } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
+import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
 
 export { ErroDeDados };
 
@@ -119,6 +120,9 @@ function validarEspaco(e, recusarDesconhecidos) {
   for (const s of e.situacoes ?? []) recusarDesconhecidos(s, "situacao"); // passo 2.7
   const situacoes = problemaDasSituacoes(e);
   if (situacoes) throw new ErroDeDados(situacoes.codigo, situacoes.mensagem);
+  for (const x of e.etiquetas ?? []) recusarDesconhecidos(x, "etiqueta"); // passo 2.10a
+  const etiquetas = problemaDasEtiquetas(e);
+  if (etiquetas) throw new ErroDeDados(etiquetas.codigo, etiquetas.mensagem);
 }
 
 /** Lista de datas excluídas: data válida, sem repetir, só com os campos do dicionário. */
@@ -181,6 +185,15 @@ export function criarStore(banco, opcoes = {}) {
     if (campos.estimativas?.length && m.prazos !== "estimativa") throw new ErroDeDados("recurso-desligado", "Este espaço usa data-limite, e não estimativas.");
     if (campos.dataLimite != null && m.prazos !== "dataLimite") throw new ErroDeDados("recurso-desligado", "Este espaço usa estimativas, e não data-limite.");
     if (campos.dependeDe?.length && !m.dependencias) throw new ErroDeDados("recurso-desligado", "Este espaço não usa dependências entre ações.");
+  }
+
+  /** Etiquetas gravadas na ação inteira (criação, importação): só as do catálogo do espaço, sem repetir (passo 2.10a). */
+  async function conferirEtiquetas(espacoId, campos) {
+    if (!("etiquetas" in campos)) return;
+    const lista = campos.etiquetas ?? [];
+    if (!Array.isArray(lista) || new Set(lista).size !== lista.length) throw new ErroDeDados("etiqueta-invalida", "Lista de etiquetas inválida.");
+    const catalogo = new Set(etiquetasDe(await banco.lerEspaco(espacoId)).map((x) => x.id));
+    if (lista.some((id) => !catalogo.has(id))) throw new ErroDeDados("nao-encontrado", "Etiqueta não encontrada neste espaço.");
   }
 
   /** Texto de um comentário: sem espaços nas pontas, não vazio, até 4.000 caracteres. */
@@ -267,6 +280,7 @@ export function criarStore(banco, opcoes = {}) {
       const { rotulo, codigo, ...outros } = dados;
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o nome da ação.");
       await conferirModelo(espacoId, outros);
+      await conferirEtiquetas(espacoId, outros);
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
       if (codigo) validarCodigo(codigo, acoes);
@@ -298,6 +312,7 @@ export function criarStore(banco, opcoes = {}) {
       /* data mínima no futuro: a ação deixa de estar liberada e sai da situação personalizada (passo 2.7) */
       if (campos.naoAntesDe && campos.naoAntesDe > hoje()) campos = { ...campos, situacaoPersonalizada: null };
       await conferirModelo(espacoId, campos);
+      await conferirEtiquetas(espacoId, campos);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
       await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario }, hist);
       if ("responsaveis" in campos) await arrumarTons(espacoId);
@@ -311,6 +326,56 @@ export function criarStore(banco, opcoes = {}) {
     async retirarResponsavelDaAcao(espacoId, numero, responsavelId) {
       await banco.retirarDaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo(), hist);
       await arrumarTons(espacoId);
+    },
+    // --- etiquetas (passo 2.10a; seção 16.8): catálogo do espaço e etiquetas da ação, uma a uma ---
+    /** Cria uma etiqueta no catálogo do espaço e devolve o id. Sem cor, a menos usada. */
+    async criarEtiqueta(espacoId, { nome, cor } = {}) {
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      const n = String(nome ?? "").trim();
+      const id = novoId();
+      await store.alterarEspaco(espacoId, { etiquetas: [...etiquetasDe(espaco), { id, nome: n, cor: cor ?? proximaCor(espaco) }] });
+      return id;
+    },
+    /** Muda o nome ou a cor de uma etiqueta do catálogo. */
+    async alterarEtiqueta(espacoId, id, campos) {
+      recusarDesconhecidos(campos, "etiqueta");
+      recusarFixos(campos, ["id"]);
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!etiquetasDe(espaco).some((x) => x.id === id)) throw new ErroDeDados("nao-encontrado", "Etiqueta não encontrada neste espaço.");
+      const mudanca = { ...campos, ...("nome" in campos ? { nome: String(campos.nome ?? "").trim() } : {}) };
+      await store.alterarEspaco(espacoId, { etiquetas: etiquetasDe(espaco).map((x) => (x.id === id ? { ...x, ...mudanca } : x)) });
+    },
+    /** Retira a etiqueta do catálogo e das ações que a usam. Devolve em quantas ações ativas ela estava. */
+    async retirarEtiqueta(espacoId, id) {
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
+      const com = (await banco.listarAcoes(espacoId)).filter((a) => (a.etiquetas ?? []).includes(id));
+      for (const a of com) await banco.retirarDaLista(espacoId, a.numero, "etiquetas", [id], carimbo(), hist);
+      await store.alterarEspaco(espacoId, { etiquetas: etiquetasDe(espaco).filter((x) => x.id !== id) });
+      return com.filter(ativa).length;
+    },
+    async acrescentarEtiquetaNaAcao(espacoId, numero, id) {
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!etiquetasDe(espaco).some((x) => x.id === id)) throw new ErroDeDados("nao-encontrado", "Etiqueta não encontrada neste espaço.");
+      await exigirAcao(espacoId, numero);
+      await banco.acrescentarNaLista(espacoId, numero, "etiquetas", [id], carimbo(), hist);
+    },
+    async retirarEtiquetaDaAcao(espacoId, numero, id) {
+      await banco.retirarDaLista(espacoId, numero, "etiquetas", [id], carimbo(), hist);
+    },
+    /**
+     * Acrescenta à ação a etiqueta com este nome; se ela não existir, cria no catálogo antes.
+     * Devolve o id. É o "+ Acrescentar" da janela da ação.
+     */
+    async etiquetarAcao(espacoId, numero, nome) {
+      const n = String(nome ?? "").trim();
+      if (!n) throw new ErroDeDados("nome-vazio", "Escreva o nome da etiqueta.");
+      if (n.length > TAMANHO_DO_NOME) throw new ErroDeDados("nome-longo", `O nome da etiqueta passa de ${TAMANHO_DO_NOME} caracteres.`);
+      const existente = etiquetaPorNome(await banco.lerEspaco(espacoId), n);
+      const id = existente?.id ?? await store.criarEtiqueta(espacoId, { nome: n });
+      await store.acrescentarEtiquetaNaAcao(espacoId, numero, id);
+      return id;
     },
     // --- checklist da ação (passo 2.8; seção 16.5): item a item, sem regravar os demais ---
     async acrescentarItemNoChecklist(espacoId, numero, texto) {
@@ -687,14 +752,29 @@ export function criarStore(banco, opcoes = {}) {
         await store.alterarEspaco(espacoId, { estrutura, camposOpcionais: { ...(espaco.camposOpcionais ?? {}), fasesEtapas: true } });
       }
       const etapaId = (ref) => (ref == null ? undefined : ref.id ?? idDaNova[ref.nova]);
+      /* etiquetas novas (passo 2.10a): criadas no catálogo, e o campo Etiquetas é ligado */
+      const idDaEtiqueta = [];
+      const usaColunaEtiquetas = plano.linhas.some((l) => l.campos?.etiquetas);
+      if ((plano.etiquetasNovas ?? []).length || usaColunaEtiquetas) {
+        const espaco = await store.lerEspaco(espacoId);
+        const etiquetas = structuredClone(etiquetasDe(espaco));
+        for (const nome of plano.etiquetasNovas ?? []) {
+          const nova = { id: novoId(), nome: nome.trim(), cor: proximaCor({ etiquetas }) };
+          etiquetas.push(nova);
+          idDaEtiqueta.push(nova.id);
+        }
+        await store.alterarEspaco(espacoId, { etiquetas, camposOpcionais: { ...(espaco.camposOpcionais ?? {}), etiquetas: true } });
+      }
+      const etiquetaIds = (refs) => refs.map((r) => r.id ?? idDaEtiqueta[r.nova]).filter(Boolean);
       const numeroDaLinha = new Map();
       let criadas = 0;
       let atualizadas = 0;
       for (const l of plano.linhas) {
-        const { rotulo, codigo, descricao, etapa, naoAntesDe, dataLimite, responsaveis: resp, estimativa } = l.campos;
+        const { rotulo, codigo, descricao, etapa, naoAntesDe, dataLimite, responsaveis: resp, estimativa, etiquetas: etq } = l.campos;
         const comuns = {
           ...(codigo ? { codigo } : {}), ...(descricao ? { descricao } : {}), ...(etapa ? { etapa: etapaId(etapa) } : {}),
           ...(naoAntesDe !== undefined ? { naoAntesDe } : {}), ...(dataLimite !== undefined ? { dataLimite } : {}), ...(resp ? { responsaveis: resp } : {}),
+          ...(etq ? { etiquetas: etiquetaIds(etq) } : {}),
         };
         if (l.tipo === "nova") {
           await tentar(l.linha, async () => {
@@ -797,7 +877,8 @@ export function criarStore(banco, opcoes = {}) {
     "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral",
     "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco",
     "salvarRetrato", "importarAcoes", "restaurarCopia", "importarResponsaveis",
-    "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist"];
+    "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist",
+    "criarEtiqueta", "alterarEtiqueta", "retirarEtiqueta", "acrescentarEtiquetaNaAcao", "retirarEtiquetaDaAcao", "etiquetarAcao"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {
