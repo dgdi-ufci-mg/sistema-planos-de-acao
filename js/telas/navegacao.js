@@ -106,7 +106,7 @@ export function mostrarNavegacao(opcoes) {
   acoes = {
     aoAbrir: opcoes.aoAbrir, aoConfigurar: opcoes.aoConfigurar, novo: opcoes.aoNovo, ajuda: opcoes.aoAjuda,
     sistema: opcoes.aoSistema, entrar: opcoes.aoEntrar, trocarSenha: opcoes.aoTrocarSenha, sair: opcoes.aoSair,
-    legenda: opcoes.aoLegenda, lixeira: opcoes.aoLixeira,
+    legenda: opcoes.aoLegenda, lixeira: opcoes.aoLixeira, consulta: opcoes.aoConsulta,
   };
   if (!ligado) ligar();
   document.querySelector("[data-titulo]").textContent = titulo;
@@ -136,8 +136,9 @@ export function mostrarNavegacao(opcoes) {
             : `<button type="button" class="espaco-nome" data-espaco="${esc(e.id)}">${esc(e.nome)}</button>`}
           ${podeConfigurar(e.id) ? `<button type="button" class="espaco-configurar" data-configurar="${esc(e.id)}" aria-label="Configurar ${esc(e.nome)}" title="Configurar este espaço">${ICONES.engrenagem}</button>` : ""}
         </li>`).join("")}</ul>`).join("")}
-      ${espacos.length ? "" : '<p class="vazio">Nenhum espaço ainda.</p>'}
+      ${espacos.length ? "" : `<p class="vazio">${!usuario && comLogin ? "Entre com seu e-mail e senha para ver os seus espaços." : "Nenhum espaço seu ainda."}</p>`}
       ${podeCriar ? `<button type="button" class="lateral-acao" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}
+      ${opcoes.aoConsulta ? `<button type="button" class="lateral-acao" data-item="consulta" title="Espaços públicos e institucionais de que você não participa">${ICONES.olho}Espaços abertos à consulta${opcoes.nConsulta ? ` <span class="n">${opcoes.nConsulta}</span>` : ""}</button>` : ""}
     </nav>
     <div class="lateral-pe">
       ${opcoes.comLegenda ? `<button type="button" class="lateral-acao" data-item="legenda">${ICONES.legenda}Legenda</button>` : ""}

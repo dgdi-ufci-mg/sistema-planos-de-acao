@@ -26,7 +26,7 @@ import { opcoesDoCalculo, usaSimulacao, usaDependencias } from "../modelos.js";
 import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO } from "../situacoes.js";
 import { resumoDoModelo } from "./modelo-espaco.js";
 import { CORES_ETIQUETA, etiquetasDe, tomDaCor, TAMANHO_DO_NOME } from "../etiquetas.js";
-import { PAPEIS, nomeDoPapel, semAdministracao, fechado } from "../papeis.js";
+import { PAPEIS, nomeDoPapel, semAdministracao, fechado, VISIBILIDADES, visibilidadeDe } from "../papeis.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
@@ -264,7 +264,13 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     return `<details class="config" data-secao="acesso"${aberta("acesso")}>
       <summary><h3>Acesso ao espaço</h3></summary>
       <ul class="papeis-explicados">${PAPEIS.map(([, nome, oQue]) => `<li><b>${nome}:</b> ${oQue}</li>`).join("")}</ul>
-      <p class="tec">O papel de cada pessoa se escolhe na lista de responsáveis, abaixo: cada pessoa com e-mail de login tem um. Quem não tem papel só consulta.</p>
+      <p class="tec">O papel de cada pessoa se escolhe na lista de responsáveis, abaixo: cada pessoa com e-mail de login tem um. Quem não tem papel só consulta, se a visibilidade deixar.</p>
+      <h4>Quem consulta</h4>
+      <div class="opcoes-importar" role="radiogroup" aria-label="Visibilidade do espaço">
+        ${VISIBILIDADES.map(([v, nome, quem]) => `<label><input type="radio" name="visibilidade" value="${v}"${visibilidadeDe(espaco) === v ? " checked" : ""}> <span><b>${nome}:</b> ${quem}</span></label>`).join("")}
+      </div>
+      <p class="tec">Os espaços públicos e institucionais aparecem para os demais em "Espaços abertos à consulta", e não na barra lateral deles.</p>
+      <h4>Quem atualiza as ações</h4>
       <div class="opcoes-importar" role="radiogroup" aria-label="Quem atualiza as ações">
         <label><input type="radio" name="aberto-fechado" value="aberto"${fechado(espaco) ? "" : " checked"}> <span><b>Aberto:</b> todo Usuário atualiza todas as ações.</span></label>
         <label><input type="radio" name="aberto-fechado" value="fechado"${fechado(espaco) ? " checked" : ""}> <span><b>Fechado:</b> cada Usuário atualiza só as ações em que é responsável.</span></label>
@@ -581,6 +587,11 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       return;
     }
     /* acesso ao espaço (passo 2.1) */
+    if (e.target.name === "visibilidade") {
+      const nome = VISIBILIDADES.find(([v]) => v === e.target.value)?.[1];
+      await gravarAcesso(() => store.alterarEspaco(espacoId, { visibilidade: e.target.value }), `Visibilidade: ${nome}.`);
+      return;
+    }
     if (e.target.name === "aberto-fechado") {
       await gravarAcesso(() => store.alterarEspaco(espacoId, { fechado: e.target.value === "fechado" }),
         e.target.value === "fechado" ? "Espaço fechado: cada usuário atualiza só as suas ações." : "Espaço aberto: todo usuário atualiza todas as ações.");

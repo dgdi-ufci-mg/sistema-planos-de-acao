@@ -62,7 +62,7 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
       <section class="config">
         <h3>Cópia de segurança</h3>
         <p class="tec">Baixa um arquivo com todos os espaços, ações e responsáveis, inclusive o que está na lixeira, e o calendário geral.
-          Guarde-o para ter uma cópia dos dados ou para levá-los a outra instalação do sistema. A restauração chega num próximo passo.</p>
+          Guarde-o para ter uma cópia dos dados ou para levá-los a outra instalação do sistema. Os espaços restritos de que você não participa ficam de fora.</p>
         <div class="botoes"><button class="botao" type="button" data-copia>Baixar cópia de segurança</button></div>
         <h4>Restaurar uma cópia</h4>
         <p class="tec">Recria tudo o que está no arquivo, exatamente como estava. Só funciona com o banco vazio, sem nenhum espaço
@@ -119,7 +119,8 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
     try {
       const copia = await store.copiaDeSeguranca();
       baixarArquivo(`${normalizar(NOME).replace(/[^a-z0-9]+/g, "-")}-copia-${hoje}.json`, JSON.stringify(copia, null, 2));
-      avisar(`Cópia baixada: ${copia.espacos.length} ${copia.espacos.length === 1 ? "espaço" : "espaços"}.`);
+      avisar(`Cópia baixada: ${copia.espacos.length} ${copia.espacos.length === 1 ? "espaço" : "espaços"}.`
+        + (copia.omitidos ? ` ${copia.omitidos} ${copia.omitidos === 1 ? "espaço restrito ficou" : "espaços restritos ficaram"} de fora, porque você não tem papel neles.` : ""));
     } catch (falha) {
       avisar(falha.message);
     }

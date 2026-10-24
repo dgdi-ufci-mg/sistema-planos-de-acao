@@ -15,7 +15,7 @@ import { problemaDoTipo } from "./tipos.js";
 import { problemaDoModelo, modeloDe } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
 import { chaveValida, planejarMovimento } from "./prioridade.js";
-import { permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
+import { podeVer, participa, problemaDaVisibilidade, permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
 import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
 
 export { ErroDeDados };
@@ -123,6 +123,8 @@ function validarEspaco(e, recusarDesconhecidos) {
   for (const a of Object.values(e.acessos ?? {})) recusarDesconhecidos(a ?? {}, "acesso"); // passo 2.1
   const acessos = problemaDosAcessos(e);
   if (acessos) throw new ErroDeDados(acessos.codigo, acessos.mensagem);
+  const visibilidade = problemaDaVisibilidade(e); // passo 2.2
+  if (visibilidade) throw new ErroDeDados(visibilidade.codigo, visibilidade.mensagem);
   if (e.fechado != null && typeof e.fechado !== "boolean") throw new ErroDeDados("valor-invalido", "Aberto ou fechado: informe sim ou não.");
   const situacoes = problemaDasSituacoes(e);
   if (situacoes) throw new ErroDeDados(situacoes.codigo, situacoes.mensagem);
@@ -240,7 +242,7 @@ export function criarStore(banco, opcoes = {}) {
    * @param {"configurar"|"criarAcao"|"excluirAcao"|"priorizar"|"comentar"|"criarResponsavel"|"criarEtiqueta"|"salvarRetrato"|"atualizar"} permissao
    */
   async function exigir(espacoId, permissao, numero = null) {
-    if (!opcoes.exigirLogin && !usuario) return;
+    if (!opcoes.exigirLogin) return; // só no banco compartilhado; no exemplo e no modo só na memória, uma pessoa só
     const espaco = await banco.lerEspaco(espacoId);
     if (!espaco) throw new ErroDeDados("nao-encontrado", "Espaço não encontrado.");
     const p = permissoes(espaco, usuario);
@@ -322,6 +324,8 @@ export function criarStore(banco, opcoes = {}) {
       recusarFixos(dados, ["acessos", "administracaoAssumidaPor", "administracaoAssumidaEm"]);
       /* quem cria é o primeiro administrador (passo 2.1); sem login (o exemplo), o espaço fica sem papéis */
       if (usuario) dados = { ...dados, acessos: { [emailNormal(usuario)]: { papel: "administrador", responsavel: null } } };
+      /* espaço novo é restrito, até o administrador abri-lo (passo 2.2; decisão do responsável, 24/10/2026) */
+      dados = { visibilidade: "restrita", ...dados };
       validarEspaco(dados, recusarDesconhecidos);
       const { nome, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO, ...outros } = dados;
       const id = novoId();
@@ -348,7 +352,7 @@ export function criarStore(banco, opcoes = {}) {
     // --- papéis por espaço (passo 2.1; seção 16.3) ---
     /** O que quem está gravando pode fazer neste espaço (para a tela esconder o que não pode). */
     permissoesEm(espaco) {
-      if (!opcoes.exigirLogin && !usuario) return { ...permissoes({}, "exemplo@local"), livre: false }; // exemplo sem login: tudo, sem papéis nem aviso
+      if (!opcoes.exigirLogin) return { ...permissoes({}, "exemplo@local"), livre: false }; // exemplo e modo só na memória: tudo, sem papéis nem aviso
       return permissoes(espaco, usuario);
     },
     /**
@@ -1070,13 +1074,28 @@ export function criarStore(banco, opcoes = {}) {
      * num formato próprio, independente do banco (seção 3.3, "A cópia de segurança é a ponte").
      * Só leitura. Formato documentado em `docs/registro-de-execucao.md` (passo 1.19a).
      */
+    /** Se quem está usando pode consultar o espaço (passo 2.2); fora do banco compartilhado, sempre. */
+    podeVerEspaco(espaco) {
+      return !opcoes.exigirLogin || podeVer(espaco, usuario);
+    },
+    /** Se quem está usando participa do espaço (tem papel, ou o espaço ainda não tem administração). */
+    participaDoEspaco(espaco) {
+      return !opcoes.exigirLogin || participa(espaco, usuario);
+    },
+    /**
+     * Cópia de segurança. Só leva os espaços que quem a gera pode consultar (passo 2.2): os restritos
+     * dos quais não participa ficam de fora, e `omitidos` diz quantos (limitação até o Administrador do Sistema).
+     */
     async copiaDeSeguranca() {
-      const espacos = (await banco.listarEspacos()).sort((a, b) => a.id.localeCompare(b.id));
+      const todos = (await banco.listarEspacos()).sort((a, b) => a.id.localeCompare(b.id));
+      const espacos = todos.filter((e) => !opcoes.exigirLogin || podeVer(e, usuario));
+      const omitidos = todos.length - espacos.length;
       return {
         formato: "sextante-copia-de-seguranca",
         versao: 2, // 2: com o histórico de alterações (passo 1.16), os retratos (passo 1.18) e os comentários (passo 2.9)
         geradaEm: agora(),
         geradaPor: usuario ?? null,
+        ...(omitidos ? { omitidos } : {}),
         calendarioGeral: (await banco.lerCalendarioGeral()) ?? null,
         espacos: await Promise.all(espacos.map(async (espaco) => ({
           espaco,

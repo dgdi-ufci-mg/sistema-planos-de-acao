@@ -23,6 +23,7 @@ import { abrirConfiguracao } from "./telas/configurar.js";
 import { abrirConfiguracaoDoSistema } from "./telas/configurar-sistema.js";
 import { abrirEntrar, abrirTrocarSenha } from "./telas/acesso.js";
 import { abrirLixeira } from "./telas/lixeira.js";
+import { abrirConsulta } from "./telas/consulta.js";
 import { criarVigiaDeConexao, sondaDoSite } from "./conexao.js";
 
 document.title = NOME;
@@ -63,18 +64,30 @@ let abertoId = null;
 const storeDe = (id) => (id && id === exemploId ? exemplo : store);
 const tentar = async (f, padrao) => { try { return await f(); } catch (e) { avisar(e.message); return padrao; } };
 
+/**
+ * Espaços do banco compartilhado, separados (passo 2.2): os de que quem entrou participa (barra lateral)
+ * e os abertos à consulta (públicos e institucionais, sem papel), que não ocupam a barra.
+ */
+async function espacosDoBanco() {
+  const todos = await tentar(() => store.listarEspacos(), []);
+  return {
+    meus: todos.filter((e) => store.participaDoEspaco(e)),
+    consulta: todos.filter((e) => !store.participaDoEspaco(e) && store.podeVerEspaco(e)),
+  };
+}
+
 async function atualizarTopo() {
-  const espacos = [
-    ...await tentar(() => store.listarEspacos(), []),
-    ...(exemplo ? await exemplo.listarEspacos() : []),
-  ];
+  const { meus, consulta } = await espacosDoBanco();
+  const espacos = [...meus, ...(exemplo ? await exemplo.listarEspacos() : [])];
+  const titulo = abertoId ? (await tentar(() => storeDe(abertoId).lerEspaco(abertoId), null))?.nome ?? "" : "";
   /* nome de quem entrou: o do responsável ligado ao e-mail no espaço aberto (os responsáveis são de cada espaço) */
   const ligado = usuario && abertoId ? (await tentar(() => storeDe(abertoId).listarResponsaveis(abertoId), [])).find((r) => r.usuario === usuario) : null;
-  const aberto = espacos.find((e) => e.id === abertoId);
   mostrarNavegacao({
     espacos,
     abertoId,
-    titulo: aberto?.nome ?? "",
+    titulo,
+    nConsulta: consulta.length,
+    aoConsulta: () => abrirConsulta({ espacos: consulta, comLogin: Boolean(usuario), aoAbrir: abrirEspaco }),
     usuario: usuario ? { email: usuario, nome: ligado?.nome } : null,
     comLogin: Boolean(acesso),
     podeConfigurar: (id) => storeDe(id).podeGravar,
@@ -105,7 +118,7 @@ const entrar = () => abrirEntrar({ acesso });
 /** "Configurar o sistema"; depois de restaurar uma cópia, reabre o sistema pelo começo. */
 const sistema = (foco = null) => abrirConfiguracaoDoSistema({ store, hoje, foco, aoRestaurar: async () => {
   fecharPainel();
-  const [primeiro] = await tentar(() => store.listarEspacos(), []);
+  const [primeiro] = (await espacosDoBanco()).meus;
   if (!primeiro || !(await abrirEspaco(primeiro.id))) boasVindas();
 } });
 
@@ -139,7 +152,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) vigi
 /** Depois de excluir o espaço aberto: abre outro, se houver, ou as boas-vindas. */
 async function espacoExcluido() {
   esquecer();
-  const [outro] = await tentar(() => store.listarEspacos(), []);
+  const [outro] = (await espacosDoBanco()).meus;
   if (!outro || !(await abrirEspaco(outro.id))) boasVindas();
 }
 
@@ -163,6 +176,8 @@ async function abrirEspaco(id) {
   const daqui = storeDe(id);
   const espaco = await tentar(() => daqui.lerEspaco(id), null);
   if (!espaco) return false;
+  /* espaço restrito (ou institucional, sem login) que a pessoa não pode consultar (passo 2.2) */
+  if (!daqui.podeVerEspaco(espaco)) { semAcesso(espaco); return true; }
   abertoId = id;
   if (id !== exemploId) lembrar(id);
   if (location.hash !== `#/espaco/${id}`) history.replaceState(null, "", `#/espaco/${id}`);
@@ -185,6 +200,26 @@ async function abrirEspaco(id) {
   await atualizarTopo();
   window.scrollTo(0, 0);
   return true;
+}
+
+/** Tela de quem chegou a um espaço que não pode consultar, por link ou pelo último aberto (passo 2.2). */
+function semAcesso(espaco) {
+  pararEspaco();
+  pararEspaco = () => {};
+  abertoId = null;
+  esquecer();
+  document.body.classList.remove("so-leitura", "sem-criar-acao");
+  const institucional = espaco.visibilidade === "institucional";
+  principal.innerHTML = `<section class="cartao sem-acesso">
+    <h2>${institucional ? "Espaço institucional" : "Espaço restrito"}</h2>
+    <p>${institucional ? "Este espaço é visto por quem entra com login. Entre com seu e-mail e senha para consultá-lo."
+      : "Só quem tem papel neste espaço o consulta. Para participar, peça a um administrador do espaço que cadastre você como responsável, com o seu e-mail."}</p>
+    <div class="botoes">${!usuario && acesso ? '<button class="botao principal" type="button" data-sem-acesso="entrar">Entrar</button>' : ""}
+      <button class="botao" type="button" data-sem-acesso="inicio">Ir para o início</button></div>
+  </section>`;
+  principal.querySelector('[data-sem-acesso="entrar"]')?.addEventListener("click", entrar);
+  principal.querySelector('[data-sem-acesso="inicio"]').addEventListener("click", () => boasVindas());
+  atualizarTopo();
 }
 
 function boasVindas({ comFormulario = false } = {}) {

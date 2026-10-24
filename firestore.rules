@@ -2,7 +2,11 @@
 // Publicar no console do Firebase: Firestore Database > Regras > colar este arquivo > Publicar.
 //
 // Papéis por espaço (passo 2.1; seção 16.3), as mesmas regras de js/papeis.js:
-// - qualquer pessoa consulta (a visibilidade vem no passo 2.2);
+// - visibilidade (passo 2.2): o cabeçalho do espaço (nome, configuração, papéis) é legível por todos, para a
+//   barra lateral e "Espaços abertos à consulta" funcionarem (decisão do responsável, 24/10/2026: a proteção
+//   completa fica para o sistema definitivo); o conteúdo (ações, responsáveis, histórico, comentários e
+//   retratos) só é lido conforme a visibilidade: pública, todos; institucional, quem entrou; restrita, quem tem
+//   papel; sem `visibilidade` (espaços antigos), pública;
 // - o espaço guarda em `acessos` o papel de cada e-mail: administrador, usuario ou leitor;
 // - espaço sem `acessos` (criado antes dos papéis, como a PI²): regra provisória de antes, quem entrou altera
 //   tudo, até alguém assumir a administração (gravar `acessos`);
@@ -44,6 +48,12 @@ service cloud.firestore {
       function atua() {
         return logado() && (livre(esp()) || papelNo(esp()) in ['administrador', 'usuario']);
       }
+      // quem consulta o conteúdo do espaço (passo 2.2)
+      function podeVer() {
+        let d = esp();
+        let v = d.get('visibilidade', 'publica');
+        return v == 'publica' || (logado() && (v == 'institucional' || livre(d) || papelNo(d) != ''));
+      }
       function membro() {
         return logado() && (livre(esp()) || papelNo(esp()) in ['administrador', 'usuario', 'leitor']);
       }
@@ -72,7 +82,7 @@ service cloud.firestore {
           return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['situacaoPersonalizada', 'alteradaEm', 'alteradaPor'])
             && request.resource.data.situacaoPersonalizada == null;
         }
-        allow read: if true;
+        allow read: if podeVer();
         allow create: if administra();
         allow update: if administra()
           || (logado() && papelNo(esp()) == 'usuario'
@@ -81,19 +91,19 @@ service cloud.firestore {
       }
       // responsáveis de cada espaço (passo 1.14b); o usuário cadastra só responsáveis sem login
       match /responsaveis/{responsavelId} {
-        allow read: if true;
+        allow read: if podeVer();
         allow create: if administra()
           || (logado() && papelNo(esp()) == 'usuario' && request.resource.data.get('usuario', null) == null);
         allow update: if administra();
       }
       // histórico de alterações das ações (passo 1.16): só de acréscimo (sem update nem delete)
       match /historico/{registroId} {
-        allow read: if true;
+        allow read: if podeVer();
         allow create: if atua();
       }
       // comentários das ações (passo 2.9): nunca apagados do banco (documentação técnica, seção 4.2.3)
       match /comentarios/{comentarioId} {
-        allow read: if true;
+        allow read: if podeVer();
         allow create: if membro()
           && request.resource.data.autor == eu()
           && request.resource.data.id == comentarioId
@@ -118,10 +128,10 @@ service cloud.firestore {
       }
       // retratos (passo 1.18): cabeçalho e ações, só leitura depois de criados
       match /retratos/{retratoId} {
-        allow read: if true;
+        allow read: if podeVer();
         allow create: if atua();
         match /acoes/{numero} {
-          allow read: if true;
+          allow read: if podeVer();
           allow create: if atua();
         }
       }

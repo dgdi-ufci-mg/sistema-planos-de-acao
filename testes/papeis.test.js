@@ -165,3 +165,39 @@ for (const [nome, criarBanco] of [
     });
   });
 }
+
+describe("Visibilidade (passo 2.2)", async () => {
+  const { podeVer, participa, visibilidadeDe, problemaDaVisibilidade } = await import("../js/papeis.js");
+  const acessos = { "ana@x.br": { papel: "administrador", responsavel: null }, "caio@x.br": { papel: "leitor", responsavel: null } };
+  it("pública: todos; institucional: quem entrou; restrita: quem tem papel; ausente: pública", () => {
+    const e = (visibilidade) => ({ acessos, ...(visibilidade ? { visibilidade } : {}) });
+    assert.equal(visibilidadeDe({}), "publica");
+    assert.deepEqual([null, "ze@x.br", "caio@x.br"].map((u) => podeVer(e("publica"), u)), [true, true, true]);
+    assert.deepEqual([null, "ze@x.br", "caio@x.br"].map((u) => podeVer(e("institucional"), u)), [false, true, true]);
+    assert.deepEqual([null, "ze@x.br", "caio@x.br"].map((u) => podeVer(e("restrita"), u)), [false, false, true]);
+    assert.equal(podeVer(e(null), null), true);
+    assert.equal(problemaDaVisibilidade({ visibilidade: "secreta" }).codigo, "visibilidade-invalida");
+  });
+  it("participa: tem papel, ou o espaço ainda não tem administração (só com login)", () => {
+    assert.equal(participa({ acessos }, "caio@x.br"), true);
+    assert.equal(participa({ acessos }, "ze@x.br"), false);
+    assert.equal(participa({}, "ze@x.br"), true);
+    assert.equal(participa({}, null), false);
+  });
+  it("no Store: espaço novo é restrito; a cópia de segurança deixa de fora os que não se pode consultar", async () => {
+    const banco = criarBancoLocal();
+    const ana = criarStore(banco, { exigirLogin: true, usuario: "ana@ufci.edu.br" });
+    const restrito = await ana.criarEspaco({ nome: "Restrito" });
+    const publico = await ana.criarEspaco({ nome: "Público" });
+    await ana.alterarEspaco(publico, { visibilidade: "publica" });
+    assert.equal((await ana.lerEspaco(restrito)).visibilidade, "restrita");
+    await assert.rejects(ana.alterarEspaco(restrito, { visibilidade: "secreta" }), { codigo: "visibilidade-invalida" });
+    const ze = criarStore(banco, { exigirLogin: true, usuario: "ze@ufci.edu.br" });
+    assert.equal(ze.podeVerEspaco(await ze.lerEspaco(restrito)), false);
+    assert.equal(ze.participaDoEspaco(await ze.lerEspaco(publico)), false);
+    const copia = await ze.copiaDeSeguranca();
+    assert.deepEqual(copia.espacos.map((e) => e.espaco.nome), ["Público"]);
+    assert.equal(copia.omitidos, 1);
+    assert.equal((await ana.copiaDeSeguranca()).omitidos, undefined);
+  });
+});

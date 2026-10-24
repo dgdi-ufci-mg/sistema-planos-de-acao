@@ -34,6 +34,25 @@ export const acessoDe = (espaco, email) => (email ? espaco?.acessos?.[emailNorma
 /** Papel de um e-mail no espaço, ou null. */
 export const papelDe = (espaco, email) => acessoDe(espaco, email)?.papel ?? null;
 
+/**
+ * Visibilidade do espaço (passo 2.2; seção 16.3): quem consulta. [valor guardado, nome na tela, quem vê].
+ * Espaço novo: restrita (decisão do responsável, 24/10/2026). Ausente: pública, como os espaços criados antes.
+ */
+export const VISIBILIDADES = Object.freeze([
+  ["publica", "Pública", "Qualquer pessoa com o link vê, mesmo sem login."],
+  ["institucional", "Institucional", "Quem entra com login vê."],
+  ["restrita", "Restrita", "Só quem tem papel no espaço vê."],
+]);
+export const visibilidadeDe = (espaco) => espaco?.visibilidade ?? "publica";
+export const nomeDaVisibilidade = (v) => VISIBILIDADES.find(([x]) => x === v)?.[1] ?? v;
+/** Participa do espaço: tem papel nele, ou o espaço ainda não tem administração (aí quem tem login altera tudo). */
+export const participa = (espaco, email) => Boolean(email) && (semAdministracao(espaco) || papelDe(espaco, email) != null);
+/** Pode consultar o espaço (ações, responsáveis, comentários, histórico e retratos). */
+export function podeVer(espaco, email) {
+  const v = visibilidadeDe(espaco);
+  return v === "publica" || (v === "institucional" && Boolean(email)) || participa(espaco, email);
+}
+
 /** Administradores do espaço (e-mails). */
 export const administradores = (espaco) => Object.entries(espaco?.acessos ?? {}).filter(([, a]) => a.papel === "administrador").map(([e]) => e);
 
@@ -91,4 +110,10 @@ export function problemaDosAcessos(espaco) {
   }
   if (!administradores(espaco).length) return { codigo: "sem-administrador", mensagem: "O espaço precisa de pelo menos um administrador." };
   return null;
+}
+
+/** Problema da visibilidade, ou null. */
+export function problemaDaVisibilidade(espaco) {
+  if (espaco?.visibilidade == null || VISIBILIDADES.some(([v]) => v === espaco.visibilidade)) return null;
+  return { codigo: "visibilidade-invalida", mensagem: `Visibilidade desconhecida: “${espaco.visibilidade}”.` };
 }
