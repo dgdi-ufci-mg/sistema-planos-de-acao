@@ -95,3 +95,15 @@ describe("Situações: Store", () => {
     assert.equal((await store.lerAcao(e, a)).situacaoPersonalizada, null);
   });
 });
+
+describe("Situações: sem conexão", () => {
+  it("mudar e retirar situação dão o aviso de sem conexão, como as demais gravações", async () => {
+    const store = criarStore(criarBancoLocal(), { usuario: "ana@ufci.edu.br", hoje: () => "2026-11-10" });
+    const id = await store.criarEspaco({ nome: "E", situacoes: SITUACOES });
+    const n = await store.criarAcao(id, { rotulo: "A" });
+    store.definirConexao(false);
+    await assert.rejects(store.mudarSituacao(id, n, "s1"), { codigo: "sem-conexao" });
+    await assert.rejects(store.retirarSituacao(id, "s1"), { codigo: "sem-conexao" });
+    await assert.rejects(store.comentar(id, n, "Oi"), { codigo: "sem-conexao" });
+  });
+});

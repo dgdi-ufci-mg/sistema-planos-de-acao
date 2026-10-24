@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 132 da página)
+**Última atualização deste documento:** 23/10/2026 (versão 133 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -138,7 +138,7 @@ Ficam para o sistema definitivo (seção 12, fase 4): o programa do servidor, qu
 
 - **Firebase** (projeto `sextante-v2`): leitura pública; gravação só com login por e-mail e senha. Tempo real pelo acompanhamento do espaço (`acompanharEspaco`).
 - **Memória:** o espaço de exemplo roda sempre num banco em memória à parte e nunca vai ao Firebase. Sem `config.js`, ou se o Firebase não carregar, o sistema abre só na memória, com aviso.
-- **Sem conexão:** um vigia testa a rede a cada 10 s (5 s enquanto desconectado) e, depois de duas falhas, mostra "Sem conexão" na barra do topo; o `Store` recusa gravações até a conexão voltar.
+- **Sem conexão:** um vigia testa a rede a cada 10 s (5 s enquanto desconectado) e, depois de duas falhas, mostra "Sem conexão" na barra do topo; o `Store` recusa gravações até a conexão voltar. **Toda** operação que grava passa por essa recusa (lista `GRAVACOES` em `js/dados.js`), com a mesma mensagem; um teste confere as situações e os comentários, que tinham ficado de fora até 24/10/2026.
 - **Preferências de cada pessoa** (visualização, colunas, indicador, barra lateral recolhida, último espaço aberto) ficam só no navegador (`localStorage`, chaves `sextante.*`). Não são dados do sistema e não entram na cópia de segurança.
 
 ### 3.6 Permissões
@@ -1577,3 +1577,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 130 | Passo 2.10a, parte 2: documentos e links da ação. Campo opcional, formulário na janela da ação, coluna na planilha e na exportação, registro no histórico. Dicionário: `documentos` dos campos opcionais (4.1.4) e da ação (4.2), `documentoDaAcao` (4.2.4) |
 | 131 | Passo 2.10a, parte 3: justificativa e local da ação. Dois campos opcionais, campos na janela da ação, colunas na planilha, na importação e na exportação, registro no histórico. Dicionário: `justificativa` e `local` dos campos opcionais (4.1.4) e da ação (4.2) |
 | 132 | Passo 2.10a, parte 4: prioridade da equipe. Campo opcional, ordenação "Prioridade da equipe" com puxador (mouse, dedo e setas), chave fracionária (seção 5.8, nova), coluna na planilha e na exportação, registro no histórico. Dicionário: `prioridade` dos campos opcionais (4.1.4) e `posicaoPrioridade` da ação (4.2). Passo 2.10a concluído |
+| 133 | Correção: mudar e retirar situações e escrever, editar e apagar comentários passam pela mesma recusa das demais gravações sem conexão ou sem login. Antes, sem conexão, essas operações não davam o aviso "Sem conexão com a internet" (encontrado no passo 2.10a) |
