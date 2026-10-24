@@ -36,7 +36,8 @@ export function problemaDoTipo(espaco) {
   const link = espaco.aprovacao?.link;
   if (link && !/^https?:\/\/\S+$/i.test(link)) return { codigo: "link-invalido", mensagem: "O link do documento de aprovação deve começar com https:// ou http://." };
   if (tipoDe(espaco) !== "planoDeAcao") return null;
-  if (!espaco.programa?.trim()) return { codigo: "programa-vazio", mensagem: "Informe o Programa do PEI/PDI que prevê este Plano de Ação." };
+  /* o Programa vem do catálogo da estratégia (`vinculos`, passo 2.5); o texto livre fica para os planos de antes e para o catálogo vazio */
+  if (!espaco.vinculos?.length && !espaco.programa?.trim()) return { codigo: "programa-vazio", mensagem: "Informe o Programa do PEI/PDI que prevê este Plano de Ação." };
   if (!espaco.aprovacao?.identificacao?.trim()) {
     return { codigo: "aprovacao-vazia", mensagem: "Informe a identificação do documento que aprovou o Plano de Ação (SIPAC ou Protocolo)." };
   }

@@ -32,6 +32,13 @@ export function criarBancoLocal() {
   /** Calendário geral, o mesmo para todos os espaços. */
   let calendario = null;
   let administradoresDoSistema = null;
+  /** Estratégia (passo 2.5): o modelo (camadas) e as coleções do catálogo, comuns a todos os espaços. */
+  let modeloEstrategia = null;
+  const colecoes = { instrumentos: new Map(), itensEstrategicos: new Map() };
+  const colecao = (nome) => {
+    if (!colecoes[nome]) throw new ErroDeDados("colecao-desconhecida", `Coleção ${nome} desconhecida.`);
+    return colecoes[nome];
+  };
   /** Histórico de alterações das ações (passo 1.16): espacoId → registros, só de acréscimo. */
   const historicoPorEspaco = new Map();
   /** Retratos (passo 1.18): espacoId → (id → {cabecalho, acoes}); só leitura depois de criados. */
@@ -301,6 +308,28 @@ export function criarBancoLocal() {
     },
     async gravarAdministradoresDoSistema(dados) {
       administradoresDoSistema = copia(dados);
+    },
+
+    // --- estratégia: catálogo do desdobramento (passo 2.5; seção 4.11) ---
+    async lerModeloEstrategia() {
+      return modeloEstrategia ? copia(modeloEstrategia) : null;
+    },
+    async gravarModeloEstrategia(dados) {
+      modeloEstrategia = copia(dados);
+    },
+    /** Coleções comuns do catálogo: "instrumentos" e "itensEstrategicos". */
+    async listarColecao(nome) {
+      return [...colecao(nome).values()].map(copia);
+    },
+    async criarNaColecao(nome, id, dados) {
+      if (colecao(nome).has(id)) throw new ErroDeDados("id-ocupado", `Já existe ${id} em ${nome}.`);
+      colecao(nome).set(id, { ...copia(dados), id });
+    },
+    /** Lê e muda de uma vez (`mudanca` recebe o atual e devolve os campos novos): duas gravações não se apagam. */
+    async mudarNaColecao(nome, id, mudanca) {
+      const atual = colecao(nome).get(id);
+      if (!atual) throw new ErroDeDados("nao-encontrado", "Item não encontrado.");
+      colecao(nome).set(id, { ...atual, ...copia(mudanca(copia(atual))) });
     },
 
     // --- tempo real ---

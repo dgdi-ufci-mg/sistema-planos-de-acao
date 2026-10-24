@@ -13,6 +13,9 @@
  *   espacos/{id}/retratos/{id}      retrato (seção 4.4): cabeçalho; as ações em .../acoes/{numero}
  *   sistema/calendario              calendário geral
  *   sistema/administradores         e-mails dos Administradores do Sistema (passo 2.3), editado só no console
+ *   sistema/estrategia              camadas do catálogo da estratégia (passo 2.5)
+ *   instrumentos/{id}               instrumentos da estratégia (PEI, PDI, políticas…), comuns a todos os espaços
+ *   itensEstrategicos/{id}          itens do catálogo da estratégia, com as ligações aos superiores
  *
  * Recebe o Firestore já iniciado (`db`, API compat), para os testes
  * poderem usar um Firestore falso, em memória (`testes/firebase-falso.js`).
@@ -292,6 +295,34 @@ export function criarBancoFirestore(db) {
     },
     async gravarCalendarioGeral(dados) {
       await calendarioRef().set(copia(dados));
+    },
+    // --- estratégia: catálogo do desdobramento (passo 2.5; seção 4.11) ---
+    async lerModeloEstrategia() {
+      const s = await db.collection("sistema").doc("estrategia").get();
+      return s.exists ? s.data() : null;
+    },
+    async gravarModeloEstrategia(dados) {
+      await db.collection("sistema").doc("estrategia").set(copia(dados));
+    },
+    /** Coleções comuns do catálogo, na raiz: "instrumentos" e "itensEstrategicos". */
+    async listarColecao(nome) {
+      return (await db.collection(nome).get()).docs.map((d) => d.data());
+    },
+    async criarNaColecao(nome, id, dados) {
+      const ref = db.collection(nome).doc(id);
+      await db.runTransaction(async (t) => {
+        if ((await t.get(ref)).exists) throw new ErroDeDados("id-ocupado", `Já existe ${id} em ${nome}.`);
+        t.set(ref, { ...copia(dados), id });
+      });
+    },
+    /** Numa transação: lê, calcula os campos novos e grava só eles (seção 4.6). */
+    async mudarNaColecao(nome, id, mudanca) {
+      const ref = db.collection(nome).doc(id);
+      await db.runTransaction(async (t) => {
+        const s = await t.get(ref);
+        if (!s.exists) throw new ErroDeDados("nao-encontrado", "Item não encontrado.");
+        t.update(ref, copia(mudanca(copia(s.data()))));
+      });
     },
     /** Administradores do Sistema (passo 2.3): sistema/administradores, editado só no console do Firebase. */
     async lerAdministradoresDoSistema() {

@@ -15,6 +15,7 @@ import { problemaDoTipo } from "./tipos.js";
 import { problemaDoModelo, modeloDe } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
 import { chaveValida, planejarMovimento } from "./prioridade.js";
+import { camadasDe, problemaDasCamadas, problemaDoInstrumento, problemaDoItem, problemaDosVinculos, subordinadosDe } from "./estrategia.js";
 import { encerrado, podeVer, participa, problemaDaVisibilidade, permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
 import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
 
@@ -257,6 +258,22 @@ export function criarStore(banco, opcoes = {}) {
     if (permissao === "priorizar") throw new ErroDeDados("sem-permissao", "Neste espaço fechado, só o administrador muda a prioridade da equipe.");
     throw new ErroDeDados("sem-permissao", "Só o administrador do espaço pode fazer isso.");
   }
+  /** Catálogo da estratégia (passo 2.5): camadas, instrumentos e itens ativos. */
+  async function catalogo() {
+    const [modelo, instrumentos, itens] = await Promise.all([banco.lerModeloEstrategia(), banco.listarColecao("instrumentos"), banco.listarColecao("itensEstrategicos")]);
+    return { modelo, camadas: camadasDe(modelo), instrumentos: instrumentos.filter(ativo), itens: itens.filter(ativo) };
+  }
+  /** Vínculos do Plano de Ação com o catálogo (passo 2.5): itens ativos da camada mais baixa. */
+  async function conferirVinculos(campos) {
+    if (campos.vinculos == null) return;
+    const p = problemaDosVinculos(campos.vinculos, await catalogo());
+    if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+  }
+  /** O Gestor da Estratégia mantém o catálogo; provisoriamente, é o Administrador do Sistema (decisão do responsável, 24/10/2026). */
+  async function exigirGestor() {
+    if (!(await store.ehGestorDaEstrategia())) throw new ErroDeDados("sem-permissao", "Só o Gestor da Estratégia altera o catálogo.");
+  }
+
   /** Grava campos do espaço, com a validação e o carimbo; sem conferir o papel (uso interno). */
   async function gravarEspaco(id, campos) {
     recusarDesconhecidos(campos, "espaco");
@@ -331,6 +348,7 @@ export function criarStore(banco, opcoes = {}) {
       /* espaço novo é restrito, até o administrador abri-lo (passo 2.2; decisão do responsável, 24/10/2026) */
       dados = { visibilidade: "restrita", ...dados };
       validarEspaco(dados, recusarDesconhecidos);
+      await conferirVinculos(dados);
       const { nome, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO, ...outros } = dados;
       const id = novoId();
       await banco.criarEspaco(id, {
@@ -350,6 +368,7 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(campos, "espaco");
       recusarFixos(campos, FIXOS_DO_ESPACO);
       await exigir(id, "configurar");
+      await conferirVinculos(campos);
       await gravarEspaco(id, campos);
     },
 
@@ -412,6 +431,156 @@ export function criarStore(banco, opcoes = {}) {
         nomeacoes: [...(espaco.nomeacoes ?? []), { email: e, por: usuario, em: agora() }],
       });
     },
+    // --- estratégia: catálogo do desdobramento do PEI/PDI (passo 2.5; seção 4.11) ---
+    /** Gestor da Estratégia: provisoriamente, o Administrador do Sistema. */
+    ehGestorDaEstrategia: () => store.ehAdministradorDoSistema(),
+    /** Catálogo inteiro: modelo (ou null), camadas (as gravadas ou as de partida), instrumentos e itens ativos. */
+    lerCatalogo: () => catalogo(),
+    async alterarCamadas(camadas) {
+      await exigirGestor();
+      for (const c of camadas ?? []) recusarDesconhecidos(c, "camada");
+      const p = problemaDasCamadas(camadas);
+      if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+      const { itens, instrumentos } = await catalogo();
+      /* nenhum item fica numa camada retirada, nem com uma ligação que o modelo novo não permite */
+      const orfao = itens.find((x) => !camadas.some((c) => c.id === x.camada));
+      if (orfao) throw new ErroDeDados("camada-com-itens", `A camada de “${orfao.nome}” ainda tem itens. Mova ou exclua os itens antes de retirá-la.`);
+      for (const item of itens) {
+        const problema = problemaDoItem(item, { camadas, itens, instrumentos });
+        if (problema) throw new ErroDeDados("ligacao-invalida", `Com essas camadas, a ligação de “${item.nome}” deixaria de valer: ${problema.mensagem}`);
+      }
+      const limpas = camadas.map((c) => ({ id: c.id, nome: c.nome.trim(), plural: c.plural.trim(), opcional: c.opcional }));
+      await banco.gravarModeloEstrategia({ camadas: limpas, alteradoEm: agora(), alteradoPor: usuario });
+    },
+    async criarInstrumento(dados) {
+      await exigirGestor();
+      recusarDesconhecidos(dados, "instrumento");
+      if (dados.aprovacao) recusarDesconhecidos(dados.aprovacao, "aprovacao");
+      const p = problemaDoInstrumento(dados);
+      if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+      const id = novoId();
+      await banco.criarNaColecao("instrumentos", id, { ...dados, nome: dados.nome.trim(), fim: dados.fim ?? null, prorrogacoes: [], criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario });
+      return id;
+    },
+    /** Muda nome, início, fim ou documento de aprovação (para prorrogar, `prorrogarInstrumento`, que registra). */
+    async alterarInstrumento(id, campos) {
+      await exigirGestor();
+      recusarDesconhecidos(campos, "instrumento");
+      recusarFixos(campos, ["id", "prorrogacoes", "criadoEm", "excluidoEm", "excluidoPor"]);
+      if (campos.aprovacao) recusarDesconhecidos(campos.aprovacao, "aprovacao");
+      await banco.mudarNaColecao("instrumentos", id, (atual) => {
+        const p = problemaDoInstrumento({ ...atual, ...campos });
+        if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+        return { ...campos, ...("nome" in campos ? { nome: campos.nome.trim() } : {}), alteradoEm: agora(), alteradoPor: usuario };
+      });
+    },
+    /** Prorroga: muda o fim e registra o fim anterior, quem, quando e o documento que aprovou. */
+    async prorrogarInstrumento(id, { fim, aprovacao = null }) {
+      await exigirGestor();
+      if (aprovacao) recusarDesconhecidos(aprovacao, "aprovacao");
+      await banco.mudarNaColecao("instrumentos", id, (atual) => {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(fim ?? "")) throw new ErroDeDados("data-invalida", "Informe a nova data de fim.");
+        if (atual.fim && fim <= atual.fim) throw new ErroDeDados("prorrogacao-invalida", "A prorrogação leva o fim para depois do atual.");
+        const p = problemaDoInstrumento({ ...atual, fim });
+        if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+        const registro = { fimAnterior: atual.fim ?? null, fim, em: agora(), por: usuario, ...(aprovacao?.identificacao?.trim() ? { aprovacao } : {}) };
+        return { fim, prorrogacoes: [...(atual.prorrogacoes ?? []), registro], alteradoEm: agora(), alteradoPor: usuario };
+      });
+    },
+    async excluirInstrumento(id) {
+      await exigirGestor();
+      const { itens } = await catalogo();
+      const n = itens.filter((x) => x.instrumento === id).length;
+      if (n) throw new ErroDeDados("instrumento-com-itens", `O instrumento tem ${n} ${n === 1 ? "item" : "itens"}. Mude ou exclua os itens antes.`);
+      await banco.mudarNaColecao("instrumentos", id, () => ({ excluidoEm: agora(), excluidoPor: usuario }));
+    },
+    async criarItemEstrategico(dados) {
+      await exigirGestor();
+      recusarDesconhecidos(dados, "itemEstrategico");
+      const cat = await catalogo();
+      const item = { camada: dados.camada, codigo: String(dados.codigo ?? "").trim(), nome: String(dados.nome ?? "").trim(), instrumento: dados.instrumento ?? null, superiores: dados.superiores ?? [] };
+      const p = problemaDoItem(item, cat);
+      if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+      const id = novoId();
+      await banco.criarNaColecao("itensEstrategicos", id, { ...item, criadoEm: agora(), alteradoEm: agora(), alteradoPor: usuario });
+      return id;
+    },
+    /** Muda código, nome ou instrumento (a camada não muda: um item noutra camada é outro item). */
+    async alterarItemEstrategico(id, campos) {
+      await exigirGestor();
+      recusarDesconhecidos(campos, "itemEstrategico");
+      recusarFixos(campos, ["id", "camada", "superiores", "criadoEm", "excluidoEm", "excluidoPor"]);
+      const cat = await catalogo();
+      await banco.mudarNaColecao("itensEstrategicos", id, (atual) => {
+        const mudanca = { ...campos, ...("nome" in campos ? { nome: String(campos.nome ?? "").trim() } : {}), ...("codigo" in campos ? { codigo: String(campos.codigo ?? "").trim() } : {}) };
+        const p = problemaDoItem({ ...atual, ...mudanca }, cat);
+        if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+        return { ...mudanca, alteradoEm: agora(), alteradoPor: usuario };
+      });
+    },
+    /** Liga o item a um superior, sem regravar as demais ligações (seção 4.6). */
+    async ligarSuperior(id, superior) {
+      await exigirGestor();
+      const cat = await catalogo();
+      await banco.mudarNaColecao("itensEstrategicos", id, (atual) => {
+        if ((atual.superiores ?? []).includes(superior)) return {};
+        const superiores = [...(atual.superiores ?? []), superior];
+        const p = problemaDoItem({ ...atual, superiores }, cat);
+        if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+        return { superiores, alteradoEm: agora(), alteradoPor: usuario };
+      });
+    },
+    async desligarSuperior(id, superior) {
+      await exigirGestor();
+      await banco.mudarNaColecao("itensEstrategicos", id, (atual) => ({ superiores: (atual.superiores ?? []).filter((x) => x !== superior), alteradoEm: agora(), alteradoPor: usuario }));
+    },
+    /** Exclusão lógica; recusa o item com subordinados ou com Planos de Ação ligados a ele. */
+    async excluirItemEstrategico(id) {
+      await exigirGestor();
+      const { itens } = await catalogo();
+      const n = subordinadosDe(id, itens).length;
+      if (n) throw new ErroDeDados("item-com-subordinados", `O item tem ${n} ${n === 1 ? "subordinado" : "subordinados"}. Desligue-os antes.`);
+      const planos = (await banco.listarEspacos()).filter((e) => ativo(e) && (e.vinculos ?? []).includes(id)).length;
+      if (planos) throw new ErroDeDados("item-com-planos", `${planos} ${planos === 1 ? "Plano de Ação se liga" : "Planos de Ação se ligam"} a este item. Mude o vínculo deles antes.`);
+      await banco.mudarNaColecao("itensEstrategicos", id, () => ({ excluidoEm: agora(), excluidoPor: usuario }));
+    },
+    /**
+     * Grava a importação do catálogo (planejarCatalogo, em js/estrategia.js): primeiro cria e atualiza os itens,
+     * depois as ligações, que podem citar linhas novas. Cada linha sozinha: uma que falhe não impede as outras.
+     * @returns {{criados: number, atualizados: number, falhas: {linha: number, mensagem: string}[]}}
+     */
+    async importarCatalogo(plano) {
+      await exigirGestor();
+      const falhas = [];
+      const idDaLinha = new Map();
+      let criados = 0;
+      let atualizados = 0;
+      for (const l of plano.linhas) {
+        if (l.tipo !== "novo" && l.tipo !== "atualiza") { if (l.id) idDaLinha.set(l.linha, l.id); continue; }
+        try {
+          if (l.tipo === "novo") {
+            idDaLinha.set(l.linha, await store.criarItemEstrategico({ camada: l.camada, codigo: l.codigo, nome: l.nome, instrumento: l.instrumento ?? null }));
+            criados++;
+          } else {
+            idDaLinha.set(l.linha, l.id);
+            await store.alterarItemEstrategico(l.id, { nome: l.nome, ...(l.instrumento ? { instrumento: l.instrumento } : {}) });
+            atualizados++;
+          }
+        } catch (e) { falhas.push({ linha: l.linha, mensagem: e.message }); }
+      }
+      for (const l of plano.linhas) {
+        const id = idDaLinha.get(l.linha);
+        if (!id || !l.refs || l.tipo === "igual") continue;
+        const desejados = l.refs.map((r) => r.id ?? idDaLinha.get(r.linha)).filter(Boolean);
+        try {
+          const atual = (await banco.listarColecao("itensEstrategicos")).find((x) => x.id === id);
+          for (const s of desejados) if (!(atual.superiores ?? []).includes(s)) await store.ligarSuperior(id, s);
+          if (l.tipo === "atualiza") for (const s of atual.superiores ?? []) if (!desejados.includes(s)) await store.desligarSuperior(id, s);
+        } catch (e) { falhas.push({ linha: l.linha, mensagem: e.message }); }
+      }
+      return { criados, atualizados, falhas };
+    },
+
     /** Muda o papel de um e-mail no espaço; null tira o acesso. O último administrador não sai. */
     async definirPapel(espacoId, email, papel) {
       await exigir(espacoId, "configurar");
@@ -925,7 +1094,7 @@ export function criarStore(banco, opcoes = {}) {
      * @returns {{espacos: number, acoes: number, responsaveis: number, retratos: number, registros: number, geradaEm: string}}
      */
     conferirCopia(copia) {
-      if (copia?.formato !== "sextante-copia-de-seguranca" || ![1, 2].includes(copia.versao) || !Array.isArray(copia.espacos)) {
+      if (copia?.formato !== "sextante-copia-de-seguranca" || ![1, 2, 3].includes(copia.versao) || !Array.isArray(copia.espacos)) {
         throw new ErroDeDados("copia-invalida", "Este arquivo não é uma cópia de segurança do sistema.");
       }
       const resumo = { espacos: 0, acoes: 0, responsaveis: 0, retratos: 0, registros: 0, geradaEm: copia.geradaEm };
@@ -954,6 +1123,12 @@ export function criarStore(banco, opcoes = {}) {
         throw new ErroDeDados("banco-com-dados", "A restauração só é feita num banco sem nenhum espaço, para não misturar nem sobrescrever dados.");
       }
       if (copia.calendarioGeral && !(await banco.lerCalendarioGeral())) await banco.gravarCalendarioGeral(copia.calendarioGeral);
+      /* catálogo da estratégia (passo 2.5): só num banco sem catálogo, como os espaços */
+      if (copia.estrategia && !(await banco.listarColecao("itensEstrategicos")).length) {
+        if (copia.estrategia.modelo) await banco.gravarModeloEstrategia(copia.estrategia.modelo);
+        for (const i of copia.estrategia.instrumentos ?? []) await banco.criarNaColecao("instrumentos", i.id, i);
+        for (const i of copia.estrategia.itens ?? []) await banco.criarNaColecao("itensEstrategicos", i.id, i);
+      }
       for (const e of copia.espacos) {
         const id = e.espaco.id;
         await banco.criarEspaco(id, e.espaco);
@@ -1139,11 +1314,17 @@ export function criarStore(banco, opcoes = {}) {
       const omitidos = todos.length - espacos.length;
       return {
         formato: "sextante-copia-de-seguranca",
-        versao: 2, // 2: com o histórico de alterações (passo 1.16), os retratos (passo 1.18) e os comentários (passo 2.9)
+        versao: 3, // 2: com o histórico de alterações (passo 1.16), os retratos (passo 1.18) e os comentários (passo 2.9); 3: com o catálogo da estratégia (passo 2.5)
         geradaEm: agora(),
         geradaPor: usuario ?? null,
         ...(omitidos ? { omitidos } : {}),
         calendarioGeral: (await banco.lerCalendarioGeral()) ?? null,
+        /* catálogo da estratégia (passo 2.5), inclusive o excluído */
+        estrategia: {
+          modelo: (await banco.lerModeloEstrategia()) ?? null,
+          instrumentos: (await banco.listarColecao("instrumentos")).sort((a, b) => a.id.localeCompare(b.id)),
+          itens: (await banco.listarColecao("itensEstrategicos")).sort((a, b) => a.id.localeCompare(b.id)),
+        },
         espacos: await Promise.all(espacos.map(async (espaco) => ({
           espaco,
           acoes: (await banco.listarAcoes(espaco.id)).sort((a, b) => a.numero - b.numero),
@@ -1170,7 +1351,9 @@ export function criarStore(banco, opcoes = {}) {
     "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao", "priorizar",
     /* faltavam (24/10/2026): sem eles, mudar a situação ou comentar sem conexão não dava o aviso de "sem conexão" */
     "mudarSituacao", "retirarSituacao", "comentar", "editarComentario", "apagarComentario",
-    "assumirAdministracao", "definirPapel", "encerrarEspaco", "reabrirEspaco", "nomearAdministrador"];
+    "assumirAdministracao", "definirPapel", "encerrarEspaco", "reabrirEspaco", "nomearAdministrador",
+    "alterarCamadas", "criarInstrumento", "alterarInstrumento", "prorrogarInstrumento", "excluirInstrumento",
+    "criarItemEstrategico", "alterarItemEstrategico", "ligarSuperior", "desligarSuperior", "excluirItemEstrategico", "importarCatalogo"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

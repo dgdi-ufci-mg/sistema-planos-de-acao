@@ -23,6 +23,8 @@
 // - Administrador do Sistema (passo 2.3): e-mails em sistema/administradores, documento editado só no console
 //   (em minúsculas); muda o calendário geral e nomeia um administrador num espaço órfão, com registro em
 //   `nomeacoes`; fora isso, não tem passe livre nos espaços;
+// - catálogo da estratégia (passo 2.5): sistema/estrategia (camadas), instrumentos/{id} e itensEstrategicos/{id};
+//   qualquer pessoa consulta; só o Gestor da Estratégia altera (provisoriamente, o Administrador do Sistema);
 // - ninguém apaga documentos: a exclusão é lógica (passo 1.15); histórico e retratos só recebem registros novos;
 // - fora destes caminhos, nada.
 rules_version = '2';
@@ -45,6 +47,11 @@ service cloud.firestore {
     function adminSistema() {
       let caminho = /databases/$(database)/documents/sistema/administradores;
       return logado() && exists(caminho) && eu() in get(caminho).data.get('emails', []);
+    }
+
+    // Gestor da Estratégia (passo 2.5): provisoriamente, o Administrador do Sistema (decisão do responsável, 24/10/2026)
+    function gestorEstrategia() {
+      return adminSistema();
     }
 
     match /espacos/{espacoId} {
@@ -171,6 +178,19 @@ service cloud.firestore {
     match /sistema/calendario {
       allow read: if true;
       allow create, update: if adminSistema();
+    }
+    // catálogo da estratégia (passo 2.5): consulta livre; só o Gestor da Estratégia grava; ninguém apaga
+    match /sistema/estrategia {
+      allow read: if true;
+      allow create, update: if gestorEstrategia();
+    }
+    match /instrumentos/{id} {
+      allow read: if true;
+      allow create, update: if gestorEstrategia();
+    }
+    match /itensEstrategicos/{id} {
+      allow read: if true;
+      allow create, update: if gestorEstrategia();
     }
     // Administradores do Sistema (passo 2.3): lidos por quem entrou; gravados só no console do Firebase
     match /sistema/administradores {

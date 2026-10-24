@@ -8,7 +8,7 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "visibilidade", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes", "nomeInicial", "situacoes", "etiquetas", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
+    "id", "nome", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "visibilidade", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes", "vinculos", "nomeInicial", "situacoes", "etiquetas", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
@@ -25,6 +25,14 @@ export const CAMPOS = Object.freeze({
   nomeacao: ["email", "por", "em"],
   /** Administradores do Sistema (passo 2.3): documento sistema/administradores, editado só no console. */
   administradoresDoSistema: ["emails"],
+  /** Estratégia (passo 2.5): modelo do catálogo, documento sistema/estrategia. */
+  modeloEstrategia: ["camadas", "alteradoEm", "alteradoPor"],
+  camada: ["id", "nome", "plural", "opcional"],
+  /** Instrumento da estratégia (PEI, PDI, uma política…): coleção instrumentos. */
+  instrumento: ["id", "nome", "inicio", "fim", "aprovacao", "prorrogacoes", "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor"],
+  prorrogacao: ["fimAnterior", "fim", "em", "por", "aprovacao"],
+  /** Item do catálogo da estratégia: coleção itensEstrategicos. */
+  itemEstrategico: ["id", "camada", "codigo", "nome", "instrumento", "superiores", "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor"],
   /** Acesso de um e-mail ao espaço (passo 2.1): o papel e o responsável ligado ao e-mail. */
   acesso: ["papel", "responsavel"],
   /** Etiqueta do catálogo do espaço (passo 2.10a): a ação guarda só o id. */

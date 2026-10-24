@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 23/10/2026 (versão 137 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 138 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -162,6 +162,7 @@ Regras complementares:
 - Ninguém apaga documentos do banco: a exclusão é lógica (lixeira, seção 4.7). Histórico e retratos só recebem registros novos.
 - Comentários: o autor é sempre o e-mail do login, em minúsculas; o autor edita guardando as versões anteriores (a lista só cresce, com o começo igual); apagado, o comentário não muda mais. A leitura é pública: um comentário "apagado" some da tela, mas continua legível por quem consultar o banco diretamente.
 - **Espaço encerrado** (passo 2.3): só leitura para todos, inclusive comentários e retratos; o administrador do espaço só reabre (apaga `encerradoEm`).
+- **Catálogo da estratégia** (passo 2.5; seção 4.11): `sistema/estrategia`, `instrumentos` e `itensEstrategicos` são consultados por qualquer pessoa e gravados só pelo Gestor da Estratégia (provisoriamente, o Administrador do Sistema). O Store confere também as regras do catálogo (camadas permitidas nas ligações, códigos, vigência); o banco, só quem grava.
 - **Administrador do Sistema** (passo 2.3): os e-mails ficam no documento `sistema/administradores` (campo `emails`, em minúsculas), **editado só no console do Firebase**; todos com login o leem. Ele altera o calendário geral e nomeia um administrador num espaço órfão (acrescenta a si mesmo como autor em `nomeacoes` e um único e-mail como administrador em `acessos`). Fora isso, não tem passe livre nos espaços.
 - **Limitações conhecidas:** (0) a cópia de segurança só leva os espaços que quem a gera pode consultar; os restritos de que não participa ficam de fora (o arquivo diz quantos, em `omitidos`), até existir o Administrador do Sistema; (1) a restauração de uma cópia de segurança no Firebase só recria os espaços em que quem restaura é administrador, e não recria comentários de outras pessoas, nem os já editados ou apagados; para restaurar tudo, o administrador do Firebase precisa relaxar as regras no console durante a restauração e publicá-las de novo em seguida; (2) as regras do passo 2.1 não puderam ser executadas num emulador do Firestore durante o desenvolvimento (o ambiente não baixa o emulador); foram conferidas por leitura, contra a tabela acima, e precisam ser conferidas no uso logo depois de publicadas.
 
@@ -216,7 +217,7 @@ erDiagram
 | `id` | id | sim | Identificador do espaço. Imutável | `3f2b8c1e-…` |
 | `nome` | texto | sim | Nome do espaço | `PI² · Fase 1` |
 | `tipo` | texto: `planoDeAcao` ou `projeto` | não | Tipo do espaço (seção 16.1; passo 2.4a). **Ausente: `projeto`**, como nos espaços criados antes do passo 2.4a | `planoDeAcao` |
-| `programa` | texto | não | Programa do PEI/PDI que prevê o Plano de Ação. **Obrigatório no Plano de Ação**; no Projeto, vazio. Texto livre provisório, até o catálogo do passo 2.5 | `Programa de Governança de Dados` |
+| `programa` | texto | não | Programa do PEI/PDI que prevê o Plano de Ação, em texto livre. No Plano de Ação, é obrigatório um dos dois: `vinculos` (o catálogo, desde o passo 2.5) ou este texto (planos anteriores ao catálogo, ou catálogo ainda sem Programas); no Projeto, vazio | `Programa de Governança de Dados` |
 | `aprovacao` | aprovação (4.1.6) | não | Documento que aprovou o Plano de Ação. **Obrigatório no Plano de Ação**, com a identificação; no Projeto, vazio | |
 | `modelo` | modelo (4.1.7) | não | Como o espaço define prazos, dependências e simulação. Escolhido na criação e **imutável** (passo 2.4b). **Ausente: cronograma estruturado** (estimativas, dependências e simulação), como nos espaços criados antes do passo 2.4b | |
 | `acessos` | mapa de e-mail → acesso (4.1.10) | não | Quem tem papel no espaço (passo 2.1; seção 16.3): para cada e-mail de login, em minúsculas, o papel e o responsável ligado a ele. Mantido pelo sistema (papéis na lista de responsáveis), não editado direto. **Ausente: espaço sem administração**, criado antes do passo 2.1, em que vale a regra provisória (quem tem login altera tudo) até alguém assumir a administração | `{"ana@ufci.edu.br": {"papel": "administrador", "responsavel": "3f2b…"}}` |
@@ -227,6 +228,7 @@ erDiagram
 | `encerradoEm` | momento | não | Encerramento do espaço (passo 2.3; seção 16.3): só leitura para todos, fora da lista principal, ainda acessível. Vazio: aberto. Muda só por "Encerrar" e "Reabrir" | `2027-04-15T18:00:00.000Z` |
 | `encerradoPor` | usuário | não | Quem encerrou. Vazio ao reabrir | `ana@ufci.edu.br` |
 | `nomeacoes` | lista de nomeação (4.1.11) | não | Administradores nomeados pelo Administrador do Sistema num espaço órfão (passo 2.3), em ordem. Só cresce; mantida pelo sistema | |
+| `vinculos` | lista de id | não | Itens do catálogo da estratégia (4.11) a que o Plano de Ação se liga: da camada mais baixa, hoje o Programa (passo 2.5). Lista, para aceitar mais de um no futuro; hoje a tela oferece um só (decisão do responsável, 24/10/2026). Vazio: o Programa vem do texto livre de `programa` (planos anteriores ao catálogo, ou catálogo ainda vazio) | `["7c1e…"]` |
 | `nomeInicial` | texto | não | Nome da situação inicial nos espaços sem dependências (seção 16.2; passo 2.7). **Ausente: "A fazer"**. Nos espaços com dependências, a inicial é sempre "Liberada" | `Para fazer` |
 | `situacoes` | lista de situação (4.1.8) | não | Situações personalizadas, na ordem das colunas do quadro, entre a inicial e Concluídas (passo 2.7) | |
 | `etiquetas` | lista de etiqueta (4.1.9) | não | Catálogo de etiquetas do espaço, na ordem de cadastro (passo 2.10a). Só aparece na tela com o campo opcional `etiquetas` ligado | |
@@ -660,6 +662,10 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Calendário geral | documento `sistema/calendario` | tabela `data_excluida_geral` |
 | Administradores do Sistema | documento `sistema/administradores` | papel no login institucional |
 | Nomeação | lista `nomeacoes` dentro do espaço | tabela `nomeacao`, com `espaco_id` |
+| Modelo e camadas da estratégia | documento `sistema/estrategia` | tabela `camada` |
+| Instrumento, prorrogação | `instrumentos/{id}`, com a lista `prorrogacoes` | tabelas `instrumento`, `prorrogacao` |
+| Item do catálogo, ligação | `itensEstrategicos/{id}`, com a lista `superiores` | tabelas `item_estrategico`, `ligacao` (superior, subordinado) |
+| Vínculo do Plano de Ação | lista `vinculos` dentro do espaço | tabela `espaco_vinculo` |
 | Responsável (criado no sistema) | `espacos/{id}/responsaveis/{id}` | tabela `responsavel`, com `espaco_id` |
 
 Os nomes do Firebase passam a ser em português, porque a versão 2 usa um projeto novo (seção 3.3); os nomes da versão 1 (`projects`, `tasks`, `people`) não são usados. No PostgreSQL, as listas viram tabelas de ligação e as regras da seção 4.6 viram restrições do banco (seção 3.4).
@@ -670,9 +676,83 @@ Entram no dicionário, com tabela marcada e teste, no passo em que forem constru
 
 - **Fase 2 e seguintes:** campos opcionais futuros da seção 16.8: `custoPrevisto`, `custosExecutados`, `orcamento` e o registro de riscos.
 - **Sistema definitivo (antiga Fase 4):** origem dos responsáveis (`origem`: `instituicao` ou `sistema`) e identificador institucional (`identificadorInstitucional`: a IU da pessoa ou o código da unidade), com a lista de unidades oficiais em árvore (seção 4.5).
-- **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); catálogo do PEI/PDI (seção 16.1); situações personalizadas (seção 16.2); comentários (seção 16.5). O checklist entrou no passo 2.8 (4.2.2).
+- **Fase 2:** entregas do Plano de Ação e registro do alcance, com evidência (seção 16.7); tipo do espaço, visibilidade, espaço aberto ou fechado, encerramento e papéis por espaço (seção 16.3); situações personalizadas (seção 16.2); comentários (seção 16.5). O checklist entrou no passo 2.8 (4.2.2).
 
 ---
+
+### 4.11 Estratégia: catálogo do desdobramento (módulo Superior)
+
+Passo 2.5 (seção 16.1). O catálogo do PEI/PDI é **comum a todos os espaços** e mantido pelo **Gestor da Estratégia** (provisoriamente, o Administrador do Sistema, 4.1.12; decisão do responsável, 24/10/2026) no **módulo Superior**, de telas próprias (seção 8). Modelo genérico, para acompanhar o modelo da instituição sem mudar o sistema (decisões do responsável, 24/10/2026):
+
+- **Camadas**, de cima para baixo. Hoje: Objetivo Estratégico, Objetivo de Desenvolvimento, Política, Portfólio (opcional) e Programa. O gestor renomeia, acrescenta, retira (sem itens) e marca como opcional.
+- **Instrumentos**: os documentos que criam os itens (o PEI, o PDI, uma política…), cada um com vigência própria, que pode mudar: o PEI de hoje vale dez anos e o PDI, cinco, mas isso pode variar, e um PDI pode ser prorrogado. A prorrogação fica registrada (4.11.3).
+- **Itens**: cada um numa camada, com código e nome; vale enquanto o instrumento dele vale (sem instrumento, sempre).
+- **Ligações**: um item se liga a um ou mais **superiores**, e um superior tem um ou mais subordinados (não precisam ser unívocas). O superior fica **na camada logo acima ou, enquanto a de cima for opcional, numa camada acima dela**: um Programa fica sob um Portfólio ou direto sob uma Política. O Store recusa outra ligação (`camadasAcima`, em `js/estrategia.js`).
+- **A última camada são os Planos de Ação**: os espaços do tipo Plano de Ação ligam-se, por `vinculos` (4.1), a itens da camada mais baixa do catálogo, pela mesma regra. Hoje, um só (a tela oferece um; o dado é lista).
+- **Mudanças nas camadas** que deixariam itens numa camada retirada ou com ligações que o modelo novo não permite são recusadas, com o nome do primeiro item afetado.
+- **Exclusão lógica** de itens e instrumentos: recusada para o item com subordinados ou com Planos de Ação ligados, e para o instrumento com itens.
+
+#### 4.11.1 Modelo do catálogo: o documento `sistema/estrategia`
+
+<!-- dicionario: modeloEstrategia -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `camadas` | lista de camada (4.11.2) | sim | Camadas, de cima para baixo. **Documento ausente: as camadas de partida**, listadas acima | |
+| `alteradoEm` | momento | sim | Última gravação | |
+| `alteradoPor` | usuário | não | Autor da última gravação | |
+
+#### 4.11.2 Camada: cada item de `camadas`
+
+<!-- dicionario: camada -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador da camada, usado em `camada` do item. Imutável | `programa` |
+| `nome` | texto | sim | Nome no singular, único | `Programa` |
+| `plural` | texto | sim | Nome no plural, para títulos | `Programas` |
+| `opcional` | sim/não | sim | Camada que pode ser pulada nas ligações: um item da camada de baixo pode se ligar direto à de cima dela | `true` |
+
+#### 4.11.3 Instrumento: coleção `instrumentos`
+
+<!-- dicionario: instrumento -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador. Imutável | |
+| `nome` | texto | sim | Nome do instrumento | `PDI 2024–2028` |
+| `inicio` | data | sim | Início da vigência | `2024-01-01` |
+| `fim` | data | não | Fim da vigência, já com as prorrogações. Vazio: sem fim definido | `2028-12-31` |
+| `aprovacao` | aprovação (4.1.6) | não | Documento que aprovou o instrumento: identificação no SIPAC/Protocolo e link | |
+| `prorrogacoes` | lista de prorrogação | sim | Prorrogações, em ordem; só cresce | |
+| `criadoEm` | momento | sim | Criação. Imutável | |
+| `alteradoEm` | momento | sim | Última gravação | |
+| `alteradoPor` | usuário | não | Autor da última gravação | |
+| `excluidoEm` | momento | não | Exclusão lógica | |
+| `excluidoPor` | usuário | não | Quem excluiu | |
+
+<!-- dicionario: prorrogacao -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `fimAnterior` | data | não | Fim antes da prorrogação (vazio, se não havia) | `2028-12-31` |
+| `fim` | data | sim | Fim novo; sempre depois do anterior | `2029-12-31` |
+| `em` | momento | sim | Quando foi registrada | |
+| `por` | usuário | sim | Quem registrou | |
+| `aprovacao` | aprovação (4.1.6) | não | Documento que aprovou a prorrogação | |
+
+#### 4.11.4 Item do catálogo: coleção `itensEstrategicos`
+
+<!-- dicionario: itemEstrategico -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador, usado nas ligações e em `vinculos` do espaço. Imutável | |
+| `camada` | id | sim | Camada (4.11.2). Imutável: um item noutra camada é outro item | `programa` |
+| `codigo` | texto | não | Código, único na camada (sem diferenciar maiúsculas) | `PRG-3` |
+| `nome` | texto | sim | Nome | `Programa de Governança de Dados` |
+| `instrumento` | id | não | Instrumento que criou o item (4.11.3). Vazio: vale sempre | |
+| `superiores` | lista de id | sim | Itens superiores (ligações para cima), mudados um a um (seção 4.6). Vazio na camada mais alta | |
+| `criadoEm` | momento | sim | Criação. Imutável | |
+| `alteradoEm` | momento | sim | Última gravação | |
+| `alteradoPor` | usuário | não | Autor da última gravação | |
+| `excluidoEm` | momento | não | Exclusão lógica | |
+| `excluidoPor` | usuário | não | Quem excluiu | |
 
 ## 5. Regras de cálculo
 
@@ -1001,7 +1081,7 @@ Construir um Gantt e uma rede interativos sem biblioteca externa é o maior trab
 - **Importar ações de planilha** ("Configurar este espaço"): colar a planilha a partir da linha de títulos; as colunas são reconhecidas pelo nome, em qualquer ordem (para o nome da ação, "Ação", "Rótulo", "Nome" ou "Nome da ação"). Antes de gravar, a conferência aponta erros (código inválido ou repetido, nome repetido, dependência que não existe, ciclo) e avisos. Quem importa escolhe entre só criar ações novas ou também atualizar as existentes. Dependências por código da planilha, número ou nome, nessa ordem. Fases e etapas que faltam são criadas. Detalhes no passo 1.19b da seção 12.
 - **Importar responsáveis de planilha:** Nome (obrigatório), Tipo, Sigla, Setor e E-mail. Com e-mail, é pessoa e ganha a conta de acesso, criada numa instância separada do Firebase, sem guardar sessão; a senha é sorteada e descartada, e a pessoa recebe o e-mail para definir a sua. Sem e-mail, o tipo precisa vir na planilha. Provisório até os papéis por espaço (seção 12, passo 2.1).
 - **Exportar:** "Copiar para planilha" e "Copiar fluxograma" (Mermaid), por cópia para colar.
-- **Cópia de segurança** ("Configurar o sistema"): arquivo `sextante-copia-de-seguranca`, versão 2, com todos os espaços (inclusive a lixeira), ações, responsáveis, histórico e retratos, e o calendário geral. A restauração só é feita num banco sem nenhum espaço, para nunca misturar nem sobrescrever dados.
+- **Cópia de segurança** ("Configurar o sistema"): arquivo `sextante-copia-de-seguranca`, versão 3, com os espaços que quem a gera pode consultar (inclusive a lixeira), ações, responsáveis, histórico, comentários e retratos, o calendário geral e, desde o passo 2.5, o catálogo da estratégia (`estrategia`: modelo, instrumentos e itens, inclusive os excluídos), que só é restaurado num banco sem catálogo. Arquivos das versões 1 e 2 continuam aceitos. A restauração só é feita num banco sem nenhum espaço, para nunca misturar nem sobrescrever dados.
 
 ---
 
@@ -1109,7 +1189,10 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 2.4b. ✔ Modelos prontos na criação (seção 16.1): "Cronograma estruturado", "Cronograma aberto" e "Personalizado". Inclui a data-limite opcional, antecipada do passo 2.10a (decisão do responsável, 23/10/2026). Decisões do responsável (23/10/2026): os prazos são por estimativa **ou** por data-limite, nunca os dois no mesmo espaço; o personalizado escolhe os prazos, as dependências e a simulação (só com estimativa); o modelo fica fixo depois de criado, a reavaliar (seção 14, item 5); no cronograma aberto, o indicador "Tempo restante" conta até a data-limite. Em partes:
 - ✔ Parte 1, dados e cálculo: campo `modelo` do espaço (4.1.7) e `dataLimite` da ação (4.2); regras em `js/modelos.js`; o cálculo (`caminhoCritico`), a lista, o retrato, a exportação e a conferência da importação seguem o modelo; o Store recusa o que o modelo desliga. Sem tela ainda: os espaços existentes continuam como cronograma estruturado.
 - ✔ Parte 2, telas: no "Novo espaço", a escolha do modelo em três cartões e, no personalizado, os prazos (estimativa ou data-limite), as dependências e a simulação (desligada e desmarcada com data-limite); em "Configurar este espaço", o modelo só aparece, com a nota de que não muda, e a seção Simulação só existe com simulação (`js/telas/modelo-espaco.js`). Conforme o modelo: a rede só com dependências, o cronograma só com estimativas e a linha do tempo só com simulação; os índices (indicador e ordens) só com simulação; no espaço com data-limite, "Conclusão prevista" vira "Data-limite" nas ordens, o "Tempo restante" conta até a data-limite (sem ela, sem barra), a nova ação pede a data-limite no lugar dos três pontos e não preenche a data mínima, a janela da ação mostra e edita a data-limite e não tem Reestimar nem histórico de estimativas, a planilha troca as colunas de estimativa, conclusão prevista, folga e reestimativas pela Data-limite; sem dependências, somem os campos e a coluna "Depende de". Importação: coluna "Data-limite" (também "Data limite", "Prazo" e "Data de entrega"); o que o modelo não usa fica de fora, com aviso. Exportação: as colunas seguem o modelo. Escolhas da tela guardadas no aparelho que o espaço não tem (por exemplo, a rede num espaço sem dependências) voltam ao padrão só naquele espaço.
-2.5. Catálogo do PEI/PDI e Gestor da Estratégia.
+2.5. Catálogo do PEI/PDI e Gestor da Estratégia. Desenho combinado com o responsável em 24/10/2026 (seção 4.11): modelo genérico de camadas (com camadas opcionais), instrumentos com vigência e prorrogação, itens com ligações várias para cima e para baixo, e os Planos de Ação como última camada (um vínculo por plano, guardado como lista); a gestão da estratégia fica num **módulo separado, de telas próprias, com a mesma aparência e outro nome, provisoriamente "Superior"**; o Gestor da Estratégia é, provisoriamente, o Administrador do Sistema; a carga inicial é por planilha, e cada item guarda código e nome. Em três partes:
+- ✔ Parte 1, dados e regras (24/10/2026): `js/estrategia.js` (camadas permitidas, vigência, caminho até o topo, validações, conferência da importação por planilha); no Store, `lerCatalogo`, `alterarCamadas`, `criarInstrumento`, `alterarInstrumento`, `prorrogarInstrumento`, `excluirInstrumento`, `criarItemEstrategico`, `alterarItemEstrategico`, `ligarSuperior`, `desligarSuperior`, `excluirItemEstrategico` e `importarCatalogo`, e `vinculos` do espaço conferidos contra o catálogo; o Plano de Ação aceita o Programa do catálogo ou, como antes, em texto livre; bancos com o documento do modelo e as coleções do catálogo (testes de contrato); cópia de segurança versão 3, com o catálogo; regras do banco (a publicar no console). Sem tela ainda.
+- Parte 2: o módulo Superior (árvore, instrumentos, camadas, importação).
+- Parte 3: no sistema de planos, o Plano de Ação escolhe o Programa no catálogo.
 2.6. Entregas dos Planos de Ação: cadastro obrigatório das entregas e registro do alcance, com evidência (seção 16.7). Exemplo de Plano de Ação, com entregas e evidências.
 2.7. ✔ Situações personalizadas, aviso de nova dependência, volta à situação inicial e nome renomeável da situação inicial (seção 16.2). Feito em 23/10/2026. Decisões do responsável: a inicial se chama "A fazer" nos espaços sem dependências, com nome editável (nos espaços com dependências, continua "Liberada"); até os papéis (passo 2.1), quem tem login cria, renomeia, reordena e retira as situações; retirar uma situação devolve as ações dela à inicial, com aviso de quantas. Dados: `situacoes` e `nomeInicial` do espaço (4.1, 4.1.8) e `situacaoPersonalizada` da ação (4.2); regras em `js/situacoes.js`; no Store, `mudarSituacao` (só para ação liberada) e `retirarSituacao`; a personalizada é apagada quando a ação é concluída, ganha uma anterior não concluída, tem a data mínima levada para o futuro ou tem uma anterior com a conclusão desfeita, e assim a ação volta sempre à inicial. Telas: seção "Situações" em "Configurar este espaço" (lista com as fixas, as personalizadas editáveis com ↑ ↓ e ×, e "Nova situação" com Enter); quadro com uma coluna por situação (arrastar entre a inicial e as personalizadas muda a situação; para Concluídas, registra a conclusão; de Concluídas para a inicial, desfaz); na lista, a etiqueta da personalizada sob o nome; no filtro, as liberadas se abrem na inicial e em cada personalizada (nos espaços sem dependências, "Liberadas" passa a "Em aberto"); na janela da ação, a situação vira uma lista de escolha na ação liberada; ao acrescentar uma anterior não concluída numa ação em situação personalizada, um aviso pede confirmação antes de gravar; planilha, exportação e histórico mostram o nome da situação. Ícone das personalizadas: círculo com um quarto marcado. Ajuste 128 (pedido do responsável, 23/10/2026): as colunas também se criam, renomeiam e retiram no próprio quadro, além de em "Configurar este espaço" > Situações.
 2.8. ✔ Checklist. Feito no lote de 22/10/2026 (antes dos passos 2.1 a 2.7, por não depender deles nem de regras novas no banco): campo `checklist` da ação (4.2.2); na janela da ação, "Adicionar checklist", itens com caixa de marcar, texto editável com um clique e ×; progresso "feitos/total" nos cartões da lista e do quadro.
@@ -1660,3 +1743,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 135 | Passo 2.1: papéis por espaço (Administrador do espaço, Usuário, Leitor) e espaço aberto ou fechado. Papel escolhido na lista de responsáveis; quem cria é administrador; "Assumir a administração" nos espaços antigos; o Store e as regras do banco (`firestore.rules`, a publicar no console) conferem as permissões; o administrador apaga comentários alheios. Dicionário: `acessos`, `fechado`, `administracaoAssumidaPor` e `administracaoAssumidaEm` do espaço (4.1), acesso (4.1.10) |
 | 136 | Passo 2.2: visibilidade do espaço (pública, institucional ou restrita; espaço novo restrito). Barra lateral só com os espaços de que a pessoa participa; página "Espaços abertos à consulta"; tela de sem acesso; escolha em "Acesso ao espaço"; leitura do conteúdo conforme a visibilidade no `firestore.rules` (a publicar no console); cópia de segurança sem os espaços que não se pode consultar. Dicionário: `visibilidade` do espaço (4.1) |
 | 137 | Passo 2.3: encerrar e reabrir o espaço (só leitura para todos, grupo "Encerrados" na barra lateral); Administrador do Sistema por lista de e-mails no console (`sistema/administradores`), dono do calendário geral, que nomeia administrador num espaço órfão, com registro; regras do banco correspondentes (a publicar no console). Dicionário: `encerradoEm`, `encerradoPor` e `nomeacoes` do espaço (4.1), nomeação (4.1.11), Administradores do Sistema (4.1.12) |
+| 138 | Passo 2.5, parte 1: catálogo da estratégia (camadas, instrumentos, itens e ligações), sem tela; vínculo do Plano de Ação com o catálogo; cópia de segurança versão 3; regras do banco (a publicar no console). Dicionário: `vinculos` do espaço (4.1) e seção 4.11 nova (`modeloEstrategia`, `camada`, `instrumento`, `prorrogacao`, `itemEstrategico`). Corrigida a data no cabeçalho deste documento |

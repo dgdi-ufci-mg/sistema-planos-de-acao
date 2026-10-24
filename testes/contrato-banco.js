@@ -109,6 +109,23 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await assert.rejects(banco.mudarChecklist("p1", 9, (l) => l), { codigo: "nao-encontrado" });
     });
 
+    it("estratégia: modelo e coleções do catálogo; criar não sobrescreve; mudar lê e grava de uma vez (passo 2.5)", async () => {
+      const banco = criarBanco();
+      assert.equal(await banco.lerModeloEstrategia(), null);
+      await banco.gravarModeloEstrategia({ camadas: [{ id: "a", nome: "A", plural: "As", opcional: false }] });
+      assert.equal((await banco.lerModeloEstrategia()).camadas[0].id, "a");
+      await banco.criarNaColecao("itensEstrategicos", "i1", { camada: "a", nome: "Um", superiores: [] });
+      await assert.rejects(banco.criarNaColecao("itensEstrategicos", "i1", { nome: "Outro" }), { codigo: "id-ocupado" });
+      await Promise.all([
+        banco.mudarNaColecao("itensEstrategicos", "i1", (x) => ({ superiores: [...x.superiores, "s1"] })),
+        banco.mudarNaColecao("itensEstrategicos", "i1", (x) => ({ superiores: [...x.superiores, "s2"] })),
+      ]);
+      const [lido] = await banco.listarColecao("itensEstrategicos");
+      assert.deepEqual([...lido.superiores].sort(), ["s1", "s2"]);
+      assert.equal(lido.id, "i1");
+      await assert.rejects(banco.mudarNaColecao("instrumentos", "x", () => ({})), { codigo: "nao-encontrado" });
+    });
+
     it("documentos da ação: mudanças simultâneas em itens diferentes não se apagam (passo 2.10a)", async () => {
       const banco = criarBanco();
       await banco.criarEspaco("p1", { nome: "Espaço 1" });
