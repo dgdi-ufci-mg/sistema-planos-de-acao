@@ -26,6 +26,8 @@ import { criarPlanilha, colunasDaPlanilha } from "./editar-planilha.js";
 import { desenharLinhaDoTempo } from "./linha-do-tempo.js";
 import { desenharCronograma } from "./cronograma.js";
 import { desenharRede } from "./rede.js";
+import { criarTelaDeEntregas } from "./entregas.js";
+import { tipoDe } from "../tipos.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -93,7 +95,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
     escalaRede: "normal",
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
-    rapida: null, rapidaTexto: "" };
+    rapida: null, rapidaTexto: "",
+    /** entregas e registros de alcance do Plano de Ação (passo 2.6); null: ainda não lidos */
+    entregas: null, alcances: [] };
   if (!["tempo", "execucao", "revisao"].includes(ui.barra)) ui.barra = "tempo";
   let chaveSim = null;
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
@@ -103,6 +107,27 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /** janela "Nova ação" aberta: fica aberta entre criações e recebe as mudanças do banco */
   let novaJanela = null;
   const planilha = criarPlanilha({ store, espacoId, hoje, usuario });
+  /* entregas (passo 2.6): lidas ao abrir o espaço, ao entrar na visualização e depois de cada gravação nelas */
+  const ehPlano = () => tipoDe(espaco) === "planoDeAcao";
+  let lendoEntregas = null;
+  async function carregarEntregas() {
+    if (!ehPlano()) { ui.entregas = null; return; }
+    if (lendoEntregas) return lendoEntregas;
+    lendoEntregas = (async () => {
+      try {
+        [ui.entregas, ui.alcances] = await Promise.all([store.listarEntregas(espacoId), store.listarAlcances(espacoId)]);
+      } catch (e) {
+        ui.entregas = ui.entregas ?? [];
+        avisar(e.message);
+      }
+    })();
+    await lendoEntregas;
+    lendoEntregas = null;
+    if (!base) return;
+    cabeca.innerHTML = cabecaHtml();
+    if (ui.modo === "entregas") desenharLista();
+  }
+  const telaEntregas = criarTelaDeEntregas({ store, espacoId, hoje, aoMudar: carregarEntregas });
   let comAcoes = null;
   let ferramentas, lista, legenda, cabeca;
 
@@ -173,7 +198,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       : perm.papel === "leitor" ? `<p class="aviso-papel">${ICONES.pessoa}<span>Você é <b>Leitor</b> neste espaço: consulta e comenta, sem alterar.</span></p>`
       : !perm.papel && store.usuario ? `<p class="aviso-papel">${ICONES.pessoa}<span>Você não tem papel neste espaço: só consulta. Para participar, peça a um administrador do espaço.</span></p>`
       : perm.papel === "usuario" && espaco.fechado ? `<p class="aviso-papel">${ICONES.pessoa}<span>Espaço <b>fechado</b>: você atualiza só as ações em que é responsável.</span></p>` : "";
-    return `${papelAviso}${alerta || agrupado() || comExibir || comBarra ? `<div class="cabeca-linha"><div class="cabeca-controles">${comExibir ? colunasHtml() : ""}${comBarra ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
+    /* Plano de Ação sem entregas (passo 2.6): fica como rascunho */
+    const semEntregas = ehPlano() && ui.entregas && !ui.entregas.length && !perm.encerrado && ui.modo !== "entregas"
+      ? `<p class="aviso-papel sem-entregas">${ICONES.modoEntregas}<span><b>Sem entregas cadastradas.</b> Este Plano de Ação fica como rascunho até ter pelo menos uma entrega.</span>
+        <button class="botao" type="button" data-ir-entregas>Ver entregas</button></p>` : "";
+    return `${papelAviso}${semEntregas}${alerta || agrupado() || comExibir || comBarra ? `<div class="cabeca-linha"><div class="cabeca-controles">${comExibir ? colunasHtml() : ""}${comBarra ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -219,6 +248,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ligarPrioridade();
     lista.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
+      else if (ui.modo === "entregas") telaEntregas.aoTeclar(e);
     });
   }
 
@@ -243,15 +273,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["rede", "Rede", "modoRede", "so-computador"],
     ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
     ["planilha", "Planilha", "modoPlanilha", "so-computador"],
-    ["linha", "Linha do tempo", "modoLinha", "so-computador"]];
+    ["linha", "Linha do tempo", "modoLinha", "so-computador"],
+    ["entregas", "Entregas", "modoEntregas", ""]];
   /**
    * Visualizações que o modelo do espaço permite (passo 2.4b): a rede pede dependências; o
    * cronograma, estimativas; a linha do tempo, simulação. Lista, quadro e planilha valem sempre.
    */
   const modos = () => MODOS.filter(([v]) => (v === "rede" ? usaDependencias(espaco) : v === "cronograma" ? usaEstimativas(espaco)
-    : v === "linha" ? usaSimulacao(espaco) : true));
+    : v === "linha" ? usaSimulacao(espaco) : v === "entregas" ? ehPlano() : true));
   /** Modos sem filtros nem ordem: mostram o espaço inteiro (no cronograma, as setas ligariam ações escondidas). */
-  const semFiltros = () => ["planilha", "cronograma", "rede", "linha"].includes(ui.modo);
+  const semFiltros = () => ["planilha", "cronograma", "rede", "linha", "entregas"].includes(ui.modo);
   let modoDesenhado = null;
   function modosHtml() {
     const trocou = modoDesenhado !== null && modoDesenhado !== ui.modo;
@@ -819,6 +850,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       return;
     }
     if (ui.modo === "linha") { desenharLinhaDoTempo(lista, { espaco, cal, sim, hoje, temAcoes: acoes.length > 0 }); return; }
+    if (ui.modo === "entregas") {
+      if (ui.entregas === null) { lista.innerHTML = '<p class="tec">Lendo as entregas…</p>'; carregarEntregas(); return; }
+      telaEntregas.desenhar(lista, { espaco, entregas: ui.entregas, alcances: ui.alcances, responsaveis, perm, meus });
+      ajustarDonos(lista);
+      return;
+    }
     const rapida = comRapida();
     if (ui.modo === "quadro") corpo = quadroHtml(ls);
     else if (!ls.length && !rapida) corpo = `<p class="lista-vazia">Nenhuma ação com esses filtros.</p>`;
@@ -1116,6 +1153,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   function mudarModo(modo) {
     if (modo === "cronograma") ui.retratos = null; // relê a lista: pode haver retrato novo
+    if (modo === "entregas") carregarEntregas(); // relê: outra pessoa pode ter registrado
     if (modo === "quadro" && ui.situacao !== "atrasada") ui.situacao = "todas"; // no quadro, as colunas já separam as situações
     mudar("modo", modo);
   }
@@ -1180,6 +1218,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (t.closest("[data-reabrir]")) {
       return store.reabrirEspaco(espacoId).then(() => avisar("Espaço reaberto.")).catch((f) => avisar(f.message));
     }
+    if (t.closest("[data-ir-entregas]")) return mudarModo("entregas");
+    if (ui.modo === "entregas" && telaEntregas.aoClicar(e)) return;
     if (t.closest("[data-assumir]")) {
       return store.assumirAdministracao(espacoId).then(() => avisar("Você agora é administrador deste espaço. Os responsáveis com e-mail viraram usuários.")).catch((f) => avisar(f.message));
     }
@@ -1294,6 +1334,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     fila = fila.then(async () => {
       derivar(dados, dados.responsaveis, await store.lerCalendarioGeral());
       if (editando) redesenharDepois = true; else desenhar();
+      if (ui.entregas === null && ehPlano()) carregarEntregas(); // passo 2.6: o aviso "sem entregas" precisa delas
       janela?.atualizar(dadosDaJanela());
       novaJanela?.atualizar(dadosDaJanela());
     }).catch((e) => avisar(e.message));

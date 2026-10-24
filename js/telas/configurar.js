@@ -26,6 +26,8 @@ import { opcoesDoCalculo, usaSimulacao, usaDependencias } from "../modelos.js";
 import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO } from "../situacoes.js";
 import { resumoDoModelo } from "./modelo-espaco.js";
 import { CORES_ETIQUETA, etiquetasDe, tomDaCor, TAMANHO_DO_NOME } from "../etiquetas.js";
+import { pendenciasParaEncerrar } from "../entregas.js";
+import { tipoDe } from "../tipos.js";
 import { PAPEIS, nomeDoPapel, semAdministracao, fechado, VISIBILIDADES, visibilidadeDe } from "../papeis.js";
 
 const CAMPOS_OPCIONAIS = [
@@ -237,7 +239,10 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
 
       <p class="tec">A cópia de segurança de todos os espaços, e a restauração dela, ficam em "Configurar o sistema".</p>
       ${adm ? `<div class="zona-encerrar">
-        ${encerrando ? `<div class="aviso-confirmar"><p>Encerrar o espaço? Ele fica só para consulta, para todos, sai da lista principal (vai para "Encerrados", no fim da barra lateral) e continua acessível. Um administrador pode reabri-lo depois.</p>
+        ${encerrando?.faltas?.length ? `<div class="aviso-confirmar"><p><b>Antes de encerrar, complete o registro das entregas</b> (na visualização Entregas):</p>
+          <ul class="pendencias-encerrar">${encerrando.faltas.map((f) => `<li>${esc(f.mensagem)}</li>`).join("")}</ul>
+          <div class="botoes"><button class="botao" type="button" data-cancelar-encerrar>Entendi</button></div></div>`
+        : encerrando ? `<div class="aviso-confirmar"><p>Encerrar o espaço? Ele fica só para consulta, para todos, sai da lista principal (vai para "Encerrados", no fim da barra lateral) e continua acessível. Um administrador pode reabri-lo depois.</p>
           <div class="botoes"><button class="botao principal" type="button" data-confirmar-encerrar>Encerrar</button><button class="botao" type="button" data-cancelar-encerrar>Cancelar</button></div></div>`
         : `<button class="botao" type="button" data-encerrar>Encerrar este espaço</button>
           <p class="tec">Quando o plano termina: fica só para consulta e sai da lista principal. Diferente de excluir.</p>`}
@@ -706,7 +711,16 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     }
     /* acesso ao espaço (passo 2.1) */
     /* encerrar e reabrir (passo 2.3) */
-    if (t.dataset.encerrar != null) { encerrando = true; desenhar(); return; }
+    if (t.dataset.encerrar != null) {
+      /* Plano de Ação (passo 2.6): mostra antes o que falta nas entregas */
+      let faltas = [];
+      if (tipoDe(espaco) === "planoDeAcao") {
+        try { faltas = pendenciasParaEncerrar(await store.listarEntregas(espacoId), await store.listarAlcances(espacoId)); } catch (f) { avisar(f.message); return; }
+      }
+      encerrando = { faltas };
+      desenhar();
+      return;
+    }
     if (t.dataset.cancelarEncerrar != null) { encerrando = false; desenhar(); return; }
     if (t.dataset.confirmarEncerrar != null) { encerrando = false; await gravarAcesso(() => store.encerrarEspaco(espacoId), "Espaço encerrado. Fica só para consulta."); return; }
     if (t.dataset.reabrir != null) { await gravarAcesso(() => store.reabrirEspaco(espacoId), "Espaço reaberto."); return; }

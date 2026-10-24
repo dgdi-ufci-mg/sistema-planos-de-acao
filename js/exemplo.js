@@ -127,6 +127,10 @@ export async function carregarExemplo(store, hoje = new Date()) {
   const { datasExcluidas, dia } = calendarioDoExemplo(hoje);
   const espacoId = await store.criarEspaco({
     nome: "Exemplo: repositório de dados acadêmicos",
+    /* Plano de Ação desde o passo 2.6, para mostrar as entregas; Programa e aprovação fictícios */
+    tipo: "planoDeAcao",
+    programa: "Programa de Governança de Dados (exemplo)",
+    aprovacao: { identificacao: "23001.000123/2026 (fictício)" },
     inicio: dia(0),
     prazoFinal: dia(PRAZO_FINAL),
     datasExcluidas,
@@ -158,5 +162,25 @@ export async function carregarExemplo(store, hoje = new Date()) {
       ...(a.notas ? { notas: a.notas } : {}),
     });
   }
+
+  /* entregas do Plano de Ação (passo 2.6): uma em andamento com alcance, uma padrão e uma ainda não iniciada */
+  const paineis = await store.criarEntrega(espacoId, {
+    titulo: "Painéis de indicadores acadêmicos publicados", tipoMeta: "quantitativa", meta: 3, unidade: "painéis",
+    descricao: "Evasão, retenção e conclusão por curso, abertos às coordenações.", prazo: dia(PRAZO_FINAL), responsaveis: [idPorSigla.ANA, idPorSigla.PROGRAD],
+  });
+  await store.mudarSituacaoDaEntrega(espacoId, paineis, { situacao: "emAndamento" });
+  await store.registrarAlcance(espacoId, paineis, {
+    data: dia(30), valor: 1, descricao: "Painel de evasão publicado para as coordenações, em versão de homologação.",
+    evidencias: [{ descricao: "Ata da reunião de homologação com a PROGRAD", identificacao: "23001.004600/2026 (fictício)" }],
+    realizadores: [idPorSigla.ANA, idPorSigla.PROGRAD],
+  });
+  const norma = await store.criarEntrega(espacoId, {
+    titulo: "Norma de uso dos dados acadêmicos aprovada", tipoMeta: "padrao", prazo: dia(60), responsaveis: [idPorSigla.CAM, idPorSigla.PF],
+  });
+  await store.mudarSituacaoDaEntrega(espacoId, norma, { situacao: "emAndamento" });
+  await store.criarEntrega(espacoId, {
+    titulo: "Coordenadores de curso capacitados", tipoMeta: "percentual", meta: 80, prazo: dia(PRAZO_FINAL), responsaveis: [idPorSigla.CAM],
+    descricao: "Percentual dos coordenadores de curso que participaram das oficinas.",
+  });
   return espacoId;
 }

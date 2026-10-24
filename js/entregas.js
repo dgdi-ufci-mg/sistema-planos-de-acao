@@ -23,12 +23,12 @@ export const TIPOS_DE_META = Object.freeze({
  * exigeJustificativa: sempre; justificativaAoEncerrar / alcanceAoEncerrar: só para encerrar o espaço.
  */
 export const SITUACOES_DA_ENTREGA = Object.freeze({
-  naoIniciada: { nome: "Não iniciada", termina: false, justificativaAoEncerrar: true },
-  emAndamento: { nome: "Em andamento", termina: false, alcanceAoEncerrar: true },
-  alcancada: { nome: "Alcançada", termina: true, exigeAlcance: true },
-  parcialmenteAlcancada: { nome: "Parcialmente alcançada", termina: true, exigeAlcance: true, exigeJustificativa: true },
-  naoAlcancada: { nome: "Não alcançada", termina: true, exigeJustificativa: true },
-  cancelada: { nome: "Cancelada", termina: true, exigeJustificativa: true },
+  naoIniciada: { nome: "Não iniciada", termina: false, justificativaAoEncerrar: true, explicacao: "Nada foi feito ainda." },
+  emAndamento: { nome: "Em andamento", termina: false, alcanceAoEncerrar: true, explicacao: "Algo foi feito e a busca continua." },
+  alcancada: { nome: "Alcançada", termina: true, exigeAlcance: true, explicacao: "Tudo foi obtido." },
+  parcialmenteAlcancada: { nome: "Parcialmente alcançada", termina: true, exigeAlcance: true, exigeJustificativa: true, explicacao: "Parte foi obtida e a busca terminou." },
+  naoAlcancada: { nome: "Não alcançada", termina: true, exigeJustificativa: true, explicacao: "Algo foi feito, nada foi obtido e a busca terminou." },
+  cancelada: { nome: "Cancelada", termina: true, exigeJustificativa: true, explicacao: "A busca foi interrompida por decisão, como uma mudança de estratégia." },
 });
 export const SITUACAO_INICIAL_DA_ENTREGA = "naoIniciada";
 

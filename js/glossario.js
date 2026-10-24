@@ -58,4 +58,9 @@ export const GLOSSARIO = [
   { chave: "rede", titulo: "Rede (fluxo das ações)",
     texto: "Desenho das ações como cartões ligados por setas, da esquerda para a direita, na ordem em que podem acontecer. Mostra o que precisa terminar antes de cada ação começar.",
     tecnico: "diagrama de rede PERT/CPM" },
+  { chave: "entrega", titulo: "Entrega do Plano de Ação",
+    texto: "Um resultado do Plano de Ação como um todo, que importa para o PEI/PDI, com meta: percentual (como 95% dos pedidos atendidos em 24 horas), quantitativa (como 10 Procedimentos-Padrão publicados) ou entrega padrão, feita ou não. Situações: Não iniciada (nada foi feito), Em andamento (algo foi feito e a busca continua), Alcançada (tudo foi obtido), Parcialmente alcançada (parte foi obtida e a busca terminou), Não alcançada (algo foi feito, nada foi obtido e a busca terminou) e Cancelada (a busca foi interrompida por decisão).",
+    tecnico: "meta do plano, como no Programa de Gestão e Desempenho (PGD)" },
+  { chave: "evidencia", titulo: "Evidência",
+    texto: "O que comprova um alcance registrado numa entrega: uma descrição e a identificação do documento no SIPAC/Protocolo ou um link. Todo registro de alcance tem pelo menos uma, e ninguém o altera depois." },
 ];
