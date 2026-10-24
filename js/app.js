@@ -25,6 +25,7 @@ import { abrirEntrar, abrirTrocarSenha } from "./telas/acesso.js";
 import { abrirLixeira } from "./telas/lixeira.js";
 import { abrirConsulta } from "./telas/consulta.js";
 import { abrirExtracao } from "./telas/extracao.js";
+import { instalar, instalado, aoMudarInstalacao, registrarAplicativo } from "./telas/instalar.js";
 import { criarVigiaDeConexao, sondaDoSite } from "./conexao.js";
 
 document.title = NOME;
@@ -110,6 +111,8 @@ async function atualizarTopo() {
       aoRestaurarEspaco: () => atualizarTopo(),
     }),
     aoAjuda: () => ajuda(),
+    /* aplicativo instalável (seção 8, "Instalar como aplicativo"); some quando já aberto como aplicativo */
+    aoInstalar: instalado() ? null : () => instalar(),
     /* extração personalizada (passo 2.10): os espaços do banco que a pessoa consulta e, se aberto, o exemplo */
     aoExtracao: async () => {
       const { meus, consulta } = await espacosDoBanco();
@@ -277,6 +280,10 @@ window.addEventListener("hashchange", () => {
   const id = location.hash.match(/^#\/espaco\/([\w-]+)$/)?.[1];
   if (id && id !== abertoId && store) abrirEspaco(id);
 });
+
+/* aplicativo instalável pelo navegador: o service worker, sem cache, e a barra refeita quando o navegador oferece instalar */
+registrarAplicativo();
+aoMudarInstalacao(() => { if (store) atualizarTopo(); });
 
 async function partida() {
   if (FIREBASE_CONFIG) {

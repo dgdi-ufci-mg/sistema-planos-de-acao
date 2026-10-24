@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 147 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 148 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -74,6 +74,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `config.js` | Configuração do Firebase (projeto `sextante-v2`; pública por desenho; `null` = só memória) |
 | `firestore.rules` | Regras do banco, publicadas à mão no console do Firebase |
 | `logo.png` | Logotipo (rosa dos ventos) |
+| `manifest.webmanifest`, `icones/`, `sw.js` | Aplicativo instalável pelo navegador: manifesto (nome, cores, ícones), ícones de 180, 192 e 512 px (um deles com margem para o recorte do Android) e o *service worker*, sem cache (seção 8, "Instalar como aplicativo") |
 | `v2/index.html` | Só leva quem guardou o endereço antigo `/v2/` para a raiz |
 | `superior/index.html` | Página do módulo Superior, a gestão da estratégia (passo 2.5; seção 8, "Módulo Superior"), no endereço `/superior/` |
 | **Regras, sem tela nem banco** | |
@@ -102,6 +103,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | **Telas** | |
 | `js/app.js` | Partida, roteamento (`#/espaco/<id>`), conexão, escolha do banco |
 | `js/superior/app.js`, `js/superior/telas.js`, `js/superior/exemplo.js` | Módulo Superior: partida (banco, login, conexão; o nome provisório do módulo, `NOME_DO_MODULO`, num lugar só), as abas Desdobramento, Instrumentos, Camadas e Importar, e o catálogo de exemplo usado sem o Firebase |
+| `js/telas/instalar.js` | "Instalar como aplicativo": o pedido de instalação do navegador ou as instruções para cada aparelho; registro do *service worker* |
 | `js/telas/extracao.js` | Tela "Extração de dados" (passo 2.10) |
 | `js/telas/*.js` | Uma tela ou peça por arquivo: navegação, abertura, espaço (lista e quadro), janela da ação, nova ação, planilha (`editar-planilha.js`), cronograma, rede, linha do tempo, configurar espaço e sistema, tipo e modelo do espaço (`tipo-espaco.js`, `modelo-espaco.js`), entregas do Plano de Ação (`entregas.js`), lixeira, ajuda, acesso, seletor com busca, edição no lugar, exclusão, pendências, pessoas, painel, movimento |
 | **Testes** | |
@@ -987,7 +989,7 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 
 As seções 8.1 a 8.5 guardam as decisões de interface na ordem em que foram tomadas, com as revisões ("Revisto em…"). Quando duas se contradizem, vale a mais recente. Este resumo descreve o estado em 23/10/2026.
 
-**Barra lateral** (como no Todoist e no Notion): no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços, agrupados por tipo ("Planos de Ação", depois "Projetos", só os tipos que existem; seção 16.1), cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, Legenda, Lixeira, "Ajuda e manual", "Extração de dados" (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Configurar o sistema". No computador, fica ao lado do conteúdo e pode ser recolhida (lembrado no aparelho): o botão de recolher fica no canto superior direito dela. Recolhida, o canto da barra do topo fica vazio, o nome do espaço aparece grande no alto do conteúdo e um **puxador** na borda esquerda da tela abre a barra de novo; **Ctrl+B** (⌘B no Mac) abre e recolhe. No celular, abre por cima, com fundo escurecido, pelo botão de três linhas.
+**Barra lateral** (como no Todoist e no Notion): no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços, agrupados por tipo ("Planos de Ação", depois "Projetos", só os tipos que existem; seção 16.1), cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, Legenda, Lixeira, "Ajuda e manual", "Instalar como aplicativo" (some quando já aberto como aplicativo), "Extração de dados" (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Configurar o sistema". No computador, fica ao lado do conteúdo e pode ser recolhida (lembrado no aparelho): o botão de recolher fica no canto superior direito dela. Recolhida, o canto da barra do topo fica vazio, o nome do espaço aparece grande no alto do conteúdo e um **puxador** na borda esquerda da tela abre a barra de novo; **Ctrl+B** (⌘B no Mac) abre e recolhe. No celular, abre por cima, com fundo escurecido, pelo botão de três linhas.
 
 **Barra do topo do espaço, no computador** (três grupos, como no Numbers do Mac; aprovada em 23/10/2026):
 
@@ -1116,6 +1118,15 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 - **Barra lateral:** o grupo "Quadros de tarefas", depois de "Projetos".
 - **Configurar este espaço:** o tipo aparece só para leitura ("Escolhido na criação; não muda"), sem Modelo, datas, nem o campo opcional "Fases e etapas". Nos outros tipos, o Quadro de tarefas não aparece entre as opções.
 - **Exemplo:** "Ver um exemplo" passa a abrir também "Exemplo: tarefas da equipe de dados", com sete tarefas em A fazer, Fazendo, Em revisão e Concluídas, duas pessoas e datas-limite (uma vencida).
+
+**Instalar como aplicativo** (seção 13.2, primeiro passo; feito em 24/10/2026, a pedido do responsável):
+- **O que é:** o site fica na tela inicial do celular, ou como aplicativo no computador, aberto sem a barra do navegador, sem loja e sem custo (*termo técnico: aplicativo instalável pelo navegador, PWA*). Vale para o sistema de planos e para o módulo Superior, que fica dentro dele.
+- **Barra lateral:** "Instalar como aplicativo", depois de "Ajuda e manual"; some quando o sistema já está aberto como aplicativo. No Android e no computador (Chrome e Edge), abre o pedido de instalação do próprio navegador, quando ele oferece; senão, e sempre no iPhone e no iPad, abre um painel com os passos para cada aparelho.
+- **Arquivos:** `manifest.webmanifest` (nome, cores claras do fundo, tela cheia, início na raiz), `icones/` (feitos a partir do `logo.png`, de 112 px; um logotipo em resolução maior deixaria os ícones mais nítidos) e, no `index.html` e no `superior/index.html`, o manifesto, o ícone do iPhone, a cor da barra do sistema (clara ou escura, conforme o tema do aparelho) e o nome na tela inicial.
+- **Sem cache, de propósito** (escolha técnica): o *service worker* (`sw.js`) não guarda cópia das páginas, para cada publicação chegar ao aplicativo instalado como chega ao navegador, sem versões velhas presas no celular. O sistema precisa de internet de qualquer forma (Firebase); sem conexão, a abertura mostra uma página simples, "Sem conexão com a internet", com "Tentar de novo", no lugar da página de erro do navegador.
+- **O nome** está também nos arquivos estáticos (manifesto e páginas), porque o celular os lê sem rodar o sistema; um teste (`testes/aplicativo.test.js`) confere que é o mesmo de `js/identidade.js`.
+- **Acesso:** continua o mesmo do site. A restrição da leitura a quem tem login (passo 2 da ideia, seção 13.2) não foi feita; depende de decisão do responsável.
+- **Conferido no Chromium:** o manifesto não tem erros e a instalação é aceita (o único impedimento no teste foi a janela anônima do próprio teste). A página "Sem conexão" e a instalação num iPhone e num Android de verdade ficaram para o responsável conferir.
 
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
@@ -1372,7 +1383,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 - **Piloto (passo 1.21):** uso real na PI² por algumas semanas, registrando conclusões e reestimativas, para conferir previsões, avisos e telas.
 - **Manual do usuário (passo 1.22):** parado até o responsável liberar. O arquivo `docs/manual-do-usuario.md` ainda descreve a versão 1.
 - **Palavra "tarefa" no Quadro de tarefas** (passo 3.1): trocada nos lugares mais à vista (quadro, lista, botões e janelas de nova tarefa e da tarefa, planilha, avisos de atrasadas); ainda dizem "ação" alguns textos secundários, como o aviso depois de excluir, as mensagens de recusa do Store, a configuração do espaço e o histórico. Ajustar quando o responsável notar algum.
-- **Fases 2 e 3** (seção 12): papéis e visibilidade, encerramento, tipos de espaço, catálogo do PEI/PDI, entregas dos Planos de Ação, situações personalizadas, comentários, extração de dados, campos opcionais e quadro de tarefas.
+- **Proteção da `main` (passo 2.11):** configuração no GitHub, quando começar o uso oficial ou entrar a segunda pessoa.
 - **Fase 4** (seção 12): passagem à equipe de TI, com a documentação conceitual, os casos de referência e o acompanhamento do novo desenvolvimento.
 - **Pontos para reavaliação** (seção 14), com o sistema em uso.
 - **Velocidade:** com 200 ações, a simulação leva cerca de 1 s no ambiente de teste. Se travar no celular, levá-la para segundo plano (*Web Worker*).
@@ -1386,7 +1397,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
   - **Dados necessários:** as estimativas originais e as datas reais de liberação e conclusão. O histórico de estimativas da ação (seção 4.3) já guarda a estimativa original e todas as revisões.
   - Referências: KAHNEMAN, D.; TVERSKY, A. Intuitive prediction: biases and corrective procedures (1979); LOVALLO, D.; KAHNEMAN, D. Delusions of success. *Harvard Business Review* (2003); FLYVBJERG, B. From Nobel Prize to project management: getting risks right. *Project Management Journal* (2006); KAHNEMAN, D. *Rápido e devagar* (2011).
 - **Aplicativo para celular, com acesso restrito à instituição.** Objetivo: distribuição gratuita, com uso só por pessoas da UFCI-MG. Proposta em etapas:
-  1. **Primeiro, aplicativo instalável pelo navegador** (*Termo técnico: PWA, progressive web app*): manifesto e ícones para instalar o site na tela inicial do Android e do iPhone, sem lojas, sem custo e sem revisão da Apple ou do Google.
+  1. ✔ **Primeiro, aplicativo instalável pelo navegador** (feito em 24/10/2026, a pedido do responsável; seção 8, "Instalar como aplicativo") (*Termo técnico: PWA, progressive web app*): manifesto e ícones para instalar o site na tela inicial do Android e do iPhone, sem lojas, sem custo e sem revisão da Apple ou do Google.
   2. **Restrição pelo login, não pela loja.** Mesmo a distribuição "não listada" da Apple deixa o app disponível para quem tiver o link. O controle de acesso fica no Firebase: mudar o `firestore.rules` para exigir login também na leitura (hoje pública, seção 3.6) e, se desejado, aceitar só e-mails do domínio institucional.
   3. **Lojas, se necessárias:** empacotar o site (por exemplo, com o Capacitor). **iPhone:** distribuição não listada, que exige aprovação na revisão da Apple, conta de teste para os revisores e funções além de um site embrulhado. **Android:** publicação comum na Play Store, com login obrigatório; a opção "privada" exige celulares gerenciados pela instituição.
   - **Custos e conta:** o programa de desenvolvedor da Apple é anual (US$ 99), com isenção para instituições de ensino e órgãos públicos só em alguns países; verificar se o Brasil está incluído. O Google cobra taxa única. As contas devem ser da instituição (CNPJ), não pessoais.
@@ -1891,3 +1902,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 145 | Passo 2.10, parte 2: tela "Extração de dados" na barra lateral (espaços, ações com os campos do dicionário, entregas, alcances, histórico; Excel, LibreOffice, CSV ou PDF pela impressão) (seções 3.1, 8 e 12) |
 | 146 | Passo 3.1: tipo Quadro de tarefas (colunas iniciais, "+ Adicionar tarefa" em cada coluna, abre no Quadro, sem fases, modelo fixo, palavra "tarefa") e exemplo de Quadro de tarefas. Dicionário: valor `quadro` em `tipo` do espaço (4.1) (seções 3.1, 4.1, 8, 12 e 13) |
 | 147 | Passo 3.2 (recorrência de tarefas) cancelado, por decisão do responsável (seções 12 e 16.8). Sem mudança no sistema |
+| 148 | Aplicativo instalável pelo navegador (primeiro passo da ideia da seção 13.2): manifesto, ícones, *service worker* sem cache, "Instalar como aplicativo" na barra lateral e no glossário; pendências da seção 13.1 atualizadas (seções 3.1, 8 e 13) |

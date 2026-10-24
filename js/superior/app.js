@@ -14,6 +14,9 @@ import { avisar } from "../telas/painel.js";
 import { mostrarSuperior } from "./telas.js";
 import { carregarCatalogoDeExemplo } from "./exemplo.js";
 import { criarVigiaDeConexao, sondaDoSite } from "../conexao.js";
+import { registrarAplicativo } from "../telas/instalar.js";
+
+registrarAplicativo("../sw.js"); // o mesmo aplicativo instalável do sistema de planos
 
 /** Nome provisório do módulo, num lugar só. */
 export const NOME_DO_MODULO = "Superior";

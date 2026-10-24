@@ -106,7 +106,7 @@ export function mostrarNavegacao(opcoes) {
   acoes = {
     aoAbrir: opcoes.aoAbrir, aoConfigurar: opcoes.aoConfigurar, novo: opcoes.aoNovo, ajuda: opcoes.aoAjuda,
     sistema: opcoes.aoSistema, entrar: opcoes.aoEntrar, trocarSenha: opcoes.aoTrocarSenha, sair: opcoes.aoSair,
-    legenda: opcoes.aoLegenda, lixeira: opcoes.aoLixeira, consulta: opcoes.aoConsulta, extracao: opcoes.aoExtracao,
+    legenda: opcoes.aoLegenda, lixeira: opcoes.aoLixeira, consulta: opcoes.aoConsulta, extracao: opcoes.aoExtracao, instalar: opcoes.aoInstalar,
   };
   if (!ligado) ligar();
   document.querySelector("[data-titulo]").textContent = titulo;
@@ -151,6 +151,7 @@ export function mostrarNavegacao(opcoes) {
       ${opcoes.comLegenda ? `<button type="button" class="lateral-acao" data-item="legenda">${ICONES.legenda}Legenda</button>` : ""}
       <button type="button" class="lateral-acao" data-item="lixeira">${ICONES.lixeira}Lixeira</button>
       <button type="button" class="lateral-acao" data-item="ajuda">${ICONES.ajuda}Ajuda e manual</button>
+      ${opcoes.aoInstalar ? `<button type="button" class="lateral-acao" data-item="instalar" title="Pôr o Sextante na tela inicial, como um aplicativo">${ICONES.instalar}Instalar como aplicativo</button>` : ""}
       ${opcoes.aoExtracao ? `<button type="button" class="lateral-acao" data-item="extracao" title="Planilha ou PDF com os dados dos espaços">${ICONES.modoPlanilha}Extração de dados</button>` : ""}
       <a class="lateral-acao" href="superior/" title="Módulo Superior: o desdobramento do PEI/PDI até os Planos de Ação">${ICONES.modoRede}Gestão da estratégia</a>
       ${usuario || !comLogin ? `<button type="button" class="lateral-acao" data-item="sistema">${ICONES.sistema}Configurar o sistema</button>` : ""}

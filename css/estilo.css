@@ -1606,3 +1606,8 @@ a.lateral-acao { text-decoration: none; }
 }
 .extracao .alternar { align-items: flex-start; }
 .extracao .alternar input { margin-top: 4px; }
+
+/* ---------- instalar como aplicativo (seção 13.2) ---------- */
+.instalar h3 { font-size: 1rem; margin: 14px 0 4px; }
+.instalar ol { margin: 0; padding-left: 20px; }
+.instalar p { margin: 0 0 8px; }

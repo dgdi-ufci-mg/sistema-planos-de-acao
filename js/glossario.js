@@ -61,6 +61,9 @@ export const GLOSSARIO = [
   { chave: "entrega", titulo: "Entrega do Plano de Ação",
     texto: "Um resultado do Plano de Ação como um todo, que importa para o PEI/PDI, com meta: percentual (como 95% dos pedidos atendidos em 24 horas), quantitativa (como 10 Procedimentos-Padrão publicados) ou entrega padrão, feita ou não. Situações: Não iniciada (nada foi feito), Em andamento (algo foi feito e a busca continua), Alcançada (tudo foi obtido), Parcialmente alcançada (parte foi obtida e a busca terminou), Não alcançada (algo foi feito, nada foi obtido e a busca terminou) e Cancelada (a busca foi interrompida por decisão).",
     tecnico: "meta do plano, como no Programa de Gestão e Desempenho (PGD)" },
+  { chave: "aplicativo", titulo: "Instalar como aplicativo",
+    texto: "Pôr o sistema na tela inicial do celular (ou como aplicativo no computador), pelo próprio navegador, sem loja e sem custo. Ele abre sem a barra do navegador, e as mudanças no site chegam sozinhas. No iPhone, pelo Safari: Compartilhar, Adicionar à Tela de Início. No Android, pelo Chrome: menu, Instalar app.",
+    tecnico: "aplicativo instalável pelo navegador (PWA)" },
   { chave: "evidencia", titulo: "Evidência",
     texto: "O que comprova um alcance registrado numa entrega: uma descrição e a identificação do documento no SIPAC/Protocolo ou um link. Todo registro de alcance tem pelo menos uma, e ninguém o altera depois." },
 ];

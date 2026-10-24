@@ -20,6 +20,8 @@ export const ICONES = Object.freeze({
   modoCronograma: svg('<path d="M4 6h8M8 12h9M13 18h7"/>'),
   /** Rede: caixas ligadas por setas. */
   modoRede: svg('<rect x="2.5" y="9" width="6" height="6" rx="1.5"/><rect x="15.5" y="3.5" width="6" height="6" rx="1.5"/><rect x="15.5" y="14.5" width="6" height="6" rx="1.5"/><path d="M8.5 12h3.5V6.5h3.5M12 12v5.5h3.5"/>'),
+  /** Instalar como aplicativo: celular com seta para baixo. */
+  instalar: svg('<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3M10.5 18.5h3"/>'),
   /** Entregas do Plano de Ação (passo 2.6): alvo com seta. */
   modoEntregas: svg('<circle cx="11" cy="13" r="8"/><circle cx="11" cy="13" r="4"/><path d="M11 13 19 5M16 5h3v3"/>'),
   /** Linha do tempo: eixo com a curva da chance de terminar. */
