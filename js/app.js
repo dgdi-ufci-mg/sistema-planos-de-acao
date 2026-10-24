@@ -24,6 +24,7 @@ import { abrirConfiguracaoDoSistema } from "./telas/configurar-sistema.js";
 import { abrirEntrar, abrirTrocarSenha } from "./telas/acesso.js";
 import { abrirLixeira } from "./telas/lixeira.js";
 import { abrirConsulta } from "./telas/consulta.js";
+import { abrirExtracao } from "./telas/extracao.js";
 import { criarVigiaDeConexao, sondaDoSite } from "./conexao.js";
 
 document.title = NOME;
@@ -107,6 +108,13 @@ async function atualizarTopo() {
       aoRestaurarEspaco: () => atualizarTopo(),
     }),
     aoAjuda: () => ajuda(),
+    /* extração personalizada (passo 2.10): os espaços do banco que a pessoa consulta e, se aberto, o exemplo */
+    aoExtracao: async () => {
+      const { meus, consulta } = await espacosDoBanco();
+      const fontes = [{ store, espacos: [...meus, ...consulta] }];
+      if (exemplo) fontes.push({ store: exemplo, espacos: await exemplo.listarEspacos(), rotulo: "exemplo" });
+      abrirExtracao({ fontes, hoje });
+    },
     aoSistema: () => sistema(),
     aoEntrar: entrar,
     aoTrocarSenha: () => abrirTrocarSenha({ acesso }),

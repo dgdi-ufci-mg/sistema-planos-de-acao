@@ -82,8 +82,8 @@ function contexto({ espaco, acoes, responsaveis, entregas = [] }) {
 /**
  * Monta as tabelas da extração.
  * @param {{
- *   espacos: {espaco: object, acoes: object[], responsaveis: object[], historico?: object[], entregas?: object[], alcances?: object[]}[],
- *   geral: object, hoje: string,
+ *   espacos: {espaco: object, geral?: object, acoes: object[], responsaveis: object[], historico?: object[], entregas?: object[], alcances?: object[]}[],
+ *   geral?: object, hoje: string,
  *   escolha: {acoes?: {campos: string[], situacao?: string}|null, entregas?: boolean, alcances?: boolean, historico?: boolean}
  * }} dados  ações, responsáveis e entregas já sem os excluídos
  * @returns {{nome: string, colunas: string[], linhas: any[][]}[]}
@@ -98,7 +98,7 @@ export function montarExtracao({ espacos, geral, hoje, escolha }) {
     const linhas = [];
     for (const e of ordenados) {
       const calculadas = e.acoes.length
-        ? montarRetrato({ espaco: e.espaco, acoes: e.acoes, responsaveis: e.responsaveis, geral, hoje }).acoes
+        ? montarRetrato({ espaco: e.espaco, acoes: e.acoes, responsaveis: e.responsaveis, geral: e.geral ?? geral, hoje }).acoes
         : [];
       const c = contexto(e);
       for (const a of calculadas.sort((x, y) => x.ordem - y.ordem).filter(filtro.vale)) {

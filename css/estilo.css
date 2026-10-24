@@ -1578,3 +1578,31 @@ a.lateral-acao { text-decoration: none; }
 .entregas-no-plano li { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
 .entregas-no-plano .tec { font-style: normal; }
 .form-entrega select { width: 100%; max-width: 100%; min-width: 0; text-overflow: ellipsis; }
+
+/* ---------- extração de dados (passo 2.10) ---------- */
+.extracao fieldset { border: 0; padding: 0; margin: 0 0 6px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.extracao legend { padding: 0; margin-bottom: 4px; font-size: .84rem; font-weight: 600; color: var(--muted); }
+.extracao .alternar input { width: auto; }
+.extracao .tipo-opcao input[type="radio"] { width: auto; margin: 3px 0 0; padding: 0; border: 0; accent-color: var(--accent); flex: none; }
+.extracao-espacos { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow: auto; padding: 6px 10px; border: 1px solid var(--grid); border-radius: var(--raio); background: var(--surface); }
+.extracao-campos { margin: 0 0 6px 24px; display: flex; flex-direction: column; gap: 6px; }
+.extracao-lista-campos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr)); gap: 2px 12px; }
+.extracao-lista-campos code { font: .72rem var(--f-dados); color: var(--muted); }
+.extracao .botoes { margin-top: 0; gap: 14px; }
+.impressao-extracao { display: none; }
+@media print {
+  body.imprimindo-extracao { padding: 0 !important; background: #fff; }
+  body.imprimindo-extracao > *:not(.impressao-extracao) { display: none !important; }
+  body.imprimindo-extracao::before { display: none; }
+  .impressao-extracao { display: block; color: #000; font: 9pt/1.3 var(--f-texto); }
+  .impressao-extracao h1 { font-size: 13pt; margin: 0 0 8pt; }
+  .impressao-extracao h2 { font-size: 11pt; margin: 12pt 0 4pt; break-after: avoid; }
+  .impressao-extracao h2 small { font-weight: 400; font-size: 8pt; }
+  .impressao-extracao table { width: 100%; border-collapse: collapse; }
+  .impressao-extracao th, .impressao-extracao td { border: .5pt solid #999; padding: 2pt 4pt; text-align: left; vertical-align: top; }
+  .impressao-extracao th { background: #eee; }
+  .impressao-extracao thead { display: table-header-group; }
+  .impressao-extracao tr { break-inside: avoid; }
+}
+.extracao .alternar { align-items: flex-start; }
+.extracao .alternar input { margin-top: 4px; }

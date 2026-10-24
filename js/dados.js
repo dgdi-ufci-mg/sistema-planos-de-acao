@@ -1497,6 +1497,7 @@ export function criarStore(banco, opcoes = {}) {
         const plano = tipoDe(espaco) === "planoDeAcao";
         return {
           espaco,
+          geral: (await banco.lerCalendarioGeral()) ?? null,
           acoes: (await banco.listarAcoes(espaco.id)).filter(ativa),
           responsaveis: await banco.listarResponsaveis(espaco.id),
           ...(historico ? { historico: await banco.listarHistoricoDoEspaco(espaco.id) } : {}),
