@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 158 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 159 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1032,7 +1032,7 @@ O cartão escolhido pelo teclado mostra o contorno de foco por dentro da borda. 
 
 Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura, os menus do centro mostram só o ícone (o nome aparece ao passar o mouse); entre 641 e 1099 px, sem espaço para centralizar, os grupos ficam lado a lado. Entre 641 e 899 px (tablet), a barra lateral abre por cima, como no celular, e o nome do espaço fica na barra do topo. A barra do topo ocupa a largura toda; o conteúdo fica em até 1240 px, salvo planilha, cronograma e rede, que usam a largura toda. Planilha e rede vão até o fim da tela.
 
-**No celular (até 640 px):** à esquerda, o botão da barra lateral e um funil que abre "Filtros e ordem" (painel que sobe de baixo); no meio, o nome do espaço; numa segunda linha, Exibir e os seletores de Indicador e "Mostrar até". O botão (+) cria ações. Só Lista e Quadro.
+**No celular (até 640 px):** à esquerda, o botão da barra lateral e um funil que abre **"Filtros e exibição"** (painel que sobe de baixo; antes "Filtros e ordem"); no meio, o nome do espaço. O botão (+) cria ações. Só Lista e Quadro. *Revisto em 25/10/2026 (item 3 da avaliação de usabilidade, a pedido do responsável):* a segunda linha com Exibir, Indicador e "Mostrar até" saiu do alto da lista, que agora começa logo abaixo da barra do topo (fica só o alerta das atrasadas, quando há). Esses controles foram para o painel, depois da situação, do responsável e da ordem, nesta ordem: Indicador (com "Ao lado da barra de tempo"), Mostrar até, Identificador antes do nome, Colunas (na lista) e Legenda dos símbolos, com os mesmos desenhos do menu Exibir do computador. Cada escolha vale na hora, com o painel aberto.
 
 **Visualizações:**
 
@@ -1956,3 +1956,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 156 | "Configurar este espaço" em abas no computador: janela larga, seções numa lista à esquerda e a aba "Encerrar ou excluir" (item 11 da avaliação de usabilidade; seção 8) |
 | 157 | Gravação automática em "Configurar este espaço" (dados, datas, fases e etapas, documentos) e no calendário geral, sem botões Salvar, com "Salvando…/Salvo" e Desfazer nas sugestões de feriados (item 10 da avaliação de usabilidade; seções 4.1 e 8) |
 | 158 | Legenda do indicador só na primeira etapa aberta da lista (item 2 da avaliação de usabilidade, aplicado a pedido do responsável; seção 8) |
+| 159 | Celular: Exibir, Indicador e "Mostrar até" saem do alto da lista e vão para o painel do funil, renomeado "Filtros e exibição" (item 3 da avaliação de usabilidade, aplicado a pedido do responsável; seção 8.0) |

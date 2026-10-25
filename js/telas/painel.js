@@ -1,6 +1,6 @@
 /**
  * Peças comuns de tela: painel lateral, que desliza da direita, e aviso curto.
- * O painel "de baixo" sobe da parte de baixo da tela no celular (como "Filtros e ordem").
+ * O painel "de baixo" sobe da parte de baixo da tela no celular (como "Filtros e exibição").
  * A "janela" fica no centro da tela no computador e sobe de baixo no celular (janela da ação).
  */
 let fecharAtual = null;

@@ -2,7 +2,7 @@
  * Espaço aberto: lista de ações (documentação técnica, seção 8.3; passo 1.6).
  * Cartões, fases e etapas recolhíveis, filtros, ordenação, "Minhas ações", legenda e animações.
  * Ferramentas na barra do topo, à direita (21/10/2026): seletor de modo, Filtrar e Ordenar (painéis
- * pequenos que abrem sob o botão) e Nova ação; no celular, um botão abre "Filtros e ordem" e o (+) cria.
+ * pequenos que abrem sob o botão) e Nova ação; no celular, um botão abre "Filtros e exibição" e o (+) cria.
  * No alto do conteúdo, só os avisos: previsão incompleta e ações atrasadas.
  */
 import { criarCalendario, datasEfetivas } from "../calendario.js";
@@ -192,9 +192,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const alerta = atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
         ? `Mostrando só ${plural(atrasadas, `a ${termos(espaco).acao} atrasada`, `as ${atrasadas} ${termos(espaco).acoes} atrasadas`)}. <u>Mostrar todas</u>`
         : `<b>${atrasadas} ${plural(atrasadas, `${termos(espaco).acao} atrasada`, `${termos(espaco).acoes} atrasadas`)}.</b> <u>Ver</u>`}</span></button>` : "";
-    const naLista = ui.modo === "lista";
-    const comBarra = ui.modo === "quadro" || (naLista && colunas().barras);
-    const comExibir = ["lista", "quadro", "rede", "cronograma"].includes(ui.modo);
     /* papéis (passo 2.1): espaço antigo sem administrador, ou quem vê sem poder alterar */
     /* encerrado (passo 2.3): só consulta; o administrador reabre */
     const quemEncerrou = espaco.encerradoPor ? responsaveis.find((r) => r.usuario === espaco.encerradoPor)?.nome ?? espaco.encerradoPor : "";
@@ -210,7 +207,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const semEntregas = ehPlano() && ui.entregas && !ui.entregas.length && !perm.encerrado && ui.modo !== "entregas"
       ? `<p class="aviso-papel sem-entregas">${ICONES.modoEntregas}<span><b>Sem entregas cadastradas.</b> Este Plano de Ação fica como rascunho até ter pelo menos uma entrega.</span>
         <button class="botao" type="button" data-ir-entregas>Ver entregas</button></p>` : "";
-    return `${papelAviso}${semEntregas}${alerta || agrupado() || comExibir || comBarra ? `<div class="cabeca-linha"><div class="cabeca-controles">${comExibir ? colunasHtml() : ""}${comBarra ? barrasHtml() : ""}${agrupado() ? niveisHtml() : ""}</div>${alerta}</div>` : ""}
+    /* a linha só aparece no celular (no computador, os menus do topo fazem o papel dela); Exibir, o indicador e
+       "Mostrar até" passaram para o painel "Filtros e exibição" (25/10/2026, item 3 da avaliação de usabilidade, a
+       pedido do responsável): a lista começa logo abaixo da barra do topo, e fica só o alerta das atrasadas */
+    return `${papelAviso}${semEntregas}${alerta ? `<div class="cabeca-linha">${alerta}</div>` : ""}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -344,9 +344,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     .map(([v, t]) => [v, v === "conclusao" && usaDataLimite(espaco) ? "Data-limite" : t]);
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
   const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a incerteza" }; /* nomes técnicos de volta (22/10/2026) */
-  const barrasHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Indicador</span><div class="modos barras" role="group" aria-label="Barra mostrada nos cartões">
-      ${barras().map(([v, nome, icone]) => `<button type="button" class="modo" data-barra="${v}" aria-pressed="${ui.barra === v}" title="${nome}" aria-label="${nome}"><span class="barra-icone ${v}">${ICONES[icone]}</span><span class="modo-nome" aria-hidden="true">${NOMES_BARRA[v]}</span></button>`).join("")}
-    </div></div>`;
   /**
    * Colunas da lista (22/10/2026, pedido do responsável): nome e situação ficam sempre; descrição,
    * participantes e barras entram e saem por um menu. A descrição só aparece se o espaço a usa.
@@ -369,19 +366,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return modo === "nenhum" ? "" : `<span class="codigo">#${a.numero}</span>`;
   };
   const OPCOES_ID = [["nenhum", "Nenhum"], ["numero", "Número (#1)"], ["codigo", "Código"]];
-  /* menu "Exibir" (antes "Colunas", 22/10/2026): identificador e, na lista, as colunas */
-  const colunasHtml = () => `<details class="menu-colunas" data-colunas-menu${ui.colunasAberto ? " open" : ""}>
-      <summary class="botao-colunas" title="Exibir" aria-label="Exibir">${ICONES.olho}<span class="colunas-nome">Exibir</span></summary>
-      <div class="popover colunas-popover" role="group" aria-label="O que exibir">
-        ${comIndicador() && ui.barra === "tempo" ? `<h3>Ao lado da barra de tempo</h3>
-        ${OPCOES_TEMPO.map(([v, nome]) => `<label><input type="radio" name="tempoNumero" data-tempo-numero="${v}"${ui.tempoNumero === v ? " checked" : ""}> ${nome}</label>`).join("")}` : ""}
-        <h3>Identificador</h3>
-        ${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos).map(([v, nome]) => `<label><input type="radio" name="identificador" data-identificador="${v}"${identificador() === v ? " checked" : ""}> ${nome}</label>`).join("")}
-        ${ui.modo === "lista" ? `<h3>Colunas</h3>
-        <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
-        ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || usaDescricao()).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}` : ""}
-      </div>
-    </details>`;
   function mudarIdentificador(v) {
     ui.identificador = v;
     try { localStorage.setItem("sextante.identificador", v); } catch { /* sem armazenamento */ }
@@ -412,9 +396,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     desenharLista();
     desenharFerramentas();
   }
-  const niveisHtml = () => `<div class="controle-rotulado"><span class="niveis-rotulo">Mostrar até</span><div class="modos niveis" role="group" aria-label="Mostrar até">
-      ${NIVEIS.map(([v, nome]) => `<button type="button" class="modo" data-nivel="${v}" aria-pressed="false"><span class="modo-nome">${nome}</span></button>`).join("")}
-    </div></div>`;
   function marcarNivel() {
     const atual = nivelAtual();
     for (const b of alvo.querySelectorAll("[data-nivel]")) b.setAttribute("aria-pressed", String(b.dataset.nivel === atual));
@@ -520,12 +501,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
   /** Menu próprio do indicador (23/10/2026, pedido do responsável): só onde há barras. */
   function indicadorHtml() {
-    return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Indicador">
+    return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Indicador">${indicadorConteudo()}</div>`;
+  }
+  function indicadorConteudo() {
+    return `
       <h3>Indicador</h3><div class="opcoes-lista">${barras().map(([v, nome, icone]) =>
         opcao("data-barra", v, nome, ui.barra === v, `<span class="barra-icone ${v}">${ICONES[icone]}</span>`)).join("")}</div>
       ${ui.barra === "tempo" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
-        opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}
-    </div>`;
+        opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}`;
   }
   /** Colunas da planilha em "Exibir" (23/10/2026): dados da ação e calculados; a coluna Ação fica sempre. */
   function colunasDaPlanilhaHtml() {
@@ -536,25 +519,27 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return grupo("Dados da ação", todas.filter((c) => !c.calculada)) + grupo("Calculados", todas.filter((c) => c.calculada));
   }
   function exibirHtml() {
+    return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Exibir">${exibirConteudo()}</div>`;
+  }
+  function exibirConteudo() {
     const nivel = agrupado() && lista ? nivelAtual() : null;
-    return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Exibir">
+    return `
       ${agrupado() ? `<h3>Mostrar até</h3><div class="opcoes-lista">${NIVEIS.map(([v, nome]) => opcao("data-nivel", v, nome, nivel === v)).join("")}</div>` : ""}
       ${ui.modo === "planilha" ? colunasDaPlanilhaHtml() : `<h3>Identificador antes do nome</h3><div class="opcoes-lista">${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos)
         .map(([v, nome]) => opcao("data-identificador-op", v, nome, identificador() === v)).join("")}</div>`}
       ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
         <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
         ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || usaDescricao()).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
-      ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${opcao("data-legenda-op", "1", "Legenda dos símbolos", ui.legenda, ICONES.legenda)}</div>`}
-    </div>`;
+      ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${opcao("data-legenda-op", "1", "Legenda dos símbolos", ui.legenda, ICONES.legenda)}</div>`}`;
   }
 
-  /** Ferramentas na barra do topo: modo, Filtrar, Ordenar e Nova ação (celular: "Filtros e ordem"). */
+  /** Ferramentas na barra do topo: modo, Filtrar, Ordenar e Nova ação (celular: "Filtros e exibição"). */
   function desenharFerramentas({ abriu = false } = {}) {
     const planilha = semFiltros();
     const nf = filtrosAtivos();
     /* teste de 23/10/2026 (pedido do responsável): nome do espaço à esquerda, seguido dos menus
        Visualização, Filtrar, Ordenar e Exibir, todos abrindo para baixo; à direita, as atrasadas e Nova ação.
-       No celular, continua o funil com "Filtros e ordem" e a segunda linha */
+       No celular, continua o funil com "Filtros e exibição" e a segunda linha */
     const [, nomeModo] = MODOS.find(([v]) => v === ui.modo);
     if (["filtrar", "ordenar"].includes(ui.pop) || (ui.pop === "classificar" && planilha)) ui.pop = null;
     if ((ui.pop === "indicador" && !comIndicador()) || (ui.pop === "exibir" && !comExibir())) ui.pop = null;
@@ -570,7 +555,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <div class="topo-esquerda">
         <span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>
         <div class="menus-topo so-computador">${menu("modo", ICONES.visualizacao, nomeModo, "", `Visualização: ${nomeModo}`)}</div>
-        <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e ordem" title="Filtros e ordem">
+        <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e exibição" title="Filtros e exibição">
           ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
         ${doCentro ? "" : popoverHtml()}
       </div>
@@ -630,7 +615,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   document.addEventListener("keydown", fecharPop);
   document.addEventListener("click", fecharColunas);
   document.addEventListener("keydown", fecharColunas);
-  /* legenda: no menu "Exibir" (24/10/2026; antes, item do menu lateral) e, no celular, em "Filtros e ordem" */
+  /* legenda: no menu "Exibir" (24/10/2026; antes, item do menu lateral) e, no celular, em "Filtros e exibição" */
 
   /* ---------- lista ---------- */
   function medidor(valor, titulo, cor, texto) {
@@ -1317,18 +1302,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     marcarLegenda();
   }
 
-  /* ---------- celular: painel "Filtros e ordem" ---------- */
+  /* ---------- celular: painel "Filtros e exibição" ---------- */
   let painelOpcoes = null;
   function preencherOpcoes() {
     painelOpcoes.innerHTML = `
       <section class="opcoes">${modosHtml()}</section>
       ${semFiltros() ? "" : `<section class="opcoes"><h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div></section>
       <section class="opcoes">${controlesHtml()}</section>`}
-      ${semFiltros() ? "" : `<section class="opcoes"><label class="alternar"><input type="checkbox" data-ctl="legenda"${ui.legenda ? " checked" : ""}> Legenda dos símbolos</label></section>`}
+      ${comIndicador() ? `<section class="opcoes">${indicadorConteudo()}</section>` : ""}
+      ${comExibir() && ui.modo !== "planilha" ? `<section class="opcoes opcoes-exibir">${exibirConteudo()}</section>` : ""}
       ${ativos() ? `<section><button class="botao discreto" type="button" data-limpar>Limpar filtros e ordem</button></section>` : ""}`;
   }
   function abrirOpcoes() {
-    painelOpcoes = abrirPainel("Filtros e ordem", "", { deBaixo: true, botao: "Pronto" });
+    painelOpcoes = abrirPainel("Filtros e exibição", "", { deBaixo: true, botao: "Pronto" });
     preencherOpcoes();
     painelOpcoes.addEventListener("change", aoMudarControle);
     painelOpcoes.addEventListener("click", (e) => {
@@ -1337,6 +1323,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       const filtro = e.target.closest("[data-filtro]");
       if (filtro) mudar("situacao", filtro.dataset.filtro);
       if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.situacao = "todas"; mudar("ordem", "espaco"); }
+      /* Exibir e indicador, no celular (25/10/2026) */
+      const b = e.target.closest("button");
+      if (!b) return;
+      if (b.dataset.barra) mostrarBarra(b.dataset.barra);
+      else if (b.dataset.nivel) mostrarAte(b.dataset.nivel);
+      else if (b.dataset.tempoNum) mudarTempoNumero(b.dataset.tempoNum);
+      else if (b.dataset.identificadorOp) mudarIdentificador(b.dataset.identificadorOp);
+      else if (b.dataset.legendaOp != null) { ui.legenda = !ui.legenda; desenharFerramentas(); }
+      else return;
+      preencherOpcoes();
     });
   }
 
