@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 150.1 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 151 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1011,7 +1011,7 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 | **Quadro** | Colunas Não liberadas, Liberadas e Concluídas, com cartões enxutos (nome, etapa, participantes, indicador); arrastar para Concluídas registra a conclusão |
 | **Rede** | Fluxo das ações em camadas, com faixas por etapa e marcos, setas em ângulo reto que não passam sobre cartões e salto onde se cruzam; zoom com Ctrl + rolar ou − e +, arraste do fundo; "Ver tudo" |
 | **Cronograma** | Gantt por fase e etapa, com dependências, caminho crítico, hoje, prazo final e comparação com um retrato; semanas ou meses |
-| **Planilha** | Grade editável, só no computador (seção 8.3, passo 1.11 da seção 12): todos os campos, inclusive os calculados, com Nº e Ação parados à esquerda |
+| **Planilha** | Grade editável, só no computador (seção 8.3, passo 1.11 da seção 12): todos os campos, inclusive os calculados, com Nº e Ação parados à esquerda. Largura de cada coluna ajustável arrastando a borda direita do título (meio em de cada vez, de 3 a 60 em), lembrada no aparelho; dois cliques na borda voltam ao tamanho original; o texto cortado aparece inteiro ao passar o mouse (24/10/2026) |
 | **Linha do tempo** | Distribuição das datas de conclusão simuladas, com conclusão prevista, data segura (P80), prazo final e chance de cumpri-lo |
 | **Entregas** | Só no Plano de Ação, também no celular (passo 2.6): as entregas do plano em cartões, com a situação, o alcance em barra e a meta; o painel de cada entrega registra o alcance e muda a situação (seção 8, "Entregas do Plano de Ação") |
 
@@ -1917,3 +1917,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 149 | Colunas do quadro revistas, a pedido do responsável, depois de avaliação de usabilidade: faixa estreita "+" com Criar e Cancelar e campo que continua aberto; menu "⋯" no título (renomear, mover, nova coluna à direita, retirar); arrastar o título para mudar a ordem; rolagem do quadro mantida (seção 8, "Colunas no quadro") |
 | 150 | Revisão de usabilidade e acessibilidade: contraste, títulos e papéis para leitores de tela, alvos de toque de 24 px, espaço para o botão (+) no celular e texto de boas-vindas para os três tipos (seção 8) |
 | 150.1 | Corrigido o número de ocorrências do teste de acessibilidade antes da revisão (59, e não 61). Sem mudança no sistema |
+| 151 | Planilha: largura das colunas ajustável pela borda do título, lembrada no aparelho, e texto cortado inteiro ao passar o mouse (item 12 da avaliação de usabilidade; seção 8) |

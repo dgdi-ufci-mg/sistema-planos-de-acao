@@ -79,9 +79,14 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   let ocupado = Promise.resolve(); // gravações em fila, na ordem em que a pessoa editou
 
   /** Colunas visíveis, na ordem da grade (as escondidas em "Exibir" ficam de fora). */
+  /* largura de cada coluna escolhida arrastando a borda do título (24/10/2026), lembrada neste aparelho */
+  const CHAVE_LARGURAS = "sextante.largurasPlanilha";
+  const larguras = (() => { try { return JSON.parse(localStorage.getItem(CHAVE_LARGURAS) || "{}"); } catch { return {}; } })();
+  const lembrarLarguras = () => { try { localStorage.setItem(CHAVE_LARGURAS, JSON.stringify(larguras)); } catch { /* sem armazenamento */ } };
   function colunas() {
     const ocultas = d.ocultas ?? new Set();
-    return colunasDaPlanilha(d).filter((c) => c.obrigatoria || !ocultas.has(c.chave));
+    return colunasDaPlanilha(d).filter((c) => c.obrigatoria || !ocultas.has(c.chave))
+      .map((c) => ({ ...c, padrao: c.largura, largura: larguras[c.chave] ?? c.largura }));
   }
 
   const etapas = () => (d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => ({ ...e, fase: f.nome })));
@@ -197,7 +202,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     cols.forEach((c, j) => { esquerdas[j] = c.fixa ? soma : null; if (c.fixa) soma += c.largura; });
     cols.forEach((c) => { c.ultimaFixa = c === fixas.at(-1); c.inicioCalculados = c === cols.find((x) => x.calculada); });
     const cabecalho = (c, j) => `<th scope="col" class="${[c.calculada && "calculada", c.inicioCalculados && "inicio-calculados", c.fixa && "fixa", c.ultimaFixa && "ultima-fixa"].filter(Boolean).join(" ")}"
-      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}>${c.titulo}</th>`;
+      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}>${c.titulo}<span class="redimensionar" data-redimensionar="${j}" title="Arraste para alargar ou estreitar; clique duas vezes para voltar ao tamanho original" aria-hidden="true"></span></th>`;
     alvo.innerHTML = `
       <details class="tec planilha-dicas so-computador"${dicasAbertas ? " open" : ""}><summary>Cada célula é gravada ao sair dela. Cinza: não se edita aqui (passe o mouse para ver o motivo). Títulos em itálico: calculados. <span class="mais">Mais dicas</span></summary>
         <p>Setas, Enter e Shift+Enter andam entre as células; Esc desfaz o que foi digitado. Cole um bloco do Google Planilhas ou do Excel a partir da célula selecionada.
@@ -366,6 +371,50 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
 
   /* ---------- eventos ---------- */
   function ligar() {
+    /* alargar ou estreitar uma coluna: arrastar a borda direita do título; dois cliques voltam ao original */
+    alvo.addEventListener("pointerdown", (e) => {
+      const alca = e.target.closest?.("[data-redimensionar]");
+      if (!alca) return;
+      e.preventDefault();
+      const j = Number(alca.dataset.redimensionar);
+      const c = colunas()[j];
+      const tabela = alvo.querySelector(".planilha");
+      const col = tabela.querySelectorAll("col")[j];
+      const em = parseFloat(getComputedStyle(tabela).fontSize);
+      const x0 = e.clientX;
+      const total0 = parseFloat(tabela.style.width);
+      let nova = c.largura;
+      alca.setPointerCapture(e.pointerId);
+      document.body.classList.add("redimensionando");
+      const mover = (ev) => {
+        nova = Math.max(3, Math.min(60, Math.round((c.largura + (ev.clientX - x0) / em) * 2) / 2));
+        col.style.width = `${nova}em`;
+        tabela.style.width = `${total0 + nova - c.largura}em`;
+      };
+      const soltar = () => {
+        alca.removeEventListener("pointermove", mover);
+        document.body.classList.remove("redimensionando");
+        if (nova !== c.largura) { larguras[c.chave] = nova; lembrarLarguras(); desenhar(alvo, d); }
+      };
+      alca.addEventListener("pointermove", mover);
+      alca.addEventListener("pointerup", soltar, { once: true });
+      alca.addEventListener("pointercancel", soltar, { once: true });
+    });
+    alvo.addEventListener("dblclick", (e) => {
+      const alca = e.target.closest?.("[data-redimensionar]");
+      if (!alca) return;
+      delete larguras[colunas()[Number(alca.dataset.redimensionar)].chave];
+      lembrarLarguras();
+      desenhar(alvo, d);
+    });
+    /* texto cortado: aparece inteiro ao passar o mouse */
+    alvo.addEventListener("mouseover", (e) => {
+      const el = e.target.closest?.(".planilha td input, .planilha td span");
+      if (el && !el.title) {
+        const texto = el.value ?? el.textContent;
+        if (texto && el.scrollWidth > el.clientWidth + 1) el.title = texto;
+      }
+    });
     alvo.addEventListener("change", (e) => { if (e.target.dataset?.chave) gravarCelula(e.target); });
     alvo.addEventListener("input", (e) => { if (e.target.type === "date") e.target.toggleAttribute("data-vazia", !e.target.value); });
     alvo.addEventListener("toggle", (e) => { if (e.target.matches?.(".planilha-dicas")) { dicasAbertas = e.target.open; ajustarAltura(); } }, true);

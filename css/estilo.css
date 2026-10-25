@@ -1648,3 +1648,10 @@ a.lateral-acao { text-decoration: none; }
 /* alvos de toque de pelo menos 24 px (WCAG 2.5.8) nos × pequenos, sem mudar o desenho */
 .tirar { min-width: 24px; min-height: 24px; justify-content: center; align-items: center; margin: -3px; }
 .tipos-boas-vindas { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+
+/* planilha: alargar e estreitar as colunas pela borda do título (24/10/2026) */
+.planilha th { position: sticky; }
+.planilha .redimensionar { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 3; touch-action: none; }
+.planilha .redimensionar::after { content: ""; position: absolute; top: 20%; bottom: 20%; left: 3px; width: 2px; border-radius: 1px; background: transparent; transition: background-color var(--mov-rapido); }
+.planilha th:hover .redimensionar::after, .redimensionando .planilha .redimensionar::after { background: var(--accent); }
+body.redimensionando, body.redimensionando * { cursor: col-resize !important; user-select: none; }
