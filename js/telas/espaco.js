@@ -254,6 +254,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ferramentas.onclick = aoClicarNaBarra;
     ligarArraste();
     ligarSegurar();
+    ligarDeslizar();
     ligarPrioridade();
     lista.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
@@ -1336,6 +1337,60 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     };
     quadro.addEventListener("scroll", marcar, { passive: true });
     marcar();
+  }
+  /**
+   * Deslizar o cartão na lista, no celular (25/10/2026, item 18 da avaliação de celular), como no Todoist e no
+   * Microsoft To Do: para a direita, conclui (abre o registro da conclusão, se a ação pode ser concluída); para a
+   * esquerda, abre o menu do cartão. O cartão acompanha o dedo e revela o que vai acontecer; soltando antes de
+   * 90 px, volta ao lugar. Só na lista: no quadro, deslizar para o lado troca de coluna.
+   */
+  function ligarDeslizar() {
+    let gesto = null;
+    let engolirClique = false;
+    const voltar = () => {
+      if (!gesto) return;
+      const { linha, item } = gesto;
+      linha.style.transition = "transform .18s ease";
+      linha.style.transform = "";
+      setTimeout(() => { linha.style.transition = ""; item.classList.remove("deslizando", "para-esquerda"); delete item.dataset.deslizar; }, 200);
+      gesto = null;
+    };
+    lista.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch" || ui.modo !== "lista") return;
+      const linha = e.target.closest(".linha[data-abrir-acao]");
+      if (!linha || e.target.closest("[data-puxar], [data-editando]")) return;
+      gesto = { linha, item: linha.closest(".item"), x: e.clientX, y: e.clientY, ativo: false, numero: Number(linha.closest("[data-numero]").dataset.numero) };
+    });
+    lista.addEventListener("pointermove", (e) => {
+      if (!gesto) return;
+      const dx = e.clientX - gesto.x;
+      const dy = e.clientY - gesto.y;
+      if (!gesto.ativo) {
+        if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { gesto = null; return; } // é rolagem
+        if (Math.abs(dx) < 12) return;
+        gesto.ativo = true;
+        gesto.podeConcluir = destinoValido("concluida", gesto.numero);
+      }
+      const desloc = dx > 0 && !gesto.podeConcluir ? dx / 4 : dx; // sem poder concluir, o cartão resiste
+      gesto.dx = dx;
+      gesto.item.classList.add("deslizando");
+      gesto.item.classList.toggle("para-esquerda", dx < 0);
+      gesto.item.dataset.deslizar = dx < 0 ? "Mais opções" : gesto.podeConcluir ? "Concluir" : "Não pode ser concluída agora";
+      gesto.linha.style.transform = `translateX(${Math.max(-140, Math.min(140, desloc))}px)`;
+    });
+    const soltar = () => {
+      if (!gesto) return;
+      const { ativo, dx = 0, numero, podeConcluir } = gesto;
+      voltar();
+      if (!ativo) return;
+      engolirClique = true;
+      setTimeout(() => { engolirClique = false; }, 400);
+      if (dx > 90 && podeConcluir) { navigator.vibrate?.(10); abrirJanela(numero, "concluir"); }
+      else if (dx < -90) abrirMenuDoCartao(numero);
+    };
+    lista.addEventListener("pointerup", soltar);
+    lista.addEventListener("pointercancel", voltar);
+    lista.addEventListener("click", (e) => { if (engolirClique) { engolirClique = false; e.stopPropagation(); e.preventDefault(); } }, true);
   }
   function ligarSegurar() {
     let relogio = null;

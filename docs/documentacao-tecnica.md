@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 178 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 179 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1300,6 +1300,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Módulo Superior no celular** (item 17): as abas (Desdobramento, Instrumentos, Camadas, Importar) rolam para o lado sem barra de rolagem, e a borda direita esmaece enquanto houver aba escondida; a aba escolhida rola para a vista. Na árvore do desdobramento, até 640 px, cada nível recua 16 px (antes, 25), para o último nível não ficar com metade da largura.
 
+- **Deslizar o cartão** (item 18; como no Todoist e no Microsoft To Do): na **lista**, no celular, arrastar um cartão para o lado com o dedo: para a **direita**, revela "Concluir" sobre fundo verde e, soltando depois de 90 px, abre o registro da conclusão (com vibração leve no Android); se a ação não pode ser concluída agora, o cartão resiste ao dedo e mostra "Não pode ser concluída agora"; para a **esquerda**, revela "Mais opções" e abre o menu do cartão (item 10). O gesto só começa com 12 px na horizontal e mais horizontal que vertical: rolar a lista continua normal. No quadro não há o gesto (lá, deslizar troca de coluna); segurar o cartão abre o menu nas duas visualizações.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -2014,3 +2016,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 176 | Conferência: toda tela tem saída pelo próprio sistema no aplicativo instalado, sem o Voltar do navegador (item 16 da avaliação de celular; seção 8.7) |
 | 177 | Celular: explicações com 13 px sem itálico, iniciais com 11 px e textos de apoio com 12 px (item 9 da avaliação de celular; seção 8.7) |
 | 178 | Superior no celular: abas com a borda esmaecida quando há mais e árvore com recuo menor (item 17 da avaliação de celular; seção 8.7) |
+| 179 | Celular: deslizar o cartão da lista para a direita conclui e para a esquerda abre o menu (item 18 da avaliação de celular; seção 8.7) |
