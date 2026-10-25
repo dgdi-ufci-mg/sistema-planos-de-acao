@@ -1916,3 +1916,11 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 .item.deslizando > .linha { background: var(--surface); position: relative; z-index: 1; }
 .item.deslizando::before { content: attr(data-deslizar); position: absolute; inset: 0 auto 0 0; display: flex; align-items: center; padding: 0 16px; font-weight: 700; font-size: .9rem; color: var(--ok-ink); }
 .item.deslizando.para-esquerda::before { inset: 0 0 0 auto; color: var(--muted); }
+/* item 19: sem o realce azul padrão do navegador ao tocar; no lugar, o cartão escurece de leve enquanto o dedo está nele */
+html { -webkit-tap-highlight-color: transparent; }
+@media (hover: none) {
+  .linha[data-abrir-acao]:active, .opcao:active, .lateral-acao:active, .barra-inferior > button:active, .config-nav .config-aba:active, .busca-item:active {
+    background: color-mix(in oklab, var(--ink) 7%, var(--surface));
+  }
+  .barra-inferior > .inferior-nova:active { background: var(--accent-ink); }
+}
