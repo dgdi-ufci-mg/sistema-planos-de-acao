@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 175 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 176 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1294,6 +1294,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Janela acima do teclado** (item 15): no celular, a parte da tela coberta pelo teclado virtual é medida pela área visível do navegador (`visualViewport`: altura da janela menos a altura visível e o deslocamento; abaixo de 80 px, conta como zero) e guardada na variável `--teclado`. As janelas que sobem de baixo (nova ação, janela da ação, "Filtros e exibição") ficam acima do teclado e encolhem a altura máxima na mesma medida, para "Criar ação" e os campos continuarem à vista. Simulado no teste; a conferir num iPhone de verdade.
 
+- **Saída de todas as telas no aplicativo instalado** (item 16; conferência, sem mudança no código): sem o botão Voltar do navegador (iPhone com o site na tela inicial), toda tela tem saída pelo próprio sistema: painéis e janelas, "Fechar" (ou "Pronto") e, as que sobem de baixo, puxar para baixo; diálogos, "Cancelar"; busca, "Cancelar"; barra lateral, "Espaços" na barra de baixo ou o fundo escurecido; seções da configuração e "Exibir", "‹ Configurações" e "‹ Filtros"; novo espaço, "Cancelar"; espaço sem acesso, "Ir para o início"; módulo Superior, "← Sextante: planos" (e os painéis dele usam as mesmas janelas). No Android, o Voltar do aparelho faz o mesmo (item 1).
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -2005,3 +2007,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 173 | Celular: segurar o cartão abre um menu com Abrir, Concluir e Mover para; pontos de posição sob o quadro (item 10 da avaliação de celular; seção 8.7) |
 | 174 | Celular: "Configurar este espaço" como lista de seções que abrem em tela própria; "Filtros e exibição" com "Exibir ›" numa segunda tela (item 14 da avaliação de celular; seção 8.7) |
 | 175 | Celular: as janelas que sobem de baixo ficam acima do teclado virtual (item 15 da avaliação de celular; seção 8.7) |
+| 176 | Conferência: toda tela tem saída pelo próprio sistema no aplicativo instalado, sem o Voltar do navegador (item 16 da avaliação de celular; seção 8.7) |
