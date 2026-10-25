@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 181 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 182 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1306,6 +1306,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Vibração ao concluir** (item 20): ao registrar a conclusão de uma ação, o aparelho vibra duas vezes, de leve (12 ms, pausa de 60 ms, 18 ms); o menu do cartão e o deslizar para concluir também vibram de leve (10 ms) ao serem acionados. Só onde o navegador permite (Android); o iPhone não deixa o site vibrar, e nada muda nele.
 
+- **Etiquetas das entregas** (item 21): no celular, as etiquetas de situação das entregas ("Em andamento", "Não iniciada"…) passam de 12 para 13 px, com um pouco mais de folga interna.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -2023,3 +2025,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 179 | Celular: deslizar o cartão da lista para a direita conclui e para a esquerda abre o menu (item 18 da avaliação de celular; seção 8.7) |
 | 180 | Celular: retorno visual próprio ao tocar, sem o realce azul do navegador (item 19 da avaliação de celular; seção 8.7) |
 | 181 | Celular: vibração curta ao concluir uma ação, no Android (item 20 da avaliação de celular; seção 8.7) |
+| 182 | Celular: etiquetas de situação das entregas com 13 px (item 21 da avaliação de celular; seção 8.7) |

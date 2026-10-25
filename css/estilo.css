@@ -1924,3 +1924,4 @@ html { -webkit-tap-highlight-color: transparent; }
   }
   .barra-inferior > .inferior-nova:active { background: var(--accent-ink); }
 }
+@media (max-width: 640px) { .selo-entrega { font-size: 13px; padding: 3px 10px; } } /* item 21: etiquetas de situação das entregas com 13 px no celular */
