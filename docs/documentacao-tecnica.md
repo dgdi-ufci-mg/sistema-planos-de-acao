@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 177 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 178 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1298,6 +1298,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Letras maiores no celular** (item 9): até 640 px, as explicações (classe `tec`, usada em quase todas as telas) passam de 11,8 px em itálico para **13 px sem itálico**; as iniciais nos círculos dos responsáveis, de 9,6 para **11 px**; e os textos de apoio dos cartões (reprogramações, siglas das unidades, unidade da barra de tempo) e os rótulos da barra de baixo, para **12 px**. Ficam menores só os rótulos curtos em maiúsculas dos grupos e os nomes técnicos dos campos (monoespaçados), que não são lidos como frase. No computador, nada muda.
 
+- **Módulo Superior no celular** (item 17): as abas (Desdobramento, Instrumentos, Camadas, Importar) rolam para o lado sem barra de rolagem, e a borda direita esmaece enquanto houver aba escondida; a aba escolhida rola para a vista. Na árvore do desdobramento, até 640 px, cada nível recua 16 px (antes, 25), para o último nível não ficar com metade da largura.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -2011,3 +2013,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 175 | Celular: as janelas que sobem de baixo ficam acima do teclado virtual (item 15 da avaliação de celular; seção 8.7) |
 | 176 | Conferência: toda tela tem saída pelo próprio sistema no aplicativo instalado, sem o Voltar do navegador (item 16 da avaliação de celular; seção 8.7) |
 | 177 | Celular: explicações com 13 px sem itálico, iniciais com 11 px e textos de apoio com 12 px (item 9 da avaliação de celular; seção 8.7) |
+| 178 | Superior no celular: abas com a borda esmaecida quando há mais e árvore com recuo menor (item 17 da avaliação de celular; seção 8.7) |

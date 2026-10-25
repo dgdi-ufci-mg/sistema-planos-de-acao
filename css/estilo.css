@@ -1903,3 +1903,9 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .avatar, .avatar.tres { font-size: 11px; }
   .nota-reprog, .unidade, .prazo-unidade, .barra-inferior > button { font-size: 12px; }
 }
+/* item 17: módulo Superior no celular: abas com a borda esmaecida quando há mais; árvore com recuo menor */
+.superior-abas { scrollbar-width: none; }
+.superior-abas.tem-mais { -webkit-mask-image: linear-gradient(to right, #000 82%, transparent); mask-image: linear-gradient(to right, #000 82%, transparent); }
+@media (max-width: 640px) {
+  .arvore-estrategia ul { margin-left: 8px; padding-left: 8px; }
+}

@@ -74,6 +74,13 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       <section class="superior-corpo">${{ arvore: arvoreHtml, instrumentos: instrumentosHtml, camadas: camadasHtml, importar: importarHtml }[ui.aba]()}</section>`;
     const busca = alvo.querySelector("[data-busca-arvore]");
     if (busca && ui.busca) { busca.focus(); busca.setSelectionRange(ui.busca.length, ui.busca.length); }
+    /* abas que não cabem (celular, 25/10/2026, item 17 da avaliação de celular): a borda direita esmaece enquanto
+       houver aba escondida, e a aba escolhida rola para a vista */
+    const faixa = alvo.querySelector(".superior-abas");
+    const marcarFaixa = () => faixa.classList.toggle("tem-mais", faixa.scrollLeft + faixa.clientWidth < faixa.scrollWidth - 2);
+    faixa.addEventListener("scroll", marcarFaixa, { passive: true });
+    faixa.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    marcarFaixa();
   }
 
   /* ---------- desdobramento ---------- */
