@@ -1785,3 +1785,18 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .linha-rapida input, .form-coluna input, .camada select, .camada textarea:not(.janela-nome), .texto-exportado, .editor-notas, .planilha input,
   .busca-campo input, [contenteditable="true"] { font-size: 16px !important; }
 }
+/* item 4: alvos de toque de pelo menos 44 px (Apple; o Material pede 48), sem mudar o desenho: botões e abas
+   ganham altura; ícones, área quadrada; links pequenos e × ganham uma área invisível em volta */
+@media (pointer: coarse) {
+  .botao, .botao-lateral, .icone-barra, .painel header .botao, [role="tab"], .modo, .opcao, .lateral-acao, .conta,
+  .espaco-nome, .chip-campo, .botao-texto, .grupo-cabeca, .config > summary, .busca-item, .menu-topo { min-height: 44px; }
+  .botao-lateral, .icone-barra, .espaco-configurar, [data-menu-coluna] { min-width: 44px; min-height: 44px; justify-content: center; }
+  .botao-excluir, .titulo-coluna, details > summary { min-height: 44px; }
+  .botao-texto { display: inline-flex; align-items: center; }
+  input:not([type=checkbox]):not([type=radio]):not([type=range]), select { min-height: 44px; }
+  /* caixas de marcar: a linha inteira é o alvo */
+  label.alternar, .alternar-campo, .extracao .alternar, .colunas-escolha label { min-height: 44px; display: flex; align-items: center; }
+  .oque, .tirar, .no-seta, [data-acao="restaurar"] { position: relative; }
+  .oque::after, [data-acao="restaurar"]::after { content: ""; position: absolute; inset: -14px -10px; }
+  .tirar::after, .no-seta::after { content: ""; position: absolute; inset: -10px; }
+}

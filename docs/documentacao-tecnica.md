@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 163.1 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 164 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1269,6 +1269,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Campos sem zoom no iPhone** (item 3): em telas de toque (`pointer: coarse`), todo campo de digitar, lista de escolha, caixa de texto e área editável tem letra de pelo menos 16 px, porque o Safari do iPhone amplia a tela ao tocar num campo com letra menor e ela fica ampliada. Campos com letra maior, como o nome da ação na janela, continuam maiores.
 
+- **Alvos de toque de 44 px** (item 4; Apple pede 44 × 44 px, o Material 48): em telas de toque, botões, abas, opções dos painéis, itens da barra lateral, títulos que abrem e fecham seções, listas de escolha e campos ganham pelo menos 44 px de altura; o menu, o funil, a engrenagem do espaço e o "⋯" da coluna, 44 × 44 px; as linhas com caixa de marcar (Extração, Campos opcionais, colunas) têm 44 px e a linha inteira é o alvo. O × de retirar, a seta da árvore do Superior, o "?" ("o que é") e o link de restaurar cópia ganham uma área de toque invisível em volta, sem mudar o desenho.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -1968,3 +1970,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 162 | Celular: no painel "Filtros e exibição", cada visualização com o nome escrito (item 17 da avaliação de usabilidade, aplicado a pedido do responsável; seção 8.3) |
 | 163 | Celular: campos com 16 px em telas de toque, sem o zoom do iPhone (item 3 da avaliação de celular; seção 8.7) |
 | 163.1 | Ajuste da 163: a regra dos 16 px deixou de forçar o tamanho em todos os campos e passou a valer só nos campos menores (criação rápida, listas e caixas de texto das janelas, importação), porque reduzia o nome da ação na janela (seção 8.7) |
+| 164 | Celular: alvos de toque de pelo menos 44 px em telas de toque (item 4 da avaliação de celular; seção 8.7) |
