@@ -18,6 +18,7 @@ import { iniciais } from "../responsaveis.js";
 import { agruparPorTipo } from "../tipos.js";
 import { ligarSecoesSuaves } from "./movimento.js";
 import { atalhoDaBusca } from "./busca.js";
+import { abrirCamada } from "./voltar.js";
 
 const CHAVE_RECOLHIDO = "sextante.menuRecolhido";
 const estreito = () => matchMedia("(max-width: 899px)").matches;
@@ -29,6 +30,7 @@ const lerMais = () => { try { return localStorage.getItem(CHAVE_MAIS) === "1"; }
 const gravarMais = (v) => { try { localStorage.setItem(CHAVE_MAIS, v ? "1" : "0"); } catch { /* sem armazenamento */ } };
 
 let ligado = false;
+let soltarLateral = null;
 let acoes = {};
 
 /** Abre ou fecha o menu lateral: no computador, recolhe; no celular, abre por cima. */
@@ -37,6 +39,9 @@ function alternar(abrir) {
   if (estreito()) {
     const aberto = abrir ?? !corpo.classList.contains("lateral-aberta");
     corpo.classList.toggle("lateral-aberta", aberto);
+    /* Voltar fecha a barra aberta por cima (item 1 da avaliação de celular) */
+    if (aberto && !soltarLateral) soltarLateral = abrirCamada(() => { soltarLateral = null; alternar(false); });
+    if (!aberto && soltarLateral) { const s = soltarLateral; soltarLateral = null; s(); }
     document.querySelector(".fundo-lateral").hidden = !aberto;
     if (aberto) document.querySelector(".lateral button")?.focus();
   } else {
@@ -100,6 +105,7 @@ function ligar() {
   /* ao passar de celular para computador (girar o tablet, redimensionar), o menu por cima se desfaz */
   matchMedia("(max-width: 899px)").addEventListener("change", () => {
     document.body.classList.remove("lateral-aberta");
+    if (soltarLateral) { const s = soltarLateral; soltarLateral = null; s(); }
     document.querySelector(".fundo-lateral").hidden = true;
     rotularBotao();
   });

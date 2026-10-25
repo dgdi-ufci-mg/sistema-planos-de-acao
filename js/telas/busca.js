@@ -10,6 +10,7 @@
 import { ICONES } from "../icones.js";
 import { esc } from "../formato.js";
 import { filtrarItens } from "../busca.js";
+import { abrirCamada } from "./voltar.js";
 
 /** @type {Map<string, () => Promise<object[]>|object[]>} */
 const fontes = new Map();
@@ -86,6 +87,7 @@ export async function abrirBusca() {
   function fechar({ devolverFoco = true } = {}) {
     if (aberta !== camada) return;
     aberta = null;
+    soltar();
     window.removeEventListener("keydown", aoTeclar, true);
     camada.classList.remove("aberta");
     setTimeout(() => camada.remove(), 250);
@@ -110,6 +112,7 @@ export async function abrirBusca() {
     if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); e.stopPropagation(); return executar(ativo); }
   }
   window.addEventListener("keydown", aoTeclar, true);
+  const soltar = abrirCamada(() => fechar()); // Voltar fecha a busca
   campo.addEventListener("input", () => { ativo = 0; desenhar(); lista.scrollTop = 0; });
   camada.addEventListener("click", (e) => {
     if (e.target.closest("[data-fechar-busca]")) return fechar();

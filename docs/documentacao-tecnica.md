@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 168 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 169 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -107,6 +107,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/superior/app.js`, `js/superior/telas.js`, `js/superior/exemplo.js` | Módulo Superior: partida (banco, login, conexão; o nome provisório do módulo, `NOME_DO_MODULO`, num lugar só), as abas Desdobramento, Instrumentos, Camadas e Importar, e o catálogo de exemplo usado sem o Firebase |
 | `js/telas/instalar.js` | "Instalar como aplicativo": o pedido de instalação do navegador ou as instruções para cada aparelho; registro do *service worker* |
 | `js/telas/esqueleto.js` | Blocos cinza de carregamento (esqueletos) nos formatos lista, cartões e texto (seção 2) |
+| `js/telas/voltar.js` | Botão e gesto de Voltar: uma entrada no histórico enquanto houver janela, painel, diálogo, busca ou barra lateral aberta (seção 8.7) |
 | `js/telas/busca.js` | Caixa de busca e paleta de comandos (Ctrl+K): fontes de itens, teclado e lista (seção 8.0) |
 | `js/telas/atalhos.js` | Atalhos de teclado de uma tecla ("/", "N", "?") e a lista mostrada em "?" (seção 8.0) |
 | `js/telas/extracao.js` | Tela "Extração de dados" (passo 2.10) |
@@ -1279,6 +1280,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Atrasadas no chip da barra do topo** (item 12): no celular, a linha "1 ação atrasada. Ver" saiu do alto da lista; o mesmo chip do computador aparece à direita do nome do espaço, com o relógio e o número (a palavra fica para o leitor de tela). Tocar mostra só as atrasadas; tocar de novo, todas (o chip fica preenchido enquanto o filtro vale).
 
+- **Voltar fecha a janela, e não o sistema** (item 1; `js/telas/voltar.js`): enquanto houver uma camada aberta (painel, janela da ação, nova ação, "Filtros e exibição", configurações, diálogo de confirmação, busca ou a barra lateral por cima do conteúdo), o histórico do navegador tem uma entrada a mais. O botão ou gesto de Voltar (Android, navegador, aplicativo instalado) consome essa entrada e fecha a camada de cima; se restar outra embaixo, a entrada é recriada. Fechar pelos botões do sistema, pelo fundo escurecido ou com Esc devolve a entrada, para o histórico não acumular passos vazios. É **uma entrada só** para todas as camadas: trocar um painel por outro não mexe no histórico, e a devolução espera o fim da tarefa atual, para que uma camada aberta logo depois a reaproveite. **Trocar de espaço** (pela barra lateral, pela busca ou por um link entre entregas) cria uma entrada nova no histórico, com o endereço `#/espaco/<id>`: Voltar reabre o espaço anterior. Abrir o sistema, voltar às boas-vindas e criar um espaço continuam substituindo a entrada atual. Antes de criar a entrada do espaço, a partida espera o navegador terminar de devolver a entrada de uma camada que acabou de fechar, para a ordem do histórico não se inverter.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -1983,3 +1986,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 166 | Celular: sem dicas de teclado; "Cancelar" na busca (item 8 da avaliação de celular; seção 8.7) |
 | 167 | Unidade junto do número da barra de tempo: "d" no computador, "dias" no celular (item 11 da avaliação de celular; seção 8.7) |
 | 168 | Celular: alerta das atrasadas como chip na barra do topo, em vez de uma linha no alto da lista (item 12 da avaliação de celular; seção 8.7) |
+| 169 | Celular e computador: o Voltar do navegador fecha a camada aberta (janela, painel, diálogo, busca, barra lateral) e, sem camada, volta ao espaço anterior, em vez de sair do sistema (item 1 da avaliação de celular; seção 8.7; `js/telas/voltar.js`) |

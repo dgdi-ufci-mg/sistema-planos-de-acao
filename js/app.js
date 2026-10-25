@@ -28,6 +28,7 @@ import { abrirExtracao } from "./telas/extracao.js";
 import { instalar, instalado, aoMudarInstalacao, registrarAplicativo } from "./telas/instalar.js";
 import { criarVigiaDeConexao, sondaDoSite } from "./conexao.js";
 import { abrirBusca, registrarFonte, ligarAtalhoDaBusca } from "./telas/busca.js";
+import { historicoPronto } from "./telas/voltar.js";
 import { ligarAtalhos, registrarTecla, mostrarAtalhos } from "./telas/atalhos.js";
 import { TIPOS, tipoDe } from "./tipos.js";
 import { GLOSSARIO } from "./glossario.js";
@@ -196,9 +197,14 @@ async function abrirEspaco(id) {
   if (!espaco) return false;
   /* espaço restrito (ou institucional, sem login) que a pessoa não pode consultar (passo 2.2) */
   if (!daqui.podeVerEspaco(espaco)) { semAcesso(espaco); return true; }
+  /* trocar de espaço cria uma entrada no histórico: Voltar volta ao espaço anterior (item 1 da avaliação de celular) */
+  const trocou = abertoId && abertoId !== id;
   abertoId = id;
   if (!exemplos.has(id)) lembrar(id);
-  if (location.hash !== `#/espaco/${id}`) history.replaceState(null, "", `#/espaco/${id}`);
+  if (location.hash !== `#/espaco/${id}`) {
+    await historicoPronto(); // se uma janela acabou de fechar, espera o navegador devolver a entrada dela
+    if (trocou) history.pushState(null, "", `#/espaco/${id}`); else history.replaceState(null, "", `#/espaco/${id}`);
+  }
   pararEspaco();
   /* sem login, a tela esconde "Nova ação"; as demais gravações são recusadas com aviso */
   document.body.classList.toggle("so-leitura", !daqui.podeGravar);

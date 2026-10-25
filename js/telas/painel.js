@@ -3,6 +3,8 @@
  * O painel "de baixo" sobe da parte de baixo da tela no celular (como "Filtros e exibição").
  * A "janela" fica no centro da tela no computador e sobe de baixo no celular (janela da ação).
  */
+import { abrirCamada } from "./voltar.js";
+
 let fecharAtual = null;
 
 /**
@@ -27,7 +29,10 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
   const aoTeclar = (e) => { if (e.key === "Escape" && !e.defaultPrevented) fecharPainel(); };
   camada.addEventListener("click", (e) => { if (e.target.closest("[data-fechar]")) fecharPainel(); });
   document.addEventListener("keydown", aoTeclar);
-  fecharAtual = () => {
+  /* Voltar (celular) fecha o painel (item 1 da avaliação de celular) */
+  const soltar = abrirCamada(() => { if (fecharAtual === fechar) fecharPainel(); });
+  const fechar = () => {
+    soltar();
     document.removeEventListener("keydown", aoTeclar);
     fecharAtual = null;
     camada.classList.remove("aberta");
@@ -37,6 +42,7 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
     setTimeout(() => camada.remove(), 500); /* se a animação não terminar (aba em segundo plano) */
     aoFechar?.();
   };
+  fecharAtual = fechar;
   camada.querySelector(".painel [data-fechar]").focus();
   return camada.querySelector(".painel-corpo");
 }
@@ -97,7 +103,9 @@ export function perguntar({ titulo, corpo, confirmar = "Excluir", perigo = true,
     document.body.append(camada);
     requestAnimationFrame(() => requestAnimationFrame(() => camada.classList.add("aberta")));
     const form = camada.querySelector("form");
+    const soltar = abrirCamada(() => terminar(null)); // Voltar cancela o diálogo
     const terminar = (valor) => {
+      soltar();
       window.removeEventListener("keydown", aoTeclar, true);
       camada.classList.remove("aberta");
       setTimeout(() => camada.remove(), 250);
