@@ -1651,7 +1651,7 @@ a.lateral-acao { text-decoration: none; }
 /* ---------- revisão de usabilidade (24/10/2026) ---------- */
 #principal .superior-titulo { font-size: 1.25rem; margin-bottom: 8px; }
 /* celular: o botão (+) não cobre o último cartão */
-@media (max-width: 640px) { [data-painel="acoes"] { padding-bottom: 76px; } }
+/* (o espaço para o botão (+) solto saiu em 25/10/2026: o (+) fica na barra de baixo) */
 /* alvos de toque de pelo menos 24 px (WCAG 2.5.8) nos × pequenos, sem mudar o desenho */
 .tirar { min-width: 24px; min-height: 24px; justify-content: center; align-items: center; margin: -3px; }
 .tipos-boas-vindas { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
@@ -1834,3 +1834,27 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .resumo-prazo .icone { width: 18px; height: 18px; color: var(--muted); flex: none; }
 }
 .t-sensor { touch-action: pan-y; }
+/* item 7: barra de navegação embaixo, no celular (como no Todoist, no Asana e no Linear): Espaços, Buscar, (+),
+   Filtros e Ajuda ao alcance do polegar; sai o botão de três linhas do alto, o funil e o botão (+) solto */
+.barra-inferior { display: none; }
+@media (max-width: 640px) {
+  .barra-inferior {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 47; align-items: stretch; justify-content: space-around;
+    padding: 4px max(6px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+    background: color-mix(in oklab, var(--bg) 92%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  }
+  .barra-inferior > button {
+    flex: 1 1 0; min-width: 0; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    border: 0; background: transparent; color: var(--muted); font: 600 .72rem var(--f-texto); position: relative; cursor: pointer; border-radius: var(--raio);
+  }
+  .barra-inferior > button .icone { width: 22px; height: 22px; }
+  .barra-inferior > button[aria-expanded="true"] { color: var(--accent-ink); }
+  .barra-inferior > .inferior-nova { flex: 0 0 auto; width: 56px; height: 48px; min-height: 48px; margin: 2px 6px; align-self: center; border-radius: 16px; background: var(--accent); color: var(--texto-sobre-destaque, #fff); box-shadow: var(--sombra); }
+  .barra-inferior > .inferior-nova .icone { width: 26px; height: 26px; }
+  .barra-inferior .contador { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: var(--texto-sobre-destaque, #fff); font-size: .66rem; line-height: 16px; }
+  body { padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  .botao-lateral { display: none !important; }
+  .topo-linha { padding-left: 0 !important; }
+  .aviso-curto { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  .lateral { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); padding-bottom: 12px; } /* a barra lateral termina acima da barra de baixo */
+}

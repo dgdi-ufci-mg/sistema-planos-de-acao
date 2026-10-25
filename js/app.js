@@ -32,6 +32,7 @@ import { historicoPronto } from "./telas/voltar.js";
 import { ligarAtalhos, registrarTecla, mostrarAtalhos } from "./telas/atalhos.js";
 import { TIPOS, tipoDe } from "./tipos.js";
 import { GLOSSARIO } from "./glossario.js";
+import { ICONES } from "./icones.js";
 
 document.title = NOME;
 
@@ -270,6 +271,25 @@ function boasVindas({ comFormulario = false } = {}) {
   atualizarTopo();
   window.scrollTo(0, 0);
 }
+
+/* ---------- barra de baixo do celular (25/10/2026, item 7 da avaliação de celular) ----------
+ * Como no Todoist, no Asana e no Linear: os destinos ao alcance do polegar. Espaços abre a barra lateral; Buscar,
+ * a busca; Ajuda, a ajuda. O (+) e Filtros são do espaço aberto (js/telas/espaco.js), que os mostra e esconde. */
+const inferior = document.querySelector(".barra-inferior");
+const botaoInferior = (chave, icone, nome, extra = "") => `<button type="button" data-inferior="${chave}"${extra}>${ICONES[icone]}<span>${nome}</span></button>`;
+inferior.innerHTML = botaoInferior("espacos", "menu", "Espaços", ' aria-controls="lateral" aria-expanded="false"')
+  + botaoInferior("buscar", "buscar", "Buscar")
+  + `<button type="button" class="inferior-nova" data-inferior="nova" data-nova aria-label="Nova ação" hidden>${ICONES.mais}</button>`
+  + `<button type="button" data-inferior="filtros" hidden>${ICONES.funil}<span>Filtros</span><span class="contador" hidden></span></button>`
+  + botaoInferior("ajuda", "ajuda", "Ajuda");
+inferior.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-inferior]");
+  if (b?.dataset.inferior === "espacos") document.querySelector("[data-alternar-lateral]").click();
+  if (b?.dataset.inferior === "buscar") abrirBusca();
+  if (b?.dataset.inferior === "ajuda") ajuda();
+});
+new MutationObserver(() => inferior.querySelector('[data-inferior="espacos"]').setAttribute("aria-expanded", String(document.body.classList.contains("lateral-aberta"))))
+  .observe(document.body, { attributes: true, attributeFilter: ["class"] });
 
 /* ---------- busca e paleta de comandos (Ctrl+K, 24/10/2026) ----------
  * A partida dá os espaços, os comandos gerais e os termos do glossário; o espaço aberto dá as suas ações

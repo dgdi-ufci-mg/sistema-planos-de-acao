@@ -236,8 +236,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     comAcoes = true;
     painelAcoes.innerHTML = `
         <div class="legenda" data-legenda hidden>${legendaHtml(store.podeGravar)}</div>
-        <div class="lista" data-lista></div>
-        <button class="botao-flutuante so-celular" type="button" aria-label="Nova ${termos(espaco).acao}" data-nova>${ICONES.mais}</button>`;
+        <div class="lista" data-lista></div>`; /* o (+) do celular fica na barra de baixo (25/10/2026, item 7 da avaliação de celular) */
     ferramentas = barra;
     lista = painelAcoes.querySelector("[data-lista]");
     /* refaz quantas pessoas cabem em cada cartão quando a largura ou a altura da lista muda (janela, grupos abertos) */
@@ -555,8 +554,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <div class="topo-esquerda">
         <span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>
         <div class="menus-topo so-computador">${menu("modo", ICONES.visualizacao, nomeModo, "", `Visualização: ${nomeModo}`)}</div>
-        <button class="icone-barra so-celular" type="button" data-opcoes aria-label="Filtros e exibição" title="Filtros e exibição">
-          ${ICONES.funil}${ativos() ? `<span class="contador">${ativos()}</span>` : ""}</button>
         ${doCentro ? "" : popoverHtml()}
       </div>
       <div class="topo-centro so-computador">
@@ -578,6 +575,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
     ajustarBarra();
     ajustarMais();
+    const contador = inferior.filtros?.querySelector(".contador");
+    if (contador) { contador.textContent = ativos() || ""; contador.hidden = !ativos(); }
     legenda.hidden = !ui.legenda || planilha;
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
@@ -606,12 +605,24 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /** O (+) do celular cria o que a visualização mostra: entrega nas Entregas (só para quem pode criá-las), ação nas demais. */
   function ajustarMais() {
-    const mais = alvo.querySelector(".botao-flutuante");
+    const mais = inferior.nova;
     if (!mais) return;
     const entregas = ui.modo === "entregas";
-    mais.classList.toggle("oculto", entregas && !lista?.querySelector("[data-nova-entrega]"));
+    mais.hidden = entregas ? !lista?.querySelector("[data-nova-entrega]") : !(store.podeGravar !== false && perm?.criarAcao);
     mais.setAttribute("aria-label", entregas ? "Nova entrega" : `Nova ${termos(espaco).acao}`);
   }
+  /* barra de baixo do celular (item 7 da avaliação de celular): o (+) e "Filtros" são deste espaço */
+  const inferior = {
+    nova: document.querySelector('.barra-inferior [data-inferior="nova"]'),
+    filtros: document.querySelector('.barra-inferior [data-inferior="filtros"]'),
+  };
+  if (inferior.nova) inferior.nova.onclick = () => {
+    if (ui.modo === "entregas") { lista?.querySelector("[data-nova-entrega]")?.click(); return; }
+    ui.pop = null;
+    desenharFerramentas();
+    abrirNova();
+  };
+  if (inferior.filtros) { inferior.filtros.onclick = () => abrirOpcoes(); inferior.filtros.hidden = false; }
 
   function aoClicarNaBarra(e) {
     const t = e.target;
@@ -1601,6 +1612,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   return () => {
     tirarDaBusca();
     tirarTeclaN();
+    for (const b of [inferior.nova, inferior.filtros]) if (b) { b.onclick = null; b.hidden = true; }
     parar();
     janela?.fechar();
     document.removeEventListener("click", fecharPop);
