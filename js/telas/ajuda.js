@@ -18,7 +18,7 @@ export function mostrarAjuda({ foco, aoVerExemplo }) {
       <p>Quer ver como funciona? Abra um espaço de exemplo, com dados fictícios.</p>
       <button class="botao" type="button" data-exemplo>Ver um exemplo</button>
     </section>
-    <section>
+    <section class="so-teclado">
       <p>Usa muito o teclado? Há atalhos para buscar, criar ações e andar entre os cartões. A tecla <kbd>?</kbd> mostra a lista em qualquer tela.</p>
       <button class="botao" type="button" data-atalhos>Atalhos de teclado</button>
     </section>

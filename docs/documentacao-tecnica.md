@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 165 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 166 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1273,6 +1273,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **O (+) cria o que a visualização mostra** (item 5): nas Entregas, o botão redondo do celular cria uma entrega (o mesmo que "Nova entrega") e se chama "Nova entrega" para o leitor de tela; quem não pode criar entregas não o vê nessa visualização. Nas demais, continua criando ação (ou tarefa). A tecla N, no computador, segue a mesma regra.
 
+- **Sem dicas de teclado no celular** (item 8): em aparelhos sem mouse (`hover: none` e `pointer: coarse`), somem o "Ctrl K" ao lado de Buscar, a seção "Atalhos de teclado" da Ajuda e as dicas "↑ ↓ / Enter / Esc" da busca. A busca ganha **Cancelar** à direita do campo, como no iOS (também em janelas estreitas do computador, onde o "Esc" já não aparecia).
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -1974,3 +1976,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 163.1 | Ajuste da 163: a regra dos 16 px deixou de forçar o tamanho em todos os campos e passou a valer só nos campos menores (criação rápida, listas e caixas de texto das janelas, importação), porque reduzia o nome da ação na janela (seção 8.7) |
 | 164 | Celular: alvos de toque de pelo menos 44 px em telas de toque (item 4 da avaliação de celular; seção 8.7) |
 | 165 | Celular: nas Entregas, o (+) cria uma entrega, e não uma ação; a tecla N também (item 5 da avaliação de celular; seção 8.7) |
+| 166 | Celular: sem dicas de teclado; "Cancelar" na busca (item 8 da avaliação de celular; seção 8.7) |

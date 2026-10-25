@@ -38,7 +38,7 @@ export async function abrirBusca() {
       <div class="busca-campo">${ICONES.buscar}
         <input type="text" role="combobox" aria-expanded="true" aria-controls="busca-lista" aria-autocomplete="list"
           placeholder="Buscar ações, espaços e comandos" autocomplete="off" spellcheck="false" aria-label="Buscar ações, espaços e comandos">
-        <kbd class="busca-esc">Esc</kbd></div>
+        <kbd class="busca-esc">Esc</kbd><button type="button" class="busca-cancelar" data-fechar-busca>Cancelar</button></div>
       <div class="busca-lista" id="busca-lista" role="listbox" aria-label="Resultados"></div>
       <p class="busca-rodape tec"><span><kbd>↑</kbd><kbd>↓</kbd> escolher</span><span><kbd>Enter</kbd> abrir</span><span><kbd>Esc</kbd> fechar</span></p>
     </div>`;
