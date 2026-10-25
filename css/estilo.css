@@ -1800,3 +1800,4 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .oque::after, [data-acao="restaurar"]::after { content: ""; position: absolute; inset: -14px -10px; }
   .tirar::after, .no-seta::after { content: ""; position: absolute; inset: -10px; }
 }
+.botao-flutuante.oculto { display: none !important; }

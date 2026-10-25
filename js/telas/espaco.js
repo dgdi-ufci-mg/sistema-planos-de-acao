@@ -577,6 +577,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     modoDesenhado = ui.modo;
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
     ajustarBarra();
+    ajustarMais();
     legenda.hidden = !ui.legenda || planilha;
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
@@ -602,6 +603,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (encostam()) topo.classList.add("barra-icones");
   }
   addEventListener("resize", ajustarBarra);
+
+  /** O (+) do celular cria o que a visualização mostra: entrega nas Entregas (só para quem pode criá-las), ação nas demais. */
+  function ajustarMais() {
+    const mais = alvo.querySelector(".botao-flutuante");
+    if (!mais) return;
+    const entregas = ui.modo === "entregas";
+    mais.classList.toggle("oculto", entregas && !lista?.querySelector("[data-nova-entrega]"));
+    mais.setAttribute("aria-label", entregas ? "Nova entrega" : `Nova ${termos(espaco).acao}`);
+  }
 
   function aoClicarNaBarra(e) {
     const t = e.target;
@@ -897,6 +907,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       if (ui.entregas === null) { lista.innerHTML = esqueletoHtml("cartoes", 3); carregarEntregas(); return; }
       telaEntregas.desenhar(lista, { espaco, acoes, entregas: ui.entregas, alcances: ui.alcances, responsaveis, perm, meus });
       ajustarDonos(lista);
+      ajustarMais();
       return;
     }
     const rapida = comRapida();
@@ -1405,7 +1416,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (barra) return mostrarBarra(barra.dataset.barra);
     const resumoColunas = t.closest(".botao-colunas");
     if (resumoColunas) { ui.colunasAberto = !resumoColunas.parentElement.open; return; }
-    if (t.closest("[data-nova]")) return abrirNova();
+    if (t.closest("[data-nova]")) {
+      /* nas Entregas, o (+) cria uma entrega (25/10/2026, item 5 da avaliação de celular) */
+      if (ui.modo === "entregas") { lista.querySelector("[data-nova-entrega]")?.click(); return; }
+      return abrirNova();
+    }
     /* colunas do quadro (23/10/2026) */
     /* menu "⋯" da coluna: abre e fecha; um clique fora dele o fecha */
     const botaoMenu = t.closest("[data-menu-coluna]");
@@ -1553,7 +1568,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   });
   /* atalho "N": nova ação, como o botão "Nova ação" (só onde ele aparece) */
   const tirarTeclaN = registrarTecla("n", () => {
-    if (!linhas || store.podeGravar === false || !perm.criarAcao || ui.modo === "entregas") return;
+    if (ui.modo === "entregas") { lista.querySelector("[data-nova-entrega]")?.click(); return; } // nas Entregas, nova entrega
+    if (!linhas || store.podeGravar === false || !perm.criarAcao) return;
     ui.pop = null;
     desenharFerramentas();
     abrirNova();

@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 164 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 165 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1013,7 +1013,7 @@ Regra de combinação (`js/busca.js`, com testes): sem maiúsculas e sem acentos
 | Tecla | Onde | O que faz |
 |---|---|---|
 | Ctrl+K (⌘K) ou / | Qualquer tela | Abre a busca (Ctrl+K vale até dentro de um campo) |
-| N | Espaço aberto | Nova ação (ou tarefa), como o botão; não vale nas entregas nem para quem não pode criar ações |
+| N | Espaço aberto | Nova ação (ou tarefa), como o botão; nas Entregas, nova entrega (desde 25/10/2026); não vale para quem não pode criar |
 | ? | Qualquer tela | Mostra a lista de atalhos (também em Ajuda, botão "Atalhos de teclado", e na busca) |
 | Ctrl+B (⌘B) | Qualquer tela | Mostra ou recolhe a barra lateral (já existia) |
 | ↑ ↓ | Lista e quadro, com um cartão escolhido | Andam entre os cartões à vista (na lista, os das etapas recolhidas ficam de fora; no quadro, dentro da coluna) |
@@ -1270,6 +1270,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 - **Campos sem zoom no iPhone** (item 3): em telas de toque (`pointer: coarse`), todo campo de digitar, lista de escolha, caixa de texto e área editável tem letra de pelo menos 16 px, porque o Safari do iPhone amplia a tela ao tocar num campo com letra menor e ela fica ampliada. Campos com letra maior, como o nome da ação na janela, continuam maiores.
 
 - **Alvos de toque de 44 px** (item 4; Apple pede 44 × 44 px, o Material 48): em telas de toque, botões, abas, opções dos painéis, itens da barra lateral, títulos que abrem e fecham seções, listas de escolha e campos ganham pelo menos 44 px de altura; o menu, o funil, a engrenagem do espaço e o "⋯" da coluna, 44 × 44 px; as linhas com caixa de marcar (Extração, Campos opcionais, colunas) têm 44 px e a linha inteira é o alvo. O × de retirar, a seta da árvore do Superior, o "?" ("o que é") e o link de restaurar cópia ganham uma área de toque invisível em volta, sem mudar o desenho.
+
+- **O (+) cria o que a visualização mostra** (item 5): nas Entregas, o botão redondo do celular cria uma entrega (o mesmo que "Nova entrega") e se chama "Nova entrega" para o leitor de tela; quem não pode criar entregas não o vê nessa visualização. Nas demais, continua criando ação (ou tarefa). A tecla N, no computador, segue a mesma regra.
 
 ## 9. O que saiu da versão 1
 
@@ -1971,3 +1973,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 163 | Celular: campos com 16 px em telas de toque, sem o zoom do iPhone (item 3 da avaliação de celular; seção 8.7) |
 | 163.1 | Ajuste da 163: a regra dos 16 px deixou de forçar o tamanho em todos os campos e passou a valer só nos campos menores (criação rápida, listas e caixas de texto das janelas, importação), porque reduzia o nome da ação na janela (seção 8.7) |
 | 164 | Celular: alvos de toque de pelo menos 44 px em telas de toque (item 4 da avaliação de celular; seção 8.7) |
+| 165 | Celular: nas Entregas, o (+) cria uma entrega, e não uma ação; a tecla N também (item 5 da avaliação de celular; seção 8.7) |
