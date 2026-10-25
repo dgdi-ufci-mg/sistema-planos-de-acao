@@ -858,6 +858,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       editando = null; // antes de gravar: a gravação redesenha a janela já sem o formulário
       gravado = copiaDoFormulario(form);
       await operacoes[nome]();
+      if (nome === "concluir") navigator.vibrate?.([12, 60, 18]); // vibração curta ao concluir (Android; item 20 da avaliação de celular)
       avisar(mensagens[nome]);
     } catch (e) {
       gravado = null;

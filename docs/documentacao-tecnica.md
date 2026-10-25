@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 180 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 181 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1304,6 +1304,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Retorno do toque** (item 19): sem o realce azul padrão do navegador (`-webkit-tap-highlight-color: transparent`); em aparelhos sem mouse, cartões, opções dos painéis, itens da barra lateral e da barra de baixo, seções da configuração e resultados da busca escurecem de leve (7% da cor do texto) enquanto o dedo está neles; o (+) escurece para o verde mais escuro.
 
+- **Vibração ao concluir** (item 20): ao registrar a conclusão de uma ação, o aparelho vibra duas vezes, de leve (12 ms, pausa de 60 ms, 18 ms); o menu do cartão e o deslizar para concluir também vibram de leve (10 ms) ao serem acionados. Só onde o navegador permite (Android); o iPhone não deixa o site vibrar, e nada muda nele.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -2020,3 +2022,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 178 | Superior no celular: abas com a borda esmaecida quando há mais e árvore com recuo menor (item 17 da avaliação de celular; seção 8.7) |
 | 179 | Celular: deslizar o cartão da lista para a direita conclui e para a esquerda abre o menu (item 18 da avaliação de celular; seção 8.7) |
 | 180 | Celular: retorno visual próprio ao tocar, sem o realce azul do navegador (item 19 da avaliação de celular; seção 8.7) |
+| 181 | Celular: vibração curta ao concluir uma ação, no Android (item 20 da avaliação de celular; seção 8.7) |
