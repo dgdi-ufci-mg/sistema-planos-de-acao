@@ -102,12 +102,18 @@ export function abrirNovaAcao({ store, espacoId, hoje, usuario = null, dados, et
     if (nome === "codigo") return normalizarCodigo(form.codigo.value);
     return "";
   }
+  const automatica = comEstimativas ? dataMinimaPadrao(d.espaco, hoje) : "";
   function desenharChips() {
     const fechados = OPCIONAIS.filter(([nome]) => !abertos.has(nome));
     corpo.querySelector("[data-chips]").innerHTML = fechados.map(([nome, texto]) => {
+      /* a data mínima automática (hoje, quando o espaço já começou) não parece preenchida pela pessoa:
+         o botão diz "hoje, automático" e fica neutro (25/10/2026, item 16 da avaliação de usabilidade) */
+      if (nome === "naoAntesDe" && form.naoAntesDe.value && form.naoAntesDe.value === automatica) {
+        return `<button type="button" class="chip-campo" data-mostrar="${nome}" title="Preenchido pelo sistema, para a ação não nascer atrasada. Clique para mudar ou apagar.">${ICONES.mais}${texto}: <i>hoje, automático</i></button>`;
+      }
       const valor = resumoDe(nome);
       return `<button type="button" class="chip-campo${valor ? " com-valor" : ""}" data-mostrar="${nome}">${ICONES.mais}${texto}${valor ? `: <b>${esc(valor)}</b>` : ""}</button>`;
-    }).join("") + (fechados.length > 1 ? `<button type="button" class="chip-campo discreto" data-mostrar="todos">Todos os campos</button>` : "");
+    }).join("") + (fechados.length > 1 ? `<button type="button" class="chip-campo todos" data-mostrar="todos">Todos os campos${ICONES.abrir}</button>` : "");
   }
   function mostrar(nome) {
     for (const [n] of OPCIONAIS) {

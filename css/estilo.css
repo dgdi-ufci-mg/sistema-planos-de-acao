@@ -795,6 +795,9 @@ h3.editavel { padding: 2px 6px; }
 .chip-campo:hover { background: var(--sunk); }
 .chip-campo.com-valor { border-color: var(--accent); color: var(--accent-ink); }
 .chip-campo.discreto { border-style: dashed; color: var(--muted); }
+/* "Todos os campos" com cara de botão (25/10/2026, item 16 da avaliação de usabilidade; antes, tracejado) */
+.chip-campo.todos { color: var(--accent-ink); font-weight: 600; }
+.chip-campo.todos .icone { order: 1; }
 .nova-acao .botoes { align-items: center; }
 
 /* identidade do sistema: só nas boas-vindas e na Ajuda, fora da tela de trabalho (passo 1.14c) */
