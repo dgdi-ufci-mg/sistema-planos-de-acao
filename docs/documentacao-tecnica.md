@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 150 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 150.1 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1137,7 +1137,7 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 - **Alvos de toque:** os × pequenos (responsáveis, etiquetas, dependências, listas da configuração) têm área de 24 px (WCAG 2.5.8), sem mudar o desenho.
 - **Celular:** o fim da lista tem espaço para o botão (+), que não cobre mais o último cartão.
 - **Boas-vindas:** "Boas-vindas ao Sextante", com um texto que serve aos três tipos de espaço e a lista deles (os textos vêm de `js/tipos.js`).
-- O teste automático de acessibilidade (axe-core, WCAG 2.2 AA) passou de 61 ocorrências em 16 telas para 1 (a barra fina do cronograma, com 18 px de altura; fica como está, porque engrossá-la muda o desenho).
+- O teste automático de acessibilidade (axe-core, WCAG 2.2 AA) passou de 59 ocorrências em 16 telas para 1 (a barra fina do cronograma, com 18 px de altura; fica como está, porque engrossá-la muda o desenho).
 
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
@@ -1916,3 +1916,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 148 | Aplicativo instalável pelo navegador (primeiro passo da ideia da seção 13.2): manifesto, ícones, *service worker* sem cache, "Instalar como aplicativo" na barra lateral e no glossário; pendências da seção 13.1 atualizadas (seções 3.1, 8 e 13) |
 | 149 | Colunas do quadro revistas, a pedido do responsável, depois de avaliação de usabilidade: faixa estreita "+" com Criar e Cancelar e campo que continua aberto; menu "⋯" no título (renomear, mover, nova coluna à direita, retirar); arrastar o título para mudar a ordem; rolagem do quadro mantida (seção 8, "Colunas no quadro") |
 | 150 | Revisão de usabilidade e acessibilidade: contraste, títulos e papéis para leitores de tela, alvos de toque de 24 px, espaço para o botão (+) no celular e texto de boas-vindas para os três tipos (seção 8) |
+| 150.1 | Corrigido o número de ocorrências do teste de acessibilidade antes da revisão (59, e não 61). Sem mudança no sistema |
