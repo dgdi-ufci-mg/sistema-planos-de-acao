@@ -1655,3 +1655,21 @@ a.lateral-acao { text-decoration: none; }
 .planilha .redimensionar::after { content: ""; position: absolute; top: 20%; bottom: 20%; left: 3px; width: 2px; border-radius: 1px; background: transparent; transition: background-color var(--mov-rapido); }
 .planilha th:hover .redimensionar::after, .redimensionando .planilha .redimensionar::after { background: var(--accent); }
 body.redimensionando, body.redimensionando * { cursor: col-resize !important; user-select: none; }
+
+/* ---------- blocos cinza durante o carregamento (24/10/2026) ---------- */
+.esqueleto { display: flex; flex-direction: column; gap: 8px; animation: esqueleto-surge .2s .3s both; }
+@keyframes esqueleto-surge { from { opacity: 0; } to { opacity: 1; } }
+.esqueleto-linha { display: block; padding: 4px 0; }
+.esqueleto-cartao { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--grid); border-radius: 10px; }
+.esqueleto-cartao.linha { flex-direction: row; align-items: center; gap: 12px; }
+.esqueleto-cartao.linha .esqueleto-bloco.grosso { flex: 0 1 auto; }
+.esqueleto-cartao.linha .redondo-largo { margin-left: auto; }
+.esqueleto-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.esqueleto-bloco { display: block; height: 10px; border-radius: 6px; max-width: 100%;
+  background: linear-gradient(90deg, var(--grid) 0%, var(--sunk) 50%, var(--grid) 100%) 0 0 / 200% 100%; animation: esqueleto-brilho 1.4s ease-in-out infinite; }
+.esqueleto-bloco.grosso { height: 14px; }
+.esqueleto-bloco.barra { height: 8px; }
+.esqueleto-bloco.redondo { height: 18px; border-radius: 50%; flex: none; }
+.esqueleto-bloco.redondo-largo { height: 22px; border-radius: 11px; flex: none; }
+@keyframes esqueleto-brilho { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } .esqueleto-bloco { animation: none; background: var(--grid); } }

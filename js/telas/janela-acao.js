@@ -18,6 +18,7 @@ import { descreverRegistro } from "../historico.js";
 import { editarTexto } from "./edicao-no-lugar.js";
 import { usaEstimativas, usaDependencias } from "../modelos.js";
 import { termos } from "../vocabulario.js";
+import { esqueletoHtml } from "./esqueleto.js";
 import { nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
@@ -84,7 +85,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const visiveis = lista.filter((c) => !c.apagadoEm).length;
     return `<section class="comentarios" aria-label="Comentários">
       <h3>Comentários${visiveis ? ` <span class="n">${visiveis}</span>` : ""}</h3>
-      ${comentarios === null ? `<p class="vazio">Carregando…</p>` : lista.length ? `<ol class="conversa">${lista.map(comentarioHtml).join("")}</ol>`
+      ${comentarios === null ? esqueletoHtml("texto", 2) : lista.length ? `<ol class="conversa">${lista.map(comentarioHtml).join("")}</ol>`
         : `<p class="vazio">Nenhum comentário ainda.</p>`}
       ${usuario && d.perm.comentar ? `<form class="comentar" data-comentar>
           <textarea name="novoComentario" rows="2" maxlength="4000" placeholder="Escreva um comentário" aria-label="Novo comentário"></textarea>
@@ -629,7 +630,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   /** Registros do histórico de alterações, do mais recente ao mais antigo, em frases simples. */
   function registrosHtml() {
-    if (!registros) return `<p class="vazio">Carregando…</p>`;
+    if (!registros) return esqueletoHtml("texto", 3);
     if (!registros.length) return `<p class="vazio">Nenhuma alteração registrada.</p>`;
     const etapas = new Map((d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
     const nomes = {

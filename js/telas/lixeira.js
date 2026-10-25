@@ -3,6 +3,7 @@
  * responsáveis) e os espaços excluídos, cada um com quem excluiu, quando, e "Restaurar".
  * Aberta pelo item "Lixeira" do menu lateral.
  */
+import { esqueletoHtml } from "./esqueleto.js";
 import { esc } from "../formato.js";
 import { abrirPainel, avisar } from "./painel.js";
 
@@ -13,7 +14,7 @@ const quando = (momento) => (momento ? new Date(momento).toLocaleString("pt-BR",
  *   store: o do espaço aberto (o exemplo tem o seu); storeEspacos: o dos espaços guardados
  */
 export function abrirLixeira({ store, espacoId = null, storeEspacos, aoRestaurarEspaco }) {
-  const corpo = abrirPainel("Lixeira", "<p class=\"tec\">Carregando…</p>");
+  const corpo = abrirPainel("Lixeira", esqueletoHtml("texto", 4));
 
   async function desenhar() {
     const [lixo, espacos, responsaveis] = await Promise.all([

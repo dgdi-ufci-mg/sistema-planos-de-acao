@@ -17,6 +17,7 @@ import { abrirPainel, fecharPainel, avisar } from "../telas/painel.js";
 import { tipoDe } from "../tipos.js";
 import { alcanceAtual, textoDoValor } from "../entregas.js";
 import { seloDaSituacao } from "../telas/entregas.js";
+import { esqueletoHtml } from "../telas/esqueleto.js";
 import {
   camadasAcima, instrumentoVigente, itemVigente, rotuloDoItem, caminhoAteOTopo, subordinadosDe, itensPorCamada, planejarCatalogo,
 } from "../estrategia.js";
@@ -39,6 +40,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
   let rascunho = null;
   let planoImportacao = null;
 
+  alvo.innerHTML = esqueletoHtml("lista", 6); // até a primeira leitura do catálogo
   async function recarregar() {
     [cat, gestor] = await Promise.all([store.lerCatalogo(), store.ehGestorDaEstrategia().catch(() => false)]);
     const espacos = await store.listarEspacos().catch(() => []);

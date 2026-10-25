@@ -27,6 +27,7 @@ import { desenharLinhaDoTempo } from "./linha-do-tempo.js";
 import { desenharCronograma } from "./cronograma.js";
 import { desenharRede } from "./rede.js";
 import { criarTelaDeEntregas } from "./entregas.js";
+import { esqueletoHtml } from "./esqueleto.js";
 import { tipoDe } from "../tipos.js";
 import { termos } from "../vocabulario.js";
 
@@ -871,7 +872,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }
     if (ui.modo === "linha") { desenharLinhaDoTempo(lista, { espaco, cal, sim, hoje, temAcoes: acoes.length > 0 }); return; }
     if (ui.modo === "entregas") {
-      if (ui.entregas === null) { lista.innerHTML = '<p class="tec">Lendo as entregas…</p>'; carregarEntregas(); return; }
+      if (ui.entregas === null) { lista.innerHTML = esqueletoHtml("cartoes", 3); carregarEntregas(); return; }
       telaEntregas.desenhar(lista, { espaco, acoes, entregas: ui.entregas, alcances: ui.alcances, responsaveis, perm, meus });
       ajustarDonos(lista);
       return;
@@ -1470,6 +1471,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   document.addEventListener("keyup", marcarAlt);
   addEventListener("blur", marcarAlt);
 
+  /* até a primeira leitura do banco, blocos cinza no lugar da tela anterior */
+  alvo.innerHTML = esqueletoHtml("lista", 6);
   /* ---------- acompanhamento: cada mudança no banco recalcula e redesenha ---------- */
   let fila = Promise.resolve();
   const parar = store.acompanharEspaco(espacoId, (dados) => {

@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 151 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 152 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -49,6 +49,7 @@ A especificação da reescrita foi incorporada a este documento na troca e apaga
 - **Aceitar o mundo real:** o sistema absorve registros atrasados, reprogramações e imprecisões sem travar o usuário. Exemplo: a data de conclusão pode ser registrada com qualquer data, mesmo passada.
 - **Linguagem simples:** princípio herdado da versão 1. Termo técnico em itálico, como "Termo técnico: …", e clicável, abrindo a explicação na Ajuda.
 - **Movimento com sentido** (decisão do responsável, 21/10/2026): o que aparece, some ou muda de lugar na tela faz uma transição curta, nunca um salto. A animação mostra de onde a coisa veio e para onde foi, e isso ajuda a entender o sistema. É padrão em toda tela nova ou alterada: painéis e janelas deslizam, formulários e seções crescem a partir da altura zero e encolhem ao fechar, itens reordenados deslizam até a nova posição, alternadores movem a marca da opção escolhida. Durações curtas e iguais em todo o sistema: 0,25 s (`--mov`) e 0,18 s para detalhes (`--mov-rapido`), com a mesma curva (`--mov-curva`), no CSS e em `js/telas/movimento.js` (`abrirSuave`, `fecharSuave`). Quem ativou "Reduzir movimento" no aparelho não vê animação.
+- **Carregamento com esqueletos** (item 15 da avaliação de usabilidade, 24/10/2026): enquanto os dados chegam, a área que vai recebê-los mostra blocos cinza no formato do conteúdo (linhas de lista, cartões ou linhas de texto), com um brilho que passa devagar, em vez de "Carregando…". Os blocos só aparecem se a espera passar de 0,3 s, para não piscar em carregamentos rápidos; com "Reduzir movimento", ficam parados. Para o leitor de tela, o bloco é um aviso de situação (`role="status"`) com o nome "Carregando". Usado na abertura da página, ao abrir um espaço, nas entregas, na lixeira, nos comentários e no histórico da janela da ação e no módulo Superior (`js/telas/esqueleto.js`).
 - **Números contínuos, não categorias:** indicadores contínuos aparecem como barras, com o número discreto em cinza. Cortes arbitrários, como "acima de 50% é prioritária", são evitados, porque tratam como diferentes casos praticamente iguais (paradoxo de sorites). Carimbos ficam só para fatos binários, como "Atrasada".
 - **Rigor nos cálculos:** fórmulas documentadas (seções 5 e 15), com a fonte primária, testadas contra a versão 1 e reproduzíveis (semente fixa, gerador mulberry32).
 - **Temas claro e escuro e celular:** cores só por variáveis CSS, em três blocos (claro, escuro pelo sistema, escuro escolhido); toda tela funciona em cerca de 400 px de largura.
@@ -104,6 +105,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/app.js` | Partida, roteamento (`#/espaco/<id>`), conexão, escolha do banco |
 | `js/superior/app.js`, `js/superior/telas.js`, `js/superior/exemplo.js` | Módulo Superior: partida (banco, login, conexão; o nome provisório do módulo, `NOME_DO_MODULO`, num lugar só), as abas Desdobramento, Instrumentos, Camadas e Importar, e o catálogo de exemplo usado sem o Firebase |
 | `js/telas/instalar.js` | "Instalar como aplicativo": o pedido de instalação do navegador ou as instruções para cada aparelho; registro do *service worker* |
+| `js/telas/esqueleto.js` | Blocos cinza de carregamento (esqueletos) nos formatos lista, cartões e texto (seção 2) |
 | `js/telas/extracao.js` | Tela "Extração de dados" (passo 2.10) |
 | `js/telas/*.js` | Uma tela ou peça por arquivo: navegação, abertura, espaço (lista e quadro), janela da ação, nova ação, planilha (`editar-planilha.js`), cronograma, rede, linha do tempo, configurar espaço e sistema, tipo e modelo do espaço (`tipo-espaco.js`, `modelo-espaco.js`), entregas do Plano de Ação (`entregas.js`), lixeira, ajuda, acesso, seletor com busca, edição no lugar, exclusão, pendências, pessoas, painel, movimento |
 | **Testes** | |
@@ -1918,3 +1920,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 150 | Revisão de usabilidade e acessibilidade: contraste, títulos e papéis para leitores de tela, alvos de toque de 24 px, espaço para o botão (+) no celular e texto de boas-vindas para os três tipos (seção 8) |
 | 150.1 | Corrigido o número de ocorrências do teste de acessibilidade antes da revisão (59, e não 61). Sem mudança no sistema |
 | 151 | Planilha: largura das colunas ajustável pela borda do título, lembrada no aparelho, e texto cortado inteiro ao passar o mouse (item 12 da avaliação de usabilidade; seção 8) |
+| 152 | Esqueletos de carregamento: blocos cinza no formato do conteúdo, depois de 0,3 s de espera, na abertura, nos espaços, entregas, lixeira, janela da ação e Superior (item 15 da avaliação de usabilidade; seção 2) |
