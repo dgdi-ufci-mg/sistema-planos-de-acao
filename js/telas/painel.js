@@ -7,6 +7,19 @@ import { abrirCamada } from "./voltar.js";
 
 let fecharAtual = null;
 
+/* teclado virtual (item 15 da avaliação de celular, 25/10/2026): no iPhone, o teclado cobre o que está preso ao pé
+   da tela, como o botão "Criar ação" da janela que sobe de baixo. A altura coberta vira a variável --teclado, que
+   sobe essas janelas (css). Usa a área visível da tela (visualViewport), onde o navegador a oferece. */
+const vv = globalThis.visualViewport;
+if (vv) {
+  const medir = () => {
+    const coberto = Math.max(0, Math.round(innerHeight - vv.height - vv.offsetTop));
+    document.documentElement.style.setProperty("--teclado", `${coberto > 80 ? coberto : 0}px`);
+  };
+  vv.addEventListener("resize", medir);
+  vv.addEventListener("scroll", medir);
+}
+
 /**
  * Abre um painel com título e conteúdo; Esc, o botão Fechar ou o fundo escurecido fecham.
  * Esc fecha, a menos que algo dentro do painel já tenha tratado a tecla (por exemplo, cancelar uma edição).

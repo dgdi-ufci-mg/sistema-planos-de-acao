@@ -1891,3 +1891,8 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 .ir-exibicao small { color: var(--muted); font-weight: 400; font-size: .8rem; }
 .ir-exibicao > .icone:first-child { width: 18px; height: 18px; color: var(--muted); }
 .painel-corpo .opcoes .modos { display: flex; flex-wrap: wrap; max-width: 100%; border-radius: 18px; } /* com a Linha do tempo, quatro visualizações: quebram linha em vez de sair da tela */
+/* item 15: a janela que sobe de baixo sobe também acima do teclado virtual (--teclado, medido em js/telas/painel.js) */
+@media (max-width: 640px) {
+  .camada.de-baixo .painel { bottom: var(--teclado, 0px); max-height: calc(85% - var(--teclado, 0px)); transition: transform .25s ease, bottom .15s ease; }
+  .camada.de-baixo.janela .painel { max-height: calc(94% - var(--teclado, 0px)); }
+}

@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 174 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 175 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1292,6 +1292,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Configurações em telas** (item 14): (a) com menos de 900 px, "Configurar este espaço" abre como uma **lista das seções**, em linhas de 48 px com "›", como nos Ajustes do iPhone ("Encerrar ou excluir" em vermelho, no fim); tocar numa seção mostra só ela, com o nome no alto e **"‹ Configurações"** para voltar à lista. O Voltar do aparelho também volta à lista (e, na lista, fecha o painel). No computador, continuam as abas à esquerda. (b) Em **"Filtros e exibição"**, a primeira tela tem a visualização, a situação, o responsável e a ordem, e uma linha **"Exibir ›"** ("Indicador, mostrar até, colunas e legenda") abre a segunda tela, com **"‹ Filtros"** no alto; o Voltar do aparelho volta à primeira. As escolhas valem na hora, nas duas telas. Com a Linha do tempo no celular, as quatro visualizações do alto do painel quebram linha, em vez de sair da tela.
 
+- **Janela acima do teclado** (item 15): no celular, a parte da tela coberta pelo teclado virtual é medida pela área visível do navegador (`visualViewport`: altura da janela menos a altura visível e o deslocamento; abaixo de 80 px, conta como zero) e guardada na variável `--teclado`. As janelas que sobem de baixo (nova ação, janela da ação, "Filtros e exibição") ficam acima do teclado e encolhem a altura máxima na mesma medida, para "Criar ação" e os campos continuarem à vista. Simulado no teste; a conferir num iPhone de verdade.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -2002,3 +2004,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 172 | Celular: barra de navegação embaixo (Espaços, Buscar, +, Filtros, Ajuda), no lugar do menu do alto, do funil e do (+) solto (itens 7 e 13 da avaliação de celular; seções 8.0 e 8.7) |
 | 173 | Celular: segurar o cartão abre um menu com Abrir, Concluir e Mover para; pontos de posição sob o quadro (item 10 da avaliação de celular; seção 8.7) |
 | 174 | Celular: "Configurar este espaço" como lista de seções que abrem em tela própria; "Filtros e exibição" com "Exibir ›" numa segunda tela (item 14 da avaliação de celular; seção 8.7) |
+| 175 | Celular: as janelas que sobem de baixo ficam acima do teclado virtual (item 15 da avaliação de celular; seção 8.7) |
