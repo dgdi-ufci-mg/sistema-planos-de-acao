@@ -75,8 +75,15 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   /* enquanto o painel está aberto, mudanças nos responsáveis (de quem quer que seja) aparecem na seção;
      as demais seções não são redesenhadas, para não perder o que está sendo digitado */
   let pararDeAcompanhar = () => {};
-  const corpo = abrirPainel("Configurar este espaço", "", { aoFechar: () => pararDeAcompanhar() });
+  const corpo = abrirPainel("Configurar este espaço", "", { aoFechar: () => { pararDeAcompanhar(); largo.removeEventListener("change", aplicarAbas); } });
   ligarSecoesSuaves(corpo);
+  /* em abas no computador (24/10/2026; item 11 da avaliação de usabilidade): janela larga, com as seções numa
+     lista à esquerda e só a escolhida à direita, como nas configurações do Linear, do Notion e do GitHub; no
+     celular e em telas médias, as mesmas seções continuam abrindo e fechando uma abaixo da outra */
+  corpo.closest(".camada").classList.add("configuracao");
+  const largo = matchMedia("(min-width: 900px)");
+  let abaAtual = null;
+  largo.addEventListener("change", aplicarAbas);
   /** Seções abertas; os dados do espaço começam abertos. Mantidas quando o painel é redesenhado. */
   const abertas = new Set(["dados"]);
   const aberta = (secao) => (abertas.has(secao) ? " open" : "");
@@ -100,6 +107,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
 
   function desenhar() {
     desenharSecoes();
+    montarAbas();
     const dados = corpo.querySelector('[data-salvar="dados"]');
     if (dados) ligarTipo(dados, { store, espaco }); // Programa e aprovação aparecem só no Plano de Ação (só o administrador vê a seção)
     desenharResponsaveis();
@@ -251,6 +259,64 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
           <p class="tec">Quando o plano termina: fica só para consulta e sai da lista principal. Diferente de excluir.</p>`}
       </div>
       <div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-espaco>Excluir este espaço</button></div>` : ""}`;
+  }
+
+  /**
+   * Abas (24/10/2026): cada seção (`details.config`) vira um item da lista à esquerda; o encerramento e a exclusão,
+   * com o aviso da cópia de segurança, formam a última, "Encerrar ou excluir". O aviso do papel de quem vê fica
+   * acima das abas. A aba escolhida é mantida quando o painel é redesenhado.
+   */
+  function montarAbas() {
+    const filhos = [...corpo.children];
+    const fim = filhos.findIndex((el) => el.matches("p.tec") && el.textContent.includes("cópia de segurança"));
+    const perigo = fim >= 0 ? filhos.slice(fim) : [];
+    const grade = document.createElement("div");
+    grade.className = "config-abas";
+    const lista = document.createElement("nav");
+    lista.className = "config-nav";
+    lista.setAttribute("aria-label", "Seções da configuração");
+    const conteudo = document.createElement("div");
+    conteudo.className = "config-conteudo";
+    conteudo.innerHTML = '<h3 class="config-titulo-aba" data-titulo-aba></h3>';
+    const topo = filhos.filter((el) => !el.matches("details.config") && !perigo.includes(el));
+    for (const el of filhos) if (el.matches("details.config")) { el.dataset.aba = el.dataset.secao; conteudo.append(el); }
+    if (perigo.some((el) => el.matches(".zona-encerrar, .zona-exclusao"))) {
+      const caixa = document.createElement("section");
+      caixa.className = "config-perigo";
+      caixa.dataset.aba = "perigo";
+      caixa.dataset.nome = "Encerrar ou excluir";
+      caixa.append(...perigo);
+      conteudo.append(caixa);
+    } else conteudo.append(...perigo);
+    const abas = [...conteudo.querySelectorAll(":scope > [data-aba]")];
+    lista.innerHTML = abas.map((el) => `<button type="button" class="config-aba${el.dataset.aba === "perigo" ? " perigo" : ""}" data-ir-aba="${el.dataset.aba}">${esc(el.dataset.nome ?? el.querySelector(":scope > summary h3")?.textContent ?? "")}</button>`).join("");
+    grade.append(lista, conteudo);
+    corpo.replaceChildren(...topo, grade);
+    if (!abas.some((el) => el.dataset.aba === abaAtual)) abaAtual = abas.find((el) => el.dataset.aba === "dados")?.dataset.aba ?? abas[0]?.dataset.aba ?? null;
+    lista.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-ir-aba]");
+      if (!b) return;
+      abaAtual = b.dataset.irAba;
+      aplicarAbas();
+      conteudo.scrollTop = 0;
+    });
+    aplicarAbas();
+  }
+  /** Mostra a aba escolhida (no computador) e marca o item da lista. */
+  function aplicarAbas() {
+    const grade = corpo.querySelector(".config-abas");
+    if (!grade) return;
+    for (const b of grade.querySelectorAll("[data-ir-aba]")) {
+      if (b.dataset.irAba === abaAtual) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+    }
+    let nome = "";
+    for (const el of grade.querySelectorAll(".config-conteudo > [data-aba]")) {
+      const atual = el.dataset.aba === abaAtual;
+      el.classList.toggle("aba-atual", atual);
+      if (atual) nome = el.dataset.nome ?? el.querySelector(":scope > summary h3")?.textContent ?? "";
+      if (atual && largo.matches && el.tagName === "DETAILS") el.open = true;
+    }
+    grade.querySelector("[data-titulo-aba]").textContent = nome;
   }
 
   /**

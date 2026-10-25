@@ -1732,3 +1732,29 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 }
 /* cartão escolhido pelo teclado: o contorno fica por dentro, porque o cartão corta o que passa da borda */
 .linha[data-abrir-acao]:focus-visible { outline-offset: -2px; border-radius: inherit; }
+
+/* "Configurar este espaço" em abas no computador (24/10/2026; item 11 da avaliação de usabilidade) */
+.config-nav, .config-titulo-aba { display: none; }
+.config-abas, .config-conteudo { display: flex; flex-direction: column; gap: 18px; }
+.config-perigo { display: flex; flex-direction: column; }
+@media (min-width: 900px) {
+  .camada.configuracao .painel {
+    top: 50%; left: 50%; right: auto; bottom: auto; width: min(980px, calc(100% - 48px)); height: min(86vh, 820px);
+    border-radius: 14px; opacity: 0; transform: translate(-50%, -47%) scale(.98); transition: transform var(--mov) var(--mov-curva), opacity var(--mov) var(--mov-curva);
+  }
+  .camada.configuracao.aberta .painel { opacity: 1; transform: translate(-50%, -50%); }
+  .camada.configuracao .painel-corpo { flex: 1; min-height: 0; overflow: hidden; padding: 0; gap: 0; }
+  .camada.configuracao .painel-corpo > .aviso-papel { margin: 12px 16px 0; }
+  .config-abas { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 0; flex: 1; min-height: 0; }
+  .config-nav { display: flex; flex-direction: column; gap: 2px; padding: 12px 10px; border-right: 1px solid var(--line); overflow-y: auto; background: var(--surface); }
+  .config-aba { border: 0; background: transparent; text-align: left; padding: 8px 10px; border-radius: var(--raio); color: var(--muted); font: inherit; font-weight: 600; cursor: pointer; }
+  .config-aba:hover { background: var(--bg); color: var(--ink); }
+  .config-aba[aria-current="true"] { background: var(--accent-soft); color: var(--accent-ink); }
+  .config-aba.perigo { margin-top: 8px; }
+  .config-conteudo { overflow-y: auto; padding: 18px 24px 24px; gap: 12px; }
+  .config-titulo-aba { display: block; font-size: 1.25rem; margin: 0; }
+  .config-conteudo > [data-aba]:not(.aba-atual) { display: none; }
+  .config-conteudo > details.config > summary { display: none; }
+  .config-perigo .zona-encerrar { margin-top: 0; }
+}
+@media (min-width: 900px) and (prefers-reduced-motion: reduce) { .camada.configuracao .painel { transition: none; } }

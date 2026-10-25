@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 155 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 156 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1172,7 +1172,7 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
-**Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
+**Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Em abas no computador** (24/10/2026; item 11 da avaliação de usabilidade; como nas configurações do Linear, do Notion e do GitHub): com a tela a partir de 900 px, abre como janela larga no centro (até 980 × 820 px), com a lista das seções à esquerda, na mesma ordem e com os mesmos nomes de antes, e só a escolhida à direita, com o nome dela no alto; a última, **Encerrar ou excluir**, reúne o aviso da cópia de segurança, "Encerrar este espaço" e "Excluir este espaço". Abre em "Dados do espaço" (ou na primeira seção que a pessoa vê) e mantém a escolhida quando a tela se redesenha, por exemplo depois de salvar. O aviso do papel de quem vê fica acima das abas. Com menos de 900 px, continua o painel com as seções que abrem e fecham uma abaixo da outra. **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
 
 **Abertura:** quem não tem espaço vê as boas-vindas (criar espaço, ver o exemplo e, com o banco vazio, restaurar a cópia de segurança); quem tem, vai ao último espaço aberto naquele aparelho.
 
@@ -1953,3 +1953,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 153 | Barra lateral reorganizada: à vista só Ajuda e Configurar o sistema; Lixeira, Extração, Gestão da estratégia e Instalar no grupo recolhível "Mais"; a Legenda passou para o menu Exibir (item 9 da avaliação de usabilidade; seção 8.0) |
 | 154 | Busca e paleta de comandos (Ctrl+K e "Buscar" na barra lateral): ações do espaço aberto, espaços, comandos e glossário (item 7 da avaliação de usabilidade; seção 8.0; `js/busca.js`, `js/telas/busca.js`) |
 | 155 | Atalhos de teclado: "/" busca, "N" nova ação, "?" lista de atalhos, setas entre os cartões da lista e do quadro (item 8 da avaliação de usabilidade; seção 8.0; `js/telas/atalhos.js`) |
+| 156 | "Configurar este espaço" em abas no computador: janela larga, seções numa lista à esquerda e a aba "Encerrar ou excluir" (item 11 da avaliação de usabilidade; seção 8) |
