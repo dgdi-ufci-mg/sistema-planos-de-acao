@@ -6,7 +6,8 @@
  * - a curva da chance acumulada de terminar até cada data;
  * - as marcas de hoje, da conclusão prevista, da data segura e do prazo final.
  * Interativa: passando o mouse, mostra a chance de terminar até a data apontada.
- * Só no computador (o seletor esconde o modo no celular).
+ * No celular desde 25/10/2026 (item 2 da avaliação de celular): o desenho usa a largura da tela, e tocar ou
+ * deslizar o dedo no gráfico mostra a chance na data apontada.
  */
 import { distribuicaoDoTermino, chanceAte, somarDias } from "../linha-do-tempo.js";
 import { esc, dataBr } from "../formato.js";
@@ -44,7 +45,7 @@ export function desenharLinhaDoTempo(alvo, { espaco, cal, sim, hoje, temAcoes })
     <figure class="tempo-grafico" aria-label="Linha do tempo: em que data o trabalho pode terminar">
       <div class="tempo-desenho" data-desenho></div>
       <div class="tempo-dica" data-dica hidden></div>
-      <figcaption class="tec">Barras: parte dos cenários simulados que termina em cada semana. Linha: chance de terminar até cada data. Passe o mouse para ver a chance em qualquer data.</figcaption>
+      <figcaption class="tec">Barras: parte dos cenários simulados que termina em cada semana. Linha: chance de terminar até cada data. ${matchMedia("(hover: none)").matches ? "Toque ou deslize o dedo no gráfico" : "Passe o mouse"} para ver a chance em qualquer data.</figcaption>
     </figure>`;
 
   const desenho = alvo.querySelector("[data-desenho]");
@@ -58,7 +59,7 @@ export function desenharLinhaDoTempo(alvo, { espaco, cal, sim, hoje, temAcoes })
   const ate = somarDias(fim, 7);
   const total = Math.max(1, dias(de, ate));
 
-  const L = Math.max(560, desenho.clientWidth || 900);
+  const L = Math.max(matchMedia("(max-width: 640px)").matches ? 300 : 560, desenho.clientWidth || 900);
   const A = 330;
   const M = { esq: 12, dir: 44, topo: 84, base: 28 }; // topo: até quatro alturas de rótulo
   const largura = L - M.esq - M.dir;
@@ -78,12 +79,16 @@ export function desenharLinhaDoTempo(alvo, { espaco, cal, sim, hoje, temAcoes })
 
   /* início de cada mês */
   const meses = [];
+  let proximoRotulo = -Infinity;
   for (let d = new Date(`${de.slice(0, 7)}-01T00:00:00Z`); d.toISOString().slice(0, 10) <= ate; d.setUTCMonth(d.getUTCMonth() + 1)) {
     const iso = d.toISOString().slice(0, 10);
     if (iso < de) continue;
     const rotulo = d.getUTCMonth() === 0 || !meses.length ? `${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}` : MESES[d.getUTCMonth()];
+    /* na tela estreita, o rótulo que encostaria no anterior fica de fora (fica a marca do mês) */
+    const cabe = x(iso) >= proximoRotulo;
+    if (cabe) proximoRotulo = x(iso) + rotulo.length * 7 + 8;
     meses.push(`<line class="t-mes" x1="${x(iso)}" x2="${x(iso)}" y1="${M.topo + altura}" y2="${M.topo + altura + 5}"/>
-      <text class="t-eixo" x="${x(iso) + 3}" y="${M.topo + altura + 18}">${rotulo}</text>`);
+      ${cabe ? `<text class="t-eixo" x="${x(iso) + 3}" y="${M.topo + altura + 18}">${rotulo}</text>` : ""}`);
   }
 
   /* barras semanais: depois do prazo final, na cor de alerta */
@@ -137,7 +142,7 @@ export function desenharLinhaDoTempo(alvo, { espaco, cal, sim, hoje, temAcoes })
   const ponto = svg.querySelector("[data-ponto]");
   const sensor = svg.querySelector("[data-sensor]");
   const esconder = () => { mira.setAttribute("visibility", "hidden"); ponto.setAttribute("visibility", "hidden"); dica.hidden = true; };
-  sensor.addEventListener("pointermove", (e) => {
+  const mostrar = (e) => {
     const r = svg.getBoundingClientRect();
     const px = ((e.clientX - r.left) / r.width) * L;
     const data = somarDias(de, Math.round(((px - M.esq) / largura) * total));
@@ -151,6 +156,8 @@ export function desenharLinhaDoTempo(alvo, { espaco, cal, sim, hoje, temAcoes })
     const esquerda = ((mx / L) * r.width) + (r.left - caixa.left);
     dica.style.left = `${Math.min(Math.max(0, esquerda + 12), caixa.width - dica.offsetWidth)}px`;
     dica.style.top = `${((y(c) / A) * r.height) - 36}px`;
-  });
+  };
+  sensor.addEventListener("pointermove", mostrar);
+  sensor.addEventListener("pointerdown", mostrar); // no celular, o toque mostra a data apontada
   sensor.addEventListener("pointerleave", esconder);
 }

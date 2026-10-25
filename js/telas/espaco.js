@@ -205,7 +205,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* sem a linha do celular (25/10/2026): Exibir, o indicador e "Mostrar até" foram para o painel "Filtros e
        exibição" (item 3 da avaliação de usabilidade) e o alerta das atrasadas virou o chip da barra do topo, como
        no computador (item 12 da avaliação de celular); a lista começa logo abaixo da barra */
-    return `${papelAviso}${semEntregas}
+    /* resumo do prazo no celular (item 2 da avaliação de celular): na lista e no quadro, uma faixa com a conclusão
+       prevista e a chance de cumprir o prazo final, que abre a linha do tempo */
+    const resumoPrazo = sim && acoes.length && ["lista", "quadro"].includes(ui.modo)
+      ? `<button type="button" class="resumo-prazo${espaco.prazoFinal && sim.chancePrazo < 0.5 ? " ruim" : ""}" data-modo-resumo="linha">${ICONES.modoLinha}
+          <span>Conclusão prevista <b class="mono">${dataBr(cal.dataDeConclusao(sim.p50, 0))}</b>${espaco.prazoFinal ? ` · <b>${Math.round(sim.chancePrazo * 100)}%</b> de chance até o prazo` : ""}</span>${ICONES.seguir}</button>` : "";
+    return `${papelAviso}${semEntregas}${resumoPrazo}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -278,7 +283,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["rede", "Rede", "modoRede", "so-computador"],
     ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
     ["planilha", "Planilha", "modoPlanilha", "so-computador"],
-    ["linha", "Linha do tempo", "modoLinha", "so-computador"],
+    ["linha", "Linha do tempo", "modoLinha", ""], /* também no celular desde 25/10/2026 (item 2 da avaliação de celular) */
     ["entregas", "Entregas", "modoEntregas", ""]];
   /**
    * Visualizações que o modelo do espaço permite (passo 2.4b): a rede pede dependências; o
@@ -1394,6 +1399,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       return store.reabrirEspaco(espacoId).then(() => avisar("Espaço reaberto.")).catch((f) => avisar(f.message));
     }
     if (t.closest("[data-ir-entregas]")) return mudarModo("entregas");
+    if (t.closest("[data-modo-resumo]")) return mudarModo(t.closest("[data-modo-resumo]").dataset.modoResumo);
     if (ui.modo === "entregas" && telaEntregas.aoClicar(e)) return;
     if (t.closest("[data-assumir]")) {
       return store.assumirAdministracao(espacoId).then(() => avisar("Você agora é administrador deste espaço. Os responsáveis com e-mail viraram usuários.")).catch((f) => avisar(f.message));

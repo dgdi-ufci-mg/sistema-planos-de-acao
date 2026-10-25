@@ -1824,3 +1824,13 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .camada.de-baixo .alca::before { content: ""; position: absolute; left: 50%; top: 8px; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--line); }
   .camada.de-baixo .painel > .alca + header { padding-top: 2px; touch-action: none; }
 }
+/* item 2: resumo do prazo no alto da lista e do quadro, só no celular; a linha do tempo também abre no celular */
+.resumo-prazo { display: none; }
+@media (max-width: 640px) {
+  .resumo-prazo { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid var(--line);
+    border-left: 4px solid var(--accent); border-radius: var(--raio); background: var(--surface); color: var(--ink); font: inherit; font-size: .9rem; text-align: left; cursor: pointer; }
+  .resumo-prazo.ruim { border-left-color: var(--crit); }
+  .resumo-prazo > span { flex: 1; }
+  .resumo-prazo .icone { width: 18px; height: 18px; color: var(--muted); flex: none; }
+}
+.t-sensor { touch-action: pan-y; }
