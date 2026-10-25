@@ -1817,3 +1817,10 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .chip-atrasadas { margin-right: 0; height: 32px; padding: 0 10px; flex: none; }
   .chip-atrasadas .chip-palavra { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
+/* item 6: alça das janelas que sobem de baixo, no celular; puxar a alça ou o cabeçalho para baixo fecha */
+.alca { display: none; }
+@media (max-width: 640px) {
+  .camada.de-baixo .alca { display: block; width: 100%; height: 22px; flex: none; position: relative; touch-action: none; cursor: grab; }
+  .camada.de-baixo .alca::before { content: ""; position: absolute; left: 50%; top: 8px; width: 40px; height: 5px; margin-left: -20px; border-radius: 3px; background: var(--line); }
+  .camada.de-baixo .painel > .alca + header { padding-top: 2px; touch-action: none; }
+}

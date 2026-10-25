@@ -21,6 +21,7 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
   camada.innerHTML = `
     <div class="fundo-escuro" data-fechar></div>
     <div class="painel" role="dialog" aria-modal="true" aria-label="${titulo}">
+      ${deBaixo || janela ? '<div class="alca" aria-hidden="true"></div>' : ""}
       <header role="none"><h2>${titulo}</h2><button class="botao" type="button" data-fechar>${botao}</button></header>
       <div class="painel-corpo">${conteudoHtml}</div>
     </div>`;
@@ -43,11 +44,49 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
     aoFechar?.();
   };
   fecharAtual = fechar;
+  if (deBaixo || janela) puxarParaFechar(camada, fechar);
   camada.querySelector(".painel [data-fechar]").focus();
   return camada.querySelector(".painel-corpo");
 }
 
 export function fecharPainel() { fecharAtual?.(); }
+
+/**
+ * Janela que sobe de baixo, no celular: puxar a alça ou o cabeçalho para baixo fecha (item 6 da avaliação de
+ * celular, 25/10/2026), como no iOS e no Android. A janela acompanha o dedo; soltando depois de 90 px, ou com um
+ * gesto rápido para baixo, fecha; antes disso, volta ao lugar. Só no celular (até 640 px), onde a janela fica
+ * presa à parte de baixo da tela.
+ */
+function puxarParaFechar(camada, fechar) {
+  const painel = camada.querySelector(".painel");
+  const puxadores = [painel.querySelector(".alca"), painel.querySelector("header")];
+  let inicio = null;
+  const mover = (e) => {
+    if (!inicio) return;
+    const dy = Math.max(0, e.clientY - inicio.y);
+    painel.style.transition = "none";
+    painel.style.transform = `translateY(${dy}px)`;
+  };
+  const soltar = (e) => {
+    if (!inicio) return;
+    const dy = Math.max(0, e.clientY - inicio.y);
+    const rapido = dy > 30 && dy / Math.max(1, e.timeStamp - inicio.t) > 0.6;
+    inicio = null;
+    painel.style.transition = "";
+    painel.style.transform = "";
+    if (dy > 90 || rapido) fechar();
+  };
+  for (const el of puxadores) {
+    el?.addEventListener("pointerdown", (e) => {
+      if (!matchMedia("(max-width: 640px)").matches || e.target.closest("button, a, input, select, textarea")) return;
+      inicio = { y: e.clientY, t: e.timeStamp };
+      el.setPointerCapture(e.pointerId);
+    });
+    el?.addEventListener("pointermove", mover);
+    el?.addEventListener("pointerup", soltar);
+    el?.addEventListener("pointercancel", soltar);
+  }
+}
 
 /**
  * Aviso curto no rodapé da tela, que some sozinho.
