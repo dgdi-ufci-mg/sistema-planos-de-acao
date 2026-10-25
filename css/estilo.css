@@ -1781,5 +1781,7 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 /* item 3: o iPhone amplia a tela ao tocar num campo com letra menor que 16 px, e ela fica ampliada; em telas de toque,
    todo campo de digitar ou escolher tem 16 px */
 @media (pointer: coarse) {
-  input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea, [contenteditable="true"] { font-size: 16px !important; }
+  input, select, textarea { font-size: 16px; } /* sem !important: campos maiores, como o nome da ação, continuam maiores */
+  .linha-rapida input, .form-coluna input, .camada select, .camada textarea:not(.janela-nome), .texto-exportado, .editor-notas, .planilha input,
+  .busca-campo input, [contenteditable="true"] { font-size: 16px !important; }
 }
