@@ -11,7 +11,7 @@ import { esc } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { feriadosNacionais } from "../feriados.js";
 import { abrirPainel, avisar, perguntar } from "./painel.js";
-import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
+import { marcarPendencias, AVISO_INCOMPLETO, ESTADO_DA_GRAVACAO, mostrarEstado } from "./pendencias.js";
 import { baixarArquivo } from "./arquivos.js";
 import { NOME } from "../identidade.js";
 import { normalizar } from "../acao.js";
@@ -26,11 +26,13 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
   let rascunho = structuredClone(salvos);
   const anoAtual = Number(hoje.slice(0, 4));
   let anoFeriados = anoAtual + (Number(hoje.slice(5, 7)) >= 10 ? 1 : 0); // a partir de outubro, sugere o ano seguinte
-  let novas = new Set(); // datas acrescentadas pelo botão, destacadas até salvar
-  const corpo = abrirPainel("Configurar o sistema", "");
+  let novas = new Set(); // datas sugeridas pelo botão, destacadas enquanto o painel estiver aberto
+  let admSistema = false;
+  /* fechar (até com Esc) não perde o que foi digitado: grava o que ficou pendente (gravação automática, 24/10/2026) */
+  const corpo = abrirPainel("Configurar o sistema", "", { aoFechar: () => { clearTimeout(gravarCalendario.espera); if (admSistema) gravarCalendario(); } });
   ligarSecoesSuaves(corpo);
   /* Administrador do Sistema (passo 2.3) */
-  const admSistema = await store.ehAdministradorDoSistema().catch(() => false);
+  admSistema = await store.ehAdministradorDoSistema().catch(() => false);
   let espacos = admSistema ? await store.listarEspacos().catch(() => []) : [];
   let nomeando = null; // id do espaço com o formulário de nomeação aberto
 
@@ -61,9 +63,9 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
               ${admSistema ? `<button type="button" class="tirar" data-tirar="${i}" aria-label="Retirar a data">${ICONES.fechar}</button>` : ""}
             </div>`).join("")}</div>
           </details>`).join("") || `<p class="vazio">Nenhuma data cadastrada.</p>`}
-          ${novas.size ? `<p class="aviso">Datas sugeridas, destacadas acima. As marcadas com ⚠️ são pontes prováveis. Revise antes de salvar: confira, corrija e acrescente o que faltar, como recessos e pontos facultativos do ano.</p>` : ""}
+          ${novas.size ? `<p class="aviso">Datas sugeridas, já gravadas e destacadas acima. As marcadas com ⚠️ são pontes prováveis. Revise: confira, retire o que não valer e acrescente o que faltar, como recessos e pontos facultativos do ano.</p>` : ""}
           <p class="erro" data-erro hidden></p>
-          ${admSistema ? `<div class="botoes"><button class="botao" type="button" data-acrescentar>${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar calendário</button>${AVISO_PENDENTE}</div>` : ""}
+          ${admSistema ? `<div class="botoes"><button class="botao" type="button" data-acrescentar>${ICONES.mais}Data</button>${AVISO_INCOMPLETO}${ESTADO_DA_GRAVACAO}</div>` : ""}
         </form>
       </section>
       <section class="config">
@@ -165,7 +167,44 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
     const i = e.target.dataset.indice;
     if (i != null) { rascunho[Number(i)][e.target.dataset.campo] = e.target.value; marcar(); }
   });
-  corpo.addEventListener("change", (e) => { if (e.target.matches("[data-ano]")) anoFeriados = Number(e.target.value); });
+  corpo.addEventListener("change", (e) => {
+    if (e.target.matches("[data-ano]")) anoFeriados = Number(e.target.value);
+    else if (e.target.dataset.indice != null) {
+      /* data: o navegador avisa a cada número digitado do ano; espera a pessoa parar */
+      clearTimeout(gravarCalendario.espera);
+      if (e.target.type === "date") gravarCalendario.espera = setTimeout(() => gravarCalendario(), 900);
+      else gravarCalendario();
+    }
+  });
+
+  /* ---------- gravação automática (24/10/2026; item 10 da avaliação de usabilidade) ----------
+   * O calendário geral grava sozinho: ao sair de um campo alterado, ao retirar uma data e ao acrescentar os
+   * feriados sugeridos (com "Desfazer" no aviso). Uma data nova sem o dia fica destacada e de fora até ser
+   * preenchida. Uma recusa aparece no pé da lista, e o que está na tela continua lá para ser corrigido. */
+  let fila = Promise.resolve();
+  const completas = (lista) => lista.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d.data ?? ""))
+    .map((d) => (d.motivo?.trim() ? { data: d.data, motivo: d.motivo.trim() } : { data: d.data }));
+  function gravarCalendario({ aviso = null, desfazer = null } = {}) {
+    fila = fila.then(async () => {
+      const form = corpo.querySelector("[data-salvar-calendario]");
+      const erro = form?.querySelector("[data-erro]");
+      const lista = completas(rascunho).sort((a, b) => a.data.localeCompare(b.data));
+      if (JSON.stringify(lista) === JSON.stringify(completas(salvos))) return;
+      mostrarEstado(form, "salvando");
+      try {
+        await store.alterarCalendarioGeral(lista);
+        salvos = (await store.lerCalendarioGeral()).datasExcluidas;
+        if (erro) erro.hidden = true;
+        mostrarEstado(form, "salvo");
+        marcar();
+        if (aviso) avisar(aviso, desfazer ? { acao: { texto: "Desfazer", fazer: desfazer } } : {});
+      } catch (falha) {
+        mostrarEstado(form, "");
+        if (erro) { erro.textContent = falha.message; erro.hidden = false; }
+      }
+    });
+    return fila;
+  }
   corpo.addEventListener("click", (e) => {
     const t = e.target.closest("button");
     if (!t) return;
@@ -176,10 +215,16 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
     if (t.matches("[data-feriados]")) {
       const existentes = new Set(rascunho.map((d) => d.data));
       const sugeridas = feriadosNacionais(anoFeriados).filter((f) => !existentes.has(f.data));
+      if (!sugeridas.length) { avisar(`Os feriados nacionais de ${anoFeriados} já estão na lista.`); return; }
+      const antes = structuredClone(rascunho);
+      const ano = anoFeriados;
       rascunho = [...rascunho, ...sugeridas].sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
       novas = new Set(sugeridas.map((f) => f.data));
       desenhar();
-      avisar(sugeridas.length ? `${sugeridas.length} datas sugeridas para ${anoFeriados}. Revise e salve.` : `Os feriados nacionais de ${anoFeriados} já estão na lista.`);
+      gravarCalendario({
+        aviso: `${sugeridas.length} datas sugeridas para ${ano} gravadas. Revise as destacadas.`,
+        desfazer: () => { rascunho = antes; novas = new Set(); desenhar(); gravarCalendario({ aviso: "Sugestões retiradas." }); },
+      });
     } else if (t.matches("[data-acrescentar]")) {
       rascunho.push({ data: "", motivo: "" });
       desenhar();
@@ -188,6 +233,7 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
     } else if (t.dataset.tirar != null) {
       rascunho.splice(Number(t.dataset.tirar), 1);
       desenhar();
+      gravarCalendario();
     }
   });
   corpo.addEventListener("submit", async (e) => {
@@ -204,18 +250,7 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, aoRestaurar = ()
       } catch (falha) { avisar(falha.message); }
       return;
     }
-    const erro = corpo.querySelector("[data-erro]");
-    try {
-      await store.alterarCalendarioGeral(rascunho.map((d) => (d.motivo?.trim() ? { data: d.data, motivo: d.motivo.trim() } : { data: d.data })));
-      salvos = (await store.lerCalendarioGeral()).datasExcluidas;
-      rascunho = structuredClone(salvos);
-      novas = new Set();
-      desenhar();
-      avisar("Calendário geral salvo.");
-    } catch (falha) {
-      erro.textContent = falha.message;
-      erro.hidden = false;
-    }
+    gravarCalendario(); // Enter num campo da lista grava, como sair dele
   });
 
   desenhar();

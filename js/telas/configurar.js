@@ -17,7 +17,7 @@ import { planejarImportacao } from "../importar.js";
 import { planejarResponsaveis } from "../importar-responsaveis.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { excluirEtapas, excluirEspaco } from "./exclusao.js";
-import { marcarPendencias, AVISO_PENDENTE } from "./pendencias.js";
+import { marcarPendencias, AVISO_INCOMPLETO, ESTADO_DA_GRAVACAO, mostrarEstado } from "./pendencias.js";
 import { planilhaDoEspaco, mermaidDoEspaco } from "../exportar.js";
 import { hojeLocal } from "../dados.js";
 import { copiarTexto } from "./arquivos.js";
@@ -65,7 +65,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     if (n) n.textContent = String(responsaveis.length);
   };
   const novoId = (prefixo) => `${prefixo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  /** Rascunhos das listas, editados na tela até o Salvar da seção. */
+  /** Rascunhos das listas, editados na tela; as linhas completas são gravadas sozinhas (24/10/2026). */
   const rascunho = {
     datas: structuredClone(espaco.datasExcluidas ?? []),
     estrutura: structuredClone(espaco.estrutura ?? []),
@@ -75,7 +75,13 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   /* enquanto o painel está aberto, mudanças nos responsáveis (de quem quer que seja) aparecem na seção;
      as demais seções não são redesenhadas, para não perder o que está sendo digitado */
   let pararDeAcompanhar = () => {};
-  const corpo = abrirPainel("Configurar este espaço", "", { aoFechar: () => { pararDeAcompanhar(); largo.removeEventListener("change", aplicarAbas); } });
+  const corpo = abrirPainel("Configurar este espaço", "", { aoFechar: () => {
+    pararDeAcompanhar();
+    largo.removeEventListener("change", aplicarAbas);
+    /* fechar (até com Esc) não perde o que foi digitado: grava o que ficou pendente */
+    for (const t of esperas.values()) clearTimeout(t);
+    for (const secao of ["dados", "datas", "estrutura", "documentos"]) gravarSecao(secao);
+  } });
   ligarSecoesSuaves(corpo);
   /* em abas no computador (24/10/2026; item 11 da avaliação de usabilidade): janela larga, com as seções numa
      lista à esquerda e só a escolhida à direita, como nas configurações do Linear, do Notion e do GitHub; no
@@ -134,7 +140,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
             <label class="campo"><span>Prazo final <small>(opcional)</small></span><input name="prazoFinal" type="date" value="${esc(espaco.prazoFinal ?? "")}"></label>
           </div>`}
           <p class="erro" data-erro hidden></p>
-          <div class="botoes"><button class="botao principal" type="submit">Salvar</button></div>
+          <div class="botoes">${ESTADO_DA_GRAVACAO}</div>
         </form>
       </details>
 
@@ -152,7 +158,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
             <button type="button" class="tirar" data-tirar="datas" data-indice="${i}" aria-label="Retirar a data">${ICONES.fechar}</button>
           </div>`).join("") || `<p class="vazio">Nenhuma data própria.</p>`}</div>
           <p class="erro" data-erro hidden></p>
-          <div class="botoes"><button class="botao" type="button" data-acrescentar="datas">${ICONES.mais}Data</button><button class="botao principal" type="submit">Salvar</button>${AVISO_PENDENTE}</div>
+          <div class="botoes"><button class="botao" type="button" data-acrescentar="datas">${ICONES.mais}Data</button>${AVISO_INCOMPLETO}${ESTADO_DA_GRAVACAO}</div>
         </form>
       </details>` : ""}
 
@@ -199,7 +205,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
             </div>
           </div>`).join("") || `<p class="vazio">Nenhum documento.</p>`}</div>
           <p class="erro" data-erro hidden></p>
-          <div class="botoes"><button class="botao" type="button" data-acrescentar="documentos">${ICONES.mais}Documento</button><button class="botao principal" type="submit">Salvar</button>${AVISO_PENDENTE}</div>
+          <div class="botoes"><button class="botao" type="button" data-acrescentar="documentos">${ICONES.mais}Documento</button>${AVISO_INCOMPLETO}${ESTADO_DA_GRAVACAO}</div>
         </form>
       </details>` : ""}
 
@@ -625,37 +631,74 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
           </div>`;
         }).join("") || `<p class="vazio">Nenhuma fase.</p>`}
         <p class="erro" data-erro hidden></p>
-        <div class="botoes"><button class="botao" type="button" data-acrescentar="fase">${ICONES.mais}Fase</button><button class="botao principal" type="submit">Salvar</button></div>
+        <div class="botoes"><button class="botao" type="button" data-acrescentar="fase">${ICONES.mais}Fase</button>${ESTADO_DA_GRAVACAO}</div>
       </form>
     </details>`;
   }
 
-  /* ---------- gravação ---------- */
-  async function salvar(form) {
-    const secao = form.dataset.salvar;
-    const erro = form.querySelector("[data-erro]");
+  /* ---------- gravação automática (24/10/2026; item 10 da avaliação de usabilidade) ----------
+   * Dados do espaço, datas excluídas, fases e etapas e documentos gravam sozinhos: ao sair de um campo
+   * alterado (ou Enter), ao escolher uma opção e ao retirar ou mover um item. Acrescentar uma linha não grava:
+   * ela é gravada quando ficar completa. Linhas incompletas (data sem o dia, documento sem nome, fase ou etapa
+   * nova sem nome) ficam de fora da gravação e destacadas na tela. Uma recusa (por exemplo, link inválido)
+   * aparece no pé da seção, e o que está na tela continua lá para ser corrigido. As gravações de cada
+   * painel vão uma de cada vez, na ordem. */
+  let fila = Promise.resolve();
+  /** datas à espera de a pessoa parar de digitar, por seção */
+  const esperas = new Map();
+  const DATA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+  /** O que a seção grava, a partir do que está na tela; null se nada mudou. */
+  function mudancaDa(secao, form) {
     const limpo = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== "" && v != null));
-    try {
-      if (secao === "dados") {
-        const f = Object.fromEntries(new FormData(form));
-        await store.alterarEspaco(espacoId, { nome: f.nome, inicio: f.inicio || null, prazoFinal: f.prazoFinal || null, ...lerTipo(form) });
-      } else if (secao === "datas") {
-        const datas = rascunho.datas.map((d) => limpo({ data: d.data, motivo: d.motivo?.trim() })).sort((a, b) => (a.data ?? "").localeCompare(b.data ?? ""));
-        await store.alterarEspaco(espacoId, { datasExcluidas: datas });
-      } else if (secao === "estrutura") {
-        await store.alterarEspaco(espacoId, { estrutura: rascunho.estrutura.map((f) => ({ ...f, nome: f.nome.trim(), etapas: f.etapas.map((e) => ({ ...e, nome: e.nome.trim() })) })) });
-      } else if (secao === "documentos") {
-        await store.alterarEspaco(espacoId, { documentos: rascunho.documentos.map((d) => limpo({ nome: d.nome?.trim(), data: d.data, identificacao: d.identificacao?.trim(), link: d.link?.trim() })) });
-      }
-      await recarregar();
-      if (secao === "datas") rascunho.datas = structuredClone(espaco.datasExcluidas ?? []);
-      if (secao === "documentos") rascunho.documentos = structuredClone(espaco.documentos ?? []);
-      desenhar();
-      avisar("Configuração salva.");
-    } catch (e) {
-      erro.textContent = e.message;
-      erro.hidden = false;
+    let mudanca;
+    if (secao === "dados") {
+      const f = Object.fromEntries(new FormData(form));
+      mudanca = { nome: f.nome, inicio: f.inicio || null, prazoFinal: f.prazoFinal || null, ...lerTipo(form) };
+      const atual = Object.fromEntries(Object.keys(mudanca).map((k) => [k, espaco[k] ?? null]));
+      return JSON.stringify(atual) === JSON.stringify(Object.fromEntries(Object.entries(mudanca).map(([k, v]) => [k, v ?? null]))) ? null : mudanca;
     }
+    if (secao === "datas") {
+      mudanca = { datasExcluidas: rascunho.datas.filter((d) => DATA_ISO.test(d.data ?? "")).map((d) => limpo({ data: d.data, motivo: d.motivo?.trim() }))
+        .sort((a, b) => a.data.localeCompare(b.data)) };
+      return JSON.stringify(mudanca.datasExcluidas) === JSON.stringify(espaco.datasExcluidas ?? []) ? null : mudanca;
+    }
+    if (secao === "estrutura") {
+      /* fase ou etapa nova ainda sem nome fica de fora; uma que já existia e ficou sem nome é recusada, com o aviso */
+      const existentes = new Set((espaco.estrutura ?? []).flatMap((f) => [f.id, ...f.etapas.map((e) => e.id)]));
+      const valer = (x) => existentes.has(x.id) || x.nome.trim();
+      mudanca = { estrutura: rascunho.estrutura.filter(valer).map((f) => ({ ...f, nome: f.nome.trim(), etapas: f.etapas.filter(valer).map((e) => ({ ...e, nome: e.nome.trim() })) })) };
+      return JSON.stringify(mudanca.estrutura) === JSON.stringify(espaco.estrutura ?? []) ? null : mudanca;
+    }
+    if (secao === "documentos") {
+      mudanca = { documentos: rascunho.documentos.filter((d) => d.nome?.trim()).map((d) => limpo({ nome: d.nome?.trim(), data: d.data, identificacao: d.identificacao?.trim(), link: d.link?.trim() })) };
+      return JSON.stringify(mudanca.documentos) === JSON.stringify(espaco.documentos ?? []) ? null : mudanca;
+    }
+    return null;
+  }
+  /** Grava a seção, se algo mudou, sem redesenhar o painel (o cursor fica onde está). */
+  function gravarSecao(secao) {
+    fila = fila.then(async () => {
+      const form = corpo.querySelector(`form[data-salvar="${secao}"]`);
+      if (!form) return;
+      const erro = form.querySelector("[data-erro]");
+      const mudanca = mudancaDa(secao, form);
+      if (!mudanca) return;
+      mostrarEstado(form, "salvando");
+      try {
+        await store.alterarEspaco(espacoId, mudanca);
+        await recarregar();
+        erro.hidden = true;
+        mostrarEstado(form, "salvo");
+        marcar();
+        const n = corpo.querySelector(`[data-secao="${secao}"] > summary .n`);
+        if (n) n.textContent = String(secao === "datas" ? datasEfetivas(espaco, geral).length : secao === "estrutura" ? (espaco.estrutura ?? []).length : (espaco.documentos ?? []).length);
+      } catch (e) {
+        mostrarEstado(form, "");
+        erro.textContent = e.message;
+        erro.hidden = false;
+      }
+    });
+    return fila;
   }
 
   /* ---------- eventos ---------- */
@@ -718,6 +761,16 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       } catch (falha) {
         avisar(falha.message);
       }
+      return;
+    }
+    /* gravação automática das seções com formulário (24/10/2026) */
+    const form = e.target.closest("form[data-salvar]");
+    if (form) {
+      /* data: o navegador avisa a cada número digitado do ano; espera a pessoa parar */
+      const secao = form.dataset.salvar;
+      clearTimeout(esperas.get(secao));
+      if (e.target.type === "date") esperas.set(secao, setTimeout(() => gravarSecao(secao), 900));
+      else gravarSecao(secao);
       return;
     }
     const chave = e.target.dataset.campoOpcional;
@@ -854,6 +907,8 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     } else return;
     const secao = t.closest("[data-secao]").dataset.secao;
     desenhar();
+    /* retirar e mover gravam na hora; acrescentar grava quando a linha nova ficar completa */
+    if (!t.dataset.acrescentar && t.dataset.acrescentarEtapa == null) gravarSecao(secao);
     /* depois de acrescentar, o foco vai para o campo novo */
     if (t.dataset.acrescentar || t.dataset.acrescentarEtapa != null) {
       const campos = corpo.querySelectorAll(`[data-secao="${secao}"] input:not([type=checkbox])`);
@@ -885,7 +940,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   corpo.addEventListener("submit", (e) => {
     if (!e.target.dataset.salvar) return; // o formulário dos responsáveis grava por conta própria
     e.preventDefault();
-    salvar(e.target);
+    gravarSecao(e.target.dataset.salvar); // Enter num campo grava, como sair dele
   });
 
   desenhar();

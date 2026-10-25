@@ -1758,3 +1758,7 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .config-perigo .zona-encerrar { margin-top: 0; }
 }
 @media (min-width: 900px) and (prefers-reduced-motion: reduce) { .camada.configuracao .painel { transition: none; } }
+
+/* gravação automática nas configurações (24/10/2026; item 10 da avaliação de usabilidade) */
+.estado-gravacao { align-self: center; font-size: .82rem; color: var(--muted); min-height: 1em; }
+.estado-gravacao.salvo { color: var(--accent-ink); }
