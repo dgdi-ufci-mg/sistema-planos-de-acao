@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 154 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 155 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -108,6 +108,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/telas/instalar.js` | "Instalar como aplicativo": o pedido de instalação do navegador ou as instruções para cada aparelho; registro do *service worker* |
 | `js/telas/esqueleto.js` | Blocos cinza de carregamento (esqueletos) nos formatos lista, cartões e texto (seção 2) |
 | `js/telas/busca.js` | Caixa de busca e paleta de comandos (Ctrl+K): fontes de itens, teclado e lista (seção 8.0) |
+| `js/telas/atalhos.js` | Atalhos de teclado de uma tecla ("/", "N", "?") e a lista mostrada em "?" (seção 8.0) |
 | `js/telas/extracao.js` | Tela "Extração de dados" (passo 2.10) |
 | `js/telas/*.js` | Uma tela ou peça por arquivo: navegação, abertura, espaço (lista e quadro), janela da ação, nova ação, planilha (`editar-planilha.js`), cronograma, rede, linha do tempo, configurar espaço e sistema, tipo e modelo do espaço (`tipo-espaco.js`, `modelo-espaco.js`), entregas do Plano de Ação (`entregas.js`), lixeira, ajuda, acesso, seletor com busca, edição no lugar, exclusão, pendências, pessoas, painel, movimento |
 | **Testes** | |
@@ -1006,6 +1007,20 @@ As seções 8.1 a 8.5 guardam as decisões de interface na ordem em que foram to
 | Glossário | "O que é: *termo*", para cada termo do glossário; só depois de digitar algo | Abre a Ajuda no termo |
 
 Regra de combinação (`js/busca.js`, com testes): sem maiúsculas e sem acentos, cada palavra digitada precisa aparecer no título do item ou nas palavras extras dele (por exemplo, o número "#4", o código, a descrição, a etapa e as siglas dos responsáveis, numa ação; num comando, sinônimos simples, como "exportar" para a Extração de dados). Ordem: título que começa pelo digitado; depois, título com uma palavra que começa pela primeira palavra digitada; depois, os demais; empates na ordem acima; até 60 resultados. Os itens são lidos de novo a cada abertura da caixa. Para o leitor de tela, o campo é uma caixa de combinação (`combobox`) ligada à lista de opções (`listbox`), com a opção escolhida em `aria-activedescendant`.
+
+**Atalhos de teclado** (item 8 da avaliação de usabilidade, 24/10/2026; `js/telas/atalhos.js`). As teclas de uma tecla só valem com o cursor fora de campos de texto e sem painel, janela, diálogo, busca ou menu aberto, para nunca atrapalhar a digitação; com Ctrl, ⌘ ou Alt, não valem.
+
+| Tecla | Onde | O que faz |
+|---|---|---|
+| Ctrl+K (⌘K) ou / | Qualquer tela | Abre a busca (Ctrl+K vale até dentro de um campo) |
+| N | Espaço aberto | Nova ação (ou tarefa), como o botão; não vale nas entregas nem para quem não pode criar ações |
+| ? | Qualquer tela | Mostra a lista de atalhos (também em Ajuda, botão "Atalhos de teclado", e na busca) |
+| Ctrl+B (⌘B) | Qualquer tela | Mostra ou recolhe a barra lateral (já existia) |
+| ↑ ↓ | Lista e quadro, com um cartão escolhido | Andam entre os cartões à vista (na lista, os das etapas recolhidas ficam de fora; no quadro, dentro da coluna) |
+| ← → | Quadro | Passam para a coluna ao lado, no cartão de mesma posição ou no último dela; coluna vazia é pulada |
+| Enter ou espaço | Cartão escolhido | Abre a ação (já existia) |
+
+O cartão escolhido pelo teclado mostra o contorno de foco por dentro da borda. O botão "Nova ação" mostra "(tecla N)" ao passar o mouse.
 
 **Barra do topo do espaço, no computador** (três grupos, como no Numbers do Mac; aprovada em 23/10/2026):
 
@@ -1937,3 +1952,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 152 | Esqueletos de carregamento: blocos cinza no formato do conteúdo, depois de 0,3 s de espera, na abertura, nos espaços, entregas, lixeira, janela da ação e Superior (item 15 da avaliação de usabilidade; seção 2) |
 | 153 | Barra lateral reorganizada: à vista só Ajuda e Configurar o sistema; Lixeira, Extração, Gestão da estratégia e Instalar no grupo recolhível "Mais"; a Legenda passou para o menu Exibir (item 9 da avaliação de usabilidade; seção 8.0) |
 | 154 | Busca e paleta de comandos (Ctrl+K e "Buscar" na barra lateral): ações do espaço aberto, espaços, comandos e glossário (item 7 da avaliação de usabilidade; seção 8.0; `js/busca.js`, `js/telas/busca.js`) |
+| 155 | Atalhos de teclado: "/" busca, "N" nova ação, "?" lista de atalhos, setas entre os cartões da lista e do quadro (item 8 da avaliação de usabilidade; seção 8.0; `js/telas/atalhos.js`) |

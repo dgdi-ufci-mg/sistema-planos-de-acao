@@ -6,6 +6,7 @@ import { GLOSSARIO } from "../glossario.js";
 import { ICONES } from "../icones.js";
 import { abrirPainel, fecharPainel } from "./painel.js";
 import { NOME, INSTITUICAO } from "../identidade.js";
+import { mostrarAtalhos } from "./atalhos.js";
 
 const CLASSE_DO_ICONE = { concluida: "icone-concluida", liberada: "icone-liberada", naoLiberada: "icone-nao-liberada", atrasada: "icone-atrasada" };
 
@@ -16,6 +17,10 @@ export function mostrarAjuda({ foco, aoVerExemplo }) {
     <section>
       <p>Quer ver como funciona? Abra um espaço de exemplo, com dados fictícios.</p>
       <button class="botao" type="button" data-exemplo>Ver um exemplo</button>
+    </section>
+    <section>
+      <p>Usa muito o teclado? Há atalhos para buscar, criar ações e andar entre os cartões. A tecla <kbd>?</kbd> mostra a lista em qualquer tela.</p>
+      <button class="botao" type="button" data-atalhos>Atalhos de teclado</button>
     </section>
     <section>
       <h3>Glossário</h3>
@@ -31,5 +36,6 @@ export function mostrarAjuda({ foco, aoVerExemplo }) {
       <p class="tec">O manual completo entra aqui quando for refeito.</p>
     </section>`);
   corpo.querySelector("[data-exemplo]").addEventListener("click", () => { fecharPainel(); aoVerExemplo(); });
+  corpo.querySelector("[data-atalhos]").addEventListener("click", () => { fecharPainel(); mostrarAtalhos(); });
   if (foco) corpo.querySelector(`#termo-${foco}`)?.scrollIntoView({ block: "center" });
 }

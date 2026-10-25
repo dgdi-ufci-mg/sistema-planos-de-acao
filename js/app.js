@@ -28,6 +28,7 @@ import { abrirExtracao } from "./telas/extracao.js";
 import { instalar, instalado, aoMudarInstalacao, registrarAplicativo } from "./telas/instalar.js";
 import { criarVigiaDeConexao, sondaDoSite } from "./conexao.js";
 import { abrirBusca, registrarFonte, ligarAtalhoDaBusca } from "./telas/busca.js";
+import { ligarAtalhos, registrarTecla, mostrarAtalhos } from "./telas/atalhos.js";
 import { TIPOS, tipoDe } from "./tipos.js";
 import { GLOSSARIO } from "./glossario.js";
 
@@ -268,6 +269,9 @@ function boasVindas({ comFormulario = false } = {}) {
  * A partida dá os espaços, os comandos gerais e os termos do glossário; o espaço aberto dá as suas ações
  * e os seus comandos (js/telas/espaco.js). */
 ligarAtalhoDaBusca();
+/* atalhos de teclado (24/10/2026): "/" busca, "?" mostra a lista; "N" é do espaço aberto */
+ligarAtalhos();
+registrarTecla("/", abrirBusca);
 registrarFonte("sistema", async () => {
   if (!store) return [];
   const { meus, consulta } = await espacosDoBanco();
@@ -297,6 +301,7 @@ registrarFonte("sistema", async () => {
     comando("Gestão da estratégia", "modoRede", () => { location.href = "superior/"; }, "superior pei pdi programas"),
     ...(instalado() ? [] : [comando("Instalar como aplicativo", "instalar", () => instalar(), "celular tela inicial")]),
     comando("Ajuda e manual", "ajuda", () => ajuda(), "glossario"),
+    comando("Atalhos de teclado", "ajuda", mostrarAtalhos, "teclas"),
     ...(usuario || !acesso ? [comando("Configurar o sistema", "sistema", () => sistema(), "feriados calendario copia de seguranca")] : []),
     ...(acesso && !usuario ? [comando("Entrar", "pessoa", entrar, "login")] : []),
     ...(usuario ? [comando("Trocar senha", "pessoa", () => abrirTrocarSenha({ acesso })), comando("Sair", "pessoa", () => tentar(async () => { await acesso.sair(); avisar("Você saiu."); }))] : []),

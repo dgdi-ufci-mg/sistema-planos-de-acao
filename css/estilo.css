@@ -1719,3 +1719,16 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .busca-item { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { .busca, .busca-camada .fundo-escuro { transition: none; } }
+
+/* lista de atalhos de teclado (24/10/2026; item 8 da avaliação de usabilidade) */
+.atalhos section + section { margin-top: 14px; }
+.atalhos dl { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.atalhos dl > div { display: grid; grid-template-columns: minmax(110px, 38%) 1fr; gap: 10px; align-items: baseline; }
+.atalhos dt { display: flex; flex-wrap: wrap; gap: 4px; }
+.atalhos dd { margin: 0; }
+.atalhos kbd, .painel-corpo kbd {
+  font: 600 .74rem/1 var(--f-dados); color: var(--ink); border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 4px; padding: 3px 6px; background: var(--bg); white-space: nowrap;
+}
+/* cartão escolhido pelo teclado: o contorno fica por dentro, porque o cartão corta o que passa da borda */
+.linha[data-abrir-acao]:focus-visible { outline-offset: -2px; border-radius: inherit; }

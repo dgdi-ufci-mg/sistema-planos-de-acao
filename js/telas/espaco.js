@@ -31,6 +31,7 @@ import { esqueletoHtml } from "./esqueleto.js";
 import { tipoDe } from "../tipos.js";
 import { termos } from "../vocabulario.js";
 import { registrarFonte } from "./busca.js";
+import { registrarTecla } from "./atalhos.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -255,6 +256,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ligarPrioridade();
     lista.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
+      else if (e.key.startsWith("Arrow") && e.target.matches(".linha[data-abrir-acao]")) andarEntreCartoes(e);
       else if (ui.modo === "entregas") telaEntregas.aoTeclar(e);
     });
   }
@@ -584,7 +586,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <div class="topo-direita">
         ${atrasadas ? `<button class="chip-atrasadas so-computador" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
           title="${ui.situacao === "atrasada" ? "Mostrar todas as ações" : "Mostrar só as atrasadas"}">${ICONES.atrasada}${atrasadas} ${plural(atrasadas, "atrasada", "atrasadas")}</button>` : ""}
-        <button class="botao principal so-computador" type="button" data-nova>${ICONES.mais}Nova ${termos(espaco).acao}</button>
+        <button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>
       </div>`;
     modoDesenhado = ui.modo;
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
@@ -1420,6 +1422,37 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     });
   }
 
+  /**
+   * Setas entre os cartões (atalhos de teclado, 24/10/2026): na lista, ↑ e ↓ andam pelos cartões à vista (os das
+   * etapas recolhidas ficam de fora); no quadro, ↑ e ↓ andam dentro da coluna e ← e → passam para a coluna ao lado,
+   * no cartão de mesma altura ou no último.
+   */
+  function andarEntreCartoes(e) {
+    const visiveis = (raiz) => [...raiz.querySelectorAll(".linha[data-abrir-acao]")].filter((el) => !el.closest(".fechado") && el.getClientRects().length);
+    const atual = e.target;
+    let destino = null;
+    if (ui.modo === "quadro") {
+      const colunas = [...lista.querySelectorAll(".coluna[data-coluna]")];
+      const c = colunas.findIndex((col) => col.contains(atual));
+      const daColuna = visiveis(colunas[c]);
+      const i = daColuna.indexOf(atual);
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") destino = daColuna[i + (e.key === "ArrowDown" ? 1 : -1)];
+      else {
+        const passo = e.key === "ArrowRight" ? 1 : -1;
+        for (let k = c + passo; k >= 0 && k < colunas.length && !destino; k += passo) {
+          const outra = visiveis(colunas[k]);
+          destino = outra[Math.min(i, outra.length - 1)];
+        }
+      }
+    } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      const todos = visiveis(lista);
+      destino = todos[todos.indexOf(atual) + (e.key === "ArrowDown" ? 1 : -1)];
+    } else return;
+    e.preventDefault();
+    destino?.focus();
+    destino?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }
+
   function abrirJanela(numero, abrirCom = null) {
     janela = abrirAcao({
       store, espacoId, numero, hoje, usuario, dados: dadosDaJanela(), abrirCom,
@@ -1486,6 +1519,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       novaJanela?.atualizar(dadosDaJanela());
     }).catch((e) => avisar(e.message));
   });
+  /* atalho "N": nova ação, como o botão "Nova ação" (só onde ele aparece) */
+  const tirarTeclaN = registrarTecla("n", () => {
+    if (!linhas || store.podeGravar === false || !perm.criarAcao || ui.modo === "entregas") return;
+    ui.pop = null;
+    desenharFerramentas();
+    abrirNova();
+  });
   /* busca (Ctrl+K, 24/10/2026): as ações deste espaço e os comandos dele */
   const tirarDaBusca = registrarFonte("espaco", () => {
     if (!linhas || !espaco) return [];
@@ -1511,6 +1551,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   });
   return () => {
     tirarDaBusca();
+    tirarTeclaN();
     parar();
     janela?.fechar();
     document.removeEventListener("click", fecharPop);
