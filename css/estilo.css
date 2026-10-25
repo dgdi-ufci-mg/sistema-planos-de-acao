@@ -1812,3 +1812,8 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 .prazo-unidade { font: 500 .72rem var(--f-texto); color: var(--muted); margin-left: 1px; }
 .unidade-longa { display: none; }
 @media (max-width: 640px) { .unidade-curta { display: none; } .unidade-longa { display: inline; } }
+/* item 12: no celular, o alerta das atrasadas é o chip da barra do topo (relógio e número), como no computador */
+@media (max-width: 640px) {
+  .chip-atrasadas { margin-right: 0; height: 32px; padding: 0 10px; flex: none; }
+  .chip-atrasadas .chip-palavra { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}

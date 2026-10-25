@@ -187,11 +187,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /* o nome do espaço fica só na barra do topo (passo 1.14c); datas e chance saíram do alto (21/10/2026): vão para a linha do tempo e o cronograma (passos 1.17a e 1.17b);
      o aviso de previsão incompleta fica sempre à vista, em qualquer modo */
   function cabecaHtml() {
-    const atrasadas = linhas.filter((l) => l.atrasada).length;
-    /* "Barra" e "Mostrar até" à esquerda, alerta de atrasadas à direita, na mesma linha (22/10/2026, pedido do responsável) */
-    const alerta = atrasadas ? `<button type="button" class="alerta-atrasadas" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}">${ICONES.atrasada}<span>${ui.situacao === "atrasada"
-        ? `Mostrando só ${plural(atrasadas, `a ${termos(espaco).acao} atrasada`, `as ${atrasadas} ${termos(espaco).acoes} atrasadas`)}. <u>Mostrar todas</u>`
-        : `<b>${atrasadas} ${plural(atrasadas, `${termos(espaco).acao} atrasada`, `${termos(espaco).acoes} atrasadas`)}.</b> <u>Ver</u>`}</span></button>` : "";
     /* papéis (passo 2.1): espaço antigo sem administrador, ou quem vê sem poder alterar */
     /* encerrado (passo 2.3): só consulta; o administrador reabre */
     const quemEncerrou = espaco.encerradoPor ? responsaveis.find((r) => r.usuario === espaco.encerradoPor)?.nome ?? espaco.encerradoPor : "";
@@ -207,10 +202,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const semEntregas = ehPlano() && ui.entregas && !ui.entregas.length && !perm.encerrado && ui.modo !== "entregas"
       ? `<p class="aviso-papel sem-entregas">${ICONES.modoEntregas}<span><b>Sem entregas cadastradas.</b> Este Plano de Ação fica como rascunho até ter pelo menos uma entrega.</span>
         <button class="botao" type="button" data-ir-entregas>Ver entregas</button></p>` : "";
-    /* a linha só aparece no celular (no computador, os menus do topo fazem o papel dela); Exibir, o indicador e
-       "Mostrar até" passaram para o painel "Filtros e exibição" (25/10/2026, item 3 da avaliação de usabilidade, a
-       pedido do responsável): a lista começa logo abaixo da barra do topo, e fica só o alerta das atrasadas */
-    return `${papelAviso}${semEntregas}${alerta ? `<div class="cabeca-linha">${alerta}</div>` : ""}
+    /* sem a linha do celular (25/10/2026): Exibir, o indicador e "Mostrar até" foram para o painel "Filtros e
+       exibição" (item 3 da avaliação de usabilidade) e o alerta das atrasadas virou o chip da barra do topo, como
+       no computador (item 12 da avaliação de celular); a lista começa logo abaixo da barra */
+    return `${papelAviso}${semEntregas}
       ${faltam() ? `<p class="previsao-incompleta">${ICONES.atrasada}<span><b>Previsão incompleta:</b> ${faltam()} ${plural(faltam(), "ação sem estimativa conta", "ações sem estimativa contam")} como zero dias.</span></p>` : ""}`;
   }
 
@@ -570,7 +565,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${doCentro ? popoverHtml() : ""}
       </div>
       <div class="topo-direita">
-        ${atrasadas ? `<button class="chip-atrasadas so-computador" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
+        ${atrasadas ? `<button class="chip-atrasadas" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
           title="${ui.situacao === "atrasada" ? "Mostrar todas as ações" : "Mostrar só as atrasadas"}">${ICONES.atrasada}${atrasadas}<span class="chip-palavra"> ${plural(atrasadas, "atrasada", "atrasadas")}</span></button>` : ""}
         <button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>
       </div>`;

@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 167 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 168 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1032,7 +1032,7 @@ O cartão escolhido pelo teclado mostra o contorno de foco por dentro da borda. 
 
 Os painéis abrem sob o menu, com a transição padrão. Os menus do centro mostram ícone e nome sempre que couberem (25/10/2026, item 4 da avaliação de usabilidade, a pedido do responsável; antes, até 1399 px, só o ícone). A barra confere, a cada desenho e quando a largura muda (inclusive ao abrir ou recolher a barra lateral), se os grupos se encostam (menos de 8 px entre eles) ou se algum texto não cabe; nesse caso, primeiro o chip das atrasadas fica só com o relógio e o número; se ainda faltar lugar, os menus ficam só com o ícone, com o nome ao passar o mouse e para o leitor de tela. Na prática, os nomes aparecem a partir de cerca de 1.000 px com a barra lateral aberta e de 900 px com ela recolhida; no tablet, ficam só os ícones; entre 641 e 1099 px, sem espaço para centralizar, os grupos ficam lado a lado. Entre 641 e 899 px (tablet), a barra lateral abre por cima, como no celular, e o nome do espaço fica na barra do topo. A barra do topo ocupa a largura toda; o conteúdo fica em até 1240 px, salvo planilha, cronograma e rede, que usam a largura toda. Planilha e rede vão até o fim da tela.
 
-**No celular (até 640 px):** à esquerda, o botão da barra lateral e um funil que abre **"Filtros e exibição"** (painel que sobe de baixo; antes "Filtros e ordem"); no meio, o nome do espaço. O botão (+) cria ações. Só Lista e Quadro. *Revisto em 25/10/2026 (item 3 da avaliação de usabilidade, a pedido do responsável):* a segunda linha com Exibir, Indicador e "Mostrar até" saiu do alto da lista, que agora começa logo abaixo da barra do topo (fica só o alerta das atrasadas, quando há). Esses controles foram para o painel, depois da situação, do responsável e da ordem, nesta ordem: Indicador (com "Ao lado da barra de tempo"), Mostrar até, Identificador antes do nome, Colunas (na lista) e Legenda dos símbolos, com os mesmos desenhos do menu Exibir do computador. Cada escolha vale na hora, com o painel aberto.
+**No celular (até 640 px):** à esquerda, o botão da barra lateral e um funil que abre **"Filtros e exibição"** (painel que sobe de baixo; antes "Filtros e ordem"); no meio, o nome do espaço. O botão (+) cria ações. Só Lista e Quadro. *Revisto em 25/10/2026 (item 3 da avaliação de usabilidade, a pedido do responsável):* a segunda linha com Exibir, Indicador e "Mostrar até" saiu do alto da lista, que agora começa logo abaixo da barra do topo; o alerta das atrasadas, que ficava nela, virou o chip da barra do topo (item 12 da avaliação de celular, seção 8.7). Esses controles foram para o painel, depois da situação, do responsável e da ordem, nesta ordem: Indicador (com "Ao lado da barra de tempo"), Mostrar até, Identificador antes do nome, Colunas (na lista) e Legenda dos símbolos, com os mesmos desenhos do menu Exibir do computador. Cada escolha vale na hora, com o painel aberto.
 
 **Visualizações:**
 
@@ -1276,6 +1276,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 - **Sem dicas de teclado no celular** (item 8): em aparelhos sem mouse (`hover: none` e `pointer: coarse`), somem o "Ctrl K" ao lado de Buscar, a seção "Atalhos de teclado" da Ajuda e as dicas "↑ ↓ / Enter / Esc" da busca. A busca ganha **Cancelar** à direita do campo, como no iOS (também em janelas estreitas do computador, onde o "Esc" já não aparecia).
 
 - **Unidade junto do número da barra de tempo** (item 11): como a legenda passou a aparecer só na primeira etapa aberta, o número de dias úteis leva a unidade: "d" no computador ("10 d") e "dia" ou "dias" no celular ("7 dias"), em letra menor e cinza. O leitor de tela continua lendo a frase completa ("Faltam 7 dias úteis…"). Vale na lista e no quadro, também no computador.
+
+- **Atrasadas no chip da barra do topo** (item 12): no celular, a linha "1 ação atrasada. Ver" saiu do alto da lista; o mesmo chip do computador aparece à direita do nome do espaço, com o relógio e o número (a palavra fica para o leitor de tela). Tocar mostra só as atrasadas; tocar de novo, todas (o chip fica preenchido enquanto o filtro vale).
 
 ## 9. O que saiu da versão 1
 
@@ -1980,3 +1982,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 165 | Celular: nas Entregas, o (+) cria uma entrega, e não uma ação; a tecla N também (item 5 da avaliação de celular; seção 8.7) |
 | 166 | Celular: sem dicas de teclado; "Cancelar" na busca (item 8 da avaliação de celular; seção 8.7) |
 | 167 | Unidade junto do número da barra de tempo: "d" no computador, "dias" no celular (item 11 da avaliação de celular; seção 8.7) |
+| 168 | Celular: alerta das atrasadas como chip na barra do topo, em vez de uma linha no alto da lista (item 12 da avaliação de celular; seção 8.7) |
