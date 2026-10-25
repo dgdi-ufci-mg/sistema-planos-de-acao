@@ -6,6 +6,7 @@
 import { NOME, INSTITUICAO } from "../identidade.js";
 import { ICONES } from "../icones.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
+import { TIPOS } from "../tipos.js";
 import { modeloHtml, ligarModelo, lerModelo } from "./modelo-espaco.js";
 import { abrirSuave, fecharSuave } from "./movimento.js";
 
@@ -30,10 +31,10 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
   alvo.innerHTML = `
     <section class="cartao boas-vindas"${soFormulario ? " hidden" : ""}>
       <div class="identidade"><img src="logo.png" alt="" width="40" height="40"><span><b>${NOME}</b><small>${INSTITUICAO}</small></span></div>
-      <h1>Bem-vindo ao ${NOME}</h1>
-      <p>Para cada ação, você informa quanto tempo ela deve levar e de quais outras ações ela depende.
-      O sistema calcula as datas, mostra quais ações não podem atrasar sem atrasar todo o trabalho,
-      estima a chance de cumprir o prazo e acompanha o andamento.</p>
+      <h1>Boas-vindas ao ${NOME}</h1>
+      <p>Planeje e acompanhe o trabalho num espaço de planejamento. Conforme o espaço, o sistema calcula as datas,
+      mostra o que não pode atrasar, estima a chance de cumprir o prazo e acompanha o andamento. Há três tipos:</p>
+      <ul class="tipos-boas-vindas">${Object.values(TIPOS).map((t) => `<li><b>${t.nome}:</b> ${t.explicacao}</li>`).join("")}</ul>
       <div class="botoes">
         ${podeCriar ? `<button class="botao principal" type="button" data-acao="criar">${ICONES.mais}Criar um espaço de planejamento</button>`
           : '<button class="botao principal" type="button" data-acao="entrar">Entrar para criar um espaço</button>'}

@@ -64,7 +64,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     const abas = ABAS.filter(([v]) => gestor || v !== "importar");
     alvo.innerHTML = `
       <section class="superior-cabeca">
-        <h2>Estratégia</h2>
+        <h1 class="superior-titulo">Estratégia</h1>
         <p class="tec">O desdobramento do PEI/PDI, de cima para baixo, até os Planos de Ação.
           ${gestor ? "Você é Gestor da Estratégia: pode alterar o catálogo." : "Só o Gestor da Estratégia altera o catálogo; aqui você consulta."}</p>
         <div class="superior-abas" role="tablist">${abas.map(([v, t]) => `<button type="button" role="tab" data-aba="${v}" aria-selected="${ui.aba === v}">${t}</button>`).join("")}</div>

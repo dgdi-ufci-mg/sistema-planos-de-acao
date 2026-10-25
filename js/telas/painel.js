@@ -18,10 +18,10 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
   camada.className = janela ? "camada de-baixo janela" : deBaixo ? "camada de-baixo" : "camada";
   camada.innerHTML = `
     <div class="fundo-escuro" data-fechar></div>
-    <aside class="painel" role="dialog" aria-modal="true" aria-label="${titulo}">
-      <header><h2>${titulo}</h2><button class="botao" type="button" data-fechar>${botao}</button></header>
+    <div class="painel" role="dialog" aria-modal="true" aria-label="${titulo}">
+      <header role="none"><h2>${titulo}</h2><button class="botao" type="button" data-fechar>${botao}</button></header>
       <div class="painel-corpo">${conteudoHtml}</div>
-    </aside>`;
+    </div>`;
   document.body.append(camada);
   requestAnimationFrame(() => requestAnimationFrame(() => camada.classList.add("aberta")));
   const aoTeclar = (e) => { if (e.key === "Escape" && !e.defaultPrevented) fecharPainel(); };

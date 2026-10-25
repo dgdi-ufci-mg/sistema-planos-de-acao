@@ -49,13 +49,13 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAca
   function cartaoHtml(e) {
     const aviso = avisoDeCoerencia(e, e.situacao ?? SITUACAO_INICIAL, d.alcances);
     const donos = nomes(e.responsaveis);
-    return `<article class="cartao-entrega" role="button" tabindex="0" data-abrir-entrega="${esc(e.id)}">
+    return `<div class="cartao-entrega" role="button" tabindex="0" data-abrir-entrega="${esc(e.id)}">
       <div class="entrega-topo"><h3>${esc(e.titulo)}</h3>${seloDaSituacao(e.situacao ?? SITUACAO_INICIAL)}</div>
       ${barraHtml(e)}
       <div class="entrega-rodape"><small class="tec">Meta: ${esc(textoDaMeta(e))}${e.prazo ? ` · até ${dataBr(e.prazo)}` : ""}</small>
         ${donos.length ? `<span class="donos">${donosHtml(donos, { tons: d.espaco.tons, meus: d.meus })}</span>` : ""}</div>
       ${aviso ? `<p class="entrega-aviso">${ICONES.atrasada}<span>${esc(aviso)}</span></p>` : ""}
-    </article>`;
+    </div>`;
   }
 
   /** A visualização: resumo por situação, os cartões e, para o administrador, "Nova entrega". */

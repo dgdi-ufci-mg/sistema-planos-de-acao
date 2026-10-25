@@ -83,7 +83,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const lista = comentarios ?? [];
     const visiveis = lista.filter((c) => !c.apagadoEm).length;
     return `<section class="comentarios" aria-label="Comentários">
-      <h4>Comentários${visiveis ? ` <span class="n">${visiveis}</span>` : ""}</h4>
+      <h3>Comentários${visiveis ? ` <span class="n">${visiveis}</span>` : ""}</h3>
       ${comentarios === null ? `<p class="vazio">Carregando…</p>` : lista.length ? `<ol class="conversa">${lista.map(comentarioHtml).join("")}</ol>`
         : `<p class="vazio">Nenhum comentário ainda.</p>`}
       ${usuario && d.perm.comentar ? `<form class="comentar" data-comentar>
@@ -228,7 +228,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           <div data-comentarios>${comentariosHtml()}</div>
           ${comEstimativas ? historicoHtml(acao, resumoEst) : ""}
           <details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
-            <summary><h4>Histórico de alterações</h4></summary>
+            <summary><h3>Histórico de alterações</h3></summary>
             <div data-registros>${registrosHtml()}</div>
           </details>
         </div>
@@ -593,7 +593,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   function reestimativaHtml() {
     return `<form class="editor cartao-form" data-salvar="reestimar">
-      <h4>Reestimar</h4>
+      <h3>Reestimar</h3>
       <p class="tec">Quanto tempo falta, <b>a partir de hoje</b>, em dias úteis. A estimativa anterior fica no histórico.</p>
       ${tresPontosHtml(null)}
       <label class="campo"><span>Motivo <small>(opcional)</small></span><input name="motivo" maxlength="200" placeholder="Por exemplo: atraso do fornecedor"></label>
@@ -604,7 +604,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   function conclusaoHtml(acao) {
     return `<form class="editor cartao-form" data-salvar="concluir">
-      <h4>Registrar conclusão</h4>
+      <h3>Registrar conclusão</h3>
       <label class="campo"><span>Data de conclusão</span><input name="data" type="date" value="${hoje}" max="${hoje}" min="${esc(d.espaco.inicio ?? "")}"></label>
       <p class="erro" data-erro hidden></p>
       <div class="botoes"><button class="botao principal" type="submit">Registrar</button><button class="botao" type="button" data-cancelar>Cancelar</button></div>
@@ -613,11 +613,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   function historicoHtml(acao, resumo) {
     const lista = acao.estimativas ?? [];
-    if (!lista.length) return `<section class="historico"><h4>Histórico de estimativas</h4><p class="vazio">Sem estimativa.</p></section>`;
+    if (!lista.length) return `<section class="historico"><h3>Histórico de estimativas</h3><p class="vazio">Sem estimativa.</p></section>`;
     const nomeDe = (usuario) => d.responsaveis.find((r) => r.usuario && r.usuario === usuario)?.nome ?? usuario;
     const andou = resumo.deslocamento;
     return `<section class="historico">
-      <h4>Histórico de estimativas</h4>
+      <h3>Histórico de estimativas</h3>
       <p class="tec">Original: ${diasUteis(resumo.original)} · ${resumo.reprogramacoes} ${plural(resumo.reprogramacoes, "reprogramação", "reprogramações")}${resumo.reprogramacoes || andou ? ` · o término ${andou > 0 ? `atrasou ${diasUteis(andou)}` : andou < 0 ? `adiantou ${diasUteis(-andou)}` : "não mudou"}` : ""}</p>
       <ol>${lista.map((e, i) => `<li${i === lista.length - 1 ? ' class="vigente"' : ""}>
         <span class="historico-quem"><span class="mono">${dataBr(e.em)}</span>${e.por ? ` · ${esc(nomeDe(e.por))}` : ""}${i === lista.length - 1 ? ` <span class="selo-vigente">vigente</span>` : ""}</span>

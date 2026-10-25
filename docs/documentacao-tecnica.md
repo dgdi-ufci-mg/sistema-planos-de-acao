@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 149 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 150 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1131,6 +1131,14 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 - **Acesso:** continua o mesmo do site. A restrição da leitura a quem tem login (passo 2 da ideia, seção 13.2) não foi feita; depende de decisão do responsável.
 - **Conferido no Chromium:** o manifesto não tem erros e a instalação é aceita (o único impedimento no teste foi a janela anônima do próprio teste). A página "Sem conexão" e a instalação num iPhone e num Android de verdade ficaram para o responsável conferir.
 
+**Revisão de usabilidade e acessibilidade** (24/10/2026, a pedido do responsável; relatório no projeto do claude.ai, `claude/avaliacao-usabilidade-2026-10-24.md`). Aplicadas só as correções sem dúvida, que não mudam o jeito de usar:
+- **Contraste:** `--muted` do tema claro passou de #62706C para #5A6864, para 4,5:1 também sobre o verde-claro dos cartões escolhidos e o cinza das células travadas (WCAG 1.4.3).
+- **Leitores de tela:** o título de nível 1 (nome do espaço; sem espaço aberto, o nome do sistema) fica fora da vista, mas não é mais apagado; os painéis e janelas são `div` com papel de diálogo e cabeçalho sem papel de faixa do topo; os subtítulos da janela da ação são de nível 3; os cartões das entregas não usam `article`; no Superior, "Estratégia" é o título de nível 1.
+- **Alvos de toque:** os × pequenos (responsáveis, etiquetas, dependências, listas da configuração) têm área de 24 px (WCAG 2.5.8), sem mudar o desenho.
+- **Celular:** o fim da lista tem espaço para o botão (+), que não cobre mais o último cartão.
+- **Boas-vindas:** "Boas-vindas ao Sextante", com um texto que serve aos três tipos de espaço e a lista deles (os textos vêm de `js/tipos.js`).
+- O teste automático de acessibilidade (axe-core, WCAG 2.2 AA) passou de 61 ocorrências em 16 telas para 1 (a barra fina do cronograma, com 18 px de altura; fica como está, porque engrossá-la muda o desenho).
+
 **Comentários** (passo 2.9): na janela da ação, entre as anotações e o histórico de estimativas, uma conversa com nome, data, "editado", e Editar e Apagar nos próprios comentários; Ctrl+Enter envia.
 
 **Configurar este espaço:** dados (nome, tipo, com o Programa e a aprovação no Plano de Ação, início, prazo final), datas excluídas próprias e desconsideradas do calendário geral, fases e etapas, campos opcionais (fases e etapas, descrição, anotações, códigos), documentos, responsáveis (com importação por planilha e criação das contas de acesso), retratos, importação de ações, exportação e a simulação (semente e número de cenários, só leitura). No fim, "Excluir este espaço". **Configurar o sistema:** calendário geral, com sugestão anual dos feriados, e a cópia de segurança.
@@ -1907,3 +1915,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 147 | Passo 3.2 (recorrência de tarefas) cancelado, por decisão do responsável (seções 12 e 16.8). Sem mudança no sistema |
 | 148 | Aplicativo instalável pelo navegador (primeiro passo da ideia da seção 13.2): manifesto, ícones, *service worker* sem cache, "Instalar como aplicativo" na barra lateral e no glossário; pendências da seção 13.1 atualizadas (seções 3.1, 8 e 13) |
 | 149 | Colunas do quadro revistas, a pedido do responsável, depois de avaliação de usabilidade: faixa estreita "+" com Criar e Cancelar e campo que continua aberto; menu "⋯" no título (renomear, mover, nova coluna à direita, retirar); arrastar o título para mudar a ordem; rolagem do quadro mantida (seção 8, "Colunas no quadro") |
+| 150 | Revisão de usabilidade e acessibilidade: contraste, títulos e papéis para leitores de tela, alvos de toque de 24 px, espaço para o botão (+) no celular e texto de boas-vindas para os três tipos (seção 8) |

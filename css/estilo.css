@@ -8,7 +8,7 @@
 /* ---------- variáveis: tema claro ---------- */
 :root {
   --bg: #F5F3EF; --surface: #FFFFFF; --sunk: #FAF8F5;
-  --ink: #163F3A; --muted: #62706C; --faint: #8E9895; --line: #DDD6CC; --grid: #ECE6DD;
+  --ink: #163F3A; --muted: #5A6864; /* 24/10/2026: um pouco mais escuro, para contraste de 4,5:1 (WCAG 1.4.3) também sobre o verde-claro e o cinza das células travadas */ --faint: #8E9895; --line: #DDD6CC; --grid: #ECE6DD;
   --accent: #00796B; --accent-ink: #00594F; --accent-soft: #D6EEE9;
   --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
@@ -182,6 +182,7 @@ body::before {
 /* três colunas (22/10/2026): ferramentas à esquerda, nome do espaço no meio, Nova ação à direita */
 .topo-linha { display: grid; grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr); }
 .topo-linha > .topo-titulo { grid-column: 2; grid-row: 1; }
+.so-leitor { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* só para leitores de tela */
 .topo-linha > .botao-lateral { justify-self: start; }
 .botao-lateral {
   border: 0; background: transparent; color: var(--ink); width: 36px; height: 36px; border-radius: var(--raio);
@@ -574,7 +575,7 @@ h3.editavel { padding: 2px 6px; }
 }
 .editor textarea { resize: vertical; }
 .cartao-form { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
-.cartao-form h4, .historico h4 { margin: 0; font-family: var(--f-titulo); font-size: 1.05rem; font-weight: 600; }
+.cartao-form h4, .historico h4, .cartao-form h3, .historico h3 { margin: 0; font-family: var(--f-titulo); font-size: 1.05rem; font-weight: 600; }
 .tres-pontos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .editor .tec, .editor p { margin: 0; }
 .etiquetas { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1161,7 +1162,7 @@ body[data-vista-atual="planilha"] .popover-exibir { width: 380px; }
   .cabeca-linha { display: none; }
   /* no espaço: três grupos (esquerda, centro e direita), como no Numbers; o centro fica no meio da área de trabalho */
   body[data-vista-atual] .topo-linha { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
-  body[data-vista-atual] .topo-linha > .topo-titulo { display: none; }
+  body[data-vista-atual] .topo-linha > .topo-titulo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* fora da vista, mas lido pelos leitores de tela (título de nível 1) */
   body[data-vista-atual] .topo-esquerda { grid-column: 1; justify-self: start; }
   body[data-vista-atual] .topo-direita { grid-column: 3; justify-self: end; }
 }
@@ -1256,8 +1257,8 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 
 /* ---------- comentários da ação (passo 2.9) ---------- */
 .comentarios { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line); padding-top: 12px; }
-.comentarios h4 { margin: 0; font-family: var(--f-titulo); font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-.comentarios h4 .n { font-family: var(--f-dados); font-size: .78rem; font-weight: 500; color: var(--muted); }
+.comentarios h4, .comentarios h3 { margin: 0; font-family: var(--f-titulo); font-size: 1.05rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.comentarios h4 .n, .comentarios h3 .n { font-family: var(--f-dados); font-size: .78rem; font-weight: 500; color: var(--muted); }
 .comentarios .vazio { margin: 0; }
 .conversa { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .comentario { display: flex; flex-direction: column; gap: 4px; padding: 8px 12px; border-radius: 10px; background: var(--sunk); max-width: 92%; }
@@ -1639,3 +1640,11 @@ a.lateral-acao { text-decoration: none; }
 .instalar h3 { font-size: 1rem; margin: 14px 0 4px; }
 .instalar ol { margin: 0; padding-left: 20px; }
 .instalar p { margin: 0 0 8px; }
+
+/* ---------- revisão de usabilidade (24/10/2026) ---------- */
+#principal .superior-titulo { font-size: 1.25rem; margin-bottom: 8px; }
+/* celular: o botão (+) não cobre o último cartão */
+@media (max-width: 640px) { [data-painel="acoes"] { padding-bottom: 76px; } }
+/* alvos de toque de pelo menos 24 px (WCAG 2.5.8) nos × pequenos, sem mudar o desenho */
+.tirar { min-width: 24px; min-height: 24px; justify-content: center; align-items: center; margin: -3px; }
+.tipos-boas-vindas { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }

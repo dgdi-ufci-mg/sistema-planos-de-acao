@@ -10,6 +10,7 @@
  *   no celular, abre por cima, com fundo escurecido, e fecha ao escolher algo.
  */
 import { ICONES } from "../icones.js";
+import { NOME } from "../identidade.js";
 import { esc } from "../formato.js";
 import { iniciais } from "../responsaveis.js";
 import { agruparPorTipo } from "../tipos.js";
@@ -109,7 +110,10 @@ export function mostrarNavegacao(opcoes) {
     legenda: opcoes.aoLegenda, lixeira: opcoes.aoLixeira, consulta: opcoes.aoConsulta, extracao: opcoes.aoExtracao, instalar: opcoes.aoInstalar,
   };
   if (!ligado) ligar();
-  document.querySelector("[data-titulo]").textContent = titulo;
+  /* sem espaço aberto, o título de nível 1 é o nome do sistema, só para leitores de tela (24/10/2026) */
+  const h1 = document.querySelector("[data-titulo]");
+  h1.textContent = titulo || NOME;
+  h1.classList.toggle("so-leitor", !titulo);
 
   const contaHtml = usuario
     ? `<button class="conta" type="button" data-abrir-conta aria-expanded="false" aria-controls="menu-conta">
