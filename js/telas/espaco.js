@@ -32,6 +32,7 @@ import { tipoDe } from "../tipos.js";
 import { termos } from "../vocabulario.js";
 import { registrarFonte } from "./busca.js";
 import { registrarTecla } from "./atalhos.js";
+import { abrirCamada } from "./voltar.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -1417,17 +1418,28 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /* ---------- celular: painel "Filtros e exibição" ---------- */
   let painelOpcoes = null;
+  /* "Exibir" numa segunda tela do painel (25/10/2026, item 14 da avaliação de celular): a primeira fica com a
+     visualização, os filtros e a ordem; "Exibir ›" abre o indicador, "Mostrar até", o identificador, as colunas e a legenda */
+  let naExibicao = false;
+  let soltarExibicao = null;
+  const temExibicao = () => comIndicador() || (comExibir() && ui.modo !== "planilha");
   function preencherOpcoes() {
+    if (naExibicao && temExibicao()) {
+      painelOpcoes.innerHTML = `<button type="button" class="config-voltar opcoes-voltar" data-sair-exibicao>${ICONES.seguir}Filtros</button>
+        ${comIndicador() ? `<section class="opcoes">${indicadorConteudo()}</section>` : ""}
+        ${comExibir() && ui.modo !== "planilha" ? `<section class="opcoes opcoes-exibir">${exibirConteudo()}</section>` : ""}`;
+      return;
+    }
     painelOpcoes.innerHTML = `
       <section class="opcoes">${modosHtml()}</section>
       ${semFiltros() ? "" : `<section class="opcoes"><h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div></section>
       <section class="opcoes">${controlesHtml()}</section>`}
-      ${comIndicador() ? `<section class="opcoes">${indicadorConteudo()}</section>` : ""}
-      ${comExibir() && ui.modo !== "planilha" ? `<section class="opcoes opcoes-exibir">${exibirConteudo()}</section>` : ""}
+      ${temExibicao() ? `<section class="opcoes"><button type="button" class="opcao ir-exibicao" data-ir-exibicao>${ICONES.olho}<span class="opcao-texto">Exibir<small>Indicador, mostrar até, colunas e legenda</small></span>${ICONES.seguir}</button></section>` : ""}
       ${ativos() ? `<section><button class="botao discreto" type="button" data-limpar>Limpar filtros e ordem</button></section>` : ""}`;
   }
   function abrirOpcoes() {
-    painelOpcoes = abrirPainel("Filtros e exibição", "", { deBaixo: true, botao: "Pronto" });
+    naExibicao = false;
+    painelOpcoes = abrirPainel("Filtros e exibição", "", { deBaixo: true, botao: "Pronto", aoFechar: () => { if (soltarExibicao) { const s = soltarExibicao; soltarExibicao = null; s(); } } });
     preencherOpcoes();
     painelOpcoes.addEventListener("change", aoMudarControle);
     painelOpcoes.addEventListener("click", (e) => {
@@ -1439,6 +1451,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       /* Exibir e indicador, no celular (25/10/2026) */
       const b = e.target.closest("button");
       if (!b) return;
+      if (b.dataset.irExibicao != null) {
+        naExibicao = true;
+        if (!soltarExibicao) soltarExibicao = abrirCamada(() => { soltarExibicao = null; naExibicao = false; if (painelOpcoes?.isConnected) preencherOpcoes(); });
+        preencherOpcoes();
+        painelOpcoes.scrollTop = 0;
+        return;
+      }
+      if (b.dataset.sairExibicao != null) {
+        naExibicao = false;
+        if (soltarExibicao) { const s = soltarExibicao; soltarExibicao = null; s(); }
+        preencherOpcoes();
+        return;
+      }
       if (b.dataset.barra) mostrarBarra(b.dataset.barra);
       else if (b.dataset.nivel) mostrarAte(b.dataset.nivel);
       else if (b.dataset.tempoNum) mudarTempoNumero(b.dataset.tempoNum);

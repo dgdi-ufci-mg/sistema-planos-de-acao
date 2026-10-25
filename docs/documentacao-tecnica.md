@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 173 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 174 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1290,6 +1290,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Mover o cartão pelo celular** (item 10): segurar o dedo num cartão da lista ou do quadro por meio segundo (sem arrastar mais de 10 px) abre um **menu do cartão**, que sobe de baixo, com o nome da ação no alto e: **Abrir**; **Concluir…** (abre o registro da conclusão, como arrastar para Concluídas); **Desfazer a conclusão**, numa ação concluída; e **Mover para**, com cada coluna personalizada ou a inicial para onde a ação pode ir, pelas mesmas regras do arrastar no computador (`moverPara`, que o arrastar também passou a usar). No Android, o aparelho vibra de leve ao abrir o menu. O toque longo não abre a ação nem o menu de texto do navegador. No quadro, as dicas das colunas dizem "Segure um cartão para concluí-lo ou movê-lo de coluna" (e "…para desfazer a conclusão") em aparelhos sem mouse, no lugar de "Arraste…". Sob o quadro, no celular, **pontos** mostram quantas colunas há e qual está à vista, como nas páginas do iOS.
 
+- **Configurações em telas** (item 14): (a) com menos de 900 px, "Configurar este espaço" abre como uma **lista das seções**, em linhas de 48 px com "›", como nos Ajustes do iPhone ("Encerrar ou excluir" em vermelho, no fim); tocar numa seção mostra só ela, com o nome no alto e **"‹ Configurações"** para voltar à lista. O Voltar do aparelho também volta à lista (e, na lista, fecha o painel). No computador, continuam as abas à esquerda. (b) Em **"Filtros e exibição"**, a primeira tela tem a visualização, a situação, o responsável e a ordem, e uma linha **"Exibir ›"** ("Indicador, mostrar até, colunas e legenda") abre a segunda tela, com **"‹ Filtros"** no alto; o Voltar do aparelho volta à primeira. As escolhas valem na hora, nas duas telas. Com a Linha do tempo no celular, as quatro visualizações do alto do painel quebram linha, em vez de sair da tela.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -1999,3 +2001,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 171 | Celular: Linha do tempo disponível, com o gráfico na largura da tela e toque para ver a chance; faixa de resumo do prazo no alto da lista e do quadro (item 2 da avaliação de celular; seções 8.0 e 8.7) |
 | 172 | Celular: barra de navegação embaixo (Espaços, Buscar, +, Filtros, Ajuda), no lugar do menu do alto, do funil e do (+) solto (itens 7 e 13 da avaliação de celular; seções 8.0 e 8.7) |
 | 173 | Celular: segurar o cartão abre um menu com Abrir, Concluir e Mover para; pontos de posição sob o quadro (item 10 da avaliação de celular; seção 8.7) |
+| 174 | Celular: "Configurar este espaço" como lista de seções que abrem em tela própria; "Filtros e exibição" com "Exibir ›" numa segunda tela (item 14 da avaliação de celular; seção 8.7) |

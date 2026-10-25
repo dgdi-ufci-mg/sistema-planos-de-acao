@@ -10,6 +10,7 @@ import { ligarSecoesSuaves } from "./movimento.js";
 import { criarTelaResponsaveis } from "./responsaveis.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
+import { abrirCamada } from "./voltar.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
 import { datasEfetivas, criarCalendario } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
@@ -78,6 +79,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   const corpo = abrirPainel("Configurar este espaço", "", { aoFechar: () => {
     pararDeAcompanhar();
     largo.removeEventListener("change", aplicarAbas);
+    if (soltarSecao) { const s = soltarSecao; soltarSecao = null; s(); }
     /* fechar (até com Esc) não perde o que foi digitado: grava o que ficou pendente */
     for (const t of esperas.values()) clearTimeout(t);
     for (const secao of ["dados", "datas", "estrutura", "documentos"]) gravarSecao(secao);
@@ -283,7 +285,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     lista.setAttribute("aria-label", "Seções da configuração");
     const conteudo = document.createElement("div");
     conteudo.className = "config-conteudo";
-    conteudo.innerHTML = '<h3 class="config-titulo-aba" data-titulo-aba></h3>';
+    conteudo.innerHTML = `<button type="button" class="config-voltar" data-config-voltar>${ICONES.seguir}Configurações</button><h3 class="config-titulo-aba" data-titulo-aba></h3>`;
     const topo = filhos.filter((el) => !el.matches("details.config") && !perigo.includes(el));
     for (const el of filhos) if (el.matches("details.config")) { el.dataset.aba = el.dataset.secao; conteudo.append(el); }
     if (perigo.some((el) => el.matches(".zona-encerrar, .zona-exclusao"))) {
@@ -295,7 +297,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       conteudo.append(caixa);
     } else conteudo.append(...perigo);
     const abas = [...conteudo.querySelectorAll(":scope > [data-aba]")];
-    lista.innerHTML = abas.map((el) => `<button type="button" class="config-aba${el.dataset.aba === "perigo" ? " perigo" : ""}" data-ir-aba="${el.dataset.aba}">${esc(el.dataset.nome ?? el.querySelector(":scope > summary h3")?.textContent ?? "")}</button>`).join("");
+    lista.innerHTML = abas.map((el) => `<button type="button" class="config-aba${el.dataset.aba === "perigo" ? " perigo" : ""}" data-ir-aba="${el.dataset.aba}"><span>${esc(el.dataset.nome ?? el.querySelector(":scope > summary h3")?.textContent ?? "")}</span>${ICONES.seguir}</button>`).join("");
     grade.append(lista, conteudo);
     corpo.replaceChildren(...topo, grade);
     if (!abas.some((el) => el.dataset.aba === abaAtual)) abaAtual = abas.find((el) => el.dataset.aba === "dados")?.dataset.aba ?? abas[0]?.dataset.aba ?? null;
@@ -303,10 +305,29 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       const b = e.target.closest("[data-ir-aba]");
       if (!b) return;
       abaAtual = b.dataset.irAba;
+      if (!largo.matches) entrarNaSecao();
       aplicarAbas();
       conteudo.scrollTop = 0;
+      corpo.scrollTop = 0;
     });
+    conteudo.querySelector("[data-config-voltar]").addEventListener("click", () => sairDaSecao());
+    grade.classList.toggle("na-secao", naSecao);
     aplicarAbas();
+  }
+  /* celular e telas médias (25/10/2026, item 14 da avaliação de celular): a lista das seções, como nos Ajustes do
+     iPhone; tocar numa abre só ela, com "‹ Configurações" no alto; o Voltar do aparelho também volta à lista */
+  let naSecao = false;
+  let soltarSecao = null;
+  function entrarNaSecao() {
+    naSecao = true;
+    corpo.querySelector(".config-abas")?.classList.add("na-secao");
+    if (!soltarSecao) soltarSecao = abrirCamada(() => { soltarSecao = null; sairDaSecao(); });
+  }
+  function sairDaSecao() {
+    naSecao = false;
+    corpo.querySelector(".config-abas")?.classList.remove("na-secao");
+    if (soltarSecao) { const s = soltarSecao; soltarSecao = null; s(); }
+    corpo.scrollTop = 0;
   }
   /** Mostra a aba escolhida (no computador) e marca o item da lista. */
   function aplicarAbas() {
@@ -320,7 +341,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       const atual = el.dataset.aba === abaAtual;
       el.classList.toggle("aba-atual", atual);
       if (atual) nome = el.dataset.nome ?? el.querySelector(":scope > summary h3")?.textContent ?? "";
-      if (atual && largo.matches && el.tagName === "DETAILS") el.open = true;
+      if (atual && (largo.matches || naSecao) && el.tagName === "DETAILS") el.open = true;
     }
     grade.querySelector("[data-titulo-aba]").textContent = nome;
   }

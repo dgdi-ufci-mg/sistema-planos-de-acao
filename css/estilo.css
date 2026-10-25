@@ -1867,3 +1867,27 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 }
 .menu-cartao h3 { margin: 10px 0 2px; }
 @media (hover: none) { .linha[data-abrir-acao] { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; } }
+/* item 14: no celular e em telas médias, "Configurar este espaço" é uma lista de seções; cada uma abre sozinha */
+.config-voltar { display: none; }
+@media (max-width: 899px) {
+  .config-abas:not(.na-secao) .config-nav { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); overflow: hidden; }
+  .config-nav .config-aba { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 0 14px; border: 0; border-bottom: 1px solid var(--grid);
+    background: transparent; color: var(--ink); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+  .config-nav .config-aba:last-child { border-bottom: 0; }
+  .config-nav .config-aba .icone { width: 16px; height: 16px; color: var(--muted); flex: none; }
+  .config-nav .config-aba.perigo { color: var(--crit-ink); }
+  .config-abas:not(.na-secao) .config-conteudo { display: none; }
+  .config-abas.na-secao .config-conteudo > [data-aba]:not(.aba-atual) { display: none; }
+  .config-abas.na-secao .config-conteudo > details.config > summary { display: none; }
+  .config-abas.na-secao .config-titulo-aba { display: block; font-size: 1.2rem; margin: 0; }
+  .config-abas.na-secao .config-voltar { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; min-height: 44px; border: 0; background: transparent;
+    color: var(--accent-ink); font: inherit; font-weight: 600; padding: 0 4px 0 0; cursor: pointer; }
+  .config-voltar .icone { transform: rotate(180deg); width: 18px; height: 18px; }
+}
+.opcoes-voltar { display: inline-flex !important; align-items: center; gap: 4px; align-self: flex-start; min-height: 44px; border: 0; background: transparent; color: var(--accent-ink); font: inherit; font-weight: 600; cursor: pointer; padding: 0; }
+.opcoes-voltar .icone { transform: rotate(180deg); width: 18px; height: 18px; }
+.ir-exibicao { width: 100%; }
+.ir-exibicao .opcao-texto { display: flex; flex-direction: column; flex: 1; }
+.ir-exibicao small { color: var(--muted); font-weight: 400; font-size: .8rem; }
+.ir-exibicao > .icone:first-child { width: 18px; height: 18px; color: var(--muted); }
+.painel-corpo .opcoes .modos { display: flex; flex-wrap: wrap; max-width: 100%; border-radius: 18px; } /* com a Linha do tempo, quatro visualizações: quebram linha em vez de sair da tela */
