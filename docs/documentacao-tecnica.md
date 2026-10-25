@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 162 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 163 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1263,6 +1263,12 @@ Construir um Gantt e uma rede interativos sem biblioteca externa é o maior trab
 
 ---
 
+### 8.7 Celular: revisão de 25/10/2026
+
+Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da interface de celular (25/10/2026), uma por item. Valem para telas de toque ou estreitas, como indicado em cada uma; no computador, nada muda, salvo quando dito.
+
+- **Campos sem zoom no iPhone** (item 3): em telas de toque (`pointer: coarse`), todo campo de digitar, lista de escolha, caixa de texto e área editável tem letra de 16 px, porque o Safari do iPhone amplia a tela ao tocar num campo com letra menor e ela fica ampliada.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -1960,3 +1966,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 160 | Barra do topo: nomes dos menus à vista sempre que couberem, com o chip das atrasadas encurtado antes, medindo o espaço de fato (item 4 da avaliação de usabilidade, aplicado a pedido do responsável; seção 8.0) |
 | 161 | Nova ação: data mínima automática mostrada como "hoje, automático", sem parecer preenchida pela pessoa; "Todos os campos" com cara de botão (item 16 da avaliação de usabilidade, aplicado a pedido do responsável; seção 8) |
 | 162 | Celular: no painel "Filtros e exibição", cada visualização com o nome escrito (item 17 da avaliação de usabilidade, aplicado a pedido do responsável; seção 8.3) |
+| 163 | Celular: campos com 16 px em telas de toque, sem o zoom do iPhone (item 3 da avaliação de celular; seção 8.7) |

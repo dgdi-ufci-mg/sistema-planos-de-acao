@@ -1776,3 +1776,10 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 .painel-corpo .opcoes .modos { flex-wrap: wrap; }
 .painel-corpo .opcoes .modo .modo-nome { display: inline-block; }
 .painel-corpo .opcoes .modo { gap: 6px; }
+
+/* ---------- celular (avaliação de 25/10/2026) ---------- */
+/* item 3: o iPhone amplia a tela ao tocar num campo com letra menor que 16 px, e ela fica ampliada; em telas de toque,
+   todo campo de digitar ou escolher tem 16 px */
+@media (pointer: coarse) {
+  input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea, [contenteditable="true"] { font-size: 16px !important; }
+}
