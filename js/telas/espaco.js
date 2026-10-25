@@ -429,6 +429,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       g.querySelector(":scope > .grupo-cabeca").setAttribute("aria-expanded", String(!fechado));
     }
     marcarNivel();
+    marcarLegenda();
     if (ui.pop === "exibir") desenharFerramentas();
   }
 
@@ -825,6 +826,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     execucao: ["exec", "quanto cada dia de atraso adia o fim"],
     revisao: ["rev", "parte da incerteza do prazo final"],
   };
+  /**
+   * A legenda aparece só na primeira etapa aberta (25/10/2026, item 2 da avaliação de usabilidade, a pedido do
+   * responsável): repetida em todas, era ruído. Continua no próprio cartão da etapa, e não num cabeçalho de
+   * tabela (retirado em 20/10/2026). Refeita ao abrir ou recolher um grupo.
+   */
+  function marcarLegenda() {
+    const etapas = [...lista.querySelectorAll(".grupo.etapa")];
+    const primeira = etapas.find((g) => !g.classList.contains("fechado") && !g.parentElement.closest(".grupo.fechado"));
+    for (const g of etapas) g.classList.toggle("com-legenda", g === primeira);
+  }
   function legendaBarraHtml() {
     const leg = LEGENDA_BARRA[(ui.barra === "tempo" && ui.tempoNumero === "data" ? "tempoData" : ui.barra) + (ui.barra === "tempo" && usaDataLimite(espaco) ? "Limite" : "")];
     if (!leg || ui.modo !== "lista" || !colunas().barras) return "";
@@ -903,6 +914,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       c.participantes && "minmax(0, 1.5fr)", c.barras && "minmax(0, 1.6fr)"].filter(Boolean).join(" "));
     ajustarDonos(lista);
     if (agrupado()) marcarNivel();
+    marcarLegenda();
     restaurarRapida();
     /* menu "⋯" da coluna: fixo na tela, para não ser cortado pela rolagem do quadro */
     const menuColuna = ui.modo === "quadro" && coluna.menu ? lista.querySelector(".menu-da-coluna") : null;
@@ -1302,6 +1314,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     secao.querySelector(":scope > .grupo-cabeca").setAttribute("aria-expanded", String(!fechar));
     desenharFerramentas();
     marcarNivel();
+    marcarLegenda();
   }
 
   /* ---------- celular: painel "Filtros e ordem" ---------- */

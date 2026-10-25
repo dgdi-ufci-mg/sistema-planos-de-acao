@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 157 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 158 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1038,7 +1038,7 @@ Os painéis abrem sob o menu, com a transição padrão. Até 1399 px de largura
 
 | Visualização | O que mostra |
 |---|---|
-| **Lista** | Cartões agrupados por fase e etapa (em qualquer ordem escolhida), com o ícone da situação antes do nome, avisos pequenos sob ele (data mínima, "Falta estimar", reprogramações, progresso do checklist) e as colunas escolhidas: descrição, participantes (em ordem alfabética, pela sigla) e o indicador. Na linha de cada etapa aberta, a legenda do indicador, com explicação ao passar o mouse e link para o glossário. "+ Adicionar ação" no fim de cada etapa |
+| **Lista** | Cartões agrupados por fase e etapa (em qualquer ordem escolhida), com o ícone da situação antes do nome, avisos pequenos sob ele (data mínima, "Falta estimar", reprogramações, progresso do checklist) e as colunas escolhidas: descrição, participantes (em ordem alfabética, pela sigla) e o indicador. Na linha da **primeira etapa aberta** (só nela, desde 25/10/2026: repetida em todas, era ruído; continua no cartão da etapa, sem voltar o cabeçalho de tabela retirado em 20/10/2026), a legenda do indicador, com explicação ao passar o mouse e link para o glossário; recolher essa etapa passa a legenda para a seguinte aberta. "+ Adicionar ação" no fim de cada etapa |
 | **Quadro** | Colunas Não liberadas, Liberadas e Concluídas, com cartões enxutos (nome, etapa, participantes, indicador); arrastar para Concluídas registra a conclusão |
 | **Rede** | Fluxo das ações em camadas, com faixas por etapa e marcos, setas em ângulo reto que não passam sobre cartões e salto onde se cruzam; zoom com Ctrl + rolar ou − e +, arraste do fundo; "Ver tudo" |
 | **Cronograma** | Gantt por fase e etapa, com dependências, caminho crítico, hoje, prazo final e comparação com um retrato; semanas ou meses |
@@ -1955,3 +1955,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 155 | Atalhos de teclado: "/" busca, "N" nova ação, "?" lista de atalhos, setas entre os cartões da lista e do quadro (item 8 da avaliação de usabilidade; seção 8.0; `js/telas/atalhos.js`) |
 | 156 | "Configurar este espaço" em abas no computador: janela larga, seções numa lista à esquerda e a aba "Encerrar ou excluir" (item 11 da avaliação de usabilidade; seção 8) |
 | 157 | Gravação automática em "Configurar este espaço" (dados, datas, fases e etapas, documentos) e no calendário geral, sem botões Salvar, com "Salvando…/Salvo" e Desfazer nas sugestões de feriados (item 10 da avaliação de usabilidade; seções 4.1 e 8) |
+| 158 | Legenda do indicador só na primeira etapa aberta da lista (item 2 da avaliação de usabilidade, aplicado a pedido do responsável; seção 8) |

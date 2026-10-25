@@ -1762,3 +1762,5 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 /* gravação automática nas configurações (24/10/2026; item 10 da avaliação de usabilidade) */
 .estado-gravacao { align-self: center; font-size: .82rem; color: var(--muted); min-height: 1em; }
 .estado-gravacao.salvo { color: var(--accent-ink); }
+/* legenda do indicador só na primeira etapa aberta (25/10/2026; item 2 da avaliação de usabilidade) */
+.grupo.etapa:not(.com-legenda) > .legenda-barra { display: none; }
