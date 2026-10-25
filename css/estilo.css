@@ -1858,3 +1858,12 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .aviso-curto { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
   .lateral { bottom: calc(60px + env(safe-area-inset-bottom, 0px)); padding-bottom: 12px; } /* a barra lateral termina acima da barra de baixo */
 }
+/* item 10: pontos de posição sob o quadro, no celular */
+.quadro-pontos { display: none; }
+@media (max-width: 640px) {
+  .quadro-pontos { display: flex; justify-content: center; gap: 7px; margin: 10px 0 2px; }
+  .quadro-pontos i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: background-color var(--mov-rapido), transform var(--mov-rapido); }
+  .quadro-pontos i.atual { background: var(--accent); transform: scale(1.25); }
+}
+.menu-cartao h3 { margin: 10px 0 2px; }
+@media (hover: none) { .linha[data-abrir-acao] { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; } }

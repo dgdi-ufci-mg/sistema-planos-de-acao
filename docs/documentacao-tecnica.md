@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 172 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 173 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1288,6 +1288,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Barra de navegação embaixo** (item 7; como no Todoist, no Asana, no Trello e no Linear): no celular (até 640 px), uma barra fixa no pé da tela, acima da área segura do iPhone, com fundo levemente translúcido, reúne, da esquerda para a direita: **Espaços** (abre e fecha a barra lateral; fica destacado enquanto ela está aberta), **Buscar** (abre a busca), o **(+)** em destaque no meio (nova ação ou tarefa; nas Entregas, nova entrega; some para quem não pode criar), **Filtros** (abre "Filtros e exibição", com o número de filtros ativos) e **Ajuda**. Sem espaço aberto (boas-vindas), ficam Espaços, Buscar e Ajuda. Saem o botão de três linhas do alto, o funil da barra do topo e o botão (+) solto no canto, que cobria o conteúdo (item 13). A barra lateral, quando aberta, termina acima da barra de baixo; os avisos curtos sobem para não ficar atrás dela; janelas e painéis abrem por cima dela. Telas de 641 a 899 px (tablet) continuam com o botão de três linhas no alto.
 
+- **Mover o cartão pelo celular** (item 10): segurar o dedo num cartão da lista ou do quadro por meio segundo (sem arrastar mais de 10 px) abre um **menu do cartão**, que sobe de baixo, com o nome da ação no alto e: **Abrir**; **Concluir…** (abre o registro da conclusão, como arrastar para Concluídas); **Desfazer a conclusão**, numa ação concluída; e **Mover para**, com cada coluna personalizada ou a inicial para onde a ação pode ir, pelas mesmas regras do arrastar no computador (`moverPara`, que o arrastar também passou a usar). No Android, o aparelho vibra de leve ao abrir o menu. O toque longo não abre a ação nem o menu de texto do navegador. No quadro, as dicas das colunas dizem "Segure um cartão para concluí-lo ou movê-lo de coluna" (e "…para desfazer a conclusão") em aparelhos sem mouse, no lugar de "Arraste…". Sob o quadro, no celular, **pontos** mostram quantas colunas há e qual está à vista, como nas páginas do iOS.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -1996,3 +1998,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 170 | Celular: alça e gesto de puxar para baixo para fechar as janelas que sobem de baixo (item 6 da avaliação de celular; seção 8.7) |
 | 171 | Celular: Linha do tempo disponível, com o gráfico na largura da tela e toque para ver a chance; faixa de resumo do prazo no alto da lista e do quadro (item 2 da avaliação de celular; seções 8.0 e 8.7) |
 | 172 | Celular: barra de navegação embaixo (Espaços, Buscar, +, Filtros, Ajuda), no lugar do menu do alto, do funil e do (+) solto (itens 7 e 13 da avaliação de celular; seções 8.0 e 8.7) |
+| 173 | Celular: segurar o cartão abre um menu com Abrir, Concluir e Mover para; pontos de posição sob o quadro (item 10 da avaliação de celular; seção 8.7) |

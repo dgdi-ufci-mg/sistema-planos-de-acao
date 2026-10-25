@@ -15,7 +15,7 @@ import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias,
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
-import { abrirPainel, avisar } from "./painel.js";
+import { abrirPainel, avisar, fecharPainel } from "./painel.js";
 import { surgir } from "./movimento.js";
 import { donosHtml, ajustarDonos } from "./pessoas.js";
 import { GLOSSARIO } from "../glossario.js";
@@ -252,6 +252,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ferramentas.onchange = aoMudarControle;
     ferramentas.onclick = aoClicarNaBarra;
     ligarArraste();
+    ligarSegurar();
     ligarPrioridade();
     lista.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
@@ -938,6 +939,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     lista.innerHTML = corpo;
     const quadro = lista.querySelector(".quadro");
     if (quadro) quadro.scrollLeft = rolagemDoQuadro;
+    if (quadro) ligarPontosDoQuadro(quadro);
     lista.toggleAttribute("data-puxadores", ui.modo === "lista" && puxadores());
     const c = colunas();
     lista.style.setProperty("--colunas", ["18px", "minmax(0, 2.4fr)", c.descricao && "minmax(0, 2.4fr)",
@@ -1068,10 +1070,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /* colunas do quadro (passo 2.7): Não liberadas (com dependências), a inicial, as personalizadas e Concluídas */
   function quadroHtml(ls) {
     const comPersonalizadas = personalizadasDe(espaco).length > 0;
+    /* no celular não há arrastar: as dicas falam em segurar o cartão (item 10 da avaliação de celular) */
+    const toque = matchMedia("(hover: none)").matches;
     const dicas = {
       naoLiberada: usaDependencias(espaco) ? COLUNAS[0][3] : "Liberadas sozinhas quando a data mínima chega.",
-      inicial: comPersonalizadas ? "Arraste para a coluna seguinte conforme o trabalho anda." : COLUNAS[1][3],
-      concluida: `Arraste de volta para ${usaDependencias(espaco) ? "Liberadas" : nomeInicial(espaco)} para desfazer a conclusão.`,
+      inicial: toque ? "Segure um cartão para concluí-lo ou movê-lo de coluna." : comPersonalizadas ? "Arraste para a coluna seguinte conforme o trabalho anda." : COLUNAS[1][3],
+      concluida: toque ? "Segure um cartão para desfazer a conclusão." : `Arraste de volta para ${usaDependencias(espaco) ? "Liberadas" : nomeInicial(espaco)} para desfazer a conclusão.`,
     };
     const icone = (chave) => (chave === "naoLiberada" ? ["icone-nao-liberada", "naoLiberada"] : chave === "concluida" ? ["icone-concluida", "concluida"]
       : chave === "inicial" ? ["icone-liberada", "liberada"] : ["icone-liberada", "personalizada"]);
@@ -1274,23 +1278,87 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       const numero = arrastada;
       coluna.classList.remove("alvo");
       if (!destinoValido(coluna.dataset.coluna, numero)) return;
-      const l = linhaDe(numero);
-      if (coluna.dataset.coluna === "concluida") abrirJanela(numero, "concluir");
-      else if (l.situacao === "liberada") {
-        try {
-          await store.mudarSituacao(espacoId, numero, coluna.dataset.coluna === "inicial" ? null : coluna.dataset.coluna);
-        } catch (falha) {
-          avisar(falha.message);
-        }
-      } else {
-        try {
-          await store.desfazerConclusao(espacoId, numero);
-          avisar(`Conclusão desfeita. A ação voltou para ${usaDependencias(espaco) ? "as liberadas" : nomeInicial(espaco)}.`);
-        } catch (falha) {
-          avisar(falha.message);
-        }
-      }
+      moverPara(numero, coluna.dataset.coluna);
     });
+  }
+  /** Leva a ação para a coluna (arrastar, no computador; menu do cartão, no celular). Concluídas abre o registro da conclusão. */
+  async function moverPara(numero, destino) {
+    const l = linhaDe(numero);
+    if (!l || !destinoValido(destino, numero)) return;
+    if (destino === "concluida") return abrirJanela(numero, "concluir");
+    try {
+      if (l.situacao === "liberada") await store.mudarSituacao(espacoId, numero, destino === "inicial" ? null : destino);
+      else {
+        await store.desfazerConclusao(espacoId, numero);
+        avisar(`Conclusão desfeita. A ação voltou para ${usaDependencias(espaco) ? "as liberadas" : nomeInicial(espaco)}.`);
+      }
+    } catch (falha) {
+      avisar(falha.message);
+    }
+  }
+
+  /* ---------- menu do cartão, no celular (25/10/2026, item 10 da avaliação de celular) ----------
+   * Segurar o dedo num cartão da lista ou do quadro por meio segundo abre um menu que sobe de baixo: Abrir, Concluir
+   * (ou Desfazer a conclusão) e "Mover para" cada coluna possível, com as mesmas regras do arrastar do computador. */
+  function abrirMenuDoCartao(numero) {
+    const l = linhaDe(numero);
+    if (!l) return;
+    const colunas = colunasDoQuadro(espaco).filter((c) => c.chave !== "concluida" && c.chave !== "naoLiberada" && destinoValido(c.chave, numero) && l.situacao === "liberada");
+    const corpo = abrirPainel(l.acao.rotulo, `<div class="opcoes-lista menu-cartao">
+      <button class="opcao" type="button" data-menu-cartao="abrir"><span class="opcao-icone">${ICONES.seguir}</span><span class="opcao-texto">Abrir</span></button>
+      ${destinoValido("concluida", numero) ? `<button class="opcao" type="button" data-menu-cartao="concluida"><span class="opcao-icone icone-concluida">${ICONES.concluida}</span><span class="opcao-texto">Concluir…</span></button>` : ""}
+      ${l.situacao === "concluida" && destinoValido("inicial", numero) ? `<button class="opcao" type="button" data-menu-cartao="inicial"><span class="opcao-icone">${ICONES.liberada}</span><span class="opcao-texto">Desfazer a conclusão</span></button>` : ""}
+      ${colunas.length ? `<h3>Mover para</h3>${colunas.map((c) => `<button class="opcao" type="button" data-menu-cartao="${esc(c.chave)}"><span class="opcao-icone">${ICONES.personalizada}</span><span class="opcao-texto">${esc(c.titulo)}</span></button>`).join("")}` : ""}
+    </div>`, { deBaixo: true });
+    corpo.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-menu-cartao]");
+      if (!b) return;
+      fecharPainel();
+      if (b.dataset.menuCartao === "abrir") abrirJanela(numero);
+      else moverPara(numero, b.dataset.menuCartao);
+    });
+  }
+  /** Pontos sob o quadro, no celular: quantas colunas há e em qual se está, como nas páginas do iOS (item 10). */
+  function ligarPontosDoQuadro(quadro) {
+    const colunas = [...quadro.querySelectorAll(":scope > .coluna[data-coluna]")];
+    if (colunas.length < 2) return;
+    const pontos = document.createElement("div");
+    pontos.className = "quadro-pontos";
+    pontos.setAttribute("aria-hidden", "true");
+    pontos.innerHTML = colunas.map(() => "<i></i>").join("");
+    quadro.after(pontos);
+    const marcar = () => {
+      const centro = quadro.getBoundingClientRect().left + quadro.clientWidth / 2;
+      let atual = 0;
+      colunas.forEach((c, i) => { const r = c.getBoundingClientRect(); if (r.left <= centro) atual = i; });
+      pontos.querySelectorAll("i").forEach((p, i) => p.classList.toggle("atual", i === atual));
+    };
+    quadro.addEventListener("scroll", marcar, { passive: true });
+    marcar();
+  }
+  function ligarSegurar() {
+    let relogio = null;
+    let inicio = null;
+    let engolirClique = false;
+    const parar = () => { clearTimeout(relogio); relogio = null; };
+    lista.addEventListener("pointerdown", (e) => {
+      if (e.pointerType !== "touch" || !["lista", "quadro"].includes(ui.modo)) return;
+      const cartao = e.target.closest(".linha[data-abrir-acao]");
+      if (!cartao || e.target.closest("[data-puxar], [data-editando]")) return;
+      inicio = { x: e.clientX, y: e.clientY };
+      relogio = setTimeout(() => {
+        relogio = null;
+        engolirClique = true;
+        navigator.vibrate?.(10);
+        abrirMenuDoCartao(Number(cartao.closest("[data-numero]").dataset.numero));
+      }, 500);
+    });
+    lista.addEventListener("pointermove", (e) => { if (relogio && Math.hypot(e.clientX - inicio.x, e.clientY - inicio.y) > 10) parar(); });
+    lista.addEventListener("pointerup", parar);
+    lista.addEventListener("pointercancel", parar);
+    lista.addEventListener("contextmenu", (e) => { if (e.target.closest(".linha[data-abrir-acao]") && matchMedia("(hover: none)").matches) e.preventDefault(); });
+    /* o toque longo não abre também a ação */
+    lista.addEventListener("click", (e) => { if (engolirClique) { engolirClique = false; e.stopPropagation(); e.preventDefault(); } }, true);
   }
 
   /* ---------- mudanças ---------- */
