@@ -1208,10 +1208,14 @@ body[data-vista-atual="planilha"] .popover-exibir { width: 380px; }
   .topo-centro .popover { left: 0; translate: none; }
   .titulo-barra { max-width: 18ch; }
 }
-/* telas médias: os menus ficam só com o ícone (o nome aparece ao passar o mouse) */
+/* telas médias: os menus mostram o ícone e o nome (25/10/2026, item 4 da avaliação de usabilidade; antes, só o ícone) */
 @media (min-width: 641px) and (max-width: 1399px) {
-  .menu-topo:not([data-pop="modo"]) .menu-topo-nome { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } /* o modo atual continua escrito */
   .menu-topo { padding: 0 6px; gap: 3px; }
+}
+/* quando falta lugar para os nomes (js/telas/espaco.js, ajustarBarra): primeiro o chip das atrasadas fica só com o
+   número (o texto completo aparece ao passar o mouse); se ainda faltar, os menus voltam a só o ícone */
+.topo.barra-curta .chip-palavra, .topo.barra-icones .menu-topo:not([data-pop="modo"]) .menu-topo-nome {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
 
 /* largura por modo (23/10/2026, pedido do responsável): a barra do topo ocupa a tela toda; lista, quadro e

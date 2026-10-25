@@ -571,14 +571,37 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       </div>
       <div class="topo-direita">
         ${atrasadas ? `<button class="chip-atrasadas so-computador" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
-          title="${ui.situacao === "atrasada" ? "Mostrar todas as ações" : "Mostrar só as atrasadas"}">${ICONES.atrasada}${atrasadas} ${plural(atrasadas, "atrasada", "atrasadas")}</button>` : ""}
+          title="${ui.situacao === "atrasada" ? "Mostrar todas as ações" : "Mostrar só as atrasadas"}">${ICONES.atrasada}${atrasadas}<span class="chip-palavra"> ${plural(atrasadas, "atrasada", "atrasadas")}</span></button>` : ""}
         <button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>
       </div>`;
     modoDesenhado = ui.modo;
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
+    ajustarBarra();
     legenda.hidden = !ui.legenda || planilha;
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
+
+  /**
+   * Nomes dos menus do topo (25/10/2026, item 4 da avaliação de usabilidade, a pedido do responsável): ícone e nome
+   * sempre que couberem. Se os grupos da barra se encostam, o chip das atrasadas fica só com o número; se ainda
+   * encostam, os menus ficam só com o ícone (o nome aparece ao passar o mouse e é lido pelo leitor de tela).
+   * Refeito a cada desenho da barra e quando a janela muda de largura (inclusive ao abrir ou recolher a barra lateral).
+   */
+  function ajustarBarra() {
+    const topo = ferramentas.closest(".topo");
+    if (!topo) return;
+    const encostam = () => {
+      const gs = [...ferramentas.querySelectorAll(":scope > .topo-esquerda, :scope > .topo-centro, :scope > .topo-direita")].filter((g) => g.getClientRects().length);
+      const r = gs.map((g) => g.getBoundingClientRect()).sort((a, b) => a.left - b.left);
+      return r.some((a, i) => i > 0 && r[i - 1].right + 8 > a.left) || gs.some((g) => g.scrollWidth > g.clientWidth + 1)
+        || [...ferramentas.querySelectorAll(".menu-topo, .chip-atrasadas")].some((el) => el.scrollWidth > el.clientWidth + 1);
+    };
+    topo.classList.remove("barra-curta", "barra-icones");
+    if (!encostam()) return;
+    topo.classList.add("barra-curta");
+    if (encostam()) topo.classList.add("barra-icones");
+  }
+  addEventListener("resize", ajustarBarra);
 
   function aoClicarNaBarra(e) {
     const t = e.target;
@@ -1570,6 +1593,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.removeEventListener("keydown", marcarAlt);
     document.removeEventListener("keyup", marcarAlt);
     removeEventListener("blur", marcarAlt);
+    removeEventListener("resize", ajustarBarra);
+    ferramentas?.closest(".topo")?.classList.remove("barra-curta", "barra-icones");
     document.body.classList.remove("alt-edicao");
     delete document.body.dataset.vistaAtual;
     document.querySelector(".escolher-participantes")?.remove();
