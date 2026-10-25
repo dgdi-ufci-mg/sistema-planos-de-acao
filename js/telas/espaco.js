@@ -540,6 +540,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
         <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
         ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || usaDescricao()).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
+      ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${opcao("data-legenda-op", "1", "Legenda dos símbolos", ui.legenda, ICONES.legenda)}</div>`}
     </div>`;
   }
 
@@ -611,6 +612,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (tempoNum) return mudarTempoNumero(tempoNum.dataset.tempoNum);
     const id = t.closest("[data-identificador-op]");
     if (id) return mudarIdentificador(id.dataset.identificadorOp);
+    if (t.closest("[data-legenda-op]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
   }
   /* clique fora do painel aberto, ou Esc, fecha o painel */
   const fecharPop = (e) => {
@@ -624,9 +626,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   document.addEventListener("keydown", fecharPop);
   document.addEventListener("click", fecharColunas);
   document.addEventListener("keydown", fecharColunas);
-  /* legenda: item do menu lateral (passo 1.14c) */
-  const alternarLegenda = () => { ui.legenda = !ui.legenda; desenharFerramentas(); };
-  document.addEventListener("sextante:alternar-legenda", alternarLegenda);
+  /* legenda: no menu "Exibir" (24/10/2026; antes, item do menu lateral) e, no celular, em "Filtros e ordem" */
 
   /* ---------- lista ---------- */
   function medidor(valor, titulo, cor, texto) {
@@ -1308,6 +1308,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <section class="opcoes">${modosHtml()}</section>
       ${semFiltros() ? "" : `<section class="opcoes"><h3>Situação</h3><div class="opcoes-lista">${situacoesHtml()}</div></section>
       <section class="opcoes">${controlesHtml()}</section>`}
+      ${semFiltros() ? "" : `<section class="opcoes"><label class="alternar"><input type="checkbox" data-ctl="legenda"${ui.legenda ? " checked" : ""}> Legenda dos símbolos</label></section>`}
       ${ativos() ? `<section><button class="botao discreto" type="button" data-limpar>Limpar filtros e ordem</button></section>` : ""}`;
   }
   function abrirOpcoes() {
@@ -1497,7 +1498,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.body.classList.remove("alt-edicao");
     delete document.body.dataset.vistaAtual;
     document.querySelector(".escolher-participantes")?.remove();
-    document.removeEventListener("sextante:alternar-legenda", alternarLegenda);
     barra.innerHTML = "";
     barra.onclick = null;
     barra.onchange = null;

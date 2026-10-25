@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 152 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 153 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -991,7 +991,7 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 
 As seções 8.1 a 8.5 guardam as decisões de interface na ordem em que foram tomadas, com as revisões ("Revisto em…"). Quando duas se contradizem, vale a mais recente. Este resumo descreve o estado em 23/10/2026.
 
-**Barra lateral** (como no Todoist e no Notion): no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços, agrupados por tipo ("Planos de Ação", depois "Projetos", só os tipos que existem; seção 16.1), cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, Legenda, Lixeira, "Ajuda e manual", "Instalar como aplicativo" (some quando já aberto como aplicativo), "Extração de dados" (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Configurar o sistema". No computador, fica ao lado do conteúdo e pode ser recolhida (lembrado no aparelho): o botão de recolher fica no canto superior direito dela. Recolhida, o canto da barra do topo fica vazio, o nome do espaço aparece grande no alto do conteúdo e um **puxador** na borda esquerda da tela abre a barra de novo; **Ctrl+B** (⌘B no Mac) abre e recolhe. No celular, abre por cima, com fundo escurecido, pelo botão de três linhas.
+**Barra lateral** (como no Todoist e no Notion): no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços, agrupados por tipo ("Planos de Ação", depois "Projetos", só os tipos que existem; seção 16.1), cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, à vista, "Ajuda e manual" e "Configurar o sistema"; acima deles, o grupo recolhível **Mais** (aberto ou fechado, lembrado no aparelho; item 9 da avaliação de usabilidade, 24/10/2026), com Lixeira, "Extração de dados" (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Instalar como aplicativo" (some quando já aberto como aplicativo). A **Legenda** dos símbolos saiu da barra lateral: liga e desliga no menu **Exibir** do espaço ("Ajuda na tela"; lista, quadro, rede e cronograma) e, no celular, no painel "Filtros e ordem". No computador, fica ao lado do conteúdo e pode ser recolhida (lembrado no aparelho): o botão de recolher fica no canto superior direito dela. Recolhida, o canto da barra do topo fica vazio, o nome do espaço aparece grande no alto do conteúdo e um **puxador** na borda esquerda da tela abre a barra de novo; **Ctrl+B** (⌘B no Mac) abre e recolhe. No celular, abre por cima, com fundo escurecido, pelo botão de três linhas.
 
 **Barra do topo do espaço, no computador** (três grupos, como no Numbers do Mac; aprovada em 23/10/2026):
 
@@ -1921,3 +1921,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 150.1 | Corrigido o número de ocorrências do teste de acessibilidade antes da revisão (59, e não 61). Sem mudança no sistema |
 | 151 | Planilha: largura das colunas ajustável pela borda do título, lembrada no aparelho, e texto cortado inteiro ao passar o mouse (item 12 da avaliação de usabilidade; seção 8) |
 | 152 | Esqueletos de carregamento: blocos cinza no formato do conteúdo, depois de 0,3 s de espera, na abertura, nos espaços, entregas, lixeira, janela da ação e Superior (item 15 da avaliação de usabilidade; seção 2) |
+| 153 | Barra lateral reorganizada: à vista só Ajuda e Configurar o sistema; Lixeira, Extração, Gestão da estratégia e Instalar no grupo recolhível "Mais"; a Legenda passou para o menu Exibir (item 9 da avaliação de usabilidade; seção 8.0) |

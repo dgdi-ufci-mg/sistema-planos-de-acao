@@ -1673,3 +1673,12 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 .esqueleto-bloco.redondo-largo { height: 22px; border-radius: 11px; flex: none; }
 @keyframes esqueleto-brilho { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @media (prefers-reduced-motion: reduce) { .esqueleto { animation: none; } .esqueleto-bloco { animation: none; background: var(--grid); } }
+
+/* grupo "Mais" do pé da barra lateral (24/10/2026, avaliação de usabilidade) */
+.lateral-mais > summary { list-style: none; }
+.lateral-mais > summary::-webkit-details-marker { display: none; }
+.lateral-mais-seta { margin-left: auto; display: inline-flex; transition: transform var(--mov-rapido) var(--mov-curva); }
+.lateral-mais-seta svg { width: 14px; height: 14px; }
+.lateral-mais[open] .lateral-mais-seta { transform: rotate(180deg); }
+.lateral-mais-itens { display: flex; flex-direction: column; gap: 2px; padding-left: 12px; }
+@media (prefers-reduced-motion: reduce) { .lateral-mais-seta { transition: none; } }

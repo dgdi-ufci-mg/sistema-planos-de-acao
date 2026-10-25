@@ -104,8 +104,6 @@ async function atualizarTopo() {
       abrirConfiguracao({ store: storeDe(id), espacoId: id, aoExcluirEspaco: espacoExcluido, criarConta: !exemplos.has(id) && acesso ? acesso.criarConta : null });
     },
     aoNovo: () => boasVindas({ comFormulario: true }),
-    comLegenda: Boolean(abertoId),
-    aoLegenda: () => document.dispatchEvent(new CustomEvent("sextante:alternar-legenda")),
     aoLixeira: () => abrirLixeira({
       store: storeDe(abertoId), espacoId: abertoId, storeEspacos: store,
       aoRestaurarEspaco: () => atualizarTopo(),

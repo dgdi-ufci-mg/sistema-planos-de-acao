@@ -4,8 +4,10 @@
  * - No computador, com a barra recolhida (23/10/2026): sem botão no canto; um puxador na borda esquerda
  *   abre a barra, e Ctrl+B (⌘B) abre e recolhe.
  * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços,
- *   cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, "Ajuda e manual",
- *   "Extração de dados" (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Configurar o sistema".
+ *   cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé (24/10/2026, avaliação de
+ *   usabilidade), à vista "Ajuda e manual" e "Configurar o sistema"; recolhidos em "Mais", a Lixeira, a "Extração de dados"
+ *   (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Instalar como aplicativo".
+ *   A Legenda passou para o menu "Exibir" do espaço.
  * - No computador, o menu fica ao lado do conteúdo e pode ser recolhido (lembrado neste aparelho);
  *   no celular, abre por cima, com fundo escurecido, e fecha ao escolher algo.
  */
@@ -14,11 +16,16 @@ import { NOME } from "../identidade.js";
 import { esc } from "../formato.js";
 import { iniciais } from "../responsaveis.js";
 import { agruparPorTipo } from "../tipos.js";
+import { ligarSecoesSuaves } from "./movimento.js";
 
 const CHAVE_RECOLHIDO = "sextante.menuRecolhido";
 const estreito = () => matchMedia("(max-width: 899px)").matches;
 const lerRecolhido = () => { try { return localStorage.getItem(CHAVE_RECOLHIDO) === "1"; } catch { return false; } };
 const gravarRecolhido = (v) => { try { localStorage.setItem(CHAVE_RECOLHIDO, v ? "1" : "0"); } catch { /* sem armazenamento */ } };
+/* grupo "Mais" do pé da barra (24/10/2026): aberto ou fechado, lembrado neste aparelho */
+const CHAVE_MAIS = "sextante.lateralMais";
+const lerMais = () => { try { return localStorage.getItem(CHAVE_MAIS) === "1"; } catch { return false; } };
+const gravarMais = (v) => { try { localStorage.setItem(CHAVE_MAIS, v ? "1" : "0"); } catch { /* sem armazenamento */ } };
 
 let ligado = false;
 let acoes = {};
@@ -64,6 +71,8 @@ function ligar() {
   });
   document.querySelector(".fundo-lateral").addEventListener("click", () => alternar(false));
   const lateral = document.querySelector(".lateral");
+  ligarSecoesSuaves(lateral); // "Mais" e "Encerrados" abrem e fecham deslizando
+  lateral.addEventListener("toggle", (e) => { if (e.target.matches?.("[data-lateral-mais]")) gravarMais(e.target.open); }, true);
   lateral.addEventListener("click", (e) => {
     const conta = e.target.closest("[data-abrir-conta]");
     if (conta) {
@@ -107,7 +116,7 @@ export function mostrarNavegacao(opcoes) {
   acoes = {
     aoAbrir: opcoes.aoAbrir, aoConfigurar: opcoes.aoConfigurar, novo: opcoes.aoNovo, ajuda: opcoes.aoAjuda,
     sistema: opcoes.aoSistema, entrar: opcoes.aoEntrar, trocarSenha: opcoes.aoTrocarSenha, sair: opcoes.aoSair,
-    legenda: opcoes.aoLegenda, lixeira: opcoes.aoLixeira, consulta: opcoes.aoConsulta, extracao: opcoes.aoExtracao, instalar: opcoes.aoInstalar,
+    lixeira: opcoes.aoLixeira, consulta: opcoes.aoConsulta, extracao: opcoes.aoExtracao, instalar: opcoes.aoInstalar,
   };
   if (!ligado) ligar();
   /* sem espaço aberto, o título de nível 1 é o nome do sistema, só para leitores de tela (24/10/2026) */
@@ -152,12 +161,16 @@ export function mostrarNavegacao(opcoes) {
       ${opcoes.aoConsulta ? `<button type="button" class="lateral-acao" data-item="consulta" title="Espaços públicos e institucionais de que você não participa">${ICONES.olho}Espaços abertos à consulta${opcoes.nConsulta ? ` <span class="n">${opcoes.nConsulta}</span>` : ""}</button>` : ""}
     </nav>
     <div class="lateral-pe">
-      ${opcoes.comLegenda ? `<button type="button" class="lateral-acao" data-item="legenda">${ICONES.legenda}Legenda</button>` : ""}
-      <button type="button" class="lateral-acao" data-item="lixeira">${ICONES.lixeira}Lixeira</button>
+      <details class="lateral-mais" data-lateral-mais${lerMais() ? " open" : ""}>
+        <summary class="lateral-acao">${ICONES.opcoes}Mais<span class="lateral-mais-seta" aria-hidden="true">${ICONES.abrir}</span></summary>
+        <div class="lateral-mais-itens">
+          <button type="button" class="lateral-acao" data-item="lixeira">${ICONES.lixeira}Lixeira</button>
+          ${opcoes.aoExtracao ? `<button type="button" class="lateral-acao" data-item="extracao" title="Planilha ou PDF com os dados dos espaços">${ICONES.modoPlanilha}Extração de dados</button>` : ""}
+          <a class="lateral-acao" href="superior/" title="Módulo Superior: o desdobramento do PEI/PDI até os Planos de Ação">${ICONES.modoRede}Gestão da estratégia</a>
+          ${opcoes.aoInstalar ? `<button type="button" class="lateral-acao" data-item="instalar" title="Pôr o Sextante na tela inicial, como um aplicativo">${ICONES.instalar}Instalar como aplicativo</button>` : ""}
+        </div>
+      </details>
       <button type="button" class="lateral-acao" data-item="ajuda">${ICONES.ajuda}Ajuda e manual</button>
-      ${opcoes.aoInstalar ? `<button type="button" class="lateral-acao" data-item="instalar" title="Pôr o Sextante na tela inicial, como um aplicativo">${ICONES.instalar}Instalar como aplicativo</button>` : ""}
-      ${opcoes.aoExtracao ? `<button type="button" class="lateral-acao" data-item="extracao" title="Planilha ou PDF com os dados dos espaços">${ICONES.modoPlanilha}Extração de dados</button>` : ""}
-      <a class="lateral-acao" href="superior/" title="Módulo Superior: o desdobramento do PEI/PDI até os Planos de Ação">${ICONES.modoRede}Gestão da estratégia</a>
       ${usuario || !comLogin ? `<button type="button" class="lateral-acao" data-item="sistema">${ICONES.sistema}Configurar o sistema</button>` : ""}
     </div>`;
 }
