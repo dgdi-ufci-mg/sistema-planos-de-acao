@@ -1808,3 +1808,7 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
   .busca-cancelar { display: inline-flex; align-items: center; }
 }
 @media (max-width: 899px) { .busca-cancelar { display: inline-flex; align-items: center; } }
+/* item 11: o número da barra de tempo leva a unidade (dias úteis): "d" no computador, "dias" no celular */
+.prazo-unidade { font: 500 .72rem var(--f-texto); color: var(--muted); margin-left: 1px; }
+.unidade-longa { display: none; }
+@media (max-width: 640px) { .unidade-curta { display: none; } .unidade-longa { display: inline; } }

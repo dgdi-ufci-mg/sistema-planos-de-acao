@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 166 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 167 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1275,6 +1275,8 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Sem dicas de teclado no celular** (item 8): em aparelhos sem mouse (`hover: none` e `pointer: coarse`), somem o "Ctrl K" ao lado de Buscar, a seção "Atalhos de teclado" da Ajuda e as dicas "↑ ↓ / Enter / Esc" da busca. A busca ganha **Cancelar** à direita do campo, como no iOS (também em janelas estreitas do computador, onde o "Esc" já não aparecia).
 
+- **Unidade junto do número da barra de tempo** (item 11): como a legenda passou a aparecer só na primeira etapa aberta, o número de dias úteis leva a unidade: "d" no computador ("10 d") e "dia" ou "dias" no celular ("7 dias"), em letra menor e cinza. O leitor de tela continua lendo a frase completa ("Faltam 7 dias úteis…"). Vale na lista e no quadro, também no computador.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -1977,3 +1979,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 164 | Celular: alvos de toque de pelo menos 44 px em telas de toque (item 4 da avaliação de celular; seção 8.7) |
 | 165 | Celular: nas Entregas, o (+) cria uma entrega, e não uma ação; a tecla N também (item 5 da avaliação de celular; seção 8.7) |
 | 166 | Celular: sem dicas de teclado; "Cancelar" na busca (item 8 da avaliação de celular; seção 8.7) |
+| 167 | Unidade junto do número da barra de tempo: "d" no computador, "dias" no celular (item 11 da avaliação de celular; seção 8.7) |
