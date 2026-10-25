@@ -17,6 +17,7 @@ import { esc } from "../formato.js";
 import { iniciais } from "../responsaveis.js";
 import { agruparPorTipo } from "../tipos.js";
 import { ligarSecoesSuaves } from "./movimento.js";
+import { atalhoDaBusca } from "./busca.js";
 
 const CHAVE_RECOLHIDO = "sextante.menuRecolhido";
 const estreito = () => matchMedia("(max-width: 899px)").matches;
@@ -115,7 +116,7 @@ export function mostrarNavegacao(opcoes) {
   const { espacos, abertoId = null, titulo = "", usuario = null, comLogin = true, podeCriar = true, podeConfigurar } = opcoes;
   acoes = {
     aoAbrir: opcoes.aoAbrir, aoConfigurar: opcoes.aoConfigurar, novo: opcoes.aoNovo, ajuda: opcoes.aoAjuda,
-    sistema: opcoes.aoSistema, entrar: opcoes.aoEntrar, trocarSenha: opcoes.aoTrocarSenha, sair: opcoes.aoSair,
+    sistema: opcoes.aoSistema, buscar: opcoes.aoBuscar, entrar: opcoes.aoEntrar, trocarSenha: opcoes.aoTrocarSenha, sair: opcoes.aoSair,
     lixeira: opcoes.aoLixeira, consulta: opcoes.aoConsulta, extracao: opcoes.aoExtracao, instalar: opcoes.aoInstalar,
   };
   if (!ligado) ligar();
@@ -150,6 +151,7 @@ export function mostrarNavegacao(opcoes) {
         </li>`;
   document.querySelector(".lateral").innerHTML = `
     <div class="lateral-conta">${contaHtml}</div>
+    ${opcoes.aoBuscar ? `<button type="button" class="lateral-acao lateral-buscar" data-item="buscar" aria-keyshortcuts="Control+K Meta+K">${ICONES.buscar}Buscar<kbd>${atalhoDaBusca()}</kbd></button>` : ""}
     <nav class="lateral-espacos" aria-label="Espaços">
       ${grupos.map((g) => `<h2 class="lateral-rotulo">${g.titulo}</h2>
       <ul>${g.espacos.map(itemHtml).join("")}</ul>`).join("")}

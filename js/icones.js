@@ -83,5 +83,7 @@ export const ICONES = Object.freeze({
   /** Lixeira: cesto com tampa. */
   lixeira: svg('<path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
   /** Fechar: xis. */
+  /** Busca e paleta de comandos (Ctrl+K, 24/10/2026): lupa. */
+  buscar: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
   fechar: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
 });

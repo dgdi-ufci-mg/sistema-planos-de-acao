@@ -1682,3 +1682,40 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 .lateral-mais[open] .lateral-mais-seta { transform: rotate(180deg); }
 .lateral-mais-itens { display: flex; flex-direction: column; gap: 2px; padding-left: 12px; }
 @media (prefers-reduced-motion: reduce) { .lateral-mais-seta { transition: none; } }
+
+/* busca e paleta de comandos (Ctrl+K, 24/10/2026; item 7 da avaliação de usabilidade) */
+.lateral-buscar { margin-bottom: 6px; }
+.lateral-buscar kbd, .busca kbd {
+  font: 600 .7rem/1 var(--f-dados); color: var(--muted); border: 1px solid var(--line); border-bottom-width: 2px;
+  border-radius: 4px; padding: 2px 5px; background: var(--bg);
+}
+.lateral-buscar kbd { margin-left: auto; }
+.busca-camada { position: fixed; inset: 0; z-index: 65; display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 16px; }
+.busca-camada .fundo-escuro { opacity: 0; transition: opacity var(--mov) var(--mov-curva); }
+.busca {
+  position: relative; width: min(620px, 100%); max-height: min(560px, 76vh); display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 18px 50px rgba(0, 0, 0, .22);
+  opacity: 0; transform: translateY(-8px) scale(.98); transition: opacity var(--mov) var(--mov-curva), transform var(--mov) var(--mov-curva); overflow: hidden;
+}
+.busca-camada.aberta .fundo-escuro { opacity: 1; }
+.busca-camada.aberta .busca { opacity: 1; transform: none; }
+.busca-campo { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--muted); }
+.busca-campo input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 1.05rem; color: var(--ink); outline: none; }
+.busca-lista { overflow-y: auto; padding: 6px; flex: 1; }
+.busca-grupo { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 10px 10px 4px; }
+.busca-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--raio); cursor: pointer; min-height: 40px; }
+.busca-item[aria-selected="true"] { background: color-mix(in oklab, var(--accent) 14%, transparent); }
+.busca-icone { display: inline-flex; color: var(--muted); flex: none; width: 18px; }
+.busca-icone svg { width: 18px; height: 18px; }
+.busca-texto { display: flex; flex-direction: column; min-width: 0; }
+.busca-titulo { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+.busca-texto small { color: var(--muted); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.busca-vazio { padding: 18px 10px; color: var(--muted); margin: 0; }
+.busca-rodape { display: flex; gap: 14px; margin: 0; padding: 8px 14px; border-top: 1px solid var(--line); }
+.busca-rodape kbd { margin-right: 3px; }
+@media (max-width: 899px) {
+  .busca-camada { padding-top: 12px; }
+  .busca-rodape, .busca-esc { display: none; }
+  .busca-item { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { .busca, .busca-camada .fundo-escuro { transition: none; } }

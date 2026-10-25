@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 153 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 154 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -84,6 +84,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/calculo.js` | Estimativa vigente, ordem por dependência, caminho crítico, situações, carimbo Atrasada |
 | `js/simulacao.js` | Monte Carlo beta-PERT, prioridades, chave da simulação (reaproveitamento) |
 | `js/lista.js` | Linhas da lista: filtros, ordens, agrupamento por fase e etapa, resumos |
+| `js/busca.js` | Regra da busca (Ctrl+K): combinar o digitado com os itens, sem acento, e ordenar (seção 8.0) |
 | `js/acao.js` | Regras da ação: estimativa livre, anteriores possíveis sem ciclo, busca, códigos |
 | `js/entregas.js` | Entregas do Plano de Ação: tipos de meta, situações, validações, alcance atual, avisos de coerência e o que falta para encerrar |
 | `js/extracao.js`, `js/arquivo-planilha.js` | Extração personalizada: as tabelas (ações, entregas, alcances, histórico) e os arquivos CSV, .xlsx e .ods, feitos sem biblioteca |
@@ -106,6 +107,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/superior/app.js`, `js/superior/telas.js`, `js/superior/exemplo.js` | Módulo Superior: partida (banco, login, conexão; o nome provisório do módulo, `NOME_DO_MODULO`, num lugar só), as abas Desdobramento, Instrumentos, Camadas e Importar, e o catálogo de exemplo usado sem o Firebase |
 | `js/telas/instalar.js` | "Instalar como aplicativo": o pedido de instalação do navegador ou as instruções para cada aparelho; registro do *service worker* |
 | `js/telas/esqueleto.js` | Blocos cinza de carregamento (esqueletos) nos formatos lista, cartões e texto (seção 2) |
+| `js/telas/busca.js` | Caixa de busca e paleta de comandos (Ctrl+K): fontes de itens, teclado e lista (seção 8.0) |
 | `js/telas/extracao.js` | Tela "Extração de dados" (passo 2.10) |
 | `js/telas/*.js` | Uma tela ou peça por arquivo: navegação, abertura, espaço (lista e quadro), janela da ação, nova ação, planilha (`editar-planilha.js`), cronograma, rede, linha do tempo, configurar espaço e sistema, tipo e modelo do espaço (`tipo-espaco.js`, `modelo-espaco.js`), entregas do Plano de Ação (`entregas.js`), lixeira, ajuda, acesso, seletor com busca, edição no lugar, exclusão, pendências, pessoas, painel, movimento |
 | **Testes** | |
@@ -992,6 +994,18 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 As seções 8.1 a 8.5 guardam as decisões de interface na ordem em que foram tomadas, com as revisões ("Revisto em…"). Quando duas se contradizem, vale a mais recente. Este resumo descreve o estado em 23/10/2026.
 
 **Barra lateral** (como no Todoist e no Notion): no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços, agrupados por tipo ("Planos de Ação", depois "Projetos", só os tipos que existem; seção 16.1), cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, à vista, "Ajuda e manual" e "Configurar o sistema"; acima deles, o grupo recolhível **Mais** (aberto ou fechado, lembrado no aparelho; item 9 da avaliação de usabilidade, 24/10/2026), com Lixeira, "Extração de dados" (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Instalar como aplicativo" (some quando já aberto como aplicativo). A **Legenda** dos símbolos saiu da barra lateral: liga e desliga no menu **Exibir** do espaço ("Ajuda na tela"; lista, quadro, rede e cronograma) e, no celular, no painel "Filtros e ordem". No computador, fica ao lado do conteúdo e pode ser recolhida (lembrado no aparelho): o botão de recolher fica no canto superior direito dela. Recolhida, o canto da barra do topo fica vazio, o nome do espaço aparece grande no alto do conteúdo e um **puxador** na borda esquerda da tela abre a barra de novo; **Ctrl+B** (⌘B no Mac) abre e recolhe. No celular, abre por cima, com fundo escurecido, pelo botão de três linhas.
+
+**Busca e paleta de comandos** (item 7 da avaliação de usabilidade, 24/10/2026; como no Linear, no Notion e no GitHub): **Ctrl+K** (⌘K no Mac), em qualquer tela, mesmo com o cursor num campo, ou o item **Buscar** no alto da barra lateral (com a dica do atalho), abre uma caixa no alto da tela. Digitar filtra; ↑ e ↓ escolhem; Enter executa; Esc ou clique fora fecha. Os resultados vêm em grupos, nesta ordem quando nada foi digitado:
+
+| Grupo | Itens | O que faz |
+|---|---|---|
+| Neste espaço | "Nova ação" (ou "Nova tarefa"), se a pessoa pode criar; "Ver como …" para cada visualização permitida, exceto a atual (no celular, só as do celular); "Mostrar só as ações atrasadas", se houver; "Mostrar/Esconder a legenda dos símbolos" | Executa no espaço aberto |
+| Ações (ou Tarefas) de *nome do espaço* | Todas as ações do espaço aberto, na ordem do espaço; abaixo do nome, número, código, situação (ou "Atrasada") e etapa | Abre a janela da ação |
+| Espaços | Os da pessoa, os de exemplo e os abertos à consulta, menos o aberto; abaixo do nome, o tipo e "exemplo", "aberto à consulta" ou "encerrado" | Abre o espaço |
+| Comandos | Configurar este espaço (se pode), Novo espaço, Espaços abertos à consulta, Lixeira, Extração de dados, Gestão da estratégia, Instalar como aplicativo, Ajuda e manual, Configurar o sistema, Entrar, Trocar senha, Sair (cada um só quando aparece também na barra lateral) | O mesmo que o item da barra lateral |
+| Glossário | "O que é: *termo*", para cada termo do glossário; só depois de digitar algo | Abre a Ajuda no termo |
+
+Regra de combinação (`js/busca.js`, com testes): sem maiúsculas e sem acentos, cada palavra digitada precisa aparecer no título do item ou nas palavras extras dele (por exemplo, o número "#4", o código, a descrição, a etapa e as siglas dos responsáveis, numa ação; num comando, sinônimos simples, como "exportar" para a Extração de dados). Ordem: título que começa pelo digitado; depois, título com uma palavra que começa pela primeira palavra digitada; depois, os demais; empates na ordem acima; até 60 resultados. Os itens são lidos de novo a cada abertura da caixa. Para o leitor de tela, o campo é uma caixa de combinação (`combobox`) ligada à lista de opções (`listbox`), com a opção escolhida em `aria-activedescendant`.
 
 **Barra do topo do espaço, no computador** (três grupos, como no Numbers do Mac; aprovada em 23/10/2026):
 
@@ -1922,3 +1936,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 151 | Planilha: largura das colunas ajustável pela borda do título, lembrada no aparelho, e texto cortado inteiro ao passar o mouse (item 12 da avaliação de usabilidade; seção 8) |
 | 152 | Esqueletos de carregamento: blocos cinza no formato do conteúdo, depois de 0,3 s de espera, na abertura, nos espaços, entregas, lixeira, janela da ação e Superior (item 15 da avaliação de usabilidade; seção 2) |
 | 153 | Barra lateral reorganizada: à vista só Ajuda e Configurar o sistema; Lixeira, Extração, Gestão da estratégia e Instalar no grupo recolhível "Mais"; a Legenda passou para o menu Exibir (item 9 da avaliação de usabilidade; seção 8.0) |
+| 154 | Busca e paleta de comandos (Ctrl+K e "Buscar" na barra lateral): ações do espaço aberto, espaços, comandos e glossário (item 7 da avaliação de usabilidade; seção 8.0; `js/busca.js`, `js/telas/busca.js`) |

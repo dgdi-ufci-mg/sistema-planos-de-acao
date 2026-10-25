@@ -30,6 +30,7 @@ import { criarTelaDeEntregas } from "./entregas.js";
 import { esqueletoHtml } from "./esqueleto.js";
 import { tipoDe } from "../tipos.js";
 import { termos } from "../vocabulario.js";
+import { registrarFonte } from "./busca.js";
 
 const SITUACOES = {
   concluida: { texto: "Concluída", icone: "concluida", classe: "icone-concluida" },
@@ -1485,7 +1486,31 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       novaJanela?.atualizar(dadosDaJanela());
     }).catch((e) => avisar(e.message));
   });
+  /* busca (Ctrl+K, 24/10/2026): as ações deste espaço e os comandos dele */
+  const tirarDaBusca = registrarFonte("espaco", () => {
+    if (!linhas || !espaco) return [];
+    const t = termos(espaco);
+    const comandos = [
+      ...(store.podeGravar !== false && perm.criarAcao && ui.modo !== "entregas" ? [{ titulo: `Nova ${t.acao}`, icone: "mais", palavras: "criar adicionar", executar: () => abrirNova() }] : []),
+      ...modos().filter(([v, , , classe]) => v !== ui.modo && !(classe === "so-computador" && matchMedia("(max-width: 899px)").matches))
+        .map(([v, nome, icone]) => ({ titulo: `Ver como ${nome.toLowerCase()}`, icone, palavras: "visualizacao exibir", executar: () => mudarModo(v) })),
+      ...(linhas.some((l) => l.atrasada) && ui.situacao !== "atrasada" && !semFiltros() ? [{ titulo: `Mostrar só as ${t.acoes} atrasadas`, icone: "atrasada", palavras: "filtrar", executar: () => mudar("situacao", "atrasada") }] : []),
+      ...(ui.modo !== "planilha" && ui.modo !== "entregas" ? [{ titulo: ui.legenda ? "Esconder a legenda dos símbolos" : "Mostrar a legenda dos símbolos", icone: "legenda", palavras: "ajuda simbolos", executar: () => { ui.legenda = !ui.legenda; desenharFerramentas(); } }] : []),
+    ].map((c) => ({ ...c, grupo: "Neste espaço" }));
+    const itens = linhas.map((l) => {
+      const a = l.acao;
+      const siglas = a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean).map((p) => p.sigla || p.nome);
+      return {
+        grupo: `${t.Acoes} de ${espaco.nome}`, icone: l.atrasada ? "atrasada" : l.situacao, titulo: a.rotulo,
+        detalhe: [`#${a.numero}`, a.codigo, l.atrasada ? "Atrasada" : nomeDoFluxo(espaco, l.fluxo), etapaDe.get(a.etapa)].filter(Boolean).join(" · "),
+        palavras: [`#${a.numero}`, a.codigo, a.descricao, etapaDe.get(a.etapa), ...siglas].filter(Boolean).join(" "),
+        executar: () => abrirJanela(a.numero),
+      };
+    });
+    return [...comandos, ...itens];
+  });
   return () => {
+    tirarDaBusca();
     parar();
     janela?.fechar();
     document.removeEventListener("click", fecharPop);

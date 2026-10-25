@@ -27,6 +27,9 @@ import { abrirConsulta } from "./telas/consulta.js";
 import { abrirExtracao } from "./telas/extracao.js";
 import { instalar, instalado, aoMudarInstalacao, registrarAplicativo } from "./telas/instalar.js";
 import { criarVigiaDeConexao, sondaDoSite } from "./conexao.js";
+import { abrirBusca, registrarFonte, ligarAtalhoDaBusca } from "./telas/busca.js";
+import { TIPOS, tipoDe } from "./tipos.js";
+import { GLOSSARIO } from "./glossario.js";
 
 document.title = NOME;
 
@@ -119,6 +122,7 @@ async function atualizarTopo() {
       abrirExtracao({ fontes, hoje });
     },
     aoSistema: () => sistema(),
+    aoBuscar: () => abrirBusca(),
     aoEntrar: entrar,
     aoTrocarSenha: () => abrirTrocarSenha({ acesso }),
     aoSair: () => tentar(async () => { await acesso.sair(); avisar("Você saiu."); }),
@@ -259,6 +263,46 @@ function boasVindas({ comFormulario = false } = {}) {
   atualizarTopo();
   window.scrollTo(0, 0);
 }
+
+/* ---------- busca e paleta de comandos (Ctrl+K, 24/10/2026) ----------
+ * A partida dá os espaços, os comandos gerais e os termos do glossário; o espaço aberto dá as suas ações
+ * e os seus comandos (js/telas/espaco.js). */
+ligarAtalhoDaBusca();
+registrarFonte("sistema", async () => {
+  if (!store) return [];
+  const { meus, consulta } = await espacosDoBanco();
+  const doExemplo = exemplo ? await exemplo.listarEspacos() : [];
+  const espaco = (e, extra) => ({
+    grupo: "Espaços", icone: e.encerradoEm ? "lixeira" : tipoDe(e) === "quadro" ? "modoQuadro" : tipoDe(e) === "planoDeAcao" ? "modoEntregas" : "modoLista",
+    titulo: e.nome, detalhe: [TIPOS[tipoDe(e)].nome, extra, e.encerradoEm ? "encerrado" : ""].filter(Boolean).join(" · "),
+    palavras: TIPOS[tipoDe(e)].nome, executar: () => abrirEspaco(e.id),
+  });
+  const comando = (titulo, icone, executar, palavras = "") => ({ grupo: "Comandos", titulo, icone, executar, palavras });
+  const aberto = abertoId ? await tentar(() => storeDe(abertoId).lerEspaco(abertoId), null) : null;
+  return [
+    ...meus.filter((e) => e.id !== abertoId).map((e) => espaco(e)),
+    ...doExemplo.filter((e) => e.id !== abertoId).map((e) => espaco(e, "exemplo")),
+    ...consulta.filter((e) => e.id !== abertoId).map((e) => espaco(e, "aberto à consulta")),
+    ...(aberto && storeDe(abertoId).podeGravar ? [comando("Configurar este espaço", "engrenagem", () => abrirConfiguracao({
+      store: storeDe(abertoId), espacoId: abertoId, aoExcluirEspaco: espacoExcluido, criarConta: !exemplos.has(abertoId) && acesso ? acesso.criarConta : null,
+    }), `configuracoes ${aberto.nome}`)] : []),
+    ...(store.podeGravar ? [comando("Novo espaço", "mais", () => boasVindas({ comFormulario: true }), "criar plano projeto quadro")] : []),
+    ...(consulta.length ? [comando("Espaços abertos à consulta", "olho", async () => abrirConsulta({ espacos: consulta, comLogin: Boolean(usuario), aoAbrir: abrirEspaco, catalogo: await store.lerCatalogo().catch(() => null) }), "publicos institucionais")] : []),
+    comando("Lixeira", "lixeira", () => abrirLixeira({ store: storeDe(abertoId), espacoId: abertoId, storeEspacos: store, aoRestaurarEspaco: () => atualizarTopo() }), "excluidos restaurar"),
+    comando("Extração de dados", "modoPlanilha", async () => {
+      const fontes = [{ store, espacos: [...meus, ...consulta] }];
+      if (exemplo) fontes.push({ store: exemplo, espacos: doExemplo, rotulo: "exemplo" });
+      abrirExtracao({ fontes, hoje });
+    }, "exportar planilha excel pdf csv ods"),
+    comando("Gestão da estratégia", "modoRede", () => { location.href = "superior/"; }, "superior pei pdi programas"),
+    ...(instalado() ? [] : [comando("Instalar como aplicativo", "instalar", () => instalar(), "celular tela inicial")]),
+    comando("Ajuda e manual", "ajuda", () => ajuda(), "glossario"),
+    ...(usuario || !acesso ? [comando("Configurar o sistema", "sistema", () => sistema(), "feriados calendario copia de seguranca")] : []),
+    ...(acesso && !usuario ? [comando("Entrar", "pessoa", entrar, "login")] : []),
+    ...(usuario ? [comando("Trocar senha", "pessoa", () => abrirTrocarSenha({ acesso })), comando("Sair", "pessoa", () => tentar(async () => { await acesso.sair(); avisar("Você saiu."); }))] : []),
+    ...GLOSSARIO.map((g) => ({ grupo: "Glossário", icone: "ajuda", titulo: `O que é: ${g.titulo}`, palavras: [g.tecnico, g.simples].filter(Boolean).join(" "), soAoDigitar: true, executar: () => ajuda(g.chave) })),
+  ];
+});
 
 /* links "o que é?" em qualquer tela: <a data-termo="chave">o que é?</a> */
 document.addEventListener("click", (e) => {
