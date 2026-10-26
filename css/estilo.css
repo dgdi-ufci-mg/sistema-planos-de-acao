@@ -1174,33 +1174,12 @@ body[data-vista-atual="planilha"] .popover-exibir { width: 380px; }
 /* nome do espaço na barra: só quando o menu lateral não está à vista (no celular, fica o título de sempre) */
 .titulo-barra { display: none; font-size: 1.05rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30ch; margin-right: 6px; }
 /* barra lateral recolhida, no computador (23/10/2026, decisão do responsável): o nome do espaço sai da barra
-   do topo e vai para o alto do conteúdo; no canto, nada; um puxador na borda esquerda abre a barra */
+   do topo e vai para o alto do conteúdo. Revisto em 26/10/2026 (decisão do responsável): o botão de painel volta
+   ao canto esquerdo da barra do topo para abrir a barra; o puxador na borda esquerda saiu (era difícil de achar) */
 #principal .titulo-conteudo, .titulo-conteudo { display: none; margin: 0 0 2px; font-size: 1.7rem; font-weight: 700; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
-.puxador-lateral { display: none; }
 @media (min-width: 900px) {
   body.lateral-recolhida #principal .titulo-conteudo { display: block; }
-  body.lateral-recolhida .botao-lateral { display: none; }
-  body.lateral-recolhida .topo-linha { padding-left: 0; }
-  body.lateral-recolhida .puxador-lateral {
-    display: block; position: fixed; z-index: 40; left: 0; top: 0; bottom: 0; width: 14px; padding: 0; border: 0;
-    background: transparent; cursor: pointer; transition: background-color var(--mov-rapido);
-  }
-  .puxador-lateral::before {
-    content: ""; position: absolute; left: 4px; top: 50%; width: 4px; height: 40px; translate: 0 -50%; border-radius: 3px;
-    background: var(--line); transition: height var(--mov-rapido), width var(--mov-rapido), background-color var(--mov-rapido);
-  }
-  .puxador-lateral:hover, .puxador-lateral:focus-visible { background: color-mix(in srgb, var(--accent) 10%, transparent); outline: none; }
-  .puxador-lateral:hover::before, .puxador-lateral:focus-visible::before { width: 5px; height: 56px; background: var(--accent); }
-  .puxador-dica {
-    position: absolute; left: 20px; top: 50%; translate: 0 -50%; white-space: nowrap; pointer-events: none;
-    background: var(--ink); color: var(--bg); font-size: .8rem; font-weight: 500; padding: 7px 10px; border-radius: 6px;
-    opacity: 0; transition: opacity var(--mov-rapido);
-  }
-  .puxador-dica kbd { font: inherit; opacity: .7; margin-left: 6px; }
-  .puxador-lateral:hover .puxador-dica, .puxador-lateral:focus-visible .puxador-dica { opacity: 1; transition-delay: .25s; }
-  .puxador-lateral:focus-visible .puxador-dica { transition-delay: 0s; }
 }
-@media (prefers-reduced-motion: reduce) { .puxador-lateral, .puxador-lateral::before, .puxador-dica { transition: none; } }
 /* rede e planilha vão até o fim da tela: sem a folga de baixo do corpo, a página não rola e o título não some sob a barra */
 @media (min-width: 641px) { body[data-vista-atual="rede"], body[data-vista-atual="planilha"] { padding-bottom: 0; } }
 @media (min-width: 641px) and (max-width: 899px) { .titulo-barra { display: block; } }

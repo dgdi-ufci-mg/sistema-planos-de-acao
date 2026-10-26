@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 182 da página)
+**Última atualização deste documento:** 24/10/2026 (versão 183 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2026,3 +2026,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 180 | Celular: retorno visual próprio ao tocar, sem o realce azul do navegador (item 19 da avaliação de celular; seção 8.7) |
 | 181 | Celular: vibração curta ao concluir uma ação, no Android (item 20 da avaliação de celular; seção 8.7) |
 | 182 | Celular: etiquetas de situação das entregas com 13 px (item 21 da avaliação de celular; seção 8.7) |
+| 183 | Barra lateral recolhida, no computador: volta o botão de painel no canto esquerdo da barra do topo para abri-la; sai o puxador da borda esquerda (decisão do responsável; seções 8.0 e 8.1) |

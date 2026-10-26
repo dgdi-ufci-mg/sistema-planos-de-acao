@@ -1,8 +1,9 @@
 /**
  * Navegação (documentação técnica, passo 1.14c): barra do topo e menu lateral, como no Todoist e no Notion.
  * - Barra do topo: botão do menu lateral, à esquerda, e o nome do espaço aberto, no centro.
- * - No computador, com a barra recolhida (23/10/2026): sem botão no canto; um puxador na borda esquerda
- *   abre a barra, e Ctrl+B (⌘B) abre e recolhe.
+ * - No computador, com a barra recolhida: o botão de painel no canto esquerdo da barra do topo abre a barra
+ *   (revisto em 26/10/2026, decisão do responsável: o puxador na borda esquerda, de 23/10, saiu), e Ctrl+B (⌘B)
+ *   abre e recolhe.
  * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços,
  *   cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé (24/10/2026, avaliação de
  *   usabilidade), à vista "Ajuda e manual" e "Configurar o sistema"; recolhidos em "Mais", a Lixeira, a "Extração de dados"
@@ -59,7 +60,7 @@ function rotularBotao() {
   const visivel = estreito() ? corpo.classList.contains("lateral-aberta") : !corpo.classList.contains("lateral-recolhida");
   const botao = document.querySelector("[data-alternar-lateral]");
   botao.setAttribute("aria-expanded", String(visivel));
-  const rotulo = estreito() ? "Menu" : "Recolher a barra lateral (Ctrl+B)";
+  const rotulo = estreito() ? "Menu" : visivel ? "Recolher a barra lateral (Ctrl+B)" : "Abrir a barra lateral (Ctrl+B)";
   botao.setAttribute("aria-label", rotulo);
   if (estreito()) botao.removeAttribute("title"); else botao.title = rotulo;
 }
@@ -70,11 +71,6 @@ function ligar() {
   document.body.classList.toggle("lateral-recolhida", lerRecolhido());
   document.querySelector("[data-alternar-lateral]").addEventListener("click", () => alternar());
   rotularBotao();
-  /* puxador da borda esquerda (23/10/2026): abre a barra recolhida e passa o foco para o botão que a recolhe */
-  document.querySelector("[data-puxador-lateral]").addEventListener("click", () => {
-    alternar(true);
-    document.querySelector("[data-alternar-lateral]").focus({ preventScroll: true });
-  });
   document.querySelector(".fundo-lateral").addEventListener("click", () => alternar(false));
   const lateral = document.querySelector(".lateral");
   ligarSecoesSuaves(lateral); // "Mais" e "Encerrados" abrem e fecham deslizando
