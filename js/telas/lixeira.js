@@ -14,7 +14,7 @@ const quando = (momento) => (momento ? new Date(momento).toLocaleString("pt-BR",
  *   store: o do espaço aberto (o exemplo tem o seu); storeEspacos: o dos espaços guardados
  */
 export function abrirLixeira({ store, espacoId = null, storeEspacos, aoRestaurarEspaco }) {
-  const corpo = abrirPainel("Lixeira", esqueletoHtml("texto", 4));
+  const corpo = abrirPainel("Lixeira", esqueletoHtml("texto", 4), { classe: "central", deBaixo: matchMedia("(max-width: 640px)").matches });
 
   async function desenhar() {
     const [lixo, espacos, responsaveis] = await Promise.all([

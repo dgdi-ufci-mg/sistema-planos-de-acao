@@ -21,7 +21,7 @@ export const EXPLICACAO_CONSULTA = "Espaços de que você não participa, mas qu
 export function abrirConsulta({ espacos, comLogin, aoAbrir, catalogo = null }) {
   const programa = (e) => programaDoEspaco(e, catalogo);
   let texto = "";
-  const corpo = abrirPainel("Espaços abertos à consulta", "");
+  const corpo = abrirPainel("Espaços abertos à consulta", "", { classe: "central", deBaixo: matchMedia("(max-width: 640px)").matches });
   function desenhar() {
     const achados = buscar([...espacos].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")), texto, (e) => [e.nome, programa(e)]);
     corpo.innerHTML = `

@@ -1838,6 +1838,18 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 }
 @media (min-width: 900px) and (prefers-reduced-motion: reduce) { .camada.configuracao .painel { transition: none; } }
 
+/* janelas centrais (27/10/2026, pedido do responsável): Lixeira, Extração de dados e Espaços abertos à consulta
+   abrem no centro, como "Configurar este espaço", e não mais deslizando da direita; no celular, sobem de baixo */
+@media (min-width: 641px) {
+  .camada.central .painel {
+    top: 50%; left: 50%; right: auto; bottom: auto; width: min(720px, calc(100% - 48px)); max-height: min(86vh, 820px);
+    border-radius: 14px; opacity: 0; transform: translate(-50%, -47%) scale(.98); transition: transform var(--mov) var(--mov-curva), opacity var(--mov) var(--mov-curva);
+  }
+  .camada.central.aberta .painel { opacity: 1; transform: translate(-50%, -50%); }
+  .camada.central .painel-corpo { min-height: 0; }
+}
+@media (min-width: 641px) and (prefers-reduced-motion: reduce) { .camada.central .painel { transition: none; } }
+
 /* "Configurar o sistema": usuários (27/10/2026) */
 .cadastro-usuario { flex-wrap: wrap; }
 .cadastro-usuario input { flex: 1 1 200px; min-width: 0; }

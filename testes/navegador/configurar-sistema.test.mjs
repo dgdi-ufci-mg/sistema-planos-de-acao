@@ -44,3 +44,22 @@ describe("Configurar o sistema", { skip: pular }, () => {
     assert.ok(!(await p.locator(".config-nav").isVisible()), "a lista some");
   });
 });
+
+describe("Janelas centrais do grupo Mais (27/10/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  for (const item of ["lixeira", "extracao"]) {
+    test(`${item}: abre no centro da tela, no computador`, async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800 });
+      await p.evaluate(() => { const d = document.querySelector("[data-lateral-mais]"); if (d) d.open = true; });
+      await p.click(`.lateral [data-item="${item}"]`);
+      await assentar(p);
+      const caixa = await p.locator(".camada.central.aberta .painel").boundingBox();
+      assert.ok(Math.abs(caixa.x + caixa.width / 2 - 640) < 4, "centralizada na horizontal");
+      assert.ok(caixa.y > 20, "não colada no alto");
+      assert.deepEqual(p.erros, []);
+    });
+  }
+});

@@ -63,7 +63,7 @@ export function abrirExtracao({ fontes, hoje }) {
     historico: lembrado("sextante.extracao.historico", false),
     formato: lembrado("sextante.extracao.formato", "xlsx"),
   };
-  const corpo = abrirPainel("Extração de dados", "");
+  const corpo = abrirPainel("Extração de dados", "", { classe: "central", deBaixo: matchMedia("(max-width: 640px)").matches });
   const algumPlano = () => todos.some((x) => escolha.espacos.has(x.espaco.id) && tipoDe(x.espaco) === "planoDeAcao");
   const marcar = (nome, ligado, texto, extra = "") => `<label class="alternar"><input type="checkbox" data-escolha="${nome}"${ligado ? " checked" : ""}${extra}> <span>${texto}</span></label>`;
 
