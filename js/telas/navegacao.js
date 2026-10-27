@@ -162,12 +162,12 @@ export function mostrarNavegacao(opcoes) {
         <summary class="lateral-rotulo">Encerrados <span class="n">${encerrados.length}</span></summary>
         <ul>${encerrados.map(itemHtml).join("")}</ul></details>` : ""}
       ${podeCriar ? `<button type="button" class="lateral-acao" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}
-      ${opcoes.aoConsulta ? `<button type="button" class="lateral-acao" data-item="consulta" title="Espaços públicos e institucionais de que você não participa">${ICONES.olho}Espaços abertos à consulta${opcoes.nConsulta ? ` <span class="n">${opcoes.nConsulta}</span>` : ""}</button>` : ""}
     </nav>
     <div class="lateral-pe">
       <details class="lateral-mais" data-lateral-mais${lerMais() ? " open" : ""}>
         <summary class="lateral-acao">${ICONES.opcoes}Mais<span class="lateral-mais-seta" aria-hidden="true">${ICONES.abrir}</span></summary>
         <div class="lateral-mais-itens">
+          ${opcoes.aoConsulta ? `<button type="button" class="lateral-acao" data-item="consulta" title="Espaços públicos e institucionais de que você não participa">${ICONES.olho}Espaços abertos à consulta${opcoes.nConsulta ? ` <span class="n">${opcoes.nConsulta}</span>` : ""}</button>` : ""}
           <button type="button" class="lateral-acao" data-item="lixeira">${ICONES.lixeira}Lixeira</button>
           ${opcoes.aoExtracao ? `<button type="button" class="lateral-acao" data-item="extracao" title="Planilha ou PDF com os dados dos espaços">${ICONES.modoPlanilha}Extração de dados</button>` : ""}
           <a class="lateral-acao" href="superior/" title="Módulo Superior: o desdobramento do PEI/PDI até os Planos de Ação">${ICONES.modoRede}Gestão da estratégia</a>
