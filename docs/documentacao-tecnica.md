@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 210 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 210.1 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2123,3 +2123,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 208 | Strata: o módulo Superior vira aplicativo à parte, em /strata/ (o endereço antigo redireciona), com manifesto, ícones, símbolo (três camadas em arco) e paleta (azuis de céu e âmbar) próprios (decisão do responsável; seções 3.1 e 8) |
 | 209 | "Configurar o sistema" em janela central, em abas, com Usuários (cadastro com o e-mail do Firebase para definir a senha, lista e e-mail de nova senha; coleção usuarios, regras do banco a publicar) e Espaços (pedido do responsável; seções 3.4, 4.1.12, 4.1.13 e 8.1) |
 | 210 | Espaços abertos à consulta, Lixeira e Extração de dados em janela central, e não mais pela direita; no celular, sobem de baixo (pedido do responsável; seção 8) |
+| 210.1 | Quadro: a altura é medida de novo depois que as fontes carregam, para a página não rolar quando o que fica acima muda de altura (seção 8.4) |

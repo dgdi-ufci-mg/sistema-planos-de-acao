@@ -1344,6 +1344,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     };
     medir();
     addEventListener("resize", medir);
+    /* o que fica acima do quadro pode mudar de altura logo depois (fontes carregando, avisos): mede de novo */
+    document.fonts?.ready.then(medir);
+    setTimeout(medir, 400);
   }
 
   /**

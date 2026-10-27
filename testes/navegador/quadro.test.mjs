@@ -27,7 +27,7 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
     await p.click('.menu-topo[data-pop="modo"]');
     await p.locator('[data-modo="quadro"]').first().click();
     await p.waitForSelector(".quadro .coluna");
-    await assentar(p, 300);
+    await assentar(p, 700);
     const m = await medidas(p);
     assert.ok(m.largura > 1600, "ocupa mais que a antiga largura de leitura");
     assert.ok(!m.rolaX, "as colunas cabem");
@@ -42,7 +42,7 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
     await p.click('.menu-topo[data-pop="modo"]');
     await p.locator('[data-modo="quadro"]').first().click();
     await p.waitForSelector(".quadro .coluna");
-    await assentar(p, 300);
+    await assentar(p, 700);
     const m = await medidas(p);
     assert.ok(m.rolaX, "as colunas não cabem e o quadro rola para o lado");
     assert.ok(m.esquerda < 4, "começam da esquerda");
