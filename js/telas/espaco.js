@@ -619,10 +619,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       return r.some((a, i) => i > 0 && (r[i - 1].right > a.left || (r[i - 1].g !== a.g && r[i - 1].right + 8 > a.left)))
         || els.some((el) => !el.matches(".titulo-barra") && el.scrollWidth > el.clientWidth + 1);
     };
-    topo.classList.remove("barra-curta", "barra-icones");
+    topo.classList.remove("barra-curta", "barra-icones", "barra-sem-setas");
     if (!encostam()) return;
     topo.classList.add("barra-curta");
-    if (encostam()) topo.classList.add("barra-icones");
+    if (!encostam()) return;
+    topo.classList.add("barra-icones");
+    /* último degrau (correção de 27/10/2026): em janelas estreitas, como 700 px, mesmo só com os ícones o menu
+       Indicador encostava no chip das atrasadas; as setas dos menus do centro saem (o menu continua abrindo igual) */
+    if (encostam()) topo.classList.add("barra-sem-setas");
   }
   addEventListener("resize", ajustarBarra);
   /* recolher ou reabrir a barra lateral muda a largura da barra do topo sem mudar a da janela: a medida é refeita

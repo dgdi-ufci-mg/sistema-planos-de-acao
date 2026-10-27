@@ -1923,3 +1923,5 @@ button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: 
 @media (prefers-reduced-motion: reduce) { .caixa-concluida { transition: none; } }
 /* o nome da tarefa que quebra linha fica alinhado depois da caixinha */
 .quadro-tarefas .nome-linha { display: flex; align-items: flex-start; }
+/* barra do topo apertada (correção de 27/10/2026): sem as setas dos menus do centro, que continuam abrindo igual */
+.topo.barra-sem-setas .topo-centro .menu-topo-seta { display: none; }

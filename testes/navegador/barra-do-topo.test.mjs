@@ -34,9 +34,7 @@ describe("Barra do topo no computador", { skip: pular }, () => {
   after(async () => { await sessao?.fechar(); });
 
   for (const largura of [700, 800, 900, 1024, 1180, 1280, 1366]) {
-    /* 700 px: mesmo só com os ícones, o menu Indicador fica colado ao chip das atrasadas (encontrado em 27/10/2026) */
-    const todo = largura === 700 && "defeito encontrado em 27/10/2026: o menu Indicador encosta no chip das atrasadas (aguarda decisão do responsável)";
-    test(`${largura} px: nada encosta nem é cortado, com a barra lateral aberta e recolhida`, { todo }, async () => {
+    test(`${largura} px: nada encosta nem é cortado, com a barra lateral aberta e recolhida`, async () => {
       const p = await sessao.abrir({ largura, altura: 760 });
       assert.deepEqual(await problemas(p), [], "barra lateral aberta");
       await alternarLateral(p);
