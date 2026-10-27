@@ -959,7 +959,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       desenharRede(lista, { acoes, caminho, linhas, etapaDe, identificador: idHtml, escala: ui.escalaRede,
         donos: (a) => donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus }),
         situacao: (l) => (l.situacao === "liberada" ? "" : `<span class="${SITUACOES[l.situacao].classe}" title="${SITUACOES[l.situacao].texto}">${ICONES[SITUACOES[l.situacao].icone]}</span>`),
-        marcos: usaFases ? (espaco.estrutura ?? []).flatMap((f) => (f.etapas ?? []).map((e) => ({ id: e.id, nome: e.nome, titulo: `${f.nome} › ${e.nome}` }))) : null,
+        marcos: usaFases ? (espaco.estrutura ?? []).flatMap((f) => (f.etapas ?? []).map((e) => ({ id: e.id, nome: e.nome, titulo: `${f.nome} › ${e.nome}`, fase: f.id, faseNome: f.nome }))) : null,
+        /* círculos de início e de término (27/10/2026): o início do espaço e a conclusão prevista (a data mais tardia das ações) */
+        inicio: espaco.inicio ?? null, termino: linhas.map((l) => l.conclusao).filter(Boolean).sort().at(-1) ?? null, prazoFinal: espaco.prazoFinal ?? null,
         aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); } });
       return;
     }

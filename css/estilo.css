@@ -1970,3 +1970,21 @@ button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: 
 .crono-zoom .botao { width: 32px; height: 32px; padding: 0; justify-content: center; }
 .crono-zoom .botao[disabled] { opacity: .45; cursor: default; }
 .crono-zoom-nome { min-width: 76px; text-align: center; font-size: .86rem; color: var(--muted); font-weight: 600; }
+/* rede: cercas das fases e das etapas (27/10/2026, pedido do responsável), no lugar dos marcos: uma faixa de fundo
+   suave por fase, com o nome no alto, e linhas tracejadas separando as etapas, com o nome de cada uma */
+.rede-fase { position: absolute; box-sizing: border-box; border-radius: 14px; background: color-mix(in srgb, var(--accent) 5%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent); }
+.rede-fase.par { background: color-mix(in srgb, var(--laranja) 5%, transparent); border-color: color-mix(in srgb, var(--laranja) 16%, transparent); }
+.rede-fase-nome { position: absolute; top: 8px; left: 12px; right: 12px; font-family: var(--f-titulo); font-size: .86rem; font-weight: 700; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rede-etapa { position: absolute; top: 0; bottom: 0; box-sizing: border-box; }
+.rede-etapa.cerca { border-left: 1.5px dashed color-mix(in srgb, var(--ink) 28%, transparent); }
+.rede-etapa-nome { position: absolute; top: 30px; left: 12px; right: 8px; font-size: .74rem; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* início e término: círculos com as datas */
+.rede-ponto { position: absolute; box-sizing: border-box; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  color: var(--texto-sobre-destaque); box-shadow: var(--relevo); text-align: center; line-height: 1.1; }
+.rede-ponto.inicio { background: var(--ok); }
+.rede-ponto.termino { background: var(--crit); }
+.rede-ponto-rotulo { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.rede-ponto-data { font-size: .68rem; }
+.rede-ponto-prazo { position: absolute; top: calc(100% + 6px); white-space: nowrap; font-size: .72rem; color: var(--muted); }
+.rede-ligacao { fill: none; stroke: color-mix(in srgb, var(--ink) 30%, transparent); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.rede.destacando .rede-ligacao { opacity: .25; }

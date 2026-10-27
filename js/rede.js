@@ -365,7 +365,8 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     const esq = f.inicio === 0 ? M.margem : xDaColuna[f.inicio - 1] + M.largura + M.divisa;
     const dir = f.fim === total - 1 ? largura - M.margem : xDaColuna[f.fim] + M.largura + M.divisa;
     const info = f.m < SEM_MARCO ? pedidos[f.m] : { id: "", nome: "Sem etapa" };
-    return { id: info.id, nome: info.nome, titulo: info.titulo ?? info.nome, x: esq, largura: dir - esq };
+    /* fase da etapa, para as cercas das fases na tela (27/10/2026) */
+    return { id: info.id, nome: info.nome, titulo: info.titulo ?? info.nome, fase: info.fase ?? null, faseNome: info.faseNome ?? null, x: esq, largura: dir - esq };
   }) : [];
 
   /* ---------- saltos: a horizontal salta sobre a vertical que a cruza ---------- */
