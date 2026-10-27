@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 211 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 211.1 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2125,3 +2125,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 210 | Espaços abertos à consulta, Lixeira e Extração de dados em janela central, e não mais pela direita; no celular, sobem de baixo (pedido do responsável; seção 8) |
 | 210.1 | Quadro: a altura é medida de novo depois que as fontes carregam, para a página não rolar quando o que fica acima muda de altura (seção 8.4) |
 | 211 | Strata, aba Camadas: os dois campos de cada camada ganham os rótulos "Nome no singular" e "Nome no plural", com exemplo, e uma frase explica o uso de cada um (pedido do responsável; seção 8, "Strata") |
+| 211.1 | Quadro: a altura máxima das colunas volta a ser a medida em pixels, porque a porcentagem não limitava a coluna e a página rolava em alguns casos (seção 8.4) |

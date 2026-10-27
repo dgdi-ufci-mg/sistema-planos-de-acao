@@ -11,6 +11,15 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
   before(async () => { sessao = await iniciar(); });
   after(async () => { await sessao?.fechar(); });
 
+  /* espera o quadro assentar (sob carga, a simulação pode redesenhar a tela logo depois de abrir) */
+  const assentado = async (p) => {
+    for (let i = 0; i < 15; i++) {
+      const m = await medidas(p);
+      if (!m.paginaRola && m.alto - m.base < 12) return m;
+      await assentar(p, 200);
+    }
+    return medidas(p);
+  };
   const medidas = (p) => p.evaluate(() => {
     const q = document.querySelector(".quadro");
     const r = q.getBoundingClientRect();
@@ -18,7 +27,7 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
     return {
       base: r.bottom, alto: innerHeight, largura: r.width, larguraJanela: document.documentElement.clientWidth,
       esquerda: cols[0].left - r.left, direita: r.right - cols.at(-1).right, rolaX: q.scrollWidth > q.clientWidth,
-      paginaRola: document.documentElement.scrollHeight > innerHeight + 1,
+      paginaRola: document.documentElement.scrollHeight > innerHeight + 1, altura: document.documentElement.scrollHeight,
     };
   });
 
@@ -27,13 +36,13 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
     await p.click('.menu-topo[data-pop="modo"]');
     await p.locator('[data-modo="quadro"]').first().click();
     await p.waitForSelector(".quadro .coluna");
-    await assentar(p, 700);
-    const m = await medidas(p);
+    await assentar(p, 300);
+    const m = await assentado(p);
     assert.ok(m.largura > 1600, "ocupa mais que a antiga largura de leitura");
     assert.ok(!m.rolaX, "as colunas cabem");
     assert.ok(Math.abs(m.esquerda - m.direita) < 4, `colunas centralizadas (${m.esquerda} × ${m.direita})`);
     assert.ok(m.alto - m.base < 12, "o quadro vai até o pé da tela");
-    assert.ok(!m.paginaRola, "a página não rola");
+    assert.ok(!m.paginaRola, `a página não rola (${m.altura} × ${m.alto})`);
     assert.deepEqual(p.erros, []);
   });
 
@@ -42,11 +51,11 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
     await p.click('.menu-topo[data-pop="modo"]');
     await p.locator('[data-modo="quadro"]').first().click();
     await p.waitForSelector(".quadro .coluna");
-    await assentar(p, 700);
-    const m = await medidas(p);
+    await assentar(p, 300);
+    const m = await assentado(p);
     assert.ok(m.rolaX, "as colunas não cabem e o quadro rola para o lado");
     assert.ok(m.esquerda < 4, "começam da esquerda");
     assert.ok(m.alto - m.base < 12, "a barra fica no pé da tela");
-    assert.ok(!m.paginaRola, "a página não rola");
+    assert.ok(!m.paginaRola, `a página não rola (${m.altura} × ${m.alto})`);
   });
 });

@@ -726,7 +726,7 @@ h3.editavel { padding: 2px 6px; }
   .quadro::-webkit-scrollbar { height: 12px; }
   .quadro::-webkit-scrollbar-track { background: color-mix(in srgb, var(--ink) 6%, transparent); border-radius: 6px; }
   .quadro::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 28%, transparent); border-radius: 6px; }
-  .quadro .coluna { max-height: 100%; }
+  .quadro .coluna { max-height: calc(var(--altura-quadro, 100vh) - 18px); } /* a altura da barra de rolagem e a folga de baixo */
 }
 /* mover colunas como no Trello: a coluna levantada, inclinada e com sombra; as outras deslizam para abrir o lugar */
 .quadro .coluna > header.arrastavel { cursor: grab; }
