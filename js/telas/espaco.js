@@ -625,6 +625,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (encostam()) topo.classList.add("barra-icones");
   }
   addEventListener("resize", ajustarBarra);
+  /* recolher ou reabrir a barra lateral muda a largura da barra do topo sem mudar a da janela: a medida é refeita
+     sempre que a barra do topo muda de largura (correção de 27/10/2026, encontrada pelos testes de navegador) */
+  if (globalThis.ResizeObserver) {
+    let largura = 0;
+    new ResizeObserver(([e]) => {
+      const w = Math.round(e.contentRect.width);
+      if (w !== largura) { largura = w; ajustarBarra(); }
+    }).observe(document.querySelector(".topo"));
+  }
 
   /** O (+) do celular cria o que a visualização mostra: entrega nas Entregas (só para quem pode criá-las), ação nas demais. */
   function ajustarMais() {

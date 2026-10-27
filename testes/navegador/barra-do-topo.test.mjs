@@ -40,9 +40,6 @@ describe("Barra do topo no computador", { skip: pular }, () => {
       const p = await sessao.abrir({ largura, altura: 760 });
       assert.deepEqual(await problemas(p), [], "barra lateral aberta");
       await alternarLateral(p);
-      /* a medida é refeita ao mudar a largura da janela; aqui, forçada, para conferir a medida em si */
-      await p.evaluate(() => dispatchEvent(new Event("resize")));
-      await assentar(p, 100);
       assert.deepEqual(await problemas(p), [], "barra lateral recolhida");
       assert.deepEqual(p.erros, []);
     });
@@ -68,13 +65,10 @@ describe("Barra do topo no computador", { skip: pular }, () => {
     }
   });
 
-  test("recolher e reabrir a barra lateral refaz a medida da barra do topo", {
-    todo: "defeito encontrado em 27/10/2026: a medida só é refeita ao mudar a largura da janela (aguarda decisão do responsável)",
-  }, async () => {
+  test("recolher e reabrir a barra lateral refaz a medida da barra do topo (correção de 27/10/2026)", async () => {
     for (const largura of [900, 1024, 1180]) {
       const p = await sessao.abrir({ largura, altura: 760 });
       await alternarLateral(p);
-      await p.evaluate(() => dispatchEvent(new Event("resize")));
       await alternarLateral(p);
       assert.deepEqual(await problemas(p), [], `${largura} px, depois de reabrir a barra lateral`);
     }
