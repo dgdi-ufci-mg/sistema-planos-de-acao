@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 185 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 186 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -117,6 +117,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `testes/contrato-banco.js`, `testes/firebase-falso.js` | Garantias que todo banco cumpre; Firebase falso, em memória |
 | `testes/dados/` | A PI² (`pi2-fase1.json`) e uma cópia congelada da versão 1 (`versao1-index.html`), usada só pelo teste de comparação |
 | `testes/desempenho.mjs` | Medida de velocidade, rodada à mão, com 50 a 300 ações |
+| `testes/navegador/` | Testes de navegador (seção 3.2): o sistema aberto num Chromium pelo Playwright, com toques e larguras de tela simulados; `apoio.mjs` tem o servidor local e os gestos |
 | `package.json` | Só marca os arquivos como módulos para o Node; sem dependências |
 
 ### 3.2 Testes
@@ -125,6 +126,10 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 - **Teste de comparação:** o espaço da PI² precisa produzir as mesmas datas do caminho crítico da versão 1, já que essa regra não mudou. O cálculo da versão 1 é executado a partir da cópia congelada em `testes/dados/versao1-index.html`. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência. **Referência (versão do cálculo 1, semente 20261014, 10.000 simulações, só estimativas):** P50 em 30/03/2027, P80 em 08/04/2027, P95 em 22/04/2027 e chance de 89,5% de cumprir o prazo de 14/04/2027. Na versão 1, com a triangular e 3.000 simulações, a chance era de 74%: a triangular, com os mesmos três pontos, espalha mais as durações do que a beta-PERT, que concentra os sorteios perto do mais provável. Um teste automático confere esses valores; se mudarem, é preciso aumentar a versão do cálculo.
 - **Teste do dicionário de dados:** compara os campos usados pelo código (tipos JSDoc do modelo) com os da seção 4 e falha se divergirem. Roda com os demais, em toda mudança.
 - **Teste visual:** capturas de tela das visualizações afetadas, nos temas claro e escuro e na largura de celular, com o Playwright e o Chromium, sobre o sistema servido localmente e com o Firebase desligado (`config.js` interceptado com `null`).
+- **Testes de navegador** (desde 27/10/2026, `testes/navegador/`): abrem o sistema num Chromium, pelo Playwright, sobre o "Ver um exemplo", só na memória (o `config.js` é interceptado com `null` e nada sai para a internet), e simulam o uso. **Celular** (`celular.test.mjs`, 390 × 800 px, com toque): barra de baixo (e a ausência dela no tablet, 700 px); alvos de 44 px; faixa do prazo, que abre a Linha do tempo; Voltar fechando "Filtros e exibição" e a janela da ação sem sair do espaço, e reabrindo o espaço anterior depois de uma troca; segurar o cartão (menu do cartão); deslizar para a direita (registro da conclusão), para a esquerda (menu) e na vertical (só rola); puxar a janela para baixo (fecha com 200 px, volta com 40 px); "Criar ação" acima de um teclado de 320 px simulado pela área visível do navegador (`visualViewport`); campos com 16 px. **Barra do topo** (`barra-do-topo.test.mjs`, sem toque): de 700 a 1.366 px, com a barra lateral aberta e recolhida, nenhum controle encosta no vizinho (8 px entre grupos) nem é cortado, pelas mesmas regras de `ajustarBarra`; em 1.366 px os nomes dos menus aparecem; clicar num menu não muda a barra (correção da versão 184).
+  - Os toques são reais para o navegador (protocolo do Chromium, eventos de ponteiro do tipo "touch"). Limite conhecido: o Chromium sem tela não reconhece o toque longo e, ao soltar o dedo, gera um clique que cai no fundo escurecido do menu do cartão recém-aberto e o fecha; no Android, o toque longo não gera esse clique. Por isso o teste de segurar confere o menu com o dedo ainda na tela. Num iPhone de verdade, vale conferir se o menu continua aberto ao soltar o dedo (seção 13.1).
+  - O Playwright **não** é dependência do repositório: sem ele na máquina, estes testes são pulados com aviso e os demais rodam normalmente. Com `SEM_NAVEGADOR=1`, são pulados de propósito, para uma rodada rápida (cerca de 6 s, contra cerca de 1 min com eles).
+  - Defeitos encontrados e ainda não corrigidos ficam como testes "a fazer" (*todo* do `node --test`): aparecem no resultado, mas não o reprovam. Quando o defeito for corrigido, retirar a marca.
 - **Como rodar:** `node --test` na raiz do repositório. Todos precisam passar antes de publicar.
 
 ### 3.3 Fluxo de trabalho
@@ -1473,6 +1478,8 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 - **Proteção da `main` (passo 2.11):** configuração no GitHub, quando começar o uso oficial ou entrar a segunda pessoa.
 - **Fase 4** (seção 12): passagem à equipe de TI, com a documentação conceitual, os casos de referência e o acompanhamento do novo desenvolvimento.
 - **Pontos para reavaliação** (seção 14), com o sistema em uso.
+- **Barra do topo, defeitos encontrados pelos testes de navegador (27/10/2026), aguardando decisão do responsável:** (a) recolher ou reabrir a barra lateral não refaz a medida dos nomes dos menus, que só é refeita ao mudar a largura da janela; em 900 a 1.180 px, depois de recolher e reabrir, os nomes voltam sem caber e o chip das atrasadas encosta nos menus vizinhos; (b) em 700 px, mesmo só com os ícones, o menu Indicador fica colado ao chip das atrasadas. Os dois estão nos testes como "a fazer" (seção 3.2).
+- **Segurar o cartão no iPhone:** conferir num aparelho de verdade se o menu do cartão continua aberto ao soltar o dedo (seção 3.2, limite dos testes de navegador).
 - **Velocidade:** com 200 ações, a simulação leva cerca de 1 s no ambiente de teste. Se travar no celular, levá-la para segundo plano (*Web Worker*).
 
 ### 13.2 Ideias futuras
@@ -2029,3 +2036,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 183 | Barra lateral recolhida, no computador: volta o botão de painel no canto esquerdo da barra do topo para abri-la; sai o puxador da borda esquerda (decisão do responsável; seções 8.0 e 8.1) |
 | 184 | Correção: ao clicar num menu da barra do topo, os nomes dos menus sumiam (ficavam só os ícones); a conferência de espaço passou a medir só os controles, sem o painel aberto (seção 8.0) |
 | 185 | Arrumação: o aplicativo instalável (PWA) aparece como feito em "Futuro, sem fase" (seção 12); a seção 13.2 já o marcava. Sem mudança no sistema |
+| 186 | Testes de navegador no repositório (`testes/navegador/`): celular (Voltar, gestos, barra de baixo, teclado, faixa do prazo, campos) e barra do topo de 700 a 1.366 px; dois defeitos da barra do topo encontrados e registrados como pendência. Sem mudança no sistema (seções 3.1, 3.2 e 13.1) |

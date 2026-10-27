@@ -99,6 +99,7 @@ Existe uma cópia desta documentação fora do repositório, no projeto do claud
    node --test --test-reporter=spec
    ```
    Todos precisam passar antes de publicar. Incluem o teste do dicionário, os contratos dos bancos e o teste de comparação com a versão 1 (PI²).
+   Incluem também os **testes de navegador** (`testes/navegador/`), que abrem o sistema num Chromium pelo Playwright e simulam toques e larguras de tela. Sem o Playwright na máquina, eles são pulados com aviso; o Playwright não entra no repositório. Ao mudar uma tela, acrescente ou ajuste o teste de navegador correspondente (seção 3.2 da documentação técnica).
 2. **No navegador:** sirva a raiz (`python3 -m http.server`) e abra a página; módulos JavaScript não abrem com clique duplo no arquivo. Com o Playwright e o Chromium, intercepte o `config.js` e devolva `export const FIREBASE_CONFIG = null;`, para trabalhar só na memória, e use **Ver um exemplo**. Percorra as visualizações afetadas, nos temas claro e escuro e na largura de celular.
    - Para datas em formato brasileiro, inicie o Chromium com `--lang=pt-BR` e o *locale* `pt-BR`.
 3. **Fluxo do Firebase:** teste com o Firebase falso (`testes/firebase-falso.js`). **Nunca grave no Firestore de produção durante testes.**
