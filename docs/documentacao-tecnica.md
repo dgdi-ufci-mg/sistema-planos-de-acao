@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 198 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 199 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1554,7 +1554,7 @@ Os itens abaixo mantêm a numeração original (1 a 4, da linha do tempo, aprova
 5. Sem filtros nem ordem: mostra sempre o espaço inteiro, na ordem do espaço, porque as setas ligariam ações escondidas.
 6. Uma ação pode começar no mesmo dia em que a anterior termina, quando a anterior termina no meio do dia (o cálculo usa frações de dia).
 7. Cores: vermelho sem folga, verde-azulado com folga, verde concluída; ação sem estimativa como um pequeno retângulo tracejado.
-8. Duas aproximações, semanas e meses. Sem arrastar barras: as datas vêm das estimativas e das dependências.
+8. ~~Duas aproximações, semanas e meses.~~ **Zoom** desde 27/10/2026 (pedido do responsável, como no MS Project): oito níveis, de 2 a 40 px por dia de calendário (Trimestres, Meses, Semanas e Dias; o padrão continua o de 18 px), escolhidos pelos botões − e + ao lado do nome do nível ou por **Ctrl + rolagem do mouse** (⌘ no Mac; também o gesto de pinça do touchpad) sobre o cronograma. Pela rolagem, a data sob o ponteiro fica parada; pelos botões, a data no meio da vista. A partir de 28 px por dia, o cabeçalho mostra todos os dias; de 12 px, as segundas-feiras. O nível fica lembrado no aparelho (`sextante.zoomCronograma`). Sem arrastar barras: as datas vêm das estimativas e das dependências.
 
 **Rede (passo 1.17c)**
 9. Sem filtros nem ordem, como no cronograma.
@@ -2079,3 +2079,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 196 | Barra lateral: títulos dos grupos de espaços em destaque, com o ícone do tipo, e um traço entre os grupos (decisão do responsável; seção 8.0) |
 | 197 | "Configurar este espaço" surge como janela no centro, com leve aumento, a partir de 641 px, e sobe de baixo no celular; antes deslizava da direita para o centro (pedido do responsável; seções 8.0 e 8.7) |
 | 198 | Colunas do quadro como no Trello: largura fixa, rolagem própria de cada coluna com barra discreta e mover colunas com a coluna levantada e as outras abrindo lugar (pedido do responsável; seção 8.0) |
+| 199 | Cronograma: zoom em oito níveis, com botões − e + e Ctrl + rolagem do mouse, mantendo a data sob o ponteiro (pedido do responsável; seção 8.4) |

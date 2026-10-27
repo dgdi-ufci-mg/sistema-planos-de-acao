@@ -83,8 +83,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const ui = { modo: "lista", situacao: "todas", concluidas: true, responsavel: "", minhas: false, etiqueta: "", ordem: "espaco", recolhidos: new Set(), legenda: false,
     /** painel aberto sob um botão da barra: "filtrar", "ordenar" ou null */
     pop: null,
-    /** aproximação do cronograma: "semanas" ou "meses" */
-    escalaCrono: "semanas",
+    /** zoom do cronograma: px por dia (ver ZOOM em js/telas/cronograma.js; aceita os nomes antigos "semanas" e "meses") */
+    escalaCrono: lembrado("sextante.zoomCronograma", "semanas"), /* zoom do cronograma, em px por dia (27/10/2026), lembrado no aparelho */
     /** barra mostrada nos cartões: "tempo", "execucao" ou "revisao" (lembrada neste aparelho) */
     barra: lembrado("sextante.barra", "tempo"),
     /** colunas opcionais da lista (22/10/2026), lembradas neste aparelho; nome e situação são fixos */
@@ -946,7 +946,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (ui.modo === "planilha") { planilha.desenhar(lista, { ...dadosDaJanela(), ocultas: ui.ocultasPlanilha }); return; }
     if (ui.modo === "cronograma") {
       desenharCronograma(lista, { espaco, acoes, caminho, cal, hoje, usaFases, identificador: idHtml, escala: ui.escalaCrono,
-        aoMudarEscala: (escala) => { ui.escalaCrono = escala; desenharLista(); },
+        aoMudarEscala: (escala) => {
+          ui.escalaCrono = escala;
+          try { localStorage.setItem("sextante.zoomCronograma", escala); } catch { /* sem armazenamento */ }
+          desenharLista();
+        },
         retratos: ui.retratos, comparar: ui.comparar, base: ui.base, aoComparar: compararCom });
       if (ui.retratos === null) carregarRetratos();
       return;

@@ -56,6 +56,7 @@ export const ICONES = Object.freeze({
   abrir: svg('<path d="m6 9 6 6 6-6"/>'),
   /** Novo: sinal de mais. */
   mais: svg('<path d="M12 5v14M5 12h14"/>'),
+  menos: svg('<path d="M5 12h14"/>'),
   /** Pessoa: menu do usuário sem login. */
   pessoa: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
   /** Marcado: item escolhido numa lista. */

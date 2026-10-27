@@ -2,7 +2,8 @@
  * Modo "Cronograma" do espaço (documentação técnica, seção 8.4; passo 1.17b, primeira versão).
  * Barras das ações no tempo, com as dependências em setas, agrupadas por fase e etapa.
  * Interativo: passar o mouse numa barra mostra as datas e a folga e destaca as ligações;
- * clicar abre a ação; dois níveis de aproximação (semanas e meses).
+ * clicar abre a ação; zoom com os botões − e + ou com Ctrl + rolagem do mouse (27/10/2026, pedido do responsável,
+ * como no MS Project e no GanttProject), mantendo parada a data sob o ponteiro.
  * Comparação com um retrato (passo 1.18): linha fina sob cada barra, com as datas do retrato.
  * Só no computador (o seletor esconde o modo no celular).
  */
@@ -15,8 +16,19 @@ const dias = (a, b) => (Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00
 const somar = (iso, n) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * UM_DIA).toISOString().slice(0, 10);
 const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-/** Pixels por dia de calendário em cada aproximação. */
-const ESCALAS = [["semanas", "Semanas", 18], ["meses", "Meses", 5]];
+/**
+ * Níveis de zoom: pixels por dia de calendário e o nome do que se vê melhor em cada um (27/10/2026). O padrão é
+ * 18 px (semanas), como antes; "meses", a aproximação antiga de longe, é o de 5 px.
+ */
+export const ZOOM = [[2, "Trimestres"], [3, "Meses"], [5, "Meses"], [8, "Semanas"], [12, "Semanas"], [18, "Semanas"], [28, "Dias"], [40, "Dias"]];
+export const ZOOM_PADRAO = 18;
+/** Nível de zoom válido mais próximo (aceita os nomes antigos "semanas" e "meses"). */
+export const nivelDoZoom = (escala) => {
+  const px = escala === "meses" ? 5 : escala === "semanas" ? ZOOM_PADRAO : Number(escala) || ZOOM_PADRAO;
+  return ZOOM.reduce((melhor, n, i) => (Math.abs(n[0] - px) < Math.abs(ZOOM[melhor][0] - px) ? i : melhor), 0);
+};
+/** Data e posição do ponteiro a manter paradas no próximo desenho (zoom pela rolagem do mouse). */
+let ancora = null;
 const ALTURA = 34;
 
 /**
@@ -39,7 +51,8 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
   const datasBase = base ? [...base.values()].flatMap((b) => [b.inicio, b.fim]) : [];
   const de = somar([inicio, hoje, ...datasBase].sort()[0], -3);
   const ate = somar([fim, prazo ?? fim, hoje, ...datasBase].sort().at(-1), 10);
-  const px = (ESCALAS.find(([v]) => v === escala) ?? ESCALAS[0])[2];
+  const nivel = nivelDoZoom(escala);
+  const px = ZOOM[nivel][0];
   const largura = Math.ceil(dias(de, ate) * px);
   const x = (iso) => dias(de, iso) * px;
 
@@ -51,7 +64,8 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
       const rotulo = `${MESES[data.getUTCMonth()]}${data.getUTCMonth() === 0 || d === de ? ` ${data.getUTCFullYear()}` : ""}`;
       marcasTopo.push(`<span class="crono-mes" style="left:${x(d)}px">${rotulo}</span>`);
     }
-    if (px >= 12 && data.getUTCDay() === 1) marcasTopo.push(`<span class="crono-dia" style="left:${x(d)}px">${data.getUTCDate()}</span>`);
+    /* de perto, o dia de cada segunda-feira; bem de perto (28 px ou mais), todos os dias */
+    if ((px >= 12 && data.getUTCDay() === 1) || (px >= 28 && data.getUTCDate() !== 1)) marcasTopo.push(`<span class="crono-dia" style="left:${x(d)}px">${data.getUTCDate()}</span>`);
   }
   /* linhas verticais: semanas (de perto) ou meses (de longe) */
   const guias = [];
@@ -126,8 +140,10 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
   alvo.dataset.cronoEscala = escala;
   alvo.innerHTML = `
     <div class="crono-ferramentas">
-      <div class="alternador" role="group" aria-label="Aproximação">
-        ${ESCALAS.map(([v, nome]) => `<button type="button" data-escala="${v}" aria-pressed="${v === escala}">${nome}</button>`).join("")}
+      <div class="crono-zoom" role="group" aria-label="Zoom">
+        <button type="button" class="botao" data-zoom="-1" aria-label="Diminuir o zoom" title="Diminuir o zoom (Ctrl + rolar o mouse para baixo)"${nivel === 0 ? " disabled" : ""}>${ICONES.menos}</button>
+        <span class="crono-zoom-nome" aria-live="polite">${ZOOM[nivel][1]}</span>
+        <button type="button" class="botao" data-zoom="1" aria-label="Aumentar o zoom" title="Aumentar o zoom (Ctrl + rolar o mouse para cima)"${nivel === ZOOM.length - 1 ? " disabled" : ""}>${ICONES.mais}</button>
       </div>
       ${comparacao}
       <div class="crono-legendas">${legenda}</div>
@@ -160,8 +176,8 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
   const dica = alvo.querySelector("[data-dica]");
   const porNumero = new Map(linhas.filter((l) => l.tipo === "acao").map((l) => [l.barra.numero, l.barra]));
   alvo.querySelector(".crono-ferramentas").onclick = (e) => {
-    const b = e.target.closest("[data-escala]");
-    if (b && b.dataset.escala !== escala) aoMudarEscala(b.dataset.escala);
+    const b = e.target.closest("[data-zoom]");
+    if (b) zoom(Number(b.dataset.zoom));
   };
   alvo.querySelector(".crono-ferramentas").onchange = (e) => {
     if (e.target.matches("[data-comparar]")) aoComparar(e.target.value || null);
@@ -204,5 +220,33 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
   });
 
   const rolagem = alvo.querySelector("[data-rolagem]");
-  rolagem.scrollLeft = rolagemAnterior?.escala === escala ? rolagemAnterior.esquerda : Math.max(0, x(hoje) - 14 * px);
+  const nomes = rolagem.querySelector(".crono-trilho").getBoundingClientRect().left - rolagem.getBoundingClientRect().left + rolagem.scrollLeft;
+  if (ancora) {
+    /* zoom: a data que estava sob o ponteiro (ou no meio da vista, pelos botões) continua no mesmo lugar */
+    rolagem.scrollLeft = Math.max(0, nomes + x(ancora.data) + ancora.fracao * px - ancora.tela);
+    ancora = null;
+  } else {
+    rolagem.scrollLeft = rolagemAnterior?.escala === String(escala) ? rolagemAnterior.esquerda : Math.max(0, x(hoje) - 14 * px);
+  }
+  /** Muda o zoom em `passo` níveis, mantendo parada a data na posição `tela` (px a partir da borda esquerda da vista). */
+  function zoom(passo, tela = nomes + (rolagem.clientWidth - nomes) / 2) {
+    const novo = Math.max(0, Math.min(ZOOM.length - 1, nivel + passo));
+    if (novo === nivel) return;
+    const dia = (rolagem.scrollLeft + tela - nomes) / px;
+    ancora = { data: somar(de, Math.floor(dia)), fracao: dia - Math.floor(dia), tela };
+    aoMudarEscala(String(ZOOM[novo][0]));
+  }
+  /* Ctrl + rolagem do mouse (ou o gesto de pinça do touchpad, que chega assim): zoom no ponto do ponteiro */
+  let acumulado = 0;
+  rolagem.addEventListener("wheel", (e) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    acumulado += e.deltaY;
+    if (Math.abs(acumulado) < 40) return;
+    const passo = acumulado < 0 ? 1 : -1;
+    acumulado = 0;
+    const tela = e.clientX - rolagem.getBoundingClientRect().left;
+    if (tela > nomes) zoom(passo, tela);
+    else zoom(passo);
+  }, { passive: false });
 }

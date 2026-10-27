@@ -1965,3 +1965,8 @@ button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: 
 .lateral-icone-grupo .icone { width: 15px; height: 15px; }
 .lateral-grupo .espaco-item { margin-left: 4px; }
 .lateral-espacos > [data-item="novo"] { margin-top: 10px; }
+/* zoom do cronograma (27/10/2026): − nome +, como no MS Project */
+.crono-zoom { display: inline-flex; align-items: center; gap: 6px; }
+.crono-zoom .botao { width: 32px; height: 32px; padding: 0; justify-content: center; }
+.crono-zoom .botao[disabled] { opacity: .45; cursor: default; }
+.crono-zoom-nome { min-width: 76px; text-align: center; font-size: .86rem; color: var(--muted); font-weight: 600; }
