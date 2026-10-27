@@ -17,6 +17,8 @@ import { NOME } from "../identidade.js";
 import { esc } from "../formato.js";
 import { iniciais } from "../responsaveis.js";
 import { agruparPorTipo } from "../tipos.js";
+/** Ícone de cada tipo no título do grupo da barra lateral (27/10/2026, pedido do responsável: destacar os títulos). */
+const ICONE_DO_TIPO = { planoDeAcao: "modoEntregas", projeto: "modoCronograma", quadro: "modoQuadro", lista: "modoLista" };
 import { ligarSecoesSuaves } from "./movimento.js";
 import { atalhoDaBusca } from "./busca.js";
 import { abrirCamada } from "./voltar.js";
@@ -165,8 +167,8 @@ export function mostrarNavegacao(opcoes) {
     <div class="lateral-conta">${contaHtml}</div>
     ${opcoes.aoBuscar ? `<button type="button" class="lateral-acao lateral-buscar" data-item="buscar" aria-keyshortcuts="Control+K Meta+K">${ICONES.buscar}Buscar<kbd>${atalhoDaBusca()}</kbd></button>` : ""}
     <nav class="lateral-espacos" aria-label="Espaços">
-      ${grupos.map((g) => `<h2 class="lateral-rotulo">${g.titulo}</h2>
-      <ul>${g.espacos.map(itemHtml).join("")}</ul>`).join("")}
+      ${grupos.map((g) => `<section class="lateral-grupo"><h2 class="lateral-rotulo lateral-titulo-grupo">${g.tipo ? `<span class="lateral-icone-grupo" aria-hidden="true">${ICONES[ICONE_DO_TIPO[g.tipo]] ?? ""}</span>` : ""}${g.titulo}</h2>
+      <ul>${g.espacos.map(itemHtml).join("")}</ul></section>`).join("")}
       ${espacos.length ? "" : `<p class="vazio">${!usuario && comLogin ? "Entre com seu e-mail e senha para ver os seus espaços." : "Nenhum espaço seu ainda."}</p>`}
       ${encerrados.length ? `<details class="lateral-encerrados"${encerrados.some((e) => e.id === abertoId) ? " open" : ""}>
         <summary class="lateral-rotulo">Encerrados <span class="n">${encerrados.length}</span></summary>

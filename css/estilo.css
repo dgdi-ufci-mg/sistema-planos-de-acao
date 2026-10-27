@@ -1934,3 +1934,12 @@ button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: 
 .quadro-tarefas .nome-linha { display: flex; align-items: flex-start; }
 /* barra do topo apertada (correção de 27/10/2026): sem as setas dos menus do centro, que continuam abrindo igual */
 .topo.barra-sem-setas .topo-centro .menu-topo-seta { display: none; }
+
+/* grupos de espaços da barra lateral em destaque (27/10/2026, pedido do responsável): título com o ícone do tipo,
+   em letra mais forte e escura, e um traço fino entre os grupos */
+.lateral-grupo + .lateral-grupo { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 12px; }
+.lateral-titulo-grupo { display: flex; align-items: center; gap: 7px; color: var(--ink); font-size: .78rem; margin-bottom: 6px; }
+.lateral-icone-grupo { display: inline-flex; color: var(--accent); }
+.lateral-icone-grupo .icone { width: 15px; height: 15px; }
+.lateral-grupo .espaco-item { margin-left: 4px; }
+.lateral-espacos > [data-item="novo"] { margin-top: 10px; }
