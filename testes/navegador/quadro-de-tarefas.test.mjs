@@ -31,6 +31,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(titulos.map((t) => t.split("\n")[0].trim()), ["A fazer", "Fazendo", "Em revisão"]);
     assert.equal(await p.locator(".quadro-tarefas .coluna > header svg:not(.menu-coluna svg)").count(), 0);
     assert.equal(await p.locator('.menu-topo[data-pop="modo"]').count(), 0);
+    assert.equal(await p.locator('.menu-topo[data-pop="indicador"]').count(), 0, "sem o menu Indicador (27/10/2026)");
     /* todas as colunas têm o menu "⋯", inclusive a primeira */
     assert.equal(await p.locator(".quadro-tarefas [data-menu-coluna]").count(), 3);
     assert.deepEqual(p.erros, []);

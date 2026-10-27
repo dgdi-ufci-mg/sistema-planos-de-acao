@@ -522,7 +522,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     desenharLista();
     desenharFerramentas();
   }
-  const comIndicador = () => ui.modo === "quadro" || (ui.modo === "lista" && colunas().barras);
+  /* nos tipos de tarefas (Quadro e Lista), sem o menu Indicador: só há o tempo até a data-limite, já no cartão (27/10/2026) */
+  const comIndicador = () => !deTarefas() && (ui.modo === "quadro" || (ui.modo === "lista" && colunas().barras));
   const comExibir = () => ["lista", "quadro", "rede", "cronograma", "planilha"].includes(ui.modo);
   const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;

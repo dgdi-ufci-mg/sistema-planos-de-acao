@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 193 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 194 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1156,6 +1156,7 @@ Os painéis abrem sob o menu, com a transição padrão. Os menus do centro most
 **Quadro de tarefas** (passo 3.1; seção 16.1; **revisto em 27/10/2026**, passo 3.3, decisões do responsável, como no Trello):
 - **Criação:** terceiro cartão em "Tipo", "Quadro de tarefas" ("Tarefas do dia a dia, em colunas, como no Trello e no Planner, com data-limite opcional. Para uma pessoa ou uma equipe."). Escolhido, somem o Modelo e as datas (o espaço começa hoje, sem prazo final).
 - **Uma visualização só:** o Quadro. Não há Lista, Planilha nem as demais; o menu de visualizações some da barra do topo e do painel "Filtros e exibição", e a busca não oferece "Ver como…".
+- **Sem o menu Indicador** (decisão do responsável, 27/10/2026; vale também para a Lista de tarefas): nesses tipos, o único indicador possível é o tempo até a data-limite, que o cartão já mostra; o menu sai da barra do topo e do painel "Filtros e exibição".
 - **Colunas todas iguais e livres:** o espaço novo começa com **A fazer** e **Fazendo**, e as duas são colunas como as outras. Todas se renomeiam (clique no título ou "Renomear" no menu "⋯"), mudam de lugar (arrastar o título ou "Mover para a esquerda/direita") e saem ("Retirar a coluna"; fica pelo menos uma, e o item fica desativado na última). Não há a coluna **Concluídas**, nem os ícones fixos no título das colunas. As colunas ficam na lista `situacoes` do espaço (4.1.8); a tarefa guarda a coluna em `situacaoPersonalizada` (4.2), e a tarefa sem coluna válida (por exemplo, a de uma coluna retirada) aparece na **primeira coluna**. Ao retirar uma coluna, as tarefas dela vão para a primeira das que ficam, e o aviso diz para qual. "Não liberadas" só aparece se alguma tarefa espera a data mínima ("Não começa antes de").
 - **Caixinha de concluída:** cada cartão tem, antes do nome, um círculo que marca a tarefa como concluída (marcado: verde, com o sinal de visto; o nome fica cinza). Marcar **não move o cartão**: ele continua na coluna em que estava, e pode ser movido depois para qualquer coluna. Marcar e desmarcar dão um aviso com "Desfazer" e, no Android, a vibração curta da conclusão. Clicar na caixinha não abre a tarefa; segurar e deslizar não começam nela. Quem não pode atualizar a tarefa vê só a marca.
 - **O que se grava:** só o **momento da marcação** (`conclusaoMarcadaEm`, data e hora; 4.2). A **data de conclusão** (`concluidaEm`) fica em branco: sabe-se que a tarefa foi concluída e quando foi marcada, mas não quando o trabalho terminou. O Store recusa registrar data de conclusão no quadro e só grava a marca pela operação `marcarConclusao`. Desmarcar apaga a marca (e a data dos quadros de antes da revisão, que passam a valer como marcadas).
@@ -2069,3 +2070,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 191 | Correção: a barra do topo refaz a medida dos nomes dos menus sempre que muda de largura (ao recolher ou reabrir a barra lateral, e não só ao mudar a largura da janela); antes, os nomes voltavam sem caber e o chip das atrasadas encostava nos menus (seções 8.0 e 13.1) |
 | 192 | Correção: em janelas estreitas (700 px), o menu Indicador ficava colado ao chip das atrasadas mesmo só com os ícones; novo último degrau da barra do topo, sem as setas dos menus do centro. Os dois defeitos da barra do topo saem das pendências (seções 8.0 e 13.1) |
 | 193 | Cada espaço abre na última visualização usada nele, naquele aparelho (pedido do responsável; seção 8.0) |
+| 194 | Quadro e Lista de tarefas sem o menu Indicador (decisão do responsável; seção 8) |
