@@ -43,4 +43,25 @@ describe("Cronograma: zoom", { skip: pular }, () => {
     assert.ok(Math.abs((await dataSob()) - antes) < 0.02, "a data sob o ponteiro ficou no lugar");
     assert.deepEqual(p.erros, []);
   });
+
+  test("rolagem no próprio cronograma: cabeçalho parado e barra horizontal sempre à vista (27/10/2026)", async () => {
+    const p = await sessao.abrir({ largura: 1280, altura: 700 });
+    await p.click('.menu-topo[data-pop="modo"]');
+    await p.locator('[data-modo="cronograma"]').first().click();
+    await p.waitForSelector(".crono-trilho");
+    await assentar(p, 300);
+    const medidas = () => p.evaluate(() => {
+      const r = document.querySelector("[data-rolagem]");
+      const caixa = r.getBoundingClientRect();
+      return { topo: document.querySelector(".crono-topo").getBoundingClientRect().top - caixa.top, base: caixa.bottom, alto: innerHeight,
+        rolaY: r.scrollHeight > r.clientHeight, rolaX: r.scrollWidth > r.clientWidth };
+    });
+    const antes = await medidas();
+    assert.ok(antes.rolaY && antes.rolaX, "o cronograma rola nos dois sentidos");
+    assert.ok(antes.base <= antes.alto, "a barra horizontal fica dentro da tela");
+    await p.evaluate(() => { document.querySelector("[data-rolagem]").scrollTop = 200; });
+    await assentar(p, 100);
+    assert.ok(Math.abs((await medidas()).topo) < 1, "cabeçalho das datas parado no alto");
+    assert.deepEqual(p.erros, []);
+  });
 });

@@ -911,12 +911,12 @@ body.arrastando-coluna-quadro, body.arrastando-coluna-quadro * { cursor: grabbin
 .crono-legenda i.folga, .crono-barra-acao.folga { background: var(--accent); }
 .crono-legenda i.concluida, .crono-barra-acao.concluida { background: var(--ok); }
 .crono { --nomes: 260px; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
-.crono-rolagem { overflow-x: auto; overflow-y: hidden; border-radius: var(--raio); }
+.crono-rolagem { overflow: auto; overscroll-behavior: contain; border-radius: var(--raio); }
 .crono-conteudo { position: relative; }
-.crono-topo { display: flex; height: 40px; border-bottom: 1px solid var(--line); position: relative; }
+.crono-topo { display: flex; height: 40px; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 4; background: var(--surface); }
 .crono-nome { position: sticky; left: 0; z-index: 3; width: var(--nomes); flex: none; background: var(--surface); border-right: 1px solid var(--line);
   display: flex; align-items: center; gap: 6px; padding: 0 10px; height: 100%; min-width: 0; font-size: .9rem; }
-.crono-nome.topo { color: var(--muted); font-size: .8rem; }
+.crono-nome.topo { color: var(--muted); font-size: .8rem; z-index: 5; }
 .crono-nome .rotulo, .crono-nome > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .crono-nome[data-abrir-acao] { cursor: pointer; }
 .crono-nome[data-abrir-acao]:hover .rotulo { text-decoration: underline; }

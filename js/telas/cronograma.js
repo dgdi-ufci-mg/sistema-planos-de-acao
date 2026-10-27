@@ -40,6 +40,9 @@ const ALTURA = 34;
  *   retratos: cabeçalhos dos retratos do espaço (null: ainda carregando); comparar: id do retrato escolhido;
  *   base: datas de cada ação no retrato escolhido
  */
+/** Ajuste da altura da rolagem ao redimensionar a janela: um só por vez, trocado a cada desenho. */
+let aoRedimensionar = null;
+
 export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, usaFases, identificador, escala, aoMudarEscala,
   retratos = null, comparar = null, base = null, aoComparar = () => {} }) {
   if (!acoes.length) {
@@ -136,7 +139,7 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
 
   /* ao redesenhar (mudança nos dados ou na aproximação), mantém a rolagem; na primeira vez, abre perto de hoje */
   const anterior = alvo.querySelector("[data-rolagem]");
-  const rolagemAnterior = anterior ? { esquerda: anterior.scrollLeft, escala: alvo.dataset.cronoEscala } : null;
+  const rolagemAnterior = anterior ? { esquerda: anterior.scrollLeft, topo: anterior.scrollTop, escala: alvo.dataset.cronoEscala } : null;
   alvo.dataset.cronoEscala = escala;
   alvo.innerHTML = `
     <div class="crono-ferramentas">
@@ -220,6 +223,17 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
   });
 
   const rolagem = alvo.querySelector("[data-rolagem]");
+  /* barras de rolagem no próprio cronograma (27/10/2026, pedido do responsável): a área vai até o fim da tela, rola nos
+     dois sentidos, o cabeçalho das datas fica parado ao rolar para baixo e a barra horizontal fica sempre à vista */
+  const ajustarAltura = () => {
+    if (!rolagem.isConnected) return removeEventListener("resize", ajustarAltura);
+    rolagem.style.height = `${Math.max(320, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 16))}px`;
+  };
+  ajustarAltura();
+  if (aoRedimensionar) removeEventListener("resize", aoRedimensionar);
+  aoRedimensionar = ajustarAltura;
+  addEventListener("resize", ajustarAltura);
+  if (rolagemAnterior) rolagem.scrollTop = rolagemAnterior.topo;
   const nomes = rolagem.querySelector(".crono-trilho").getBoundingClientRect().left - rolagem.getBoundingClientRect().left + rolagem.scrollLeft;
   if (ancora) {
     /* zoom: a data que estava sob o ponteiro (ou no meio da vista, pelos botões) continua no mesmo lugar */
