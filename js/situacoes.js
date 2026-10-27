@@ -85,8 +85,9 @@ export function colunasDoQuadro(espaco) {
  */
 export function problemaDasSituacoes(espaco) {
   if (espaco.nomeInicial != null && !String(espaco.nomeInicial).trim()) return { codigo: "nome-vazio", mensagem: "Dê um nome à situação inicial." };
-  const quadro = ehQuadro(espaco);
-  if (quadro && !colunasProprias(espaco).length) return { codigo: "sem-colunas", mensagem: "O quadro precisa de pelo menos uma coluna." };
+  /* Lista de tarefas (passo 3.5): as colunas do quadro só ficam guardadas para a volta; valem as regras do quadro */
+  const quadro = ehQuadro(espaco) || tipoDe(espaco) === "lista";
+  if (ehQuadro(espaco) && !colunasProprias(espaco).length) return { codigo: "sem-colunas", mensagem: "O quadro precisa de pelo menos uma coluna." };
   /* no quadro, as colunas só não podem repetir o nome entre si (não há Não liberada nem Concluídas) */
   const nomes = new Set(quadro ? [] : [nomeInicial(espaco).toLowerCase(), "não liberada", "concluída"]);
   const ids = new Set();

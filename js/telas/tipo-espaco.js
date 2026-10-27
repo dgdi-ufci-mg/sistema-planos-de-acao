@@ -15,10 +15,13 @@ export function tipoHtml(espaco = {}) {
   const atual = tipoDe(espaco);
   /* Quadro de tarefas (passo 3.1): escolhido só na criação; depois, o tipo não vira nem deixa de ser quadro */
   const criacao = !espaco.id;
-  /* Lista de tarefas (passo 3.4): o mesmo */
+  /* Lista e Quadro de tarefas (passos 3.4 e 3.5): trocam entre si, a qualquer momento; não viram Plano nem Projeto */
   if (!criacao && TIPOS_DE_TAREFAS.includes(atual)) {
-    return `<fieldset class="tipo-espaco" data-tipo-espaco><legend>Tipo</legend><input type="hidden" name="tipo" value="${atual}">
-      <p class="modelo-resumo"><b>${TIPOS[atual].nome}</b> <span class="tec">Escolhido na criação; não muda.</span></p></fieldset>`;
+    return `<fieldset class="tipo-espaco" data-tipo-espaco><legend>Tipo</legend>
+      <div class="tipo-opcoes">${TIPOS_DE_TAREFAS.map((v) => `
+        <label class="tipo-opcao"><input type="radio" name="tipo" value="${v}"${v === atual ? " checked" : ""}>
+          <span><b>${TIPOS[v].nome}</b><small>${TIPOS[v].explicacao}</small></span></label>`).join("")}</div>
+      <p class="tec">As tarefas são as mesmas; só muda a forma de ver. As colunas do quadro ficam guardadas enquanto o espaço é lista.</p></fieldset>`;
   }
   const opcoes = Object.entries(TIPOS).filter(([v]) => criacao || !TIPOS_DE_TAREFAS.includes(v));
   return `<fieldset class="tipo-espaco" data-tipo-espaco>
@@ -94,6 +97,7 @@ export function ligarTipo(form, catalogo = {}) {
   form.addEventListener("change", (e) => {
     if (e.target.name !== "tipo") return;
     const plano = form.querySelector("[data-tipo-plano]");
+    if (!plano) return; // Lista e Quadro de tarefas (passo 3.5): sem os campos do Plano de Ação
     plano.getAnimations().forEach((a) => a.cancel()); // o fechamento fica parado no fim; sem isto, a reabertura voltaria a ele
     if (e.target.value === "planoDeAcao") { plano.hidden = false; abrirSuave(plano); }
     else fecharSuave(plano).then(() => {

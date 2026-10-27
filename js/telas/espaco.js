@@ -271,11 +271,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     });
   }
 
+  let tipoDesenhado = null;
   function desenhar() {
     /* o que o modelo do espaço não tem volta ao padrão (só nesta tela; a escolha guardada no aparelho fica) */
     /* Lista de tarefas (passo 3.4): só a Lista, e a tarefa marcada some na hora (o filtro a mostra de volta) */
-    if (!modoInicial) { modoInicial = true; if (ehQuadro()) ui.modo = "quadro"; if (ehLista()) { ui.modo = "lista"; ui.concluidas = false; } }
-    if (!modos().some(([v]) => v === ui.modo)) ui.modo = "lista";
+    /* troca entre Lista e Quadro de tarefas (passo 3.5): ao mudar o tipo, vale de novo o começo do tipo novo */
+    if (modoInicial && tipoDesenhado !== tipoDe(espaco)) modoInicial = false;
+    tipoDesenhado = tipoDe(espaco);
+    if (!modoInicial) { modoInicial = true; if (ehQuadro()) { ui.modo = "quadro"; ui.concluidas = true; } if (ehLista()) { ui.modo = "lista"; ui.concluidas = false; } }
+    if (!modos().some(([v]) => v === ui.modo)) ui.modo = modos()[0]?.[0] ?? "lista";
     if (!barras().some(([v]) => v === ui.barra)) ui.barra = "tempo";
     if (!ordens().some(([v]) => v === ui.ordem)) ui.ordem = "espaco";
     if (!base) montarBase();

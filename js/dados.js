@@ -428,10 +428,16 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(campos, "espaco");
       recusarFixos(campos, FIXOS_DO_ESPACO);
       await exigir(id, "configurar");
-      /* os tipos de tarefas (Quadro e Lista) são escolhidos na criação e não mudam (passos 3.1 e 3.4) */
-      const tipoAtual = tipoDe(await banco.lerEspaco(id));
-      if ("tipo" in campos && tipoAtual !== tipoDe(campos) && (ehDeTarefas({ tipo: tipoAtual }) || ehDeTarefas(campos))) {
+      /* os tipos de tarefas (Quadro e Lista) são escolhidos na criação: não viram Plano nem Projeto, nem o contrário
+         (passos 3.1 e 3.4); entre si, trocam a qualquer momento (passo 3.5) */
+      const antes = await banco.lerEspaco(id);
+      const tipoAtual = tipoDe(antes);
+      if ("tipo" in campos && tipoAtual !== tipoDe(campos) && ehDeTarefas({ tipo: tipoAtual }) !== ehDeTarefas(campos)) {
         throw new ErroDeDados("tipo-fixo", `O tipo ${TIPOS[ehDeTarefas({ tipo: tipoAtual }) ? tipoAtual : tipoDe(campos)].nome} é escolhido na criação e não muda.`);
+      }
+      /* da Lista para o Quadro sem colunas guardadas: o quadro nasce com as colunas iniciais (as tarefas ficam na primeira) */
+      if ("tipo" in campos && tipoDe(campos) === "quadro" && tipoAtual === "lista" && !(campos.situacoes ?? antes?.situacoes ?? []).length) {
+        campos = { ...campos, situacoes: COLUNAS_INICIAIS_DO_QUADRO.map((nome) => ({ id: novoId(), nome })) };
       }
       await conferirVinculos(campos);
       await gravarEspaco(id, campos);

@@ -122,4 +122,28 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.equal(await item(p, "Responder a pesquisa").count(), 0);
     assert.equal(await p.locator(".camada.aberta").count(), 0, "marca direto, sem abrir janela");
   });
+
+  test("trocar a Lista por Quadro em Configurar este espaço, e de volta", async () => {
+    const p = await abrirLista({ largura: 1280 });
+    const trocar = async (tipo) => {
+      await p.locator(".lateral .espaco-item.atual [data-configurar]").click();
+      await assentar(p);
+      const painel = p.locator(".camada.aberta");
+      /* a configuração grava sozinha, ao mudar a escolha (24/10/2026) */
+      await painel.locator(`input[name="tipo"][value="${tipo}"]`).check();
+      await p.waitForTimeout(1200);
+      await p.keyboard.press("Escape");
+      await assentar(p);
+    };
+    await trocar("quadro");
+    await p.waitForSelector(".quadro-tarefas");
+    const titulos = await p.locator(".quadro-tarefas .coluna > header").allInnerTexts();
+    assert.deepEqual(titulos.map((t) => t.split("\n")[0].trim()), ["A fazer", "Fazendo"]);
+    assert.ok(await cartao(p, "Atualizar o currículo").count(), "no quadro, as concluídas ficam à vista");
+    await trocar("lista");
+    await p.waitForSelector(".item [data-marcar]");
+    assert.equal(await p.locator(".quadro-tarefas").count(), 0);
+    assert.equal(await item(p, "Atualizar o currículo").count(), 0, "na lista, voltam a ficar escondidas");
+    assert.deepEqual(p.erros, []);
+  });
 });

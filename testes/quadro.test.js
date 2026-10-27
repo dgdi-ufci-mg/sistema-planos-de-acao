@@ -146,8 +146,7 @@ describe("Lista de tarefas (passo 3.4)", () => {
     const a = await store.lerAcao(id, t);
     assert.equal(a.conclusaoMarcadaEm, "2026-10-27T15:00:00.000Z");
     assert.equal(a.concluidaEm ?? null, null);
-    /* o tipo não muda, nem entre Lista e Quadro (a troca é o passo 3.5) */
-    await assert.rejects(store.alterarEspaco(id, { tipo: "quadro" }), { codigo: "tipo-fixo" });
+    /* não vira Projeto nem Plano */
     await assert.rejects(store.alterarEspaco(id, { tipo: "projeto" }), { codigo: "tipo-fixo" });
     assert.deepEqual(agruparPorTipo([e]).map((g) => g.titulo), ["Listas de tarefas"]);
   });
@@ -158,5 +157,29 @@ describe("Lista de tarefas (passo 3.4)", () => {
     const acoes = await store.listarAcoes(id);
     assert.equal(acoes.length, 6);
     assert.equal(acoes.filter((a) => a.conclusaoMarcadaEm).length, 2);
+  });
+});
+
+describe("Troca entre Lista e Quadro de tarefas (passo 3.5)", () => {
+  it("da Lista para o Quadro nasce com A fazer e Fazendo; de volta, as colunas ficam guardadas", async () => {
+    let n = 0;
+    const store = criarStore(criarBancoLocal(), { novoId: () => `id${++n}`, hoje: () => "2026-10-27" });
+    const id = await store.criarEspaco({ nome: "Tarefas", inicio: "2026-10-27", tipo: "lista" });
+    const t = await store.criarAcao(id, { rotulo: "Uma tarefa" });
+    await store.marcarConclusao(id, t, true);
+    await store.alterarEspaco(id, { tipo: "quadro" });
+    let e = await store.lerEspaco(id);
+    assert.deepEqual(e.situacoes.map((s) => s.nome), ["A fazer", "Fazendo"]);
+    assert.equal(fluxoDe(await store.lerAcao(id, t), "concluida", e), e.situacoes[0].id);
+    const fazendo = e.situacoes[1].id;
+    await store.mudarSituacao(id, t, fazendo);
+    await store.alterarEspaco(id, { tipo: "lista" });
+    await store.alterarEspaco(id, { tipo: "quadro" });
+    e = await store.lerEspaco(id);
+    assert.deepEqual(e.situacoes.map((s) => s.nome), ["A fazer", "Fazendo"], "as colunas guardadas voltam, sem duplicar");
+    const a = await store.lerAcao(id, t);
+    assert.equal(a.situacaoPersonalizada, fazendo, "a tarefa volta à coluna em que estava");
+    assert.ok(a.conclusaoMarcadaEm, "a marca não muda na troca");
+    await assert.rejects(store.alterarEspaco(id, { tipo: "projeto" }), { codigo: "tipo-fixo" });
   });
 });
