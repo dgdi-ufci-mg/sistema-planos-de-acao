@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 24/10/2026 (versão 184 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 185 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1451,7 +1451,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 - Previsão por classe de referência (seção 13).
 - Custos: custo previsto e lançamentos executados por ação, orçamento do espaço e curvas de previsto contra executado (seção 16.8).
 - Registro de riscos do espaço (seção 16.8).
-- Aplicativo instalável no celular (PWA; seção 13).
+- ✔ Aplicativo instalável no celular (PWA): feito em 24/10/2026 (seções 8, "Instalar como aplicativo", e 13.2).
 - Avaliar baixar o diagrama como imagem.
 - Editor visual do fluxo dentro do sistema, que torne desnecessárias a importação e a exportação por Mermaid (desejo do responsável).
 - Reavaliar os pontos da seção 14 com o sistema em uso.
@@ -2028,3 +2028,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 182 | Celular: etiquetas de situação das entregas com 13 px (item 21 da avaliação de celular; seção 8.7) |
 | 183 | Barra lateral recolhida, no computador: volta o botão de painel no canto esquerdo da barra do topo para abri-la; sai o puxador da borda esquerda (decisão do responsável; seções 8.0 e 8.1) |
 | 184 | Correção: ao clicar num menu da barra do topo, os nomes dos menus sumiam (ficavam só os ícones); a conferência de espaço passou a medir só os controles, sem o painel aberto (seção 8.0) |
+| 185 | Arrumação: o aplicativo instalável (PWA) aparece como feito em "Futuro, sem fase" (seção 12); a seção 13.2 já o marcava. Sem mudança no sistema |
