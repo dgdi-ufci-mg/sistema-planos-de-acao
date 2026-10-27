@@ -1613,7 +1613,8 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .botao-texto.perigo { color: var(--crit-ink); }
 .lista-camadas { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
 .lista-camadas li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-.lista-camadas input:not([type=checkbox]) { flex: 1 1 140px; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
+.lista-camadas .campo-camada { flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; }
+.lista-camadas input:not([type=checkbox]) { flex: 1 1 auto; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
 .lista-camadas .tirar:disabled { opacity: .35; cursor: not-allowed; }
 .lista-camadas .tirar { min-width: 26px; justify-content: center; }
 @media (max-width: 520px) { .superior-conta .superior-email, .superior-marca small { display: none; } }

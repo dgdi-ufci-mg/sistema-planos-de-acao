@@ -335,9 +335,10 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     return `
       <p class="tec">As camadas do desdobramento, de cima para baixo. Um item fica sob um da camada logo acima ou, se ela for <b>opcional</b>,
         de uma camada acima dela: com o Portfólio opcional, um Programa fica sob um Portfólio ou direto sob uma Política. Abaixo da última camada vêm os Planos de Ação.</p>
+      ${gestor ? `<p class="tec">Cada camada tem dois nomes: no singular, para um item (“um Programa”), e no plural, para os títulos das listas (“Programas”).</p>` : ""}
       <ol class="lista-camadas">${r.map((c, i) => `<li>
-        ${gestor ? `<input data-camada="${i}" data-campo="nome" value="${esc(c.nome)}" aria-label="Nome" placeholder="Nome">
-          <input data-camada="${i}" data-campo="plural" value="${esc(c.plural)}" aria-label="Plural" placeholder="Plural">
+        ${gestor ? `<label class="campo-camada"><small class="tec">Nome no singular</small><input data-camada="${i}" data-campo="nome" value="${esc(c.nome)}" placeholder="Ex.: Programa"></label>
+          <label class="campo-camada"><small class="tec">Nome no plural</small><input data-camada="${i}" data-campo="plural" value="${esc(c.plural)}" placeholder="Ex.: Programas"></label>
           <label class="alternar"><input type="checkbox" data-camada="${i}" data-campo="opcional"${c.opcional ? " checked" : ""}> Opcional</label>
           <span class="botoes-situacao"><button type="button" class="tirar" data-mover-camada="${i}" data-sentido="-1" aria-label="Subir"${i === 0 ? " disabled" : ""}>↑</button>
           <button type="button" class="tirar" data-mover-camada="${i}" data-sentido="1" aria-label="Descer"${i === r.length - 1 ? " disabled" : ""}>↓</button>

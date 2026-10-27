@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 210.1 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 211 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1159,7 +1159,7 @@ Os painéis abrem sob o menu, com a transição padrão. Os menus do centro most
 - **Painel do item** (clique no item): camada, instrumento com a vigência, caminho até o topo, Superiores (com × para desligar, e uma lista com os itens das camadas permitidas mais "Ligar"), Subordinados (cada um abre o seu painel) e "Novo subordinado", Planos de Ação (na última camada) e, para o Gestor, "Editar" (código, instrumento, nome) e "Excluir item", com confirmação na própria seção.
 - **Novo item:** camada, código (opcional), instrumento (o do superior, se houver), nome e o superior (os itens das camadas permitidas, com a explicação de quais são; "Ligar depois" quando aberto pelo botão geral). Aberto de "Novo subordinado", só as camadas que podem ficar sob o item. Depois de criar, abre o painel do item novo.
 - **Instrumentos:** do mais recente para o mais antigo, cada um com nome, vigência ("dd/mm/aaaa a dd/mm/aaaa · vigente", "ainda não começou" ou "encerrado"; "sem fim definido"), número de itens, documento de aprovação (com link, se houver) e as prorrogações registradas (de quando para quando, documento, quem e quando). O vigente tem a borda esquerda verde-azulada. O Gestor tem "Novo instrumento", "Editar" (nome, início e aprovação; o fim só muda por "Prorrogar", que registra a mudança), "Prorrogar" (novo fim, documento e link opcionais) e "Excluir", só no instrumento sem itens.
-- **Camadas:** a lista, de cima para baixo, terminando em "Planos de Ação", com a explicação das camadas opcionais. Para o Gestor, cada camada tem nome, plural, "Opcional", ↑ ↓ e × (desativado na camada com itens), "+ Camada" e "Salvar camadas"; nada grava antes de salvar, e uma recusa (como uma ligação que deixaria de valer) aparece em aviso, com o rascunho mantido. Para os demais, só a consulta, com o número de itens de cada camada.
+- **Camadas:** a lista, de cima para baixo, terminando em "Planos de Ação", com a explicação das camadas opcionais. Para o Gestor, cada camada tem dois campos com rótulo visível, "Nome no singular" (exemplo no campo vazio: "Ex.: Programa") e "Nome no plural" ("Ex.: Programas"), e uma frase acima da lista explica que o singular nomeia um item e o plural, os títulos das listas; depois, "Opcional", ↑ ↓ e × (desativado na camada com itens), "+ Camada" e "Salvar camadas"; nada grava antes de salvar, e uma recusa (como uma ligação que deixaria de valer) aparece em aviso, com o rascunho mantido. Para os demais, só a consulta, com o número de itens de cada camada.
 - **Importar** (só o Gestor): colar as linhas da planilha (colunas Camada, Nome, Código, Superiores e Instrumento; seção 4.11), "Conferir" mostra cada linha como Novo, Atualiza, Sem mudança ou Fica de fora (com o motivo) e os avisos, e "Gravar" grava, com o resumo em aviso.
 - **Movimento:** a troca de aba entra com a transição padrão; painéis como no sistema de planos.
 
@@ -2124,3 +2124,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 209 | "Configurar o sistema" em janela central, em abas, com Usuários (cadastro com o e-mail do Firebase para definir a senha, lista e e-mail de nova senha; coleção usuarios, regras do banco a publicar) e Espaços (pedido do responsável; seções 3.4, 4.1.12, 4.1.13 e 8.1) |
 | 210 | Espaços abertos à consulta, Lixeira e Extração de dados em janela central, e não mais pela direita; no celular, sobem de baixo (pedido do responsável; seção 8) |
 | 210.1 | Quadro: a altura é medida de novo depois que as fontes carregam, para a página não rolar quando o que fica acima muda de altura (seção 8.4) |
+| 211 | Strata, aba Camadas: os dois campos de cada camada ganham os rótulos "Nome no singular" e "Nome no plural", com exemplo, e uma frase explica o uso de cada um (pedido do responsável; seção 8, "Strata") |
