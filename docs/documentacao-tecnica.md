@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 201 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 202 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -74,7 +74,8 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `css/estilo.css` | Aparência e variáveis de cor, em três blocos de tema |
 | `config.js` | Configuração do Firebase (projeto `sextante-v2`; pública por desenho; `null` = só memória) |
 | `firestore.rules` | Regras do banco, publicadas à mão no console do Firebase |
-| `logo.png` | Logotipo (rosa dos ventos) |
+| `js/marca.js` | Marca do sistema em SVG (27/10/2026): o **símbolo** (setor de 60°, um sexto do círculo, como o sextante, com o braço indicador apontando um ponto do arco) e o **logotipo** (símbolo à esquerda e o nome em caixa alta, desenhado em traço, com o A sem travessão no mesmo ângulo de 60° do símbolo; o símbolo tem cerca de 1,6 vez a altura das letras). As cores vêm do tema, pelas classes `marca-*` de `css/estilo.css`: corpo, escala e nome em `--accent` (verde-azulado), braço e pontos em `--warn` (dourado); a escala interna com 35% de opacidade. O nome é desenhado, e não escrito com fonte, para ficar igual em todo aparelho: se `NOME` mudar em `js/identidade.js`, o desenho precisa ser refeito. Usos: logotipo nas boas-vindas (40 px de altura) e na Ajuda (32 px), com a sigla da instituição pequena embaixo; símbolo no cabeçalho do módulo Superior (26 px) |
+| `logo.png` | Símbolo em imagem, 112 px, fundo transparente, nas cores do tema claro (`#00796B` e `#F2B04A`): ícone da aba do navegador. Até 27/10/2026, era a rosa dos ventos |
 | `manifest.webmanifest`, `icones/`, `sw.js` | Aplicativo instalável pelo navegador: manifesto (nome, cores, ícones), ícones de 180, 192 e 512 px (um deles com margem para o recorte do Android) e o *service worker*, sem cache (seção 8, "Instalar como aplicativo") |
 | `v2/index.html` | Só leva quem guardou o endereço antigo `/v2/` para a raiz |
 | `superior/index.html` | Página do módulo Superior, a gestão da estratégia (passo 2.5; seção 8, "Módulo Superior"), no endereço `/superior/` |
@@ -1191,7 +1192,7 @@ Os painéis abrem sob o menu, com a transição padrão. Os menus do centro most
 **Instalar como aplicativo** (seção 13.2, primeiro passo; feito em 24/10/2026, a pedido do responsável):
 - **O que é:** o site fica na tela inicial do celular, ou como aplicativo no computador, aberto sem a barra do navegador, sem loja e sem custo (*termo técnico: aplicativo instalável pelo navegador, PWA*). Vale para o sistema de planos e para o módulo Superior, que fica dentro dele.
 - **Barra lateral:** "Instalar como aplicativo", depois de "Ajuda e manual"; some quando o sistema já está aberto como aplicativo. No Android e no computador (Chrome e Edge), abre o pedido de instalação do próprio navegador, quando ele oferece; senão, e sempre no iPhone e no iPad, abre um painel com os passos para cada aparelho.
-- **Arquivos:** `manifest.webmanifest` (nome, cores claras do fundo, tela cheia, início na raiz), `icones/` (feitos a partir do `logo.png`, de 112 px; um logotipo em resolução maior deixaria os ícones mais nítidos) e, no `index.html` e no `superior/index.html`, o manifesto, o ícone do iPhone, a cor da barra do sistema (clara ou escura, conforme o tema do aparelho) e o nome na tela inicial.
+- **Arquivos:** `manifest.webmanifest` (nome, cores claras do fundo, tela cheia, início na raiz), `icones/` (desde 27/10/2026, gerados direto do desenho do símbolo, nas cores do tema claro, sobre o fundo `#F5F3EF`: o símbolo ocupa 72% do ícone do iPhone, 78% dos ícones comuns e 56% do ícone com margem para o recorte do Android) e, no `index.html` e no `superior/index.html`, o manifesto, o ícone do iPhone, a cor da barra do sistema (clara ou escura, conforme o tema do aparelho) e o nome na tela inicial.
 - **Sem cache, de propósito** (escolha técnica): o *service worker* (`sw.js`) não guarda cópia das páginas, para cada publicação chegar ao aplicativo instalado como chega ao navegador, sem versões velhas presas no celular. O sistema precisa de internet de qualquer forma (Firebase); sem conexão, a abertura mostra uma página simples, "Sem conexão com a internet", com "Tentar de novo", no lugar da página de erro do navegador.
 - **O nome** está também nos arquivos estáticos (manifesto e páginas), porque o celular os lê sem rodar o sistema; um teste (`testes/aplicativo.test.js`) confere que é o mesmo de `js/identidade.js`.
 - **Acesso:** continua o mesmo do site. A restrição da leitura a quem tem login (passo 2 da ideia, seção 13.2) não foi feita; depende de decisão do responsável.
@@ -1367,6 +1368,7 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 Cada decisão de detalhe está registrada, com a data e o motivo, na seção do assunto. As de arquitetura e de método, que orientam o sistema inteiro:
 
 - **Vários arquivos, sem compilação.** Vários arquivos dão separação de responsabilidades, testes automáticos dos cálculos e leitura mais fácil por pessoas e IAs; o custo, um servidor simples para testar localmente, é pequeno. Sem compilação, qualquer pessoa edita e vê o resultado, há menos ferramentas a manter numa instituição em que as equipes mudam e menos riscos de segurança. A checagem de tipos vem dos comentários JSDoc.
+- **Símbolo do sextante no lugar da rosa dos ventos** (27/10/2026, decisão do responsável): o símbolo acompanha o nome provisório; usa as cores do sistema (verde-azulado e dourado), que vieram da rosa dos ventos e continuam as mesmas; logotipo só nas boas-vindas e na Ajuda, e o símbolo sozinho na aba do navegador, no ícone do aplicativo e no módulo Superior.
 - **Protótipo, e não sistema definitivo** (23/10/2026; seção 1.2): a equipe de TI precisa conhecer e controlar o código que mantém; o protótipo vale como modelo conceitual.
 - **Número fixo e código opcional** (seção 4.2): o número liga as dependências e nunca muda; o código mnemônico é opcional e pode mudar.
 - **Uma só distribuição, a beta-PERT** (seção 5.2), com semente e número de simulações visíveis e imutáveis (seção 5.7).
@@ -2084,3 +2086,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 199 | Cronograma: zoom em oito níveis, com botões − e + e Ctrl + rolagem do mouse, mantendo a data sob o ponteiro (pedido do responsável; seção 8.4) |
 | 200 | Rede: círculos de início (verde) e de término (vermelho) com as datas, e cercas (faixa por fase e tracejado entre etapas) no lugar dos marcos (pedido do responsável; seção 8.4) |
 | 201 | Planilha: classificar e filtrar em cada coluna, como no Excel, e lista de várias escolhas em Responsáveis e Depende de, como no Google Planilhas (pedido do responsável; seções 8.0 e 8.3) |
+| 202 | Símbolo do sextante no lugar da rosa dos ventos (aba do navegador, ícones do aplicativo, módulo Superior) e logotipo nas boas-vindas e na Ajuda, nas cores do tema (pedido do responsável; seção 3.1 e decisões) |

@@ -55,7 +55,7 @@ Além disso, ele tem estes atributos:
 - **Celular.** Toda tela precisa funcionar em cerca de 400 px de largura.
 - **Movimento com sentido.** Nada aparece ou some de repente: painéis, formulários, seções e itens entram e saem com a transição padrão (`--mov`, `--mov-curva` e `js/telas/movimento.js`), respeitando "Reduzir movimento". Detalhes na seção 2 da documentação técnica.
 - **Temas claro e escuro.** Use sempre as variáveis CSS de `:root`, em `css/estilo.css`. Elas existem em **três** blocos: claro, `prefers-color-scheme: dark` e `[data-theme="dark"]`, e qualquer cor nova vai nos três. Não use cores fixas no código. A exceção existente são os `classDef` da exportação Mermaid (`js/exportar.js`); ao mexer na paleta, atualize-os também.
-- **Paleta derivada do logotipo** (`logo.png`, rosa dos ventos):
+- **Paleta do sistema**, vinda do logotipo antigo (a rosa dos ventos) e usada também no símbolo do sextante (`js/marca.js`, desde 27/10/2026):
   - verde-azulado `#00796B`: destaque e ações com folga;
   - vermelho `#E3262D`: sem folga, caminho crítico;
   - dourado `#F2B04A`: quase sem folga;

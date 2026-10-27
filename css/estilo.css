@@ -828,11 +828,15 @@ body.arrastando-coluna-quadro, body.arrastando-coluna-quadro * { cursor: grabbin
 .nova-acao .botoes { align-items: center; }
 
 /* identidade do sistema: só nas boas-vindas e na Ajuda, fora da tela de trabalho (passo 1.14c) */
-.identidade { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-.identidade img { flex: none; }
-.identidade span { display: flex; flex-direction: column; line-height: 1.2; }
-.identidade b { font-family: var(--f-titulo); font-size: 1.1rem; }
+.identidade { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 10px; }
+.identidade .marca-logotipo { display: block; max-width: 100%; height: auto; }
 .identidade small { color: var(--muted); }
+/* marca do sistema (símbolo e logotipo, js/marca.js): cores do tema, para valer no claro e no escuro */
+.marca-corpo, .marca-escala, .marca-nome-traco { stroke: var(--accent); }
+.marca-escala { opacity: .35; }
+.marca-nome { fill: var(--accent); }
+.marca-braco { stroke: var(--warn); }
+.marca-ponto { fill: var(--warn); }
 
 /* ---------- exclusão e lixeira (passo 1.15) ---------- */
 .zona-exclusao { margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; }
@@ -1501,7 +1505,8 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 @media (min-width: 900px) { body.modulo-superior { padding-left: max(16px, env(safe-area-inset-left, 0px)); } body.modulo-superior .topo { margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding-left: max(16px, env(safe-area-inset-left, 0px)); } }
 body.modulo-superior .topo-linha { display: flex; justify-content: space-between; padding-left: 0; }
 .superior-marca { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; min-width: 0; }
-.superior-marca span { display: flex; flex-direction: column; line-height: 1.1; }
+.superior-simbolo { display: inline-flex; flex: none; width: 26px; height: 26px; }
+.superior-marca span:not(.superior-simbolo) { display: flex; flex-direction: column; line-height: 1.1; }
 .superior-marca b { font-family: var(--f-titulo); font-size: 1.05rem; }
 .superior-marca small { font-size: .72rem; color: var(--muted); font-weight: 400; }
 .superior-conta { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0; }

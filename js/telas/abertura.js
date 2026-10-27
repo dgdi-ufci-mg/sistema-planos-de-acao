@@ -4,6 +4,7 @@
  * uma cópia de segurança (passo 1.19b).
  */
 import { NOME, INSTITUICAO } from "../identidade.js";
+import { logotipoSvg } from "../marca.js";
 import { ICONES } from "../icones.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
 import { TIPOS, TIPOS_DE_TAREFAS } from "../tipos.js";
@@ -30,7 +31,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
   const soFormulario = comFormulario && podeCriar;
   alvo.innerHTML = `
     <section class="cartao boas-vindas"${soFormulario ? " hidden" : ""}>
-      <div class="identidade"><img src="logo.png" alt="" width="40" height="40"><span><b>${NOME}</b><small>${INSTITUICAO}</small></span></div>
+      <div class="identidade">${logotipoSvg(40)}<small>${INSTITUICAO}</small></div>
       <h1>Boas-vindas ao ${NOME}</h1>
       <p>Planeje e acompanhe o trabalho num espaço de planejamento. Conforme o espaço, o sistema calcula as datas,
       mostra o que não pode atrasar, estima a chance de cumprir o prazo e acompanha o andamento. Há quatro tipos:</p>

@@ -8,6 +8,7 @@ import { conectarFirebase } from "../banco/firebase.js";
 import { criarBancoLocal } from "../banco/local.js";
 import { criarStore, hojeLocal } from "../dados.js";
 import { NOME } from "../identidade.js";
+import { simboloSvg } from "../marca.js";
 import { esc } from "../formato.js";
 import { abrirEntrar, abrirTrocarSenha } from "../telas/acesso.js";
 import { avisar } from "../telas/painel.js";
@@ -21,6 +22,7 @@ registrarAplicativo("../sw.js"); // o mesmo aplicativo instalável do sistema de
 /** Nome provisório do módulo, num lugar só. */
 export const NOME_DO_MODULO = "Superior";
 document.title = NOME_DO_MODULO;
+document.querySelector("[data-simbolo]")?.insertAdjacentHTML("afterbegin", simboloSvg(26)); // símbolo do sistema, nas cores do tema
 
 const hoje = hojeLocal();
 const principal = document.querySelector("#principal");

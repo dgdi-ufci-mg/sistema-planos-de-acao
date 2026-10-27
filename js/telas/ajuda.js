@@ -6,6 +6,7 @@ import { GLOSSARIO } from "../glossario.js";
 import { ICONES } from "../icones.js";
 import { abrirPainel, fecharPainel } from "./painel.js";
 import { NOME, INSTITUICAO } from "../identidade.js";
+import { logotipoSvg } from "../marca.js";
 import { mostrarAtalhos } from "./atalhos.js";
 
 const CLASSE_DO_ICONE = { concluida: "icone-concluida", liberada: "icone-liberada", naoLiberada: "icone-nao-liberada", atrasada: "icone-atrasada" };
@@ -13,7 +14,7 @@ const CLASSE_DO_ICONE = { concluida: "icone-concluida", liberada: "icone-liberad
 /** @param {{foco?: string, aoVerExemplo: () => void}} opcoes */
 export function mostrarAjuda({ foco, aoVerExemplo }) {
   const corpo = abrirPainel("Ajuda", `
-    <div class="identidade"><img src="logo.png" alt="" width="32" height="32"><span><b>${NOME}</b><small>${INSTITUICAO}</small></span></div>
+    <div class="identidade">${logotipoSvg(32)}<small>${INSTITUICAO}</small></div>
     <section>
       <p>Quer ver como funciona? Abra um espaço de exemplo, com dados fictícios.</p>
       <button class="botao" type="button" data-exemplo>Ver um exemplo</button>
