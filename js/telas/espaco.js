@@ -278,7 +278,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* troca entre Lista e Quadro de tarefas (passo 3.5): ao mudar o tipo, vale de novo o começo do tipo novo */
     if (modoInicial && tipoDesenhado !== tipoDe(espaco)) modoInicial = false;
     tipoDesenhado = tipoDe(espaco);
-    if (!modoInicial) { modoInicial = true; if (ehQuadro()) { ui.modo = "quadro"; ui.concluidas = true; } if (ehLista()) { ui.modo = "lista"; ui.concluidas = false; } }
+    if (!modoInicial) {
+      modoInicial = true;
+      if (ehQuadro()) { ui.modo = "quadro"; ui.concluidas = true; }
+      if (ehLista()) { ui.modo = "lista"; ui.concluidas = false; }
+      /* o espaço abre na última visualização usada nele, neste aparelho (pedido do responsável, 27/10/2026) */
+      const salvo = lembrado(`sextante.modo.${espacoId}`, "");
+      /* no celular, rede, cronograma e planilha não existem: vale a padrão */
+      const pode = modos().find(([v]) => v === salvo);
+      if (pode && !(pode[3] === "so-computador" && matchMedia("(max-width: 899px)").matches)) ui.modo = salvo;
+    }
     if (!modos().some(([v]) => v === ui.modo)) ui.modo = modos()[0]?.[0] ?? "lista";
     if (!barras().some(([v]) => v === ui.barra)) ui.barra = "tempo";
     if (!ordens().some(([v]) => v === ui.ordem)) ui.ordem = "espaco";
@@ -1586,6 +1595,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (modo === "cronograma") ui.retratos = null; // relê a lista: pode haver retrato novo
     if (modo === "entregas") carregarEntregas(); // relê: outra pessoa pode ter registrado
     if (modo === "quadro" && ui.situacao !== "atrasada") ui.situacao = "todas"; // no quadro, as colunas já separam as situações
+    try { localStorage.setItem(`sextante.modo.${espacoId}`, modo); } catch { /* sem armazenamento: abre na visualização padrão */ }
     mudar("modo", modo);
   }
 

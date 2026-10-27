@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 192 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 193 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1002,6 +1002,8 @@ Saem o símbolo "▶ em andamento", porque o sistema não registra mais o iníci
 As seções 8.1 a 8.5 guardam as decisões de interface na ordem em que foram tomadas, com as revisões ("Revisto em…"). Quando duas se contradizem, vale a mais recente. Este resumo descreve o estado em 23/10/2026.
 
 **Barra lateral** (como no Todoist e no Notion): no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços, agrupados por tipo ("Planos de Ação", depois "Projetos", só os tipos que existem; seção 16.1), cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé, à vista, "Ajuda e manual" e "Configurar o sistema"; acima deles, o grupo recolhível **Mais** (aberto ou fechado, lembrado no aparelho; item 9 da avaliação de usabilidade, 24/10/2026), com "Espaços abertos à consulta" (desde 27/10/2026), Lixeira, "Extração de dados" (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Instalar como aplicativo" (some quando já aberto como aplicativo). A **Legenda** dos símbolos saiu da barra lateral: liga e desliga no menu **Exibir** do espaço ("Ajuda na tela"; lista, quadro, rede e cronograma) e, no celular, no painel "Filtros e ordem". No computador, fica ao lado do conteúdo e pode ser recolhida (lembrado no aparelho): o botão de recolher fica no canto superior direito dela. Recolhida, o nome do espaço aparece grande no alto do conteúdo e o **botão de painel** fica no canto esquerdo da barra do topo, para abrir a barra de novo (revisto em 26/10/2026: antes, um puxador na borda esquerda); **Ctrl+B** (⌘B no Mac) abre e recolhe. No celular, abre por cima, com fundo escurecido, pelo botão de três linhas.
+
+**Visualização lembrada** (pedido do responsável, 27/10/2026): cada espaço abre na última visualização usada nele, naquele aparelho (guardada no navegador, na chave `sextante.modo.<id do espaço>`). Vale só se o espaço ainda tem essa visualização (por exemplo, depois de trocar Lista por Quadro de tarefas, não) e, no celular, só se ela existe lá (rede, cronograma e planilha não); senão, abre na padrão do tipo: Lista nos Planos de Ação e Projetos, Quadro no Quadro de tarefas, Lista na Lista de tarefas.
 
 **Busca e paleta de comandos** (item 7 da avaliação de usabilidade, 24/10/2026; como no Linear, no Notion e no GitHub): **Ctrl+K** (⌘K no Mac), em qualquer tela, mesmo com o cursor num campo, ou o item **Buscar** no alto da barra lateral (com a dica do atalho), abre uma caixa no alto da tela. Digitar filtra; ↑ e ↓ escolhem; Enter executa; Esc ou clique fora fecha. Os resultados vêm em grupos, nesta ordem quando nada foi digitado:
 
@@ -2066,3 +2068,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 190 | Passo 3.5: troca entre Lista e Quadro de tarefas em "Configurar este espaço"; as colunas ficam guardadas na Lista e voltam no Quadro; da Lista sem colunas, o quadro nasce com A fazer e Fazendo (seções 8 e 12) |
 | 191 | Correção: a barra do topo refaz a medida dos nomes dos menus sempre que muda de largura (ao recolher ou reabrir a barra lateral, e não só ao mudar a largura da janela); antes, os nomes voltavam sem caber e o chip das atrasadas encostava nos menus (seções 8.0 e 13.1) |
 | 192 | Correção: em janelas estreitas (700 px), o menu Indicador ficava colado ao chip das atrasadas mesmo só com os ícones; novo último degrau da barra do topo, sem as setas dos menus do centro. Os dois defeitos da barra do topo saem das pendências (seções 8.0 e 13.1) |
+| 193 | Cada espaço abre na última visualização usada nele, naquele aparelho (pedido do responsável; seção 8.0) |

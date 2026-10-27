@@ -27,3 +27,23 @@ describe("Barra lateral", { skip: pular }, () => {
     });
   }
 });
+
+describe("Visualização lembrada", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  test("o espaço abre na última visualização usada nele, neste aparelho", async () => {
+    const p = await sessao.abrir({ largura: 1280 });
+    await p.click('.menu-topo[data-pop="modo"]');
+    await p.locator('[data-modo="quadro"]').first().click();
+    await assentar(p);
+    /* outro espaço e de volta: continua no Quadro */
+    await p.locator(".lateral [data-espaco]").filter({ hasText: "minhas tarefas" }).click();
+    await assentar(p, 600);
+    await p.locator(".lateral [data-espaco]").filter({ hasText: "repositório" }).click();
+    await p.waitForSelector(".quadro");
+    assert.equal(await p.locator(".quadro").count(), 1);
+    assert.deepEqual(p.erros, []);
+  });
+});
