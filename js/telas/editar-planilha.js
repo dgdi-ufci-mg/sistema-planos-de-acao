@@ -7,6 +7,9 @@
  * - Dependências e responsáveis são digitados separados por ";" (números ou códigos; siglas ou nomes).
  * - Células que não podem ser editadas ficam cinza, com o motivo ao passar o mouse.
  * - A última linha, vazia, cria uma ação nova ao receber um rótulo.
+ * - Classificar e filtrar em cada coluna, pelo botão do título, como no Excel (27/10/2026, pedido do responsável).
+ * - Responsáveis e "Depende de" têm uma lista de várias escolhas, como no Google Planilhas (27/10/2026); digitar
+ *   continua valendo.
  */
 import { esc, dataBr } from "../formato.js";
 import { estimativaLivre, normalizarCodigo } from "../acao.js";
@@ -17,6 +20,7 @@ import { termos } from "../vocabulario.js";
 import { nomeDoFluxo } from "../situacoes.js";
 import { usaEtiquetas, etiquetasDaAcao } from "../etiquetas.js";
 import { posicoesDaPrioridade } from "../prioridade.js";
+import { ICONES } from "../icones.js";
 
 const SITUACOES = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
 
@@ -77,6 +81,10 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   let d = null;
   let alvo = null;
   let ocupado = Promise.resolve(); // gravações em fila, na ordem em que a pessoa editou
+  /* classificar e filtrar nas colunas (27/10/2026): valem enquanto o espaço está aberto, como no Excel */
+  let ordenacao = null; // {chave, sentido: 1 (crescente) | -1 (decrescente)}
+  const filtros = new Map(); // chave da coluna → valores (texto da célula) que ficam à vista
+  let linhasAtuais = []; // as ações à vista, na ordem da grade
 
   /** Colunas visíveis, na ordem da grade (as escondidas em "Exibir" ficam de fora). */
   /* largura de cada coluna escolhida arrastando a borda do título (24/10/2026), lembrada neste aparelho */
@@ -182,8 +190,162 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const tipo = ["naoAntesDe", "dataLimite", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
     const dica = !acao && coluna.chave === "rotulo" ? ` placeholder="Nova ${termos(d.espaco).acao}: escreva o nome"` : "";
     const inteiro = v && !tipo && v.length > 12 ? ` title="${esc(v)}"` : "";
+    /* Responsáveis e "Depende de": lista de várias escolhas (27/10/2026), além de digitar */
+    if (acao && ["responsaveis", "dependeDe"].includes(coluna.chave)) {
+      return `${td.replace("<td", '<td data-com-escolha')}<span class="celula-escolha"><input ${comum} value="${esc(v)}" data-original="${esc(v)}"${inteiro}>
+        <button type="button" class="abrir-escolha" data-escolher tabindex="-1" aria-label="Escolher na lista (Alt+↓)" title="Escolher na lista (Alt+↓)">${ICONES.abrir}</button></span></td>`;
+    }
     const vazia = tipo.includes("date") && !v ? " data-vazia" : ""; // data vazia: sem a máscara dd/mm/aaaa até receber o cursor
     return `${td}<input${tipo} ${comum} value="${esc(v)}" data-original="${esc(v)}"${dica}${inteiro}${vazia}${coluna.chave === "concluidaEm" ? ` max="${hoje}"` : ""}></td>`;
+  }
+
+  /* ---------- classificar e filtrar nas colunas ---------- */
+  const comparador = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "base" });
+  /** Chave de ordem do texto de uma célula: datas e números pelo valor; vazio sempre por último. */
+  function chaveDeOrdem(texto) {
+    const t = String(texto ?? "").trim();
+    if (!t) return null;
+    const br = t.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (br) return { tipo: 0, v: `${br[3]}-${br[2]}-${br[1]}${t.slice(10)}` };
+    if (/^\d{4}-\d{2}-\d{2}/.test(t)) return { tipo: 0, v: t };
+    const n = t.replace(/^</, "").replace("%", "").replace(",", ".");
+    if (n !== "" && !Number.isNaN(Number(n))) return { tipo: 1, v: Number(n) };
+    return { tipo: 2, v: t };
+  }
+  function comparar(a, b) {
+    const x = chaveDeOrdem(a);
+    const y = chaveDeOrdem(b);
+    if (!x || !y) return x ? -1 : y ? 1 : 0;
+    if (x.tipo !== y.tipo) return x.tipo - y.tipo;
+    return x.tipo === 1 ? x.v - y.v : comparador.compare(x.v, y.v);
+  }
+  /* colunas com vários itens por célula: o filtro lista cada item, e a linha fica se tiver algum dos escolhidos */
+  const VARIOS = ["responsaveis", "dependeDe", "etiquetas", "documentos"];
+  const itensDe = (a, chave) => {
+    const v = valor(a, chave);
+    if (!VARIOS.includes(chave)) return [v];
+    const itens = String(v).split(";").map((x) => x.trim()).filter(Boolean);
+    return itens.length ? itens : [""];
+  };
+  /** Ações à vista: as que passam por todos os filtros, na ordem escolhida (ou na do espaço). */
+  function linhasVisiveis() {
+    const ls = d.acoes.filter((a) => [...filtros].every(([chave, valores]) => itensDe(a, chave).some((v) => valores.has(v))));
+    if (!ordenacao || !colunasDaPlanilha(d).some((c) => c.chave === ordenacao.chave)) return ls;
+    return ls.map((a, i) => ({ a, i, v: valor(a, ordenacao.chave) }))
+      .sort((p, q) => {
+        const vazio = (!String(p.v).trim()) - (!String(q.v).trim());
+        return vazio || ordenacao.sentido * comparar(p.v, q.v) || p.i - q.i; // vazias sempre por último
+      }).map((x) => x.a);
+  }
+  const rotuloDoValor = (v) => (!String(v).trim() ? "(Vazias)" : /^\d{4}-\d{2}-\d{2}$/.test(v) ? dataBr(v) : v);
+
+  /** Caixinha flutuante sob um elemento (filtro da coluna, escolha múltipla); fecha ao clicar fora ou com Esc. */
+  let caixaAberta = null;
+  function fecharCaixa() { caixaAberta?.remove(); caixaAberta = null; }
+  function abrirCaixa(ancora, html, largura = 280) {
+    fecharCaixa();
+    const caixa = document.createElement("div");
+    caixa.className = "caixa-planilha";
+    caixa.innerHTML = html;
+    document.body.append(caixa);
+    const r = ancora.getBoundingClientRect();
+    caixa.style.width = `${largura}px`;
+    caixa.style.left = `${Math.max(8, Math.min(innerWidth - largura - 8, r.left))}px`;
+    const abaixo = r.bottom + 4;
+    caixa.style.top = `${abaixo + caixa.offsetHeight > innerHeight - 8 ? Math.max(8, r.top - caixa.offsetHeight - 4) : abaixo}px`;
+    caixaAberta = caixa;
+    const fora = (e) => { if (!caixa.contains(e.target) && !ancora.contains(e.target)) { fecharCaixa(); document.removeEventListener("pointerdown", fora, true); } };
+    document.addEventListener("pointerdown", fora, true);
+    caixa.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); fecharCaixa(); ancora.focus?.(); } });
+    return caixa;
+  }
+  /** Lista com busca e caixas de marcar, usada no filtro e na escolha múltipla. */
+  const listaHtml = (itens, marcados) => itens.map(([v, rotulo]) => `<label class="caixa-item"><input type="checkbox" value="${esc(v)}"${marcados.has(v) ? " checked" : ""}><span>${esc(rotulo)}</span></label>`).join("");
+  function ligarBusca(caixa) {
+    caixa.querySelector("[data-buscar-valor]")?.addEventListener("input", (e) => {
+      const t = e.target.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      for (const item of caixa.querySelectorAll(".caixa-item")) item.hidden = Boolean(t) && !item.textContent.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(t);
+    });
+  }
+
+  /** Classificar e filtrar uma coluna (como no Excel). */
+  function abrirFiltro(botao) {
+    const c = colunas()[Number(botao.dataset.filtroCol)];
+    const valores = [...new Set(d.acoes.flatMap((a) => itensDe(a, c.chave)))].sort((a, b) => (!String(a).trim()) - (!String(b).trim()) || comparar(a, b));
+    const numerica = valores.some((v) => chaveDeOrdem(v)?.tipo <= 1);
+    const marcados = filtros.get(c.chave) ?? new Set(valores);
+    const caixa = abrirCaixa(botao, `<div role="dialog" aria-label="Classificar e filtrar: ${esc(c.titulo)}">
+      <div class="caixa-ordem">
+        <button type="button" class="opcao-caixa${ordenacao?.chave === c.chave && ordenacao.sentido === 1 ? " ativa" : ""}" data-ordenar="1">${ICONES.ordenar ?? ""}${numerica ? "Do menor para o maior" : "De A a Z"}</button>
+        <button type="button" class="opcao-caixa${ordenacao?.chave === c.chave && ordenacao.sentido === -1 ? " ativa" : ""}" data-ordenar="-1">${ICONES.ordenar ?? ""}${numerica ? "Do maior para o menor" : "De Z a A"}</button>
+        ${ordenacao?.chave === c.chave ? '<button type="button" class="opcao-caixa" data-ordenar="0">Voltar à ordem do espaço</button>' : ""}
+      </div>
+      <h4>Filtrar</h4>
+      ${valores.length > 6 ? '<input type="search" class="caixa-busca" data-buscar-valor placeholder="Buscar valores" aria-label="Buscar valores">' : ""}
+      <label class="caixa-item caixa-todos"><input type="checkbox" data-todos${marcados.size === valores.length ? " checked" : ""}><span>Selecionar tudo</span></label>
+      <div class="caixa-lista">${listaHtml(valores.map((v) => [v, rotuloDoValor(v)]), marcados)}</div>
+      <div class="botoes"><button type="button" class="botao" data-limpar-filtro${filtros.has(c.chave) ? "" : " disabled"}>Limpar filtro</button>
+        <button type="button" class="botao principal" data-aplicar-filtro>Aplicar</button></div></div>`);
+    ligarBusca(caixa);
+    const caixas = () => [...caixa.querySelectorAll(".caixa-lista input")];
+    caixa.addEventListener("change", (e) => {
+      if (e.target.matches("[data-todos]")) for (const x of caixas()) { if (!x.closest(".caixa-item").hidden) x.checked = e.target.checked; }
+      else caixa.querySelector("[data-todos]").checked = caixas().every((x) => x.checked);
+    });
+    caixa.addEventListener("click", (e) => {
+      const ord = e.target.closest("[data-ordenar]");
+      if (ord) {
+        ordenacao = ord.dataset.ordenar === "0" ? null : { chave: c.chave, sentido: Number(ord.dataset.ordenar) };
+        fecharCaixa();
+        return desenhar(alvo, d);
+      }
+      if (e.target.closest("[data-limpar-filtro]")) { filtros.delete(c.chave); fecharCaixa(); return desenhar(alvo, d); }
+      if (e.target.closest("[data-aplicar-filtro]")) {
+        const escolhidos = new Set(caixas().filter((x) => x.checked).map((x) => x.value));
+        if (escolhidos.size === valores.length) filtros.delete(c.chave); else filtros.set(c.chave, escolhidos);
+        fecharCaixa();
+        desenhar(alvo, d);
+      }
+    });
+    (caixa.querySelector("[data-buscar-valor]") ?? caixa.querySelector("[data-ordenar]"))?.focus();
+  }
+
+  /** Escolha de várias opções numa célula de Responsáveis ou de "Depende de" (como no Google Planilhas). */
+  function abrirEscolha(el) {
+    const numero = acaoDaLinha(el.dataset.linha)?.numero;
+    if (numero == null) return;
+    const chave = el.dataset.chave;
+    const atual = () => d.acoes.find((a) => a.numero === numero);
+    const responsaveis = chave === "responsaveis";
+    const itens = responsaveis
+      ? d.responsaveis.map((r) => [r.id, r.sigla ? `${r.sigla} · ${r.nome}` : r.nome])
+      : d.acoes.filter((a) => a.numero !== numero).map((a) => [String(a.numero), `${d.usaCodigos && a.codigo ? a.codigo : `#${a.numero}`} · ${a.rotulo}`]);
+    const marcados = new Set((responsaveis ? atual().responsaveis : atual().dependeDe ?? []).map(String));
+    const caixa = abrirCaixa(el, `<div role="dialog" aria-label="Escolher ${responsaveis ? "responsáveis" : "as ações anteriores"}">
+      ${itens.length > 6 ? `<input type="search" class="caixa-busca" data-buscar-valor placeholder="${responsaveis ? "Buscar pessoa ou unidade" : "Buscar ação"}" aria-label="Buscar">` : ""}
+      <div class="caixa-lista">${itens.length ? listaHtml(itens, marcados) : `<p class="tec">${responsaveis ? "Nenhum responsável cadastrado neste espaço." : "Não há outras ações."}</p>`}</div>
+      <p class="tec">Cada marca é gravada na hora.</p></div>`, 320);
+    ligarBusca(caixa);
+    caixa.addEventListener("change", (e) => {
+      const escolhidos = [...caixa.querySelectorAll(".caixa-lista input:checked")].map((x) => x.value);
+      const texto = responsaveis ? escreverResponsaveis(escolhidos, d.responsaveis) : escreverReferencias(escolhidos.map(Number), d.acoes, d.usaCodigos);
+      const marca = e.target;
+      ocupado = ocupado.then(async () => {
+        try {
+          await gravar(atual(), chave, texto);
+        } catch (falha) {
+          marca.checked = !marca.checked; // não gravou: a marca volta
+          avisar(falha.message);
+        }
+      });
+    });
+    (caixa.querySelector("[data-buscar-valor]") ?? caixa.querySelector(".caixa-lista input"))?.focus();
+  }
+
+  function botaoFiltro(c, j) {
+    const ativo = filtros.has(c.chave) || ordenacao?.chave === c.chave;
+    const icone = ordenacao?.chave === c.chave ? (ordenacao.sentido > 0 ? "↑" : "↓") : "";
+    return `<button type="button" class="filtro-coluna${ativo ? " ativo" : ""}" data-filtro-col="${j}" aria-haspopup="dialog" aria-label="Classificar e filtrar: ${esc(c.titulo)}${filtros.has(c.chave) ? " (filtrada)" : ""}" title="Classificar e filtrar">${filtros.has(c.chave) ? ICONES.funil : icone ? `<b>${icone}</b>` : ICONES.abrir}</button>`;
   }
 
   function desenhar(novoAlvo, dados) {
@@ -194,6 +356,8 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const rolagemAntes = alvo.querySelector(".planilha-rolagem");
     const posicao = rolagemAntes ? [rolagemAntes.scrollLeft, rolagemAntes.scrollTop] : null; // a gravação redesenha a grade sem mudar a rolagem
     const cols = colunas();
+    linhasAtuais = linhasVisiveis();
+    const ocultas = d.acoes.length - linhasAtuais.length;
     /* largura de cada coluna em em (corrigido em 23/10/2026: antes, a tabela era espremida até caber na tela) */
     const total = cols.reduce((t, c) => t + c.largura, 0);
     const fixas = cols.filter((c) => c.fixa);
@@ -202,19 +366,21 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     cols.forEach((c, j) => { esquerdas[j] = c.fixa ? soma : null; if (c.fixa) soma += c.largura; });
     cols.forEach((c) => { c.ultimaFixa = c === fixas.at(-1); c.inicioCalculados = c === cols.find((x) => x.calculada); });
     const cabecalho = (c, j) => `<th scope="col" class="${[c.calculada && "calculada", c.inicioCalculados && "inicio-calculados", c.fixa && "fixa", c.ultimaFixa && "ultima-fixa"].filter(Boolean).join(" ")}"
-      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}>${c.titulo}<span class="redimensionar" data-redimensionar="${j}" title="Arraste para alargar ou estreitar; clique duas vezes para voltar ao tamanho original" aria-hidden="true"></span></th>`;
+      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}><span class="titulo-coluna-planilha">${c.titulo}</span>${botaoFiltro(c, j)}<span class="redimensionar" data-redimensionar="${j}" title="Arraste para alargar ou estreitar; clique duas vezes para voltar ao tamanho original" aria-hidden="true"></span></th>`;
     alvo.innerHTML = `
       <details class="tec planilha-dicas so-computador"${dicasAbertas ? " open" : ""}><summary>Cada célula é gravada ao sair dela. Cinza: não se edita aqui (passe o mouse para ver o motivo). Títulos em itálico: calculados. <span class="mais">Mais dicas</span></summary>
         <p>Setas, Enter e Shift+Enter andam entre as células; Esc desfaz o que foi digitado. Cole um bloco do Google Planilhas ou do Excel a partir da célula selecionada.
         Em "Depende de", use os ${d.usaCodigos ? "números ou códigos" : "números"} das ações, separados por ponto e vírgula; em "Responsáveis", as siglas ou os nomes.
         Escolha as colunas em "Exibir".</p></details>
+      ${ocultas || ordenacao ? `<p class="planilha-filtrada so-computador">${ocultas ? `${ocultas} de ${d.acoes.length} ${d.acoes.length === 1 ? termos(d.espaco).acao : termos(d.espaco).acoes} ${ocultas === 1 ? "escondida" : "escondidas"} pelos filtros.` : ""}${ordenacao ? ` Classificada por “${esc(colunasDaPlanilha(d).find((c) => c.chave === ordenacao.chave)?.titulo ?? "")}”.` : ""}
+        <button type="button" class="botao discreto" data-limpar-tudo>Limpar filtros e classificação</button></p>` : ""}
       <div class="planilha-rolagem so-computador" style="scroll-padding-left:calc(${soma} * .88rem)">
         <table class="planilha" style="width:${total}em">
           <colgroup>${cols.map((c) => `<col style="width:${c.largura}em">`).join("")}</colgroup>
           <thead><tr>${cols.map(cabecalho).join("")}</tr></thead>
           <tbody>
-            ${d.acoes.map((a, i) => `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, i, j, esquerdas[j])).join("")}</tr>`).join("")}
-            ${d.perm && !d.perm.criarAcao ? "" : `<tr class="linha-nova">${cols.map((c, j) => celulaHtml(null, c, d.acoes.length, j, esquerdas[j])).join("")}</tr>`}
+            ${linhasAtuais.map((a, i) => `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, i, j, esquerdas[j])).join("")}</tr>`).join("")}
+            ${d.perm && !d.perm.criarAcao ? "" : `<tr class="linha-nova">${cols.map((c, j) => celulaHtml(null, c, linhasAtuais.length, j, esquerdas[j])).join("")}</tr>`}
           </tbody>
         </table>
       </div>
@@ -249,7 +415,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   }
 
   /* ---------- gravação de uma célula ---------- */
-  const acaoDaLinha = (linha) => d.acoes[Number(linha)] ?? null;
+  const acaoDaLinha = (linha) => linhasAtuais[Number(linha)] ?? null; // a linha à vista (com filtros e classificação)
 
   /** Grava o valor de uma célula na ação. Devolve uma mensagem de erro, ou "". */
   async function gravar(acao, chave, texto) {
@@ -416,6 +582,13 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       }
     });
     alvo.addEventListener("change", (e) => { if (e.target.dataset?.chave) gravarCelula(e.target); });
+    alvo.addEventListener("click", (e) => {
+      const filtro = e.target.closest?.("[data-filtro-col]");
+      if (filtro) { e.preventDefault(); return caixaAberta && caixaAberta.dataset.de === filtro.dataset.filtroCol ? fecharCaixa() : (abrirFiltro(filtro), caixaAberta.dataset.de = filtro.dataset.filtroCol); }
+      const escolher = e.target.closest?.("[data-escolher]");
+      if (escolher) return abrirEscolha(escolher.parentElement.querySelector("input"));
+      if (e.target.closest?.("[data-limpar-tudo]")) { filtros.clear(); ordenacao = null; desenhar(alvo, d); }
+    });
     alvo.addEventListener("input", (e) => { if (e.target.type === "date") e.target.toggleAttribute("data-vazia", !e.target.value); });
     alvo.addEventListener("toggle", (e) => { if (e.target.matches?.(".planilha-dicas")) { dicasAbertas = e.target.open; ajustarAltura(); } }, true);
     addEventListener("resize", () => { if (alvo.isConnected) ajustarAltura(); });
@@ -434,6 +607,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       const texto = el.tagName === "INPUT" && !["date", "number"].includes(el.type);
       const naPonta = (lado) => !texto || (el.selectionStart === el.selectionEnd && el.selectionStart === (lado < 0 ? 0 : el.value.length));
       let andou = null;
+      if (e.altKey && e.key === "ArrowDown" && ["responsaveis", "dependeDe"].includes(el.dataset.chave)) { e.preventDefault(); return abrirEscolha(el); }
       if (e.key === "Enter") andou = ir(e.shiftKey ? -1 : 1, 0) || true;
       else if (e.key === "ArrowDown" && !e.altKey) andou = ir(1, 0);
       else if (e.key === "ArrowUp" && !e.altKey) andou = ir(-1, 0);

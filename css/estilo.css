@@ -1663,7 +1663,6 @@ a.lateral-acao { text-decoration: none; }
 .tipos-boas-vindas { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
 
 /* planilha: alargar e estreitar as colunas pela borda do título (24/10/2026) */
-.planilha th { position: sticky; }
 .planilha .redimensionar { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 3; touch-action: none; }
 .planilha .redimensionar::after { content: ""; position: absolute; top: 20%; bottom: 20%; left: 3px; width: 2px; border-radius: 1px; background: transparent; transition: background-color var(--mov-rapido); }
 .planilha th:hover .redimensionar::after, .redimensionando .planilha .redimensionar::after { background: var(--accent); }
@@ -1988,3 +1987,38 @@ button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: 
 .rede-ponto-prazo { position: absolute; top: calc(100% + 6px); white-space: nowrap; font-size: .72rem; color: var(--muted); }
 .rede-ligacao { fill: none; stroke: color-mix(in srgb, var(--ink) 30%, transparent); stroke-width: 1.2; stroke-dasharray: 4 4; }
 .rede.destacando .rede-ligacao { opacity: .25; }
+/* planilha: classificar e filtrar nas colunas, como no Excel, e escolha múltipla, como no Google Planilhas (27/10/2026) */
+.planilha th .titulo-coluna-planilha { padding-right: 22px; }
+.filtro-coluna { position: absolute; right: 8px; top: 50%; translate: 0 -50%; width: 20px; height: 20px; padding: 0; display: inline-grid; place-items: center;
+  border: 0; border-radius: 4px; background: transparent; color: var(--faint); cursor: pointer; }
+.filtro-coluna .icone { width: 13px; height: 13px; }
+.filtro-coluna b { font-size: .8rem; }
+.planilha th:hover .filtro-coluna, .filtro-coluna:focus-visible { color: var(--ink); background: var(--barra-controle); }
+.filtro-coluna.ativo { color: var(--accent-ink); background: var(--accent-soft); }
+.planilha-filtrada { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; font-size: .86rem; color: var(--muted); }
+.caixa-planilha { position: fixed; z-index: 60; max-height: min(70vh, 460px); display: flex; flex-direction: column; gap: 8px; padding: 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--sombra); animation: surgir-conta var(--mov-rapido) var(--mov-curva); }
+.caixa-planilha > div { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.caixa-planilha h4 { margin: 4px 0 0; font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.caixa-ordem { display: flex; flex-direction: column; gap: 2px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.opcao-caixa { display: flex; align-items: center; gap: 8px; border: 0; background: transparent; text-align: left; padding: 6px 8px; border-radius: var(--raio); font: inherit; color: var(--ink); cursor: pointer; }
+.opcao-caixa .icone { width: 15px; height: 15px; color: var(--muted); }
+.opcao-caixa:hover { background: var(--bg); }
+.opcao-caixa.ativa { background: var(--accent-soft); color: var(--accent-ink); }
+.caixa-busca { width: 100%; box-sizing: border-box; padding: 6px 8px; border: 1px solid var(--line); border-radius: var(--raio); font: inherit; background: var(--surface); color: var(--ink); }
+.caixa-lista { overflow-y: auto; min-height: 0; max-height: 260px; display: flex; flex-direction: column; }
+.caixa-item { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: var(--raio); cursor: pointer; }
+.caixa-item:hover { background: var(--bg); }
+.caixa-item[hidden] { display: none; }
+.caixa-item input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.caixa-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.caixa-todos { border-bottom: 1px solid var(--grid); border-radius: 0; }
+.caixa-planilha .botoes { display: flex; justify-content: flex-end; gap: 6px; }
+.caixa-planilha .tec { margin: 0; }
+.celula-escolha { display: flex; align-items: stretch; height: 100%; }
+.celula-escolha input { flex: 1; min-width: 0; }
+.abrir-escolha { flex: none; width: 22px; border: 0; background: transparent; color: var(--faint); cursor: pointer; display: grid; place-items: center; padding: 0; opacity: 0; }
+.abrir-escolha .icone { width: 13px; height: 13px; }
+td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .abrir-escolha { opacity: 1; }
+.abrir-escolha:hover { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .caixa-planilha { animation: none; } }
