@@ -325,7 +325,7 @@ registrarFonte("sistema", async () => {
       if (exemplo) fontes.push({ store: exemplo, espacos: doExemplo, rotulo: "exemplo" });
       abrirExtracao({ fontes, hoje });
     }, "exportar planilha excel pdf csv ods"),
-    comando("Gestão da estratégia", "modoRede", () => { location.href = "superior/"; }, "superior pei pdi programas"),
+    comando("Gestão da estratégia", "modoRede", () => { location.href = "strata/"; }, "strata superior pei pdi programas"),
     ...(instalado() ? [] : [comando("Instalar como aplicativo", "instalar", () => instalar(), "celular tela inicial")]),
     comando("Ajuda e manual", "ajuda", () => ajuda(), "glossario"),
     comando("Atalhos de teclado", "ajuda", mostrarAtalhos, "teclas"),

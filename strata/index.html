@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR" class="strata">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Strata</title>
+<link rel="icon" type="image/png" href="icones/icone-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
+<meta name="theme-color" content="#F3F5F9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1424" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Strata">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../css/estilo.css">
+<!-- tema escolhido neste aparelho, antes do primeiro desenho -->
+<script src="../js/tema-inicial.js"></script>
+</head>
+<!-- Strata (antes "Superior"; passo 2.5 e 27/10/2026): gestão da estratégia, aplicativo próprio (manifesto, ícones e
+     paleta), com o mesmo banco, o mesmo login e o mesmo desenho do Sextante -->
+<body class="modulo-superior">
+<header class="topo">
+  <div class="topo-linha superior-topo">
+    <a class="superior-marca" href="./"><span class="superior-simbolo" data-simbolo></span><span><b data-nome-modulo>Strata</b><small>Gestão da estratégia</small></span></a>
+    <nav class="superior-conta" data-conta></nav>
+  </div>
+  <p class="aviso-conexao" data-sem-conexao role="status" hidden><b>Sem conexão.</b> As alterações não serão gravadas até a internet voltar.</p>
+</header>
+<main class="conteudo">
+  <div id="principal"></div>
+</main>
+<script type="module" src="../js/superior/app.js"></script>
+</body>
+</html>

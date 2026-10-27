@@ -1,5 +1,5 @@
 /**
- * Partida do módulo Superior (passo 2.5): a gestão da estratégia, com telas próprias, o mesmo banco, o mesmo
+ * Partida do Strata, antes módulo Superior (passo 2.5): a gestão da estratégia, com telas próprias, o mesmo banco, o mesmo
  * login e a mesma aparência do sistema de planos (decisão do responsável, 24/10/2026: módulo separado, nome
  * provisório "Superior"). Sem o Firebase, roda na memória, com um catálogo de exemplo.
  */
@@ -8,7 +8,7 @@ import { conectarFirebase } from "../banco/firebase.js";
 import { criarBancoLocal } from "../banco/local.js";
 import { criarStore, hojeLocal } from "../dados.js";
 import { NOME } from "../identidade.js";
-import { simboloSvg } from "../marca.js";
+import { strataSvg } from "../marca.js";
 import { esc } from "../formato.js";
 import { abrirEntrar, abrirTrocarSenha } from "../telas/acesso.js";
 import { avisar } from "../telas/painel.js";
@@ -17,12 +17,14 @@ import { carregarCatalogoDeExemplo } from "./exemplo.js";
 import { criarVigiaDeConexao, sondaDoSite } from "../conexao.js";
 import { registrarAplicativo } from "../telas/instalar.js";
 
-registrarAplicativo("../sw.js"); // o mesmo aplicativo instalável do sistema de planos
+registrarAplicativo("../sw.js"); // o mesmo service worker; o manifesto é o do Strata (strata/manifest.webmanifest)
 
-/** Nome provisório do módulo, num lugar só. */
-export const NOME_DO_MODULO = "Superior";
+/** Nome do módulo, num lugar só (antes "Superior"; Strata desde 27/10/2026, decisão do responsável). Por serem
+ * arquivos estáticos, o nome também está em `strata/index.html` e `strata/manifest.webmanifest` (teste em
+ * testes/aplicativo.test.js). */
+export const NOME_DO_MODULO = "Strata";
 document.title = NOME_DO_MODULO;
-document.querySelector("[data-simbolo]")?.insertAdjacentHTML("afterbegin", simboloSvg(26)); // símbolo do sistema, nas cores do tema
+document.querySelector("[data-simbolo]")?.insertAdjacentHTML("afterbegin", strataSvg(26)); // símbolo do Strata, nas cores do tema
 
 const hoje = hojeLocal();
 const principal = document.querySelector("#principal");

@@ -41,3 +41,19 @@ export function logotipoSvg(altura = 32) {
   </g>
 </svg>`;
 }
+
+/**
+ * Símbolo do Strata (27/10/2026), o módulo da gestão da estratégia: três camadas em arco, como os estratos da
+ * atmosfera vistos sobre o horizonte, cada uma mais curta que a de baixo, o que lembra também uma estrada em
+ * perspectiva e os níveis do desdobramento da estratégia. As duas de baixo em `--accent` (anil, na paleta do
+ * Strata); a de cima, o destino, em `--strata-sol` (âmbar). Os ícones em `strata/icones/` são cópias em imagem.
+ */
+export const DESENHO_DO_STRATA = `
+  <path class="strata-camada" d="M32 196Q128 158 224 196" fill="none" stroke-width="28" stroke-linecap="round"/>
+  <path class="strata-camada" d="M60 144Q128 116 196 144" fill="none" stroke-width="28" stroke-linecap="round"/>
+  <path class="strata-sol" d="M88 92Q128 74 168 92" fill="none" stroke-width="28" stroke-linecap="round"/>`;
+
+/** Símbolo do Strata, num quadrado. `tamanho` em px; decorativo. */
+export function strataSvg(tamanho = 26) {
+  return `<svg class="marca marca-strata" viewBox="18 32 220 220" width="${tamanho}" height="${tamanho}" aria-hidden="true" focusable="false">${DESENHO_DO_STRATA}</svg>`;
+}

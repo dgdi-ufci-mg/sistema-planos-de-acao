@@ -94,6 +94,42 @@
   color-scheme: dark;
 }
 
+/* ---------- paleta do Strata (27/10/2026, pedido do responsável): o módulo da estratégia, na página strata/, tem
+   o mesmo desenho do sistema e só o símbolo e a paleta próprios, de azuis de céu com um âmbar de destaque. Os
+   três blocos (claro, escuro do aparelho e escuro escolhido) seguem a regra dos temas; as cores de situação
+   (folga, crítico, atenção) continuam as do sistema ---------- */
+:root.strata {
+  --bg: #F3F5F9; --surface: #FFFFFF; --sunk: #F7F9FC;
+  --ink: #1B2A44; --muted: #56627A; --faint: #8B94A6; --line: #D6DCE6; --grid: #E6EBF2;
+  --accent: #2F5BB7; --accent-ink: #1F4290; --accent-soft: #DCE6F8;
+  --laranja: #5B9BD5; --strata-sol: #E9A23B;
+  --sombra: 0 10px 30px rgba(27, 42, 68, .16);
+  --relevo: 0 1px 2px rgba(27, 42, 68, .06), 0 2px 6px rgba(27, 42, 68, .06);
+  --barra-borda: rgba(27, 42, 68, .10); --barra-controle: rgba(27, 42, 68, .06); --barra-controle-foco: rgba(27, 42, 68, .12);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent); --barra-topo: var(--bg);
+  --texto-sobre-destaque: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root.strata:not([data-theme="light"]) {
+  --bg: #0E1424; --surface: #16203A; --sunk: #121B31;
+  --ink: #E8EDF7; --muted: #A3AFC6; --faint: #8591A8; --line: #2A3756; --grid: #1D2843;
+  --accent: #7FA6F0; --accent-ink: #A5C1F7; --accent-soft: #1A2C55;
+  --laranja: #5B9BD5; --strata-sol: #F2B85A;
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent); --barra-topo: var(--bg);
+  --texto-sobre-destaque: #0E1424;
+  }
+}
+:root.strata[data-theme="dark"] {
+  --bg: #0E1424; --surface: #16203A; --sunk: #121B31;
+  --ink: #E8EDF7; --muted: #A3AFC6; --faint: #8591A8; --line: #2A3756; --grid: #1D2843;
+  --accent: #7FA6F0; --accent-ink: #A5C1F7; --accent-soft: #1A2C55;
+  --laranja: #5B9BD5; --strata-sol: #F2B85A;
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent); --barra-topo: var(--bg);
+  --texto-sobre-destaque: #0E1424;
+}
+.strata-camada { stroke: var(--accent); }
+.strata-sol { stroke: var(--strata-sol); }
+
 /* ---------- base ---------- */
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }

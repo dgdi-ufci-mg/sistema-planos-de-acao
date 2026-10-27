@@ -192,7 +192,7 @@ export function mostrarNavegacao(opcoes) {
           ${opcoes.aoConsulta ? `<button type="button" class="lateral-acao" data-item="consulta" title="Espaços públicos e institucionais de que você não participa">${ICONES.olho}Espaços abertos à consulta${opcoes.nConsulta ? ` <span class="n">${opcoes.nConsulta}</span>` : ""}</button>` : ""}
           <button type="button" class="lateral-acao" data-item="lixeira">${ICONES.lixeira}Lixeira</button>
           ${opcoes.aoExtracao ? `<button type="button" class="lateral-acao" data-item="extracao" title="Planilha ou PDF com os dados dos espaços">${ICONES.modoPlanilha}Extração de dados</button>` : ""}
-          <a class="lateral-acao" href="superior/" title="Módulo Superior: o desdobramento do PEI/PDI até os Planos de Ação">${ICONES.modoRede}Gestão da estratégia</a>
+          <a class="lateral-acao" href="strata/" title="Strata: o desdobramento do PEI/PDI até os Planos de Ação">${ICONES.modoRede}Gestão da estratégia</a>
           ${opcoes.aoInstalar ? `<button type="button" class="lateral-acao" data-item="instalar" title="Pôr o Sextante na tela inicial, como um aplicativo">${ICONES.instalar}Instalar como aplicativo</button>` : ""}
         </div>
       </details>
