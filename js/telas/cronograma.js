@@ -228,6 +228,9 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
   const ajustarAltura = () => {
     if (!rolagem.isConnected) return removeEventListener("resize", ajustarAltura);
     rolagem.style.height = `${Math.max(320, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 16))}px`;
+    /* desconta o que fica abaixo (o texto de ajuda e a margem do pé da página), para a página não rolar (27/10/2026) */
+    const sobra = document.documentElement.scrollHeight - innerHeight;
+    if (sobra > 0) rolagem.style.height = `${Math.max(320, rolagem.offsetHeight - sobra)}px`;
   };
   ajustarAltura();
   if (aoRedimensionar) removeEventListener("resize", aoRedimensionar);

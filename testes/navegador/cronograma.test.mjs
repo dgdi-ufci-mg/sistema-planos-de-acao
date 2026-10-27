@@ -54,11 +54,12 @@ describe("Cronograma: zoom", { skip: pular }, () => {
       const r = document.querySelector("[data-rolagem]");
       const caixa = r.getBoundingClientRect();
       return { topo: document.querySelector(".crono-topo").getBoundingClientRect().top - caixa.top, base: caixa.bottom, alto: innerHeight,
-        rolaY: r.scrollHeight > r.clientHeight, rolaX: r.scrollWidth > r.clientWidth };
+        rolaY: r.scrollHeight > r.clientHeight, rolaX: r.scrollWidth > r.clientWidth, paginaRola: document.documentElement.scrollHeight > innerHeight + 1 };
     });
     const antes = await medidas();
     assert.ok(antes.rolaY && antes.rolaX, "o cronograma rola nos dois sentidos");
     assert.ok(antes.base <= antes.alto, "a barra horizontal fica dentro da tela");
+    assert.ok(!antes.paginaRola, "a página não rola; quem rola é o cronograma");
     await p.evaluate(() => { document.querySelector("[data-rolagem]").scrollTop = 200; });
     await assentar(p, 100);
     assert.ok(Math.abs((await medidas()).topo) < 1, "cabeçalho das datas parado no alto");
