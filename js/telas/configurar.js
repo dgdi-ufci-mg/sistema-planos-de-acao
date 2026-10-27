@@ -76,7 +76,10 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   /* enquanto o painel está aberto, mudanças nos responsáveis (de quem quer que seja) aparecem na seção;
      as demais seções não são redesenhadas, para não perder o que está sendo digitado */
   let pararDeAcompanhar = () => {};
-  const corpo = abrirPainel("Configurar este espaço", "", { aoFechar: () => {
+  /* como surge (27/10/2026, pedido do responsável): no computador, janela no centro com um leve aumento, como a
+     janela da ação (a partir de 641 px; as abas, a partir de 900 px); no celular, sobe de baixo, como as demais janelas do celular. Antes, a classe da janela
+     entrava depois de o painel começar a deslizar da direita, e o movimento não fazia sentido */
+  const corpo = abrirPainel("Configurar este espaço", "", { classe: "configuracao", deBaixo: matchMedia("(max-width: 640px)").matches, aoFechar: () => {
     pararDeAcompanhar();
     largo.removeEventListener("change", aplicarAbas);
     if (soltarSecao) { const s = soltarSecao; soltarSecao = null; s(); }
@@ -88,7 +91,6 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   /* em abas no computador (24/10/2026; item 11 da avaliação de usabilidade): janela larga, com as seções numa
      lista à esquerda e só a escolhida à direita, como nas configurações do Linear, do Notion e do GitHub; no
      celular e em telas médias, as mesmas seções continuam abrindo e fechando uma abaixo da outra */
-  corpo.closest(".camada").classList.add("configuracao");
   const largo = matchMedia("(min-width: 900px)");
   let abaAtual = null;
   largo.addEventListener("change", aplicarAbas);

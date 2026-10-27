@@ -24,13 +24,14 @@ if (vv) {
  * Abre um painel com título e conteúdo; Esc, o botão Fechar ou o fundo escurecido fecham.
  * Esc fecha, a menos que algo dentro do painel já tenha tratado a tecla (por exemplo, cancelar uma edição).
  * @param {string} titulo  texto simples
- * @param {{deBaixo?: boolean, janela?: boolean, botao?: string, aoFechar?: () => void}} [opcoes]
- *   botao: texto do botão de fechar; aoFechar: chamado depois de fechar
+ * @param {{deBaixo?: boolean, janela?: boolean, botao?: string, aoFechar?: () => void, classe?: string}} [opcoes]
+ *   botao: texto do botão de fechar; aoFechar: chamado depois de fechar; classe: classe a mais da camada, já na
+ *   criação, para a animação de abrir ser a dela desde o começo (27/10/2026)
  */
-export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = false, botao = "Fechar", aoFechar } = {}) {
+export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = false, botao = "Fechar", aoFechar, classe = "" } = {}) {
   fecharPainel();
   const camada = document.createElement("div");
-  camada.className = janela ? "camada de-baixo janela" : deBaixo ? "camada de-baixo" : "camada";
+  camada.className = `${janela ? "camada de-baixo janela" : deBaixo ? "camada de-baixo" : "camada"}${classe ? ` ${classe}` : ""}`;
   camada.innerHTML = `
     <div class="fundo-escuro" data-fechar></div>
     <div class="painel" role="dialog" aria-modal="true" aria-label="${titulo}">

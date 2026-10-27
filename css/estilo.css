@@ -1732,12 +1732,16 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 .config-nav, .config-titulo-aba { display: none; }
 .config-abas, .config-conteudo { display: flex; flex-direction: column; gap: 18px; }
 .config-perigo { display: flex; flex-direction: column; }
-@media (min-width: 900px) {
+/* janela no centro, com um leve aumento ao surgir, a partir de 641 px (27/10/2026); abaixo, sobe de baixo */
+@media (min-width: 641px) {
   .camada.configuracao .painel {
     top: 50%; left: 50%; right: auto; bottom: auto; width: min(980px, calc(100% - 48px)); height: min(86vh, 820px);
     border-radius: 14px; opacity: 0; transform: translate(-50%, -47%) scale(.98); transition: transform var(--mov) var(--mov-curva), opacity var(--mov) var(--mov-curva);
   }
   .camada.configuracao.aberta .painel { opacity: 1; transform: translate(-50%, -50%); }
+}
+@media (min-width: 641px) and (prefers-reduced-motion: reduce) { .camada.configuracao .painel { transition: none; } }
+@media (min-width: 900px) {
   .camada.configuracao .painel-corpo { flex: 1; min-height: 0; overflow: hidden; padding: 0; gap: 0; }
   .camada.configuracao .painel-corpo > .aviso-papel { margin: 12px 16px 0; }
   .config-abas { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 0; flex: 1; min-height: 0; }

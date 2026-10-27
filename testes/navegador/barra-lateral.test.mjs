@@ -70,3 +70,36 @@ describe("Menu da conta", { skip: pular }, () => {
     assert.equal(await p.locator("[data-menu-conta]").isVisible(), false);
   });
 });
+
+describe("Configurar este espaço: como surge", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  /** Caixa do painel logo depois de abrir e já assentada. */
+  async function abrirConfiguracao(p, largura) {
+    if (largura <= 640) { await p.click('[data-inferior="espacos"]'); await assentar(p); }
+    await p.locator(".lateral .espaco-item.atual [data-configurar]").click();
+    await p.waitForTimeout(40);
+    const caixa = () => p.evaluate(() => document.querySelector(".camada .painel").getBoundingClientRect().toJSON());
+    const inicio = await caixa();
+    await assentar(p);
+    return { inicio, fim: await caixa() };
+  }
+
+  test("no computador, janela no centro que cresce um pouco, sem deslizar da direita", async () => {
+    const p = await sessao.abrir({ largura: 1280, altura: 760 });
+    const { inicio, fim } = await abrirConfiguracao(p, 1280);
+    assert.ok(Math.abs((fim.x + fim.width / 2) - 640) < 2, "centrada");
+    assert.ok(Math.abs(inicio.x - fim.x) < 20, "não vem da direita");
+    assert.ok(inicio.width <= fim.width, "cresce");
+  });
+
+  test("no celular, sobe de baixo", async () => {
+    const p = await sessao.abrir();
+    const { inicio, fim } = await abrirConfiguracao(p, 390);
+    assert.equal(Math.round(inicio.x), 0);
+    assert.ok(inicio.y > fim.y, "vem de baixo");
+    assert.deepEqual(p.erros, []);
+  });
+});
