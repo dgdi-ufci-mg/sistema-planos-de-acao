@@ -6,7 +6,7 @@
 import { NOME, INSTITUICAO } from "../identidade.js";
 import { ICONES } from "../icones.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
-import { TIPOS } from "../tipos.js";
+import { TIPOS, TIPOS_DE_TAREFAS } from "../tipos.js";
 import { modeloHtml, ligarModelo, lerModelo } from "./modelo-espaco.js";
 import { abrirSuave, fecharSuave } from "./movimento.js";
 
@@ -33,7 +33,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
       <div class="identidade"><img src="logo.png" alt="" width="40" height="40"><span><b>${NOME}</b><small>${INSTITUICAO}</small></span></div>
       <h1>Boas-vindas ao ${NOME}</h1>
       <p>Planeje e acompanhe o trabalho num espaço de planejamento. Conforme o espaço, o sistema calcula as datas,
-      mostra o que não pode atrasar, estima a chance de cumprir o prazo e acompanha o andamento. Há três tipos:</p>
+      mostra o que não pode atrasar, estima a chance de cumprir o prazo e acompanha o andamento. Há quatro tipos:</p>
       <ul class="tipos-boas-vindas">${Object.values(TIPOS).map((t) => `<li><b>${t.nome}:</b> ${t.explicacao}</li>`).join("")}</ul>
       <div class="botoes">
         ${podeCriar ? `<button class="botao principal" type="button" data-acao="criar">${ICONES.mais}Criar um espaço de planejamento</button>`
@@ -87,7 +87,7 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
     const tipo = Object.fromEntries(Object.entries(lerTipo(evento.target)).filter(([, v]) => v != null));
     const dados = { nome: f.nome, inicio: f.inicio, prazoFinal: f.prazoFinal, ...tipo, modelo: lerModelo(evento.target) };
     /* Quadro de tarefas (passo 3.1): sem modelo nem datas do espaço; começa hoje */
-    if (tipo.tipo === "quadro") { delete dados.modelo; delete dados.prazoFinal; dados.inicio = hojeIso(); }
+    if (TIPOS_DE_TAREFAS.includes(tipo.tipo)) { delete dados.modelo; delete dados.prazoFinal; dados.inicio = hojeIso(); } // e a Lista de tarefas (passo 3.4)
     if (!dados.nome.trim()) return mostrarErro("Informe o nome do espaço.");
     if (!dados.inicio) return mostrarErro("Informe a data de início.");
     if (dados.prazoFinal && dados.prazoFinal < dados.inicio) return mostrarErro("O prazo final não pode ser antes do início.");
@@ -103,11 +103,11 @@ export function mostrarBoasVindas(alvo, { aoCriar, aoVerExemplo, comFormulario =
   /* Quadro de tarefas: o modelo e as datas somem do formulário */
   formulario.querySelector("form").addEventListener("change", (e) => {
     if (e.target.name !== "tipo") return;
-    const quadro = e.target.value === "quadro";
+    const quadro = TIPOS_DE_TAREFAS.includes(e.target.value); // Quadro ou Lista de tarefas
     for (const sel of ["[data-modelo-espaco]", "[data-datas-espaco]"]) {
       const el = formulario.querySelector(sel);
       el.getAnimations().forEach((a) => a.cancel());
-      if (quadro && !el.hidden) fecharSuave(el).then(() => { if (formulario.querySelector('[name="tipo"]:checked')?.value === "quadro") el.hidden = true; });
+      if (quadro && !el.hidden) fecharSuave(el).then(() => { if (TIPOS_DE_TAREFAS.includes(formulario.querySelector('[name="tipo"]:checked')?.value)) el.hidden = true; });
       else if (!quadro && el.hidden) { el.hidden = false; abrirSuave(el); }
     }
   });

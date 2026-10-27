@@ -11,7 +11,7 @@ import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
 import { registrosDaMudanca } from "./historico.js";
 import { montarRetrato } from "./retrato.js";
-import { problemaDoTipo, tipoDe, COLUNAS_INICIAIS_DO_QUADRO } from "./tipos.js";
+import { problemaDoTipo, tipoDe, ehDeTarefas, TIPOS, COLUNAS_INICIAIS_DO_QUADRO } from "./tipos.js";
 import { problemaDaEntrega, problemaDoRegistro, problemaDaSituacao, pendenciasParaEncerrar, entregasAtivas, registrosDa, SITUACAO_INICIAL_DA_ENTREGA } from "./entregas.js";
 import { problemaDoModelo, modeloDe, montarModelo } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe, ehQuadro } from "./situacoes.js";
@@ -400,9 +400,10 @@ export function criarStore(banco, opcoes = {}) {
       /* espaço novo é restrito, até o administrador abri-lo (passo 2.2; decisão do responsável, 24/10/2026) */
       dados = { visibilidade: "restrita", ...dados };
       /* Quadro de tarefas (passo 3.1): modelo fixo, sem fases e com as colunas iniciais */
-      if (tipoDe(dados) === "quadro") {
+      /* Lista de tarefas (passo 3.4): o mesmo, sem colunas */
+      if (ehDeTarefas(dados)) {
         dados = {
-          modelo: montarModelo("aberto"), situacoes: COLUNAS_INICIAIS_DO_QUADRO.map((nome) => ({ id: novoId(), nome })), ...dados,
+          modelo: montarModelo("aberto"), ...(tipoDe(dados) === "quadro" ? { situacoes: COLUNAS_INICIAIS_DO_QUADRO.map((nome) => ({ id: novoId(), nome })) } : {}), ...dados,
           camposOpcionais: { ...(dados.camposOpcionais ?? {}), fasesEtapas: false },
         };
       }
@@ -427,9 +428,10 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(campos, "espaco");
       recusarFixos(campos, FIXOS_DO_ESPACO);
       await exigir(id, "configurar");
-      /* o Quadro de tarefas é escolhido na criação e não muda (passo 3.1) */
-      if ("tipo" in campos && (tipoDe(await banco.lerEspaco(id)) === "quadro") !== (campos.tipo === "quadro")) {
-        throw new ErroDeDados("tipo-fixo", "O Quadro de tarefas é escolhido na criação: um espaço não vira nem deixa de ser Quadro de tarefas.");
+      /* os tipos de tarefas (Quadro e Lista) são escolhidos na criação e não mudam (passos 3.1 e 3.4) */
+      const tipoAtual = tipoDe(await banco.lerEspaco(id));
+      if ("tipo" in campos && tipoAtual !== tipoDe(campos) && (ehDeTarefas({ tipo: tipoAtual }) || ehDeTarefas(campos))) {
+        throw new ErroDeDados("tipo-fixo", `O tipo ${TIPOS[ehDeTarefas({ tipo: tipoAtual }) ? tipoAtual : tipoDe(campos)].nome} é escolhido na criação e não muda.`);
       }
       await conferirVinculos(campos);
       await gravarEspaco(id, campos);
@@ -946,7 +948,7 @@ export function criarStore(banco, opcoes = {}) {
     /** Registra a conclusão. A data não pode ser futura. */
     async concluir(espacoId, numero, data) {
       await exigir(espacoId, "atualizar", numero);
-      if (ehQuadro(await banco.lerEspaco(espacoId))) throw new ErroDeDados("situacao-invalida", "No Quadro de tarefas, marque a tarefa como concluída, sem data.");
+      if (ehDeTarefas(await banco.lerEspaco(espacoId))) throw new ErroDeDados("situacao-invalida", "Nas tarefas, marque a tarefa como concluída, sem data.");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data de conclusão.");
       if (data > hoje()) throw new ErroDeDados("data-futura", "A data de conclusão não pode ser depois de hoje.");
       const atual = await exigirAcao(espacoId, numero);
@@ -970,7 +972,7 @@ export function criarStore(banco, opcoes = {}) {
      */
     async marcarConclusao(espacoId, numero, marcada) {
       await exigir(espacoId, "atualizar", numero);
-      if (!ehQuadro(await banco.lerEspaco(espacoId))) throw new ErroDeDados("situacao-invalida", "Só no Quadro de tarefas a conclusão é marcada sem data.");
+      if (!ehDeTarefas(await banco.lerEspaco(espacoId))) throw new ErroDeDados("situacao-invalida", "Só no Quadro e na Lista de tarefas a conclusão é marcada sem data.");
       const atual = await exigirAcao(espacoId, numero);
       const ja = Boolean(atual.conclusaoMarcadaEm || atual.concluidaEm);
       if (ja === Boolean(marcada)) return;

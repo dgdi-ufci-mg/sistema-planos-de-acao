@@ -12,8 +12,8 @@ const storeDeTeste = () => {
 const PLANO = { tipo: "planoDeAcao", programa: "Programa de Governança de Dados", aprovacao: { identificacao: "23062.001234/2026-11" } };
 
 describe("Tipos de espaço: regras", () => {
-  it("Plano de Ação, Projeto e Quadro de tarefas, nessa ordem; o padrão é Projeto", () => {
-    assert.deepEqual(Object.keys(TIPOS), ["planoDeAcao", "projeto", "quadro"]);
+  it("Plano de Ação, Projeto, Quadro e Lista de tarefas, nessa ordem; o padrão é Projeto", () => {
+    assert.deepEqual(Object.keys(TIPOS), ["planoDeAcao", "projeto", "quadro", "lista"]);
     assert.equal(tipoDe({}), "projeto");
     assert.equal(tipoDe({ tipo: null }), "projeto");
     assert.equal(tipoDe({ tipo: "planoDeAcao" }), "planoDeAcao");

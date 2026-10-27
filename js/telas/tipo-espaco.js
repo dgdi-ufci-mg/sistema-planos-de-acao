@@ -5,7 +5,7 @@
  * módulo Superior; com o catálogo sem Programas vigentes, ou antes de ele carregar, é digitado, como antes.
  */
 import { esc } from "../formato.js";
-import { TIPOS, tipoDe } from "../tipos.js";
+import { TIPOS, tipoDe, TIPOS_DE_TAREFAS } from "../tipos.js";
 import { abrirSuave, fecharSuave } from "./movimento.js";
 import { opcoesDePrograma, caminhoAteOTopo, rotuloDoItem } from "../estrategia.js";
 import { hojeLocal } from "../dados.js";
@@ -15,11 +15,12 @@ export function tipoHtml(espaco = {}) {
   const atual = tipoDe(espaco);
   /* Quadro de tarefas (passo 3.1): escolhido só na criação; depois, o tipo não vira nem deixa de ser quadro */
   const criacao = !espaco.id;
-  if (!criacao && atual === "quadro") {
-    return `<fieldset class="tipo-espaco" data-tipo-espaco><legend>Tipo</legend><input type="hidden" name="tipo" value="quadro">
-      <p class="modelo-resumo"><b>${TIPOS.quadro.nome}</b> <span class="tec">Escolhido na criação; não muda.</span></p></fieldset>`;
+  /* Lista de tarefas (passo 3.4): o mesmo */
+  if (!criacao && TIPOS_DE_TAREFAS.includes(atual)) {
+    return `<fieldset class="tipo-espaco" data-tipo-espaco><legend>Tipo</legend><input type="hidden" name="tipo" value="${atual}">
+      <p class="modelo-resumo"><b>${TIPOS[atual].nome}</b> <span class="tec">Escolhido na criação; não muda.</span></p></fieldset>`;
   }
-  const opcoes = Object.entries(TIPOS).filter(([v]) => criacao || v !== "quadro");
+  const opcoes = Object.entries(TIPOS).filter(([v]) => criacao || !TIPOS_DE_TAREFAS.includes(v));
   return `<fieldset class="tipo-espaco" data-tipo-espaco>
       <legend>Tipo</legend>
       <div class="tipo-opcoes">${opcoes.map(([v, t]) => `

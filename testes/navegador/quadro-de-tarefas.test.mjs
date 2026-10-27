@@ -7,13 +7,13 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { pular, iniciar, assentar, dedo, centro } from "./apoio.mjs";
 
-/** Abre o exemplo e vai para o Quadro de tarefas de exemplo. */
-async function abrirQuadro(sessao, opcoes = {}) {
+/** Abre o exemplo e vai para o Quadro (ou, com `nome`, outro espaço de exemplo). */
+async function abrirQuadro(sessao, opcoes = {}, nome = "tarefas da equipe", espera = ".quadro-tarefas") {
   const p = await sessao.abrir(opcoes);
   const celular = (opcoes.largura ?? 390) <= 640;
   if (celular) { await p.click('[data-inferior="espacos"]'); await assentar(p); }
-  await p.locator(".lateral [data-espaco]").filter({ hasText: "tarefas da equipe" }).click();
-  await p.waitForSelector(".quadro-tarefas");
+  await p.locator(".lateral [data-espaco]").filter({ hasText: nome }).click();
+  await p.waitForSelector(espera);
   await assentar(p);
   return p;
 }
@@ -91,5 +91,35 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     await assentar(p);
     assert.equal(await colunaDe(p, "Marcar reunião"), await p.locator(".coluna").filter({ has: p.locator("header", { hasText: "Fazendo" }) }).getAttribute("data-coluna"));
     assert.deepEqual(p.erros, []);
+  });
+
+  /* ---------- Lista de tarefas (passo 3.4) ---------- */
+  const abrirLista = (opcoes) => abrirQuadro(sessao, opcoes, "minhas tarefas", ".item [data-marcar]");
+  const item = (p, nome) => p.locator(".item").filter({ hasText: nome });
+
+  test("Lista de tarefas: só a Lista; a tarefa marcada some na hora e o filtro a mostra de volta", async () => {
+    const p = await abrirLista({ largura: 1100 });
+    assert.equal(await p.locator('.menu-topo[data-pop="modo"]').count(), 0);
+    assert.equal(await item(p, "Atualizar o currículo").count(), 0, "as concluídas começam escondidas");
+    await item(p, "Agendar a reunião").locator("[data-marcar]").click();
+    await assentar(p);
+    assert.equal(await item(p, "Agendar a reunião").count(), 0);
+    assert.match(await p.locator(".aviso-curto").innerText(), /concluída/);
+    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.locator('[data-ctl="concluidas"]').check();
+    await assentar(p);
+    assert.equal(await item(p, "Agendar a reunião").locator("[data-marcar]").getAttribute("aria-checked"), "true");
+    assert.equal(await item(p, "Atualizar o currículo").count(), 1);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("Lista de tarefas no celular: deslizar para a direita marca a tarefa", async () => {
+    const p = await abrirLista();
+    const { x, y } = await centro(item(p, "Responder a pesquisa").locator(".rotulo"));
+    const d = await dedo(p);
+    await d.arrastar(x - 60, y, 150, 0);
+    await assentar(p);
+    assert.equal(await item(p, "Responder a pesquisa").count(), 0);
+    assert.equal(await p.locator(".camada.aberta").count(), 0, "marca direto, sem abrir janela");
   });
 });

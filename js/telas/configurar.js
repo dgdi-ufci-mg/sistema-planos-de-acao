@@ -28,7 +28,7 @@ import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO, ehQuadro } from "..
 import { resumoDoModelo } from "./modelo-espaco.js";
 import { CORES_ETIQUETA, etiquetasDe, tomDaCor, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { pendenciasParaEncerrar } from "../entregas.js";
-import { tipoDe } from "../tipos.js";
+import { tipoDe, ehDeTarefas } from "../tipos.js";
 import { PAPEIS, nomeDoPapel, semAdministracao, fechado, VISIBILIDADES, visibilidadeDe } from "../papeis.js";
 
 const CAMPOS_OPCIONAIS = [
@@ -135,7 +135,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <form class="editor" data-salvar="dados">
           <label class="campo"><span>Nome</span><input name="nome" maxlength="120" value="${esc(espaco.nome)}"></label>
           ${tipoHtml(espaco)}
-          ${tipoDe(espaco) === "quadro" ? `<input type="hidden" name="inicio" value="${esc(espaco.inicio ?? "")}"><input type="hidden" name="prazoFinal" value="${esc(espaco.prazoFinal ?? "")}">` /* Quadro de tarefas (passo 3.1): sem modelo nem datas à vista */
+          ${ehDeTarefas(espaco) ? `<input type="hidden" name="inicio" value="${esc(espaco.inicio ?? "")}"><input type="hidden" name="prazoFinal" value="${esc(espaco.prazoFinal ?? "")}">` /* Quadro de tarefas (passo 3.1): sem modelo nem datas à vista */
             : `${resumoDoModelo(espaco)}
           <div class="campos-lado-a-lado">
             <label class="campo"><span>Início</span><input name="inicio" type="date" value="${esc(espaco.inicio ?? "")}"></label>
@@ -185,7 +185,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       <details class="config" data-secao="campos"${aberta("campos")}>
         <summary><h3>Campos opcionais</h3></summary>
         <p class="tec">Desligar um campo o esconde da tela; o que já foi preenchido é mantido.</p>
-        ${CAMPOS_OPCIONAIS.filter(([chave]) => chave !== "fasesEtapas" || tipoDe(espaco) !== "quadro").map(([chave, titulo, dica]) => `<label class="alternar-campo">
+        ${CAMPOS_OPCIONAIS.filter(([chave]) => chave !== "fasesEtapas" || !ehDeTarefas(espaco)).map(([chave, titulo, dica]) => `<label class="alternar-campo">
           <input type="checkbox" data-campo-opcional="${chave}"${ligado(campos, chave) ? " checked" : ""}>
           <span><b>${titulo}</b><small>${dica}</small></span></label>`).join("")}
       </details>
@@ -567,6 +567,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   }
   function situacoesHtml() {
     if (ehQuadro(espaco)) return colunasHtml();
+    if (ehDeTarefas(espaco)) return ""; // a Lista de tarefas não tem colunas nem situações (passo 3.4)
     const lista = personalizadasDe(espaco);
     const pode = store.podeGravar;
     const nelas = (id) => acoes.filter((a) => a.situacaoPersonalizada === id && !a.concluidaEm).length;

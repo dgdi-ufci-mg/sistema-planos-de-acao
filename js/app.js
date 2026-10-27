@@ -13,7 +13,7 @@ import { FIREBASE_CONFIG } from "../config.js";
 import { criarBancoLocal } from "./banco/local.js";
 import { conectarFirebase } from "./banco/firebase.js";
 import { criarStore, hojeLocal } from "./dados.js";
-import { carregarExemplo, carregarExemploDeQuadro } from "./exemplo.js";
+import { carregarExemplo, carregarExemploDeQuadro, carregarExemploDeLista } from "./exemplo.js";
 import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
 import { mostrarNavegacao } from "./telas/navegacao.js";
@@ -185,6 +185,7 @@ async function verExemplo() {
     exemploId = await carregarExemplo(exemplo);
     exemplos.add(exemploId);
     exemplos.add(await carregarExemploDeQuadro(exemplo)); // passo 3.1: o Quadro de tarefas de exemplo, ao lado do Plano de Ação
+    exemplos.add(await carregarExemploDeLista(exemplo)); // passo 3.4: a Lista de tarefas de exemplo
   }
   await abrirEspaco(exemploId);
 }
@@ -303,7 +304,7 @@ registrarFonte("sistema", async () => {
   const { meus, consulta } = await espacosDoBanco();
   const doExemplo = exemplo ? await exemplo.listarEspacos() : [];
   const espaco = (e, extra) => ({
-    grupo: "Espaços", icone: e.encerradoEm ? "lixeira" : tipoDe(e) === "quadro" ? "modoQuadro" : tipoDe(e) === "planoDeAcao" ? "modoEntregas" : "modoLista",
+    grupo: "Espaços", icone: e.encerradoEm ? "lixeira" : tipoDe(e) === "quadro" ? "modoQuadro" : tipoDe(e) === "lista" ? "modoLista" : tipoDe(e) === "planoDeAcao" ? "modoEntregas" : "modoLista",
     titulo: e.nome, detalhe: [TIPOS[tipoDe(e)].nome, extra, e.encerradoEm ? "encerrado" : ""].filter(Boolean).join(" · "),
     palavras: TIPOS[tipoDe(e)].nome, executar: () => abrirEspaco(e.id),
   });

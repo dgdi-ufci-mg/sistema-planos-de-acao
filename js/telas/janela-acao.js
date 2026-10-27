@@ -19,7 +19,8 @@ import { editarTexto } from "./edicao-no-lugar.js";
 import { usaEstimativas, usaDependencias } from "../modelos.js";
 import { termos } from "../vocabulario.js";
 import { esqueletoHtml } from "./esqueleto.js";
-import { nomeInicial, nomeDoFluxo, personalizadasDe, ehQuadro } from "../situacoes.js";
+import { nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
+import { ehDeTarefas } from "../tipos.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 
@@ -203,7 +204,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
           <dl class="janela-resumo">
             <div><dt>Situação</dt><dd class="sit">${situacaoHtml(l, sitClasse, sitIcone, sitTexto)}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
-            ${ehQuadro(d.espaco) && l.situacao === "concluida" ? marcadaHtml(acao)
+            ${ehDeTarefas(d.espaco) && l.situacao === "concluida" ? marcadaHtml(acao)
             : !comEstimativas && l.situacao !== "concluida" ? `<div><dt>Data-limite</dt><dd class="mono${l.atrasada ? " atrasada" : ""}">${acao.dataLimite ? dataBr(acao.dataLimite) : '<span class="vazio">Sem data-limite</span>'}</dd></div>`
             : `<div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>`}
             ${l.situacao === "concluida" || l.execucao == null ? "" : `
@@ -468,8 +469,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   function botoesHtml(l, c) {
     if (somenteLeitura()) return "";
-    /* Quadro de tarefas: marcar ou desmarcar, sem data (revisão de 27/10/2026) */
-    if (ehQuadro(d.espaco)) {
+    /* Quadro e Lista de tarefas: marcar ou desmarcar, sem data (revisão de 27/10/2026; passo 3.4) */
+    if (ehDeTarefas(d.espaco)) {
       if (l.situacao === "naoLiberada") return "";
       return l.situacao === "concluida"
         ? `<div class="botoes"><button class="botao" type="button" data-marcar-janela="false">Desmarcar a conclusão</button></div>`

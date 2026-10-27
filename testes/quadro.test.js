@@ -6,7 +6,7 @@ import { criarStore } from "../js/dados.js";
 import { problemaDoTipo, TIPOS, agruparPorTipo } from "../js/tipos.js";
 import { modeloDe, usaDependencias, usaDataLimite, usaSimulacao } from "../js/modelos.js";
 import { termos } from "../js/vocabulario.js";
-import { carregarExemploDeQuadro } from "../js/exemplo.js";
+import { carregarExemploDeQuadro, carregarExemploDeLista } from "../js/exemplo.js";
 import { colunasDoQuadro, fluxoDe } from "../js/situacoes.js";
 import { caminhoCritico } from "../js/calculo.js";
 import { criarCalendario } from "../js/calendario.js";
@@ -125,5 +125,38 @@ describe("Quadro de tarefas", () => {
       /* no quadro, uma coluna pode se chamar "Concluídas" (não há mais a coluna fixa) */
       await store.alterarEspaco(id, { situacoes: [{ id: fazendo, nome: "Concluídas" }] });
     });
+  });
+});
+
+describe("Lista de tarefas (passo 3.4)", () => {
+  it("criada com o modelo aberto, sem colunas nem fases, palavra tarefa e conclusão marcada sem data", async () => {
+    let n = 0;
+    const store = criarStore(criarBancoLocal(), { novoId: () => `id${++n}`, agora: () => "2026-10-27T15:00:00.000Z", hoje: () => "2026-10-27" });
+    const id = await store.criarEspaco({ nome: "Minhas tarefas", inicio: "2026-10-27", tipo: "lista" });
+    const e = await store.lerEspaco(id);
+    assert.equal(TIPOS.lista.nome, "Lista de tarefas");
+    assert.equal(modeloDe(e).nome, "aberto");
+    assert.equal((e.situacoes ?? []).length, 0);
+    assert.equal(e.camposOpcionais.fasesEtapas, false);
+    assert.equal(termos(e).acao, "tarefa");
+    assert.equal(problemaDoTipo({ tipo: "lista", programa: "X" }).codigo, "quadro-sem-vinculo");
+    const t = await store.criarAcao(id, { rotulo: "Enviar a frequência" });
+    await assert.rejects(store.concluir(id, t, "2026-10-27"), { codigo: "situacao-invalida" });
+    await store.marcarConclusao(id, t, true);
+    const a = await store.lerAcao(id, t);
+    assert.equal(a.conclusaoMarcadaEm, "2026-10-27T15:00:00.000Z");
+    assert.equal(a.concluidaEm ?? null, null);
+    /* o tipo não muda, nem entre Lista e Quadro (a troca é o passo 3.5) */
+    await assert.rejects(store.alterarEspaco(id, { tipo: "quadro" }), { codigo: "tipo-fixo" });
+    await assert.rejects(store.alterarEspaco(id, { tipo: "projeto" }), { codigo: "tipo-fixo" });
+    assert.deepEqual(agruparPorTipo([e]).map((g) => g.titulo), ["Listas de tarefas"]);
+  });
+
+  it("exemplo: seis tarefas, duas marcadas como concluídas", async () => {
+    const store = criarStore(criarBancoLocal());
+    const id = await carregarExemploDeLista(store);
+    const acoes = await store.listarAcoes(id);
+    assert.equal(acoes.length, 6);
+    assert.equal(acoes.filter((a) => a.conclusaoMarcadaEm).length, 2);
   });
 });

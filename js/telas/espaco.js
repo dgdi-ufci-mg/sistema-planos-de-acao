@@ -117,6 +117,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const ehPlano = () => tipoDe(espaco) === "planoDeAcao";
   /* Quadro de tarefas (passo 3.1): abre no quadro e cria tarefas em qualquer coluna, menos Concluídas */
   const ehQuadro = () => tipoDe(espaco) === "quadro";
+  /** Lista de tarefas (passo 3.4) e os tipos de tarefas, Quadro ou Lista: caixinha de concluída, sem data. */
+  const ehLista = () => tipoDe(espaco) === "lista";
+  const deTarefas = () => ehQuadro() || ehLista();
   let modoInicial = false;
   let lendoEntregas = null;
   async function carregarEntregas() {
@@ -178,9 +181,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /* separadores de fases e etapas em qualquer ordenação: a ordem escolhida vale dentro de cada etapa.
      Só somem ao desligar "Fases e etapas" em Campos opcionais (decisão do responsável, 22/10/2026) */
   const agrupado = () => usaFases && ui.modo === "lista";
-  const ativos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (etiquetaAtiva() ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0) + (ocultaConcluidas() ? 1 : 0);
+  const ativos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (etiquetaAtiva() ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0) + (concluidasForaDoPadrao() ? 1 : 0);
+  /** O filtro das concluídas conta como ativo quando difere do padrão do tipo (Quadro: à vista; Lista: escondidas). */
+  const concluidasForaDoPadrao = () => deTarefas() && ui.concluidas !== !ehLista();
   /** Quadro de tarefas com as concluídas escondidas pelo filtro (revisão de 27/10/2026). */
-  const ocultaConcluidas = () => ehQuadro() && !ui.concluidas;
+  const ocultaConcluidas = () => deTarefas() && !ui.concluidas;
   /* filtro por etiqueta (passo 2.10a): só com o campo ligado e a etiqueta ainda no catálogo */
   const etiquetaAtiva = () => (usaEtiquetas(espaco) && etiquetasDe(espaco).some((x) => x.id === ui.etiqueta) ? ui.etiqueta : "");
   const visiveis = () => ordenar(filtrar(linhas, {
@@ -268,7 +273,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   function desenhar() {
     /* o que o modelo do espaço não tem volta ao padrão (só nesta tela; a escolha guardada no aparelho fica) */
-    if (!modoInicial) { modoInicial = true; if (ehQuadro()) ui.modo = "quadro"; }
+    /* Lista de tarefas (passo 3.4): só a Lista, e a tarefa marcada some na hora (o filtro a mostra de volta) */
+    if (!modoInicial) { modoInicial = true; if (ehQuadro()) ui.modo = "quadro"; if (ehLista()) { ui.modo = "lista"; ui.concluidas = false; } }
     if (!modos().some(([v]) => v === ui.modo)) ui.modo = "lista";
     if (!barras().some(([v]) => v === ui.barra)) ui.barra = "tempo";
     if (!ordens().some(([v]) => v === ui.ordem)) ui.ordem = "espaco";
@@ -295,7 +301,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * cronograma, estimativas; a linha do tempo, simulação. Lista, quadro e planilha valem sempre.
    */
   /* Quadro de tarefas: só o Quadro (revisão de 27/10/2026, decisão do responsável) */
-  const modos = () => MODOS.filter(([v]) => (ehQuadro() ? v === "quadro" : v === "rede" ? usaDependencias(espaco) : v === "cronograma" ? usaEstimativas(espaco)
+  const modos = () => MODOS.filter(([v]) => (ehQuadro() ? v === "quadro" : ehLista() ? v === "lista" : v === "rede" ? usaDependencias(espaco) : v === "cronograma" ? usaEstimativas(espaco)
     : v === "linha" ? usaSimulacao(espaco) : v === "entregas" ? ehPlano() : true));
   /** Modos sem filtros nem ordem: mostram o espaço inteiro (no cronograma, as setas ligariam ações escondidas). */
   const semFiltros = () => ["planilha", "cronograma", "rede", "linha", "entregas"].includes(ui.modo);
@@ -421,7 +427,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
 
   /** Filtros ativos (situação, responsável, "Minhas ações"), para o número no funil. */
-  const filtrosAtivos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (etiquetaAtiva() ? 1 : 0) + (ocultaConcluidas() ? 1 : 0);
+  const filtrosAtivos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (etiquetaAtiva() ? 1 : 0) + (concluidasForaDoPadrao() ? 1 : 0);
 
   function situacoesHtml() {
     const n = contar(linhas);
@@ -431,8 +437,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const botao = ([v, t, icone, classe], recuo = false) => `<button class="opcao${recuo ? " recuo" : ""}" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
         <span class="opcao-icone ${classe ?? ""}">${icone ? ICONES[icone] : ""}</span><span class="opcao-texto">${t}</span><span class="n">${n[v] ?? 0}</span></button>`;
     /* Quadro de tarefas: mostrar ou esconder as marcadas como concluídas (revisão de 27/10/2026) */
-    const concluidas = ehQuadro() ? `<label class="alternar"><input type="checkbox" data-ctl="concluidas"${ui.concluidas ? " checked" : ""}> Mostrar as concluídas <span class="n">${linhas.filter((l) => l.situacao === "concluida").length}</span></label>` : "";
-    return BOTOES_DE_FILTRO.filter(([v]) => ui.modo === "lista" || v === "todas" || v === "atrasada").map((b) =>
+    const concluidas = deTarefas() ? `<label class="alternar"><input type="checkbox" data-ctl="concluidas"${ui.concluidas ? " checked" : ""}> Mostrar as concluídas <span class="n">${linhas.filter((l) => l.situacao === "concluida").length}</span></label>` : "";
+    return BOTOES_DE_FILTRO.filter(([v]) => (ui.modo === "lista" && !deTarefas()) || v === "todas" || v === "atrasada").map((b) =>
       botao(b[0] === "liberada" && !usaDependencias(espaco) ? ["liberada", "Em aberto", b[2], b[3]] : b)
       + (b[0] === "liberada" ? sub.map(([v, t]) => botao([v, t, v === "fluxo:inicial" ? "liberada" : "personalizada", "icone-liberada"], true)).join("") : "")).join("") + concluidas;
   }
@@ -647,7 +653,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (filtro) return mudar("situacao", filtro.dataset.filtro);
     const ordem = t.closest("[data-ordem]");
     if (ordem) return mudar("ordem", ordem.dataset.ordem);
-    if (t.closest("[data-limpar-filtros]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.concluidas = true; return mudar("situacao", "todas"); }
+    if (t.closest("[data-limpar-filtros]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.concluidas = !ehLista(); return mudar("situacao", "todas"); }
     if (t.closest("[data-opcoes]")) return abrirOpcoes();
     if (t.closest("[data-nova]")) { ui.pop = null; desenharFerramentas(); return abrirNova(); }
     const barra = t.closest("[data-barra]");
@@ -842,7 +848,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>${puxadores() ? `<button type="button" class="puxador" data-puxar="${a.numero}"
         aria-label="Mudar a prioridade de ${esc(a.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a prioridade">${ICONES.puxador}</button>` : ""}
-        <div class="sit">${sit}</div>
+        <div class="sit">${deTarefas() && l.situacao !== "naoLiberada" ? caixaHtml(l) : sit}</div>
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
@@ -1008,7 +1014,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const arrastavel = l.situacao !== "naoLiberada" && store.podeGravar !== false && perm.atualizar(a);
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
-        <div class="acao-nome"><span class="nome-linha">${ehQuadro() ? caixaHtml(l) : ""}${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+        <div class="acao-nome"><span class="nome-linha">${deTarefas() ? caixaHtml(l) : ""}${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${checklistNota(a)}${etiquetasNota(a)}</div>
         <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div></div>
         ${l.situacao === "concluida" ? "" : barraHtml(l)}
@@ -1032,7 +1038,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     try {
       await store.marcarConclusao(espacoId, numero, marcada);
       if (marcada) navigator.vibrate?.([12, 60, 18]); // como ao registrar a conclusão (item 20 da avaliação de celular)
-      const texto = !marcada ? "Conclusão desmarcada." : ocultaConcluidas() ? `${termos(espaco).Acao} concluída e escondida pelo filtro.` : `${termos(espaco).Acao} concluída.`;
+      const texto = !marcada ? "Conclusão desmarcada." : ocultaConcluidas() && ehQuadro() ? `${termos(espaco).Acao} concluída e escondida pelo filtro.` : `${termos(espaco).Acao} concluída.`;
       avisar(texto, { acao: { texto: "Desfazer", fazer: () => store.marcarConclusao(espacoId, numero, !marcada).catch((f) => avisar(f.message)) } });
     } catch (falha) {
       avisar(falha.message);
@@ -1384,7 +1390,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function abrirMenuDoCartao(numero) {
     const l = linhaDe(numero);
     if (!l) return;
-    if (ehQuadro()) return abrirMenuDaTarefa(l);
+    if (deTarefas()) return abrirMenuDaTarefa(l);
     const colunas = colunasDoQuadro(espaco).filter((c) => c.chave !== "concluida" && c.chave !== "naoLiberada" && destinoValido(c.chave, numero) && l.situacao === "liberada");
     const corpo = abrirPainel(l.acao.rotulo, `<div class="opcoes-lista menu-cartao">
       <button class="opcao" type="button" data-menu-cartao="abrir"><span class="opcao-icone">${ICONES.seguir}</span><span class="opcao-texto">Abrir</span></button>
@@ -1405,7 +1411,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const numero = l.acao.numero;
     const feita = l.situacao === "concluida";
     const pode = perm.atualizar(l.acao) && store.podeGravar !== false && l.situacao !== "naoLiberada";
-    const colunas = colunasDoQuadro(espaco).filter((c) => destinoValido(c.chave, numero));
+    const colunas = ehQuadro() ? colunasDoQuadro(espaco).filter((c) => destinoValido(c.chave, numero)) : []; // a Lista não tem colunas
     const corpo = abrirPainel(l.acao.rotulo, `<div class="opcoes-lista menu-cartao">
       <button class="opcao" type="button" data-menu-cartao="abrir"><span class="opcao-icone">${ICONES.seguir}</span><span class="opcao-texto">Abrir</span></button>
       ${pode ? `<button class="opcao" type="button" data-menu-cartao="${feita ? "desmarcar" : "marcar"}"><span class="opcao-icone icone-concluida">${ICONES.marcado}</span><span class="opcao-texto">${feita ? "Desmarcar a conclusão" : "Marcar como concluída"}</span></button>` : ""}
@@ -1470,23 +1476,27 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { gesto = null; return; } // é rolagem
         if (Math.abs(dx) < 12) return;
         gesto.ativo = true;
-        gesto.podeConcluir = destinoValido("concluida", gesto.numero);
+        /* Lista de tarefas (passo 3.4): deslizar para a direita marca (ou, numa concluída à vista, desmarca) */
+        const lt = linhaDe(gesto.numero);
+        gesto.marcar = deTarefas() ? lt?.situacao !== "concluida" : null;
+        gesto.podeConcluir = deTarefas() ? Boolean(lt && lt.situacao !== "naoLiberada" && perm.atualizar(lt.acao) && store.podeGravar !== false) : destinoValido("concluida", gesto.numero);
       }
       const desloc = dx > 0 && !gesto.podeConcluir ? dx / 4 : dx; // sem poder concluir, o cartão resiste
       gesto.dx = dx;
       gesto.item.classList.add("deslizando");
       gesto.item.classList.toggle("para-esquerda", dx < 0);
-      gesto.item.dataset.deslizar = dx < 0 ? "Mais opções" : gesto.podeConcluir ? "Concluir" : "Não pode ser concluída agora";
+      gesto.item.dataset.deslizar = dx < 0 ? "Mais opções" : !gesto.podeConcluir ? "Não pode ser concluída agora" : gesto.marcar === false ? "Desmarcar" : "Concluir";
       gesto.linha.style.transform = `translateX(${Math.max(-140, Math.min(140, desloc))}px)`;
     });
     const soltar = () => {
       if (!gesto) return;
-      const { ativo, dx = 0, numero, podeConcluir } = gesto;
+      const { ativo, dx = 0, numero, podeConcluir, marcar } = gesto;
       voltar();
       if (!ativo) return;
       engolirClique = true;
       setTimeout(() => { engolirClique = false; }, 400);
-      if (dx > 90 && podeConcluir) { navigator.vibrate?.(10); abrirJanela(numero, "concluir"); }
+      if (dx > 90 && podeConcluir && marcar != null) marcarConclusao(numero, marcar);
+      else if (dx > 90 && podeConcluir) { navigator.vibrate?.(10); abrirJanela(numero, "concluir"); }
       else if (dx < -90) abrirMenuDoCartao(numero);
     };
     lista.addEventListener("pointerup", soltar);
@@ -1604,7 +1614,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       if (modo) mudarModo(modo.dataset.modo);
       const filtro = e.target.closest("[data-filtro]");
       if (filtro) mudar("situacao", filtro.dataset.filtro);
-      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.situacao = "todas"; ui.concluidas = true; mudar("ordem", "espaco"); }
+      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.situacao = "todas"; ui.concluidas = !ehLista(); mudar("ordem", "espaco"); }
       /* Exibir e indicador, no celular (25/10/2026) */
       const b = e.target.closest("button");
       if (!b) return;

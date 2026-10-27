@@ -216,3 +216,26 @@ export async function carregarExemploDeQuadro(store, hoje = new Date()) {
   }
   return espacoId;
 }
+
+/**
+ * Exemplo de Lista de tarefas (passo 3.4): tarefas pessoais do dia a dia, uma com data-limite vencida e duas já
+ * marcadas como concluídas (escondidas por padrão na lista; o filtro "Mostrar as concluídas" as traz de volta).
+ */
+export async function carregarExemploDeLista(store, hoje = new Date()) {
+  const { dia } = calendarioDoExemplo(hoje);
+  const espacoId = await store.criarEspaco({ nome: "Exemplo: minhas tarefas", inicio: dia(0), tipo: "lista" });
+  const carla = await store.criarResponsavel(espacoId, { tipo: "pessoa", sigla: "CAR", nome: "Carla Mendes", usuario: "carla.mendes@ufci.edu.br" });
+  const tarefas = [
+    { rotulo: "Enviar a frequência do mês", limite: dia(DIAS_ANTES_DE_HOJE - 1) },
+    { rotulo: "Ler o relatório da CGU", limite: dia(DIAS_ANTES_DE_HOJE + 3) },
+    { rotulo: "Agendar a reunião de planejamento" },
+    { rotulo: "Responder a pesquisa de clima" },
+    { rotulo: "Atualizar o currículo Lattes", concluida: true },
+    { rotulo: "Pedir o material de escritório", concluida: true },
+  ];
+  for (const t of tarefas) {
+    const n = await store.criarAcao(espacoId, { rotulo: t.rotulo, responsaveis: [carla], ...(t.limite ? { dataLimite: t.limite } : {}) });
+    if (t.concluida) await store.marcarConclusao(espacoId, n, true);
+  }
+  return espacoId;
+}
