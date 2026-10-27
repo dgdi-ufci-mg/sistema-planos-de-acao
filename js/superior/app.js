@@ -56,7 +56,7 @@ window.addEventListener("scroll", () => topo.classList.toggle("rolou", window.sc
 
 function desenharConta() {
   conta.innerHTML = `
-    <a class="botao discreto" href="../">← ${esc(NOME)}: planos</a>
+    <a class="botao discreto" href="../sextante/">← ${esc(NOME)}: planos</a>
     ${usuario ? `<span class="tec superior-email">${esc(usuario)}</span>
       <button class="botao discreto" type="button" data-conta-acao="senha">Trocar senha</button>
       <button class="botao discreto" type="button" data-conta-acao="sair">Sair</button>`

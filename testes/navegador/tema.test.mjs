@@ -13,7 +13,7 @@ describe("Tema deste aparelho", { skip: pular }, () => {
 
   /* sem login nos testes: a barra lateral é montada de novo como com alguém entrado */
   const comConta = (p) => p.evaluate(async () => {
-    const { mostrarNavegacao } = await import("./js/telas/navegacao.js");
+    const { mostrarNavegacao } = await import("../js/telas/navegacao.js");
     const nada = () => {};
     mostrarNavegacao({ espacos: [], usuario: { email: "ana@ufci.edu.br", nome: "Ana Souza" }, podeConfigurar: () => false,
       aoAbrir: nada, aoConfigurar: nada, aoNovo: nada, aoAjuda: nada, aoSistema: nada, aoEntrar: nada, aoTrocarSenha: nada, aoSair: nada });

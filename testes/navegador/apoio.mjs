@@ -81,7 +81,7 @@ export async function iniciar() {
     const pagina = await contexto.newPage();
     pagina.erros = [];
     pagina.on("pageerror", (e) => pagina.erros.push(e.message));
-    await pagina.goto(endereco);
+    await pagina.goto(endereco + "sextante/");
     if (exemplo) {
       await pagina.click("[data-acao=exemplo]");
       await pagina.waitForSelector(".linha[data-abrir-acao]");

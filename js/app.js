@@ -155,7 +155,7 @@ function atualizarConexao() {
   document.body.classList.toggle("sem-conexao", !conectado && !exemplos.has(abertoId));
 }
 const vigia = criarVigiaDeConexao({
-  sondar: sondaDoSite(new URL("config.js", location.href).href),
+  sondar: sondaDoSite(new URL("../config.js", location.href).href),
   temRede: () => navigator.onLine,
   aoMudar: (on) => {
     conectado = on;
@@ -325,7 +325,7 @@ registrarFonte("sistema", async () => {
       if (exemplo) fontes.push({ store: exemplo, espacos: doExemplo, rotulo: "exemplo" });
       abrirExtracao({ fontes, hoje });
     }, "exportar planilha excel pdf csv ods"),
-    comando("Gestão da estratégia", "modoRede", () => { location.href = "strata/"; }, "strata superior pei pdi programas"),
+    comando("Gestão da estratégia", "modoRede", () => { location.href = "../strata/"; }, "strata superior pei pdi programas"),
     ...(instalado() ? [] : [comando("Instalar como aplicativo", "instalar", () => instalar(), "celular tela inicial")]),
     comando("Ajuda e manual", "ajuda", () => ajuda(), "glossario"),
     comando("Atalhos de teclado", "ajuda", mostrarAtalhos, "teclas"),
@@ -356,7 +356,7 @@ window.addEventListener("hashchange", () => {
 });
 
 /* aplicativo instalável pelo navegador: o service worker, sem cache, e a barra refeita quando o navegador oferece instalar */
-registrarAplicativo();
+registrarAplicativo("../sw.js"); // a página fica em sextante/; o service worker, na raiz, serve aos dois aplicativos
 aoMudarInstalacao(() => { if (store) atualizarTopo(); });
 
 async function partida() {
