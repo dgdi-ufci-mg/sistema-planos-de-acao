@@ -40,13 +40,11 @@ describe("Rede (passo 1.17c)", () => {
     for (const c of colunas) assert.ok(c.length > 0);
   });
 
-  it("cada ação fica logo depois da anterior mais distante; sem anteriores, logo antes da primeira seguinte", async () => {
+  it("cada ação fica logo depois da anterior mais distante; sem anteriores, todas na primeira coluna (27/10/2026)", async () => {
     const { acoes, caminho } = await exemplo();
     const { coluna } = montarRede(acoes, caminho);
-    const seguintes = (n) => acoes.filter((a) => a.dependeDe.includes(n)).map((a) => coluna.get(a.numero));
     for (const a of acoes) {
-      const esperada = a.dependeDe.length ? Math.max(...a.dependeDe.map((d) => coluna.get(d))) + 1
-        : seguintes(a.numero).length ? Math.min(...seguintes(a.numero)) - 1 : 0;
+      const esperada = a.dependeDe.length ? Math.max(...a.dependeDe.map((d) => coluna.get(d))) + 1 : 0;
       assert.equal(coluna.get(a.numero), esperada, a.rotulo);
     }
   });
@@ -91,7 +89,7 @@ describe("Rede (passo 1.17c)", () => {
   for (const [nome, carregar] of casos) {
     it(`${nome}: cartões sem sobreposição, nos seus marcos; setas em ângulo reto, sem passar por cima de cartões`, async () => {
       const { acoes, marcos } = await carregar();
-      const r = montarRede(acoes, { porAcao: new Map() }, marcos ? { marcos, marcoDe: (a) => a.etapa } : {});
+      const r = montarRede(acoes, { porAcao: new Map() }, { pontas: true, ...(marcos ? { marcos, marcoDe: (a) => a.etapa } : {}) });
       const caixas = [...r.pos].map(([n, p]) => ({ n, ...p }));
       for (const a of caixas) for (const b of caixas) {
         if (a.n >= b.n) continue;
@@ -99,19 +97,36 @@ describe("Rede (passo 1.17c)", () => {
         assert.ok(separadas, `cartões ${a.n} e ${b.n}`);
       }
       if (marcos) {
-        assert.equal(r.marcos.length, new Set(acoes.map((a) => a.etapa)).size);
-        r.marcos.forEach((m, i) => { if (i) assert.ok(m.x >= r.marcos[i - 1].x + r.marcos[i - 1].largura - 0.5, "marcos fora de ordem"); });
-        for (const a of acoes) {
-          const faixa = r.marcos.find((x) => x.id === a.etapa);
-          const p = r.pos.get(a.numero);
-          assert.ok(p.x >= faixa.x && p.x + MEDIDAS.largura <= faixa.x + faixa.largura, `ação ${a.numero} fora do marco`);
-          assert.ok(p.y >= MEDIDAS.margem + MEDIDAS.cabecaMarco, `ação ${a.numero} sobre o nome do marco`);
+        /* cercas (27/10/2026): uma por etapa, em volta dos seus cartões, sem encostar em cartão de outra etapa */
+        assert.equal(r.cercas.length, new Set(acoes.map((a) => a.etapa)).size);
+        for (const c of r.cercas) {
+          for (const a of acoes) {
+            const p = r.pos.get(a.numero);
+            const dentro = p.x >= c.x && p.x + MEDIDAS.largura <= c.x + c.largura && p.y >= c.y && p.y + MEDIDAS.altura <= c.y + c.altura;
+            const toca = p.x < c.x + c.largura && p.x + MEDIDAS.largura > c.x && p.y < c.y + c.altura && p.y + MEDIDAS.altura > c.y;
+            if (a.etapa === c.id) assert.ok(dentro, `ação ${a.numero} fora da cerca ${c.id}`);
+            else assert.ok(!toca, `ação ${a.numero} dentro da cerca ${c.id}`);
+          }
         }
+        for (const c of r.cercas) for (const d of r.cercas) {
+          if (c === d) continue;
+          assert.ok(c.x + c.largura <= d.x || d.x + d.largura <= c.x || c.y + c.altura <= d.y || d.y + d.altura <= c.y, `cercas ${c.id} e ${d.id} se sobrepõem`);
+        }
+      }
+      /* nenhuma linha sobre outra (27/10/2026) */
+      const trechos = r.arestas.flatMap((ar, i) => ar.pontos.slice(0, -1).map((p, k) => {
+        const q = ar.pontos[k + 1];
+        const h = p[1] === q[1];
+        return { i, h, f: h ? p[1] : p[0], a: Math.min(h ? p[0] : p[1], h ? q[0] : q[1]), b: Math.max(h ? p[0] : p[1], h ? q[0] : q[1]) };
+      }));
+      for (const s of trechos) for (const t of trechos) {
+        if (s.i >= t.i || s.h !== t.h || Math.abs(s.f - t.f) >= 2) continue;
+        assert.ok(Math.min(s.b, t.b) - Math.max(s.a, t.a) <= 2, `setas ${r.arestas[s.i].de}→${r.arestas[s.i].para} e ${r.arestas[t.i].de}→${r.arestas[t.i].para} se sobrepõem`);
       }
       for (const ar of r.arestas) {
         if (ar.volta) continue;
-        assert.equal(ar.pontos[0][0], r.pos.get(ar.de).x + MEDIDAS.largura);
-        assert.equal(ar.pontos.at(-1)[0], r.pos.get(ar.para).x);
+        if (!ar.ligacao) assert.equal(ar.pontos[0][0], r.pos.get(ar.de).x + MEDIDAS.largura);
+        if (!ar.ligacao) assert.equal(ar.pontos.at(-1)[0], r.pos.get(ar.para).x);
         for (let k = 0; k + 1 < ar.pontos.length; k++) {
           const [[x0, y0], [x1, y1]] = [ar.pontos[k], ar.pontos[k + 1]];
           assert.ok(x0 === x1 || y0 === y1, `seta ${ar.de}→${ar.para} não está em ângulo reto`);
@@ -137,13 +152,25 @@ describe("Rede (passo 1.17c)", () => {
     assert.match(caminhoDaSeta([[0, 0], [100, 0]], [[50, 0]]), /A4,4 0 0 1 54,0/);
   });
 
-  it("seta para uma etapa anterior passa por baixo de tudo", () => {
+  it("a etapa não muda a coluna: quem depende fica à direita, mesmo de etapa anterior (27/10/2026)", () => {
     const acoes = [{ numero: 1, etapa: "A", dependeDe: [2] }, { numero: 2, etapa: "B", dependeDe: [] }];
     const r = montarRede(acoes, { porAcao: new Map() }, { marcos: [{ id: "A", nome: "A" }, { id: "B", nome: "B" }], marcoDe: (a) => a.etapa });
-    assert.ok(r.pos.get(1).x < r.pos.get(2).x);
-    const [seta] = r.arestas;
-    assert.equal(seta.volta, true);
-    const fundo = Math.max(...[...r.pos.values()].map((p) => p.y + MEDIDAS.altura));
-    assert.ok(seta.pontos.some(([, y]) => y > fundo));
+    assert.ok(r.pos.get(2).x < r.pos.get(1).x);
+    assert.ok(r.arestas.every((a) => !a.volta));
+  });
+
+  it("início, término e linhas de fim de fase", async () => {
+    const { acoes } = await exemplo();
+    const marcos = [...new Set(acoes.map((a) => a.etapa))].map((e, i) => ({ id: e, nome: e, fase: i < 2 ? "F1" : "F2", faseNome: i < 2 ? "Fase 1" : "Fase 2" }));
+    const r = montarRede(acoes, { porAcao: new Map() }, { pontas: true, marcos, marcoDe: (a) => a.etapa });
+    const xs = [...r.pos.values()];
+    assert.ok(r.pontas.inicio.x < Math.min(...xs.map((p) => p.x)));
+    assert.ok(r.pontas.termino.x > Math.max(...xs.map((p) => p.x + MEDIDAS.largura)));
+    assert.equal(r.fases.length, 2);
+    /* a linha da fase não passa por cartão nem por cerca */
+    for (const f of r.fases) {
+      for (const p of xs) assert.ok(f.x < p.x || f.x > p.x + MEDIDAS.largura);
+      for (const c of r.cercas) assert.ok(f.x <= c.x || f.x >= c.x + c.largura, `linha da ${f.nome} na cerca ${c.id}`);
+    }
   });
 });

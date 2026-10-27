@@ -21,9 +21,8 @@ import { ICONES } from "../icones.js";
 /** Ajuste da altura ao redimensionar a janela: um só por vez, trocado a cada desenho. */
 let aoRedimensionar = null;
 
-/** Espaço, de cada lado, para os círculos de início e de término (27/10/2026). */
-const LADO = 132;
-const RAIO = 40;
+/** Raio dos círculos de início e de término (27/10/2026). */
+const RAIO = MEDIDAS.raioPonta;
 
 export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
   inicio = null, termino = null, prazoFinal = null }) {
@@ -31,32 +30,20 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
     return;
   }
-  /* com fases, o cabeçalho tem duas linhas: o nome da fase e o da etapa (27/10/2026) */
-  const { pos, arestas, marcos, largura: larguraRede, altura } = montarRede(acoes, caminho, etapas ? { marcos: etapas, marcoDe: (a) => a.etapa, medidas: { cabecaMarco: 58 } } : {});
-  /* tudo se desloca para a direita, para caber o círculo de início; o de término fica depois do fim */
-  const largura = larguraRede + LADO * 2;
-  const desloc = (x) => x + LADO;
   /*
-   * Cercas (27/10/2026, pedido do responsável), no lugar dos marcos (milestones) do Bizagi: uma faixa de fundo suave
-   * por fase, com o nome da fase no alto, e, dentro dela, uma linha tracejada separando as etapas, com o nome da
-   * etapa logo abaixo do da fase. As etapas vêm da montagem da rede (uma faixa de colunas por etapa).
+   * Cercas e marcos (27/10/2026, pedido do responsável): as ações ficam nas colunas pelas dependências; cada etapa
+   * ganha uma cerca em volta só dos seus cartões, com o nome no alto; cada fase, uma linha vertical onde termina.
+   * Início e término entram na montagem como nós, para as linhas deles seguirem as mesmas regras das setas.
    */
-  const fases = [];
-  for (const m of marcos) {
-    const ultima = fases.at(-1);
-    if (ultima && ultima.fase === (m.fase ?? m.id)) ultima.etapas.push(m);
-    else fases.push({ fase: m.fase ?? m.id, nome: m.faseNome ?? m.nome, etapas: [m] });
-  }
-  const topo = MEDIDAS.margem;
-  const alto = altura - MEDIDAS.margem * 2;
-  const marcosHtml = fases.map((f, i) => {
-    const x0 = f.etapas[0].x;
-    const x1 = f.etapas.at(-1).x + f.etapas.at(-1).largura;
-    const etapasHtml = f.etapas.map((m, k) => `<div class="rede-etapa${k ? " cerca" : ""}" style="left:${m.x - x0}px;width:${m.largura}px">
-        <span class="rede-etapa-nome" title="${esc(m.titulo)}">${esc(m.faseNome ? m.nome : "")}</span></div>`).join("");
-    return `<div class="rede-fase${i % 2 ? " par" : ""}" style="left:${desloc(x0)}px;width:${x1 - x0}px;top:${topo}px;height:${alto}px">
-      <span class="rede-fase-nome" title="${esc(f.nome)}">${esc(f.nome)}</span>${etapasHtml}</div>`;
-  }).join("");
+  const { pos, arestas, cercas, fases, pontas, topo, largura, altura } = montarRede(acoes, caminho,
+    { pontas: true, ...(etapas ? { marcos: etapas, marcoDe: (a) => a.etapa } : {}) });
+  const cercasHtml = cercas.map((c) => `<div class="rede-cerca" style="left:${c.x}px;top:${c.y}px;width:${c.largura}px;height:${c.altura}px">
+      <span class="rede-cerca-nome" title="${esc(c.titulo)}">${esc(c.nome)}</span></div>`).join("");
+  /* fases que terminam no mesmo vão dividem a linha; os nomes ficam juntos */
+  const porX = new Map();
+  for (const f of fases) (porX.get(f.x) ?? porX.set(f.x, []).get(f.x)).push(f.nome);
+  const fasesHtml = [...porX].map(([x, nomes]) => `<div class="rede-fase-marco" style="left:${x}px;top:${topo}px;height:${altura - topo * 2}px">
+      <span class="rede-fase-nome" title="Fim: ${esc(nomes.join(", "))}">${esc(nomes.join(" · "))}</span></div>`).join("");
 
   const linhaDe = new Map(linhas.map((l) => [l.acao.numero, l]));
 
@@ -71,7 +58,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     /* espaço com data-limite (passo 2.4b): sem caminho crítico, sem folga */
     const folga = l.situacao === "concluida" || l.semEstimativa || c.folga == null ? ""
       : c.critica ? "sem folga" : `folga ${Math.round(c.folga)} ${plural(Math.round(c.folga), "dia", "dias")}`;
-    return `<div class="rede-no ${classe}" style="left:${desloc(x)}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}">
+    return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}">
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         title="${esc(etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo)}">
         <span class="rede-topo">${situacao(l)}<span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
@@ -81,30 +68,16 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     </div>`;
   }).join("");
 
-  /* início e término (27/10/2026, pedido do responsável): círculos verdes e vermelhos com as datas, ligados por
-     linhas finas tracejadas às ações que não têm anteriores e às que não têm seguintes */
-  const temAntes = new Set(arestas.map((a) => a.para));
-  const temDepois = new Set(arestas.map((a) => a.de));
-  const meio = Math.round(Math.max(altura, 2 * RAIO + 60) / 2);
-  const xInicio = LADO / 2;
-  const xFim = largura - LADO / 2;
-  const ligacoes = acoes.flatMap((a) => {
-    const { x, y } = pos.get(a.numero);
-    const yc = y + MEDIDAS.altura / 2;
-    const xe = desloc(x);
-    const xd = desloc(x) + MEDIDAS.largura;
-    return [
-      !temAntes.has(a.numero) ? `<path class="rede-ligacao" d="M${xInicio + RAIO},${meio} H${xInicio + RAIO + 20} V${yc} H${xe - 3}" marker-end="url(#rede-ponta)"/>` : "",
-      !temDepois.has(a.numero) ? `<path class="rede-ligacao" d="M${xd},${yc} H${xFim - RAIO - 20} V${meio} H${xFim - RAIO - 3}" marker-end="url(#rede-ponta)"/>` : "",
-    ];
-  }).join("");
-  const circulo = (classe, cx, rotulo, data, extra = "") => `<div class="rede-ponto ${classe}" style="left:${cx - RAIO}px;top:${meio - RAIO}px;width:${RAIO * 2}px;height:${RAIO * 2}px">
+  /* início e término (27/10/2026, pedido do responsável): círculos verdes e vermelhos com as datas */
+  const circulo = (classe, { x: cx, y: cy }, rotulo, data, extra = "") => `<div class="rede-ponto ${classe}" style="left:${cx - RAIO}px;top:${cy - RAIO}px;width:${RAIO * 2}px;height:${RAIO * 2}px">
       <span class="rede-ponto-rotulo">${rotulo}</span><span class="rede-ponto-data mono">${data ? dataBr(data) : "—"}</span>${extra}</div>`;
-  const pontos = circulo("inicio", xInicio, "Início", inicio)
-    + circulo("termino", xFim, "Término", termino, prazoFinal ? `<span class="rede-ponto-prazo">prazo ${dataBr(prazoFinal)}</span>` : "");
+  const pontosHtml = circulo("inicio", pontas.inicio, "Início", inicio)
+    + circulo("termino", pontas.termino, "Término", termino, prazoFinal ? `<span class="rede-ponto-prazo">prazo ${dataBr(prazoFinal)}</span>` : "");
 
-  const setas = arestas.map(({ de, para, critica, volta, pontos, saltos }) => `<path class="rede-seta${critica ? " critica" : ""}${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"
-      d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>`).join("");
+  const setas = arestas.map(({ de, para, critica, volta, ligacao, pontos, saltos }) => (ligacao
+    ? `<path class="rede-ligacao" data-de="${de}" data-para="${para}" d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>`
+    : `<path class="rede-seta${critica ? " critica" : ""}${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"
+      d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>`)).join("");
 
   const anterior = alvo.querySelector("[data-rede-rolagem]");
   const rolagemAnterior = anterior ? [anterior.scrollLeft, anterior.scrollTop] : null;
@@ -128,18 +101,17 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     <div class="rede" data-rede>
       <div class="rede-rolagem" data-rede-rolagem>
         <div class="rede-tamanho" data-tamanho>
-          <div class="rede-conteudo" data-conteudo style="width:${largura}px;height:${Math.max(altura, meio * 2)}px">
-            ${marcosHtml}
-            <svg class="rede-setas" width="${largura}" height="${Math.max(altura, meio * 2)}" aria-hidden="true">
+          <div class="rede-conteudo" data-conteudo style="width:${largura}px;height:${altura}px">
+            ${cercasHtml}${fasesHtml}
+            <svg class="rede-setas" width="${largura}" height="${altura}" aria-hidden="true">
               <defs>
                 <marker id="rede-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
                 <marker id="rede-ponta-critica" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
               </defs>
-              ${ligacoes}
-              <g transform="translate(${LADO},0)">${setas}</g>
+              ${setas}
             </svg>
             ${cartoes}
-            ${pontos}
+            ${pontosHtml}
           </div>
         </div>
       </div>
@@ -224,7 +196,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   /* ---------- destaque: tudo o que vem antes e depois da ação apontada ---------- */
   const antes = new Map(acoes.map((a) => [a.numero, []]));
   const depois = new Map(acoes.map((a) => [a.numero, []]));
-  for (const { de, para } of arestas) { antes.get(para).push(de); depois.get(de).push(para); }
+  for (const { de, para, ligacao } of arestas) if (!ligacao) { antes.get(para).push(de); depois.get(de).push(para); }
   const alcance = (inicio, mapa) => {
     const vistos = new Set();
     const pilha = [...mapa.get(inicio)];

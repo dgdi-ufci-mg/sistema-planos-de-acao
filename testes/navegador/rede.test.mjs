@@ -1,12 +1,12 @@
 /**
  * Rede no navegador (27/10/2026, pedido do responsável; documentação técnica, seção 8.4): círculos de início e de
- * término com as datas, e cercas das fases (faixas) e das etapas (tracejado), no lugar dos marcos.
+ * término com as datas, cercas em volta das ações de cada etapa e linha vertical no fim de cada fase.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { pular, iniciar, assentar } from "./apoio.mjs";
 
-describe("Rede: início, término e cercas", { skip: pular }, () => {
+describe("Rede: início, término, cercas das etapas e marcos das fases", { skip: pular }, () => {
   let sessao;
   before(async () => { sessao = await iniciar(); });
   after(async () => { await sessao?.fechar(); });
@@ -20,9 +20,11 @@ describe("Rede: início, término e cercas", { skip: pular }, () => {
     assert.match(await p.locator(".rede-ponto.inicio").innerText(), /Início\s+\d{2}\/\d{2}\/\d{4}/i);
     assert.match(await p.locator(".rede-ponto.termino").innerText(), /Término\s+\d{2}\/\d{2}\/\d{4}/i);
     assert.equal(await p.locator(".rede-marco").count(), 0, "sem os marcos antigos");
+    /* 27/10/2026: uma cerca por etapa, em volta dos cartões, e uma linha no fim de cada fase */
     const fases = await p.locator(".rede-fase-nome").allInnerTexts();
     assert.ok(fases.length >= 2 && fases.every((f) => /^Fase/.test(f)));
-    assert.ok(await p.locator(".rede-etapa.cerca").count() >= 1, "tracejado entre etapas da mesma fase");
+    assert.ok(await p.locator(".rede-cerca").count() >= 4, "uma cerca por etapa");
+    assert.equal(await p.locator(".rede-fase, .rede-etapa").count(), 0, "sem as faixas antigas");
     /* o círculo de início fica antes de tudo e o de término depois de tudo */
     const xs = await p.evaluate(() => {
       const r = (el) => el.getBoundingClientRect();
