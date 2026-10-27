@@ -8,6 +8,9 @@
  * Funções puras: não acessam a tela nem o banco.
  */
 
+/** Concluída com data ou, no Quadro de tarefas, marcada como concluída sem data (revisão de 27/10/2026). */
+const concluida = (acao) => Boolean(acao.concluidaEm || acao.conclusaoMarcadaEm);
+
 /** Erro de cálculo com um código fixo, para a tela saber o que aconteceu. */
 export class ErroDeCalculo extends Error {
   /** @param {string} codigo @param {string} mensagem @param {string[]} [acoes] */
@@ -101,6 +104,9 @@ export function caminhoCritico(acoes, calendario, { hoje, prazos = "estimativa",
     if (acao.concluidaEm) {
       r.conclusao = calendario.diasUteisAte(acao.concluidaEm);
       r.liberacao = Math.min(liberacao, r.conclusao); // registro anterior à liberação calculada: vale o registro
+    } else if (acao.conclusaoMarcadaEm) {
+      /* Quadro de tarefas (revisão de 27/10/2026): concluída sem data conhecida; não há conclusão a calcular */
+      r.conclusao = liberacao;
     } else if (porDataLimite) {
       r.conclusao = acao.dataLimite ? Math.max(liberacao, calendario.diasUteisAte(acao.dataLimite)) : liberacao;
     } else {
@@ -112,17 +118,17 @@ export function caminhoCritico(acoes, calendario, { hoje, prazos = "estimativa",
     }
 
     if (hoje) {
-      const anterioresConcluidas = antes.every((d) => porNumero.get(d).concluidaEm);
+      const anterioresConcluidas = antes.every((d) => concluida(porNumero.get(d)));
       const dataMinimaChegou = !acao.naoAntesDe || acao.naoAntesDe <= hoje;
-      r.situacao = acao.concluidaEm ? "concluida" : anterioresConcluidas && dataMinimaChegou ? "liberada" : "naoLiberada";
+      r.situacao = concluida(acao) ? "concluida" : anterioresConcluidas && dataMinimaChegou ? "liberada" : "naoLiberada";
       if (porDataLimite) {
-        r.atrasada = !acao.concluidaEm && Boolean(acao.dataLimite) && acao.dataLimite < hoje;
+        r.atrasada = !concluida(acao) && Boolean(acao.dataLimite) && acao.dataLimite < hoje;
         if (r.atrasada) r.vencidaEm = acao.dataLimite;
         porAcao.set(numero, r);
         fim = Math.max(fim, r.conclusao);
         continue;
       }
-      const semEstimativa = !acao.concluidaEm && !estimativaVigente(acao);
+      const semEstimativa = !concluida(acao) && !estimativaVigente(acao);
       const noPassado = r.situacao === "liberada" && calendario.dataDeConclusao(r.conclusao, r.liberacao) < hoje;
       /* sem estimativa não há prazo para vencer: "Falta estimar", e não "Atrasada" (seção 5.2) */
       r.atrasada = noPassado && !semEstimativa;
@@ -143,7 +149,7 @@ export function caminhoCritico(acoes, calendario, { hoje, prazos = "estimativa",
     r.conclusaoTardia = conclusaoTardia;
     r.liberacaoTardia = conclusaoTardia - (r.conclusao - r.liberacao);
     r.folga = porDataLimite ? null : r.liberacaoTardia - r.liberacao;
-    r.critica = !porDataLimite && r.folga < 1e-6 && !porNumero.get(numero).concluidaEm;
+    r.critica = !porDataLimite && r.folga < 1e-6 && !concluida(porNumero.get(numero));
   }
   return { fim, porAcao, avisos };
 }

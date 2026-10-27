@@ -195,7 +195,7 @@ export async function carregarExemploDeQuadro(store, hoje = new Date()) {
   const { dia } = calendarioDoExemplo(hoje);
   const espacoId = await store.criarEspaco({ nome: "Exemplo: tarefas da equipe de dados", inicio: dia(0), tipo: "quadro" });
   const espaco = await store.lerEspaco(espacoId);
-  const fazendo = espaco.situacoes[0].id;
+  const fazendo = espaco.situacoes.find((s) => s.nome === "Fazendo").id;
   await store.alterarEspaco(espacoId, { situacoes: [...espaco.situacoes, { id: "revisao", nome: "Em revisão" }] });
   const ana = await store.criarResponsavel(espacoId, { tipo: "pessoa", sigla: "ANA", nome: "Ana Souza", usuario: "ana.souza@ufci.edu.br" });
   const bruno = await store.criarResponsavel(espacoId, { tipo: "pessoa", sigla: "BRL", nome: "Bruno Lima", usuario: "bruno.lima@ufci.edu.br" });
@@ -206,12 +206,13 @@ export async function carregarExemploDeQuadro(store, hoje = new Date()) {
     { rotulo: "Revisar a consulta de matrículas", resp: [bruno], coluna: fazendo, limite: dia(DIAS_ANTES_DE_HOJE + 2) },
     { rotulo: "Preparar a apresentação para o Comitê", resp: [ana, bruno], coluna: fazendo },
     { rotulo: "Relatório mensal de acessos", resp: [bruno], coluna: "revisao" },
-    { rotulo: "Publicar o boletim de indicadores", resp: [ana], concluida: dia(DIAS_ANTES_DE_HOJE - 3) },
+    /* concluída: marcada, sem data, e continua na coluna em que estava, como no Trello (revisão de 27/10/2026) */
+    { rotulo: "Publicar o boletim de indicadores", resp: [ana], coluna: "revisao", concluida: true },
   ];
   for (const t of tarefas) {
     const n = await store.criarAcao(espacoId, { rotulo: t.rotulo, responsaveis: t.resp, ...(t.limite ? { dataLimite: t.limite } : {}) });
     if (t.coluna) await store.mudarSituacao(espacoId, n, t.coluna);
-    if (t.concluida) await store.concluir(espacoId, n, t.concluida);
+    if (t.concluida) await store.marcarConclusao(espacoId, n, true);
   }
   return espacoId;
 }

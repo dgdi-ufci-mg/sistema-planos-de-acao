@@ -40,7 +40,7 @@ export function montarLinhas(acoes, caminho, simulacao, calendario, hoje, { praz
       vencidaEm: c.atrasada ? c.vencidaEm : null,
       /** data mínima ainda por vir, para "a partir de" */
       aPartirDe: c.situacao === "naoLiberada" && acao.naoAntesDe > hoje ? acao.naoAntesDe : null,
-      conclusao: concluida ? acao.concluidaEm : porDataLimite ? acao.dataLimite ?? null : calendario.dataDeConclusao(c.conclusao, c.liberacao),
+      conclusao: concluida ? acao.concluidaEm ?? null : porDataLimite ? acao.dataLimite ?? null : calendario.dataDeConclusao(c.conclusao, c.liberacao),
       reprogramacoes: Math.max(0, (acao.estimativas?.length ?? 0) - 1),
       execucao: semPrioridade ? null : s.prioridadeExecucao,
       revisao: semPrioridade ? null : s.prioridadeRevisao,

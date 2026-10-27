@@ -29,8 +29,8 @@ export const TIPOS = Object.freeze({
   }),
 });
 
-/** Colunas com que um Quadro de tarefas começa, além de "A fazer" e "Concluídas" (decisão do responsável, 24/10/2026). */
-export const COLUNAS_INICIAIS_DO_QUADRO = Object.freeze(["Fazendo"]);
+/** Colunas com que um Quadro de tarefas começa, todas editáveis (decisões do responsável de 24 e 27/10/2026; sem Concluídas desde 27/10/2026). */
+export const COLUNAS_INICIAIS_DO_QUADRO = Object.freeze(["A fazer", "Fazendo"]);
 
 export const TIPO_PADRAO = "projeto";
 

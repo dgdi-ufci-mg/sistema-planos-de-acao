@@ -44,7 +44,7 @@ export const CAMPOS = Object.freeze({
   camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos", "justificativa", "local", "prioridade"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao", "justificativa", "local",
-    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "posicaoPrioridade", "entregaDoPlano",
+    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "conclusaoMarcadaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "posicaoPrioridade", "entregaDoPlano",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],

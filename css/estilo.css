@@ -1904,3 +1904,22 @@ html { -webkit-tap-highlight-color: transparent; }
   .barra-inferior > .inferior-nova:active { background: var(--accent-ink); }
 }
 @media (max-width: 640px) { .selo-entrega { font-size: 13px; padding: 3px 10px; } } /* item 21: etiquetas de situação das entregas com 13 px no celular */
+
+/* ---------- Quadro de tarefas: caixinha de concluída (revisão de 27/10/2026, decisão do responsável, como no Trello) ---------- */
+.caixa-concluida {
+  flex: none; display: inline-grid; place-items: center; width: 20px; height: 20px; margin: 1px 8px 0 0; padding: 0; vertical-align: -4px;
+  border: 1.5px solid var(--faint); border-radius: 50%; background: var(--surface); color: transparent; cursor: pointer;
+  transition: background var(--mov-rapido) var(--mov-curva), border-color var(--mov-rapido) var(--mov-curva), color var(--mov-rapido) var(--mov-curva);
+}
+.caixa-concluida .icone { width: 13px; height: 13px; stroke-width: 3; }
+button.caixa-concluida:hover { border-color: var(--ok); color: var(--ok); }
+.caixa-concluida.marcada { background: var(--ok); border-color: var(--ok); color: var(--texto-sobre-destaque); }
+button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: var(--ok-ink); color: var(--texto-sobre-destaque); }
+.caixa-concluida:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.quadro-tarefas .cartao-quadro.feita .rotulo { color: var(--muted); }
+.quadro-tarefas .coluna > header { gap: 8px; }
+/* área de toque de 44 px em volta da caixinha, sem mudar o desenho (item 4 da avaliação de celular) */
+@media (pointer: coarse) { .caixa-concluida { position: relative; } .caixa-concluida::after { content: ""; position: absolute; inset: -12px; } }
+@media (prefers-reduced-motion: reduce) { .caixa-concluida { transition: none; } }
+/* o nome da tarefa que quebra linha fica alinhado depois da caixinha */
+.quadro-tarefas .nome-linha { display: flex; align-items: flex-start; }

@@ -19,7 +19,7 @@ import { editarTexto } from "./edicao-no-lugar.js";
 import { usaEstimativas, usaDependencias } from "../modelos.js";
 import { termos } from "../vocabulario.js";
 import { esqueletoHtml } from "./esqueleto.js";
-import { nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
+import { nomeInicial, nomeDoFluxo, personalizadasDe, ehQuadro } from "../situacoes.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 
@@ -203,7 +203,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
           <dl class="janela-resumo">
             <div><dt>Situação</dt><dd class="sit">${situacaoHtml(l, sitClasse, sitIcone, sitTexto)}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
-            ${!comEstimativas && l.situacao !== "concluida" ? `<div><dt>Data-limite</dt><dd class="mono${l.atrasada ? " atrasada" : ""}">${acao.dataLimite ? dataBr(acao.dataLimite) : '<span class="vazio">Sem data-limite</span>'}</dd></div>`
+            ${ehQuadro(d.espaco) && l.situacao === "concluida" ? marcadaHtml(acao)
+            : !comEstimativas && l.situacao !== "concluida" ? `<div><dt>Data-limite</dt><dd class="mono${l.atrasada ? " atrasada" : ""}">${acao.dataLimite ? dataBr(acao.dataLimite) : '<span class="vazio">Sem data-limite</span>'}</dd></div>`
             : `<div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>`}
             ${l.situacao === "concluida" || l.execucao == null ? "" : `
               <div><dt>Índice de criticidade <a href="#" class="oque" data-termo="exec" aria-label="O que é o índice de criticidade?" title="O que é?">${ICONES.ajuda}</a></dt><dd>${barra(l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}</dd></div>
@@ -455,8 +456,25 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return `<span class="medidor"><span class="barra-medidor"><i style="width:${Math.max(2, Math.round(valor * 100))}%;background:${cor}"></i></span><span class="num">${texto}</span></span>`;
   }
 
+  /**
+   * Quadro de tarefas (revisão de 27/10/2026): a conclusão é uma marca, sem data; mostra o momento da marcação,
+   * avisando que não é a data em que o trabalho terminou.
+   */
+  function marcadaHtml(acao) {
+    const em = acao.conclusaoMarcadaEm ? new Date(acao.conclusaoMarcadaEm) : null;
+    const quando = em ? `${dataBr(`${em.getFullYear()}-${String(em.getMonth() + 1).padStart(2, "0")}-${String(em.getDate()).padStart(2, "0")}`)} às ${String(em.getHours()).padStart(2, "0")}h${String(em.getMinutes()).padStart(2, "0")}` : "";
+    return `<div><dt>Marcada como concluída</dt><dd>${quando ? `<span class="mono">${quando}</span>` : "Sim"}<small class="tec">Momento da marcação, e não a data em que o trabalho terminou.</small></dd></div>`;
+  }
+
   function botoesHtml(l, c) {
     if (somenteLeitura()) return "";
+    /* Quadro de tarefas: marcar ou desmarcar, sem data (revisão de 27/10/2026) */
+    if (ehQuadro(d.espaco)) {
+      if (l.situacao === "naoLiberada") return "";
+      return l.situacao === "concluida"
+        ? `<div class="botoes"><button class="botao" type="button" data-marcar-janela="false">Desmarcar a conclusão</button></div>`
+        : `<div class="botoes"><button class="botao principal" type="button" data-marcar-janela="true">${ICONES.marcado}Marcar como concluída</button></div>`;
+    }
     if (l.situacao === "concluida") {
       return `<div class="botoes"><button class="botao" type="button" data-desfazer-conclusao>Desfazer conclusão</button></div>`;
     }
@@ -970,6 +988,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (etq) return executar(() => store.retirarEtiquetaDaAcao(espacoId, numero, etq.dataset.tirarEtiqueta));
     const resp = t.closest("[data-tirar-responsavel]");
     if (resp) return executar(() => store.retirarResponsavelDaAcao(espacoId, numero, resp.dataset.tirarResponsavel));
+    const marcarJanela = t.closest("[data-marcar-janela]");
+    if (marcarJanela) {
+      const marcada = marcarJanela.dataset.marcarJanela === "true";
+      if (marcada) navigator.vibrate?.([12, 60, 18]);
+      return executar(() => store.marcarConclusao(espacoId, numero, marcada), marcada ? `${termos(d.espaco).Acao} concluída.` : "Conclusão desmarcada.");
+    }
     if (t.closest("[data-desfazer-conclusao]")) {
       return executar(() => store.desfazerConclusao(espacoId, numero), `Conclusão desfeita. A ação voltou para ${usaDependencias(d.espaco) ? "as liberadas" : nomeInicial(d.espaco)}.`);
     }

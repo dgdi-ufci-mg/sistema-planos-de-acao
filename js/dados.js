@@ -14,7 +14,7 @@ import { montarRetrato } from "./retrato.js";
 import { problemaDoTipo, tipoDe, COLUNAS_INICIAIS_DO_QUADRO } from "./tipos.js";
 import { problemaDaEntrega, problemaDoRegistro, problemaDaSituacao, pendenciasParaEncerrar, entregasAtivas, registrosDa, SITUACAO_INICIAL_DA_ENTREGA } from "./entregas.js";
 import { problemaDoModelo, modeloDe, montarModelo } from "./modelos.js";
-import { problemaDasSituacoes, personalizadasDe } from "./situacoes.js";
+import { problemaDasSituacoes, personalizadasDe, ehQuadro } from "./situacoes.js";
 import { chaveValida, planejarMovimento } from "./prioridade.js";
 import { camadasDe, problemaDasCamadas, problemaDoInstrumento, problemaDoItem, problemaDosVinculos, subordinadosDe } from "./estrategia.js";
 import { encerrado, podeVer, participa, problemaDaVisibilidade, permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
@@ -710,6 +710,7 @@ export function criarStore(banco, opcoes = {}) {
       recusarDesconhecidos(campos, "acao");
       recusarFixos(campos, FIXOS_DA_ACAO);
       if ("situacaoPersonalizada" in campos) throw new ErroDeDados("campo-fixo", "A situação muda por mudarSituacao.");
+      if ("conclusaoMarcadaEm" in campos) throw new ErroDeDados("campo-fixo", "A conclusão do Quadro de tarefas muda por marcarConclusao.");
       /* data mínima no futuro: a ação deixa de estar liberada e sai da situação personalizada (passo 2.7) */
       if (campos.naoAntesDe && campos.naoAntesDe > hoje()) campos = { ...campos, situacaoPersonalizada: null };
       await conferirModelo(espacoId, campos);
@@ -945,6 +946,7 @@ export function criarStore(banco, opcoes = {}) {
     /** Registra a conclusão. A data não pode ser futura. */
     async concluir(espacoId, numero, data) {
       await exigir(espacoId, "atualizar", numero);
+      if (ehQuadro(await banco.lerEspaco(espacoId))) throw new ErroDeDados("situacao-invalida", "No Quadro de tarefas, marque a tarefa como concluída, sem data.");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(data ?? "")) throw new ErroDeDados("data-invalida", "Informe a data de conclusão.");
       if (data > hoje()) throw new ErroDeDados("data-futura", "A data de conclusão não pode ser depois de hoje.");
       const atual = await exigirAcao(espacoId, numero);
@@ -953,11 +955,27 @@ export function criarStore(banco, opcoes = {}) {
     },
     async desfazerConclusao(espacoId, numero) {
       await exigir(espacoId, "atualizar", numero);
-      await exigirAcao(espacoId, numero);
-      await banco.alterarAcao(espacoId, numero, { concluidaEm: null, ...carimbo() }, hist);
+      const atual = await exigirAcao(espacoId, numero);
+      /* desfaz também a marca do Quadro de tarefas (revisão de 27/10/2026) */
+      await banco.alterarAcao(espacoId, numero, { concluidaEm: null, ...(atual.conclusaoMarcadaEm ? { conclusaoMarcadaEm: null } : {}), ...carimbo() }, hist);
       /* as seguintes ainda não concluídas deixam de estar liberadas e voltam à inicial (passo 2.7) */
       const seguintes = (await banco.listarAcoes(espacoId)).filter((a) => ativa(a) && !a.concluidaEm && a.situacaoPersonalizada && (a.dependeDe ?? []).includes(numero));
       for (const a of seguintes) await banco.alterarAcao(espacoId, a.numero, { situacaoPersonalizada: null, ...carimbo() }, hist);
+    },
+
+    /**
+     * Quadro de tarefas (revisão de 27/10/2026, decisão do responsável): marca a tarefa como concluída, sem data de
+     * conclusão; guarda só o momento da marcação. A tarefa continua na coluna em que está. Desmarcar apaga a marca
+     * (e a data de conclusão dos quadros de antes da revisão).
+     */
+    async marcarConclusao(espacoId, numero, marcada) {
+      await exigir(espacoId, "atualizar", numero);
+      if (!ehQuadro(await banco.lerEspaco(espacoId))) throw new ErroDeDados("situacao-invalida", "Só no Quadro de tarefas a conclusão é marcada sem data.");
+      const atual = await exigirAcao(espacoId, numero);
+      const ja = Boolean(atual.conclusaoMarcadaEm || atual.concluidaEm);
+      if (ja === Boolean(marcada)) return;
+      const mudanca = marcada ? { conclusaoMarcadaEm: agora() } : { conclusaoMarcadaEm: null, ...(atual.concluidaEm ? { concluidaEm: null } : {}) };
+      await banco.alterarAcao(espacoId, numero, { ...mudanca, ...carimbo() }, hist);
     },
 
     // --- situações personalizadas (passo 2.7; seção 16.2) ---
@@ -972,7 +990,8 @@ export function criarStore(banco, opcoes = {}) {
       const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
       const acao = acoes.find((a) => a.numero === numero);
       if (!acao) throw new ErroDeDados("nao-encontrado", `Ação ${numero} não encontrada.`);
-      if (acao.concluidaEm) throw new ErroDeDados("situacao-invalida", "A ação já foi concluída. Desfaça a conclusão antes.");
+      /* no Quadro de tarefas, a tarefa concluída também muda de coluna (revisão de 27/10/2026) */
+      if (acao.concluidaEm && !ehQuadro(espaco)) throw new ErroDeDados("situacao-invalida", "A ação já foi concluída. Desfaça a conclusão antes.");
       const anteriores = modeloDe(espaco).dependencias ? acao.dependeDe ?? [] : [];
       const pendente = anteriores.some((n) => !acoes.find((a) => a.numero === n)?.concluidaEm) || (acao.naoAntesDe && acao.naoAntesDe > hoje());
       if (pendente) throw new ErroDeDados("situacao-invalida", "A ação ainda não foi liberada.");
@@ -1566,7 +1585,7 @@ export function criarStore(banco, opcoes = {}) {
   /* sem login, nenhuma gravação sai daqui (as regras do banco também recusam) */
   const GRAVACOES = ["criarEspaco", "alterarEspaco", "criarAcao", "alterarAcao", "acrescentarResponsavelNaAcao",
     "retirarResponsavelDaAcao", "acrescentarDependencia", "retirarDependencia", "reestimar", "corrigirEstimativa",
-    "concluir", "desfazerConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral",
+    "concluir", "desfazerConclusao", "marcarConclusao", "criarResponsavel", "alterarResponsavel", "alterarCalendarioGeral",
     "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco",
     "salvarRetrato", "importarAcoes", "restaurarCopia", "importarResponsaveis",
     "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist",

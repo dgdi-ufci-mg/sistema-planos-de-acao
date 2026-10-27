@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 187 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 188 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -356,7 +356,7 @@ Passo 2.4b (seção 16.1). Escolhido na criação, entre três modelos, e fixo d
 
 #### 4.1.8 Situação personalizada: cada item de `situacoes`
 
-Passo 2.7 (seção 16.2). Subtipos de Liberada, como "Em andamento", "Em teste" e "Em revisão", criados no espaço pelo administrador do espaço (até o passo 2.1, por quem tinha login). Viram colunas do quadro, na ordem da lista. Os nomes não se repetem, nem com a inicial, "Não liberada" e "Concluída", e têm até 40 caracteres. Retirar uma situação devolve as ações que estavam nela à situação inicial.
+Passo 2.7 (seção 16.2). Subtipos de Liberada, como "Em andamento", "Em teste" e "Em revisão", criados no espaço pelo administrador do espaço (até o passo 2.1, por quem tinha login). Viram colunas do quadro, na ordem da lista. Os nomes não se repetem, nem com a inicial, "Não liberada" e "Concluída", e têm até 40 caracteres. Retirar uma situação devolve as ações que estavam nela à situação inicial. **No Quadro de tarefas** (desde 27/10/2026), a lista é o conjunto inteiro das colunas, "A fazer" inclusive, sem situação inicial fixa nem Concluída: precisa ter pelo menos uma coluna, os nomes só não se repetem entre si, e a tarefa sem coluna válida fica na primeira.
 
 <!-- dicionario: situacao -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
@@ -429,9 +429,10 @@ Chave: o par (espaço, `numero`).
 | `dependeDe` | lista de inteiro | sim | Números das ações anteriores, do mesmo espaço. Lista vazia: sem anteriores | `[1, 4]` |
 | `responsaveis` | lista de id | sim | Ids dos responsáveis (4.5). Lista vazia: sem responsável | |
 | `estimativas` | lista de estimativa (4.3) | sim | Da primeira à mais recente. A vigente é a última. Sempre vazia no espaço com prazos por data-limite | |
-| `situacaoPersonalizada` | id | não | Situação personalizada em que a ação está (4.1.8; passo 2.7). Só vale enquanto a ação está liberada; vazia: a situação inicial. Volta a vazia quando a ação é concluída ou deixa de estar liberada | |
+| `situacaoPersonalizada` | id | não | Situação personalizada em que a ação está (4.1.8; passo 2.7). Só vale enquanto a ação está liberada; vazia: a situação inicial. Volta a vazia quando a ação é concluída ou deixa de estar liberada. **No Quadro de tarefas** (desde 27/10/2026), é a coluna da tarefa e vale também com ela concluída; vazia ou de uma coluna retirada: a primeira coluna | |
 | `dataLimite` | data | não | Data-limite escolhida pela pessoa, só no espaço com prazos por data-limite (passo 2.4b). Vencida e a ação não concluída: carimbo Atrasada. Vazia: a ação não tem prazo | `2026-11-30` |
-| `concluidaEm` | data | não | Data de conclusão. Vazio: não concluída | `2026-09-22` |
+| `concluidaEm` | data | não | Data de conclusão. Vazio: não concluída. No Quadro de tarefas, fica sempre vazia desde 27/10/2026 (lá, a conclusão é a marca `conclusaoMarcadaEm`) | `2026-09-22` |
+| `conclusaoMarcadaEm` | data e hora | não | Só no Quadro de tarefas (revisão de 27/10/2026, decisão do responsável): momento em que a tarefa foi marcada como concluída, pela caixinha. Não é a data em que o trabalho terminou, que não é conhecida. Preenchido: a tarefa está concluída. Vazio: não concluída. Gravado e apagado só pela operação `marcarConclusao` do Store | `2026-10-27T14:05:12.000Z` |
 | `naoAntesDe` | data | não | Data mínima de liberação, "Não começa antes de" (seção 5.1) | `2026-10-19` |
 | `notas` | texto (Markdown) | não | Notas da ação (seção 8.5) | |
 | `checklist` | lista de item do checklist (4.2.2) | não | Itens a cumprir dentro da ação, na ordem em que foram acrescentados (seção 16.5; passo 2.8). Vazio: sem checklist | |
@@ -1150,14 +1151,22 @@ Os painéis abrem sob o menu, com a transição padrão. Os menus do centro most
 - **Extrair:** "Preparando…" enquanto lê e calcula; depois baixa o arquivo `extracao-AAAA-MM-DD` e avisa quantas tabelas e linhas. Recusas em aviso: nenhum espaço, nenhum campo das ações, nada escolhido.
 - O que foi escolhido (o que extrair, os campos e o formato) fica lembrado no aparelho; os espaços, não.
 
-**Quadro de tarefas** (passo 3.1; seção 16.1):
+**Quadro de tarefas** (passo 3.1; seção 16.1; **revisto em 27/10/2026**, passo 3.3, decisões do responsável, como no Trello):
 - **Criação:** terceiro cartão em "Tipo", "Quadro de tarefas" ("Tarefas do dia a dia, em colunas, como no Trello e no Planner, com data-limite opcional. Para uma pessoa ou uma equipe."). Escolhido, somem o Modelo e as datas (o espaço começa hoje, sem prazo final).
-- **Ao abrir:** a visualização Quadro, com as colunas A fazer, Fazendo e Concluídas no espaço novo; Lista e Planilha continuam no menu. Colunas criadas, renomeadas e retiradas no próprio quadro, como nos demais espaços.
-- **"+ Adicionar tarefa"** no pé de cada coluna, menos Concluídas: Enter cria a tarefa naquela coluna e deixa o campo pronto para a próxima; Esc desiste.
-- **Palavra "tarefa"** no lugar de "ação" (seção 16.1): "Nova tarefa", "Adicionar tarefa", "Nome da tarefa", "Excluir tarefa", título da janela, coluna da planilha, "Nenhuma tarefa" e o aviso de tarefas atrasadas.
+- **Uma visualização só:** o Quadro. Não há Lista, Planilha nem as demais; o menu de visualizações some da barra do topo e do painel "Filtros e exibição", e a busca não oferece "Ver como…".
+- **Colunas todas iguais e livres:** o espaço novo começa com **A fazer** e **Fazendo**, e as duas são colunas como as outras. Todas se renomeiam (clique no título ou "Renomear" no menu "⋯"), mudam de lugar (arrastar o título ou "Mover para a esquerda/direita") e saem ("Retirar a coluna"; fica pelo menos uma, e o item fica desativado na última). Não há a coluna **Concluídas**, nem os ícones fixos no título das colunas. As colunas ficam na lista `situacoes` do espaço (4.1.8); a tarefa guarda a coluna em `situacaoPersonalizada` (4.2), e a tarefa sem coluna válida (por exemplo, a de uma coluna retirada) aparece na **primeira coluna**. Ao retirar uma coluna, as tarefas dela vão para a primeira das que ficam, e o aviso diz para qual. "Não liberadas" só aparece se alguma tarefa espera a data mínima ("Não começa antes de").
+- **Caixinha de concluída:** cada cartão tem, antes do nome, um círculo que marca a tarefa como concluída (marcado: verde, com o sinal de visto; o nome fica cinza). Marcar **não move o cartão**: ele continua na coluna em que estava, e pode ser movido depois para qualquer coluna. Marcar e desmarcar dão um aviso com "Desfazer" e, no Android, a vibração curta da conclusão. Clicar na caixinha não abre a tarefa; segurar e deslizar não começam nela. Quem não pode atualizar a tarefa vê só a marca.
+- **O que se grava:** só o **momento da marcação** (`conclusaoMarcadaEm`, data e hora; 4.2). A **data de conclusão** (`concluidaEm`) fica em branco: sabe-se que a tarefa foi concluída e quando foi marcada, mas não quando o trabalho terminou. O Store recusa registrar data de conclusão no quadro e só grava a marca pela operação `marcarConclusao`. Desmarcar apaga a marca (e a data dos quadros de antes da revisão, que passam a valer como marcadas).
+- **Atraso:** a tarefa com data-limite vencida fica **Atrasada** até ser marcada; marcada, deixa de estar.
+- **Filtro das concluídas:** em "Classificar e filtrar" (e no painel "Filtros e exibição", no celular), **"Mostrar as concluídas"**, ligado por padrão, com o número delas. Desligado, as concluídas somem do quadro, conta como filtro ativo e sai com "Limpar filtros".
+- **Janela da tarefa:** no lugar de "Registrar conclusão" (com data), o botão **"Marcar como concluída"**; marcada, "Desmarcar a conclusão" e a linha "Marcada como concluída" com a data e a hora da marcação e a explicação "Momento da marcação, e não a data em que o trabalho terminou." O histórico diz "Marcou como concluída." e "Desmarcou a conclusão."
+- **Celular:** segurar o cartão abre o menu com Abrir, "Marcar como concluída" (ou "Desmarcar a conclusão") e "Mover para" cada outra coluna. Não há o deslizar dos cartões, que é da Lista.
+- **"+ Adicionar tarefa"** no pé de cada coluna: Enter cria a tarefa naquela coluna e deixa o campo pronto para a próxima; Esc desiste.
+- **Palavra "tarefa"** no lugar de "ação" (seção 16.1): "Nova tarefa", "Adicionar tarefa", "Nome da tarefa", "Excluir tarefa", título da janela, "Nenhuma tarefa" e o aviso de tarefas atrasadas.
 - **Barra lateral:** o grupo "Quadros de tarefas", depois de "Projetos".
-- **Configurar este espaço:** o tipo aparece só para leitura ("Escolhido na criação; não muda"), sem Modelo, datas, nem o campo opcional "Fases e etapas". Nos outros tipos, o Quadro de tarefas não aparece entre as opções.
-- **Exemplo:** "Ver um exemplo" passa a abrir também "Exemplo: tarefas da equipe de dados", com sete tarefas em A fazer, Fazendo, Em revisão e Concluídas, duas pessoas e datas-limite (uma vencida).
+- **Configurar este espaço:** o tipo aparece só para leitura ("Escolhido na criação; não muda"), sem Modelo, datas, nem o campo opcional "Fases e etapas". A seção "Situações" vira **"Colunas"**: as colunas na ordem, com nome editável, ↑, ↓ e retirar (desativado na última), e "Nova coluna" (Enter). Nos outros tipos, o Quadro de tarefas não aparece entre as opções.
+- **Extração de dados:** a coluna "Marcada como concluída em" (a data da marcação).
+- **Exemplo:** "Ver um exemplo" abre também "Exemplo: tarefas da equipe de dados", com sete tarefas em A fazer, Fazendo e Em revisão, duas pessoas e datas-limite (uma vencida); "Publicar o boletim de indicadores" está marcada como concluída, na coluna Em revisão.
 
 **Instalar como aplicativo** (seção 13.2, primeiro passo; feito em 24/10/2026, a pedido do responsável):
 - **O que é:** o site fica na tela inicial do celular, ou como aplicativo no computador, aberto sem a barra do navegador, sem loja e sem custo (*termo técnico: aplicativo instalável pelo navegador, PWA*). Vale para o sistema de planos e para o módulo Superior, que fica dentro dele.
@@ -1348,6 +1357,7 @@ Cada decisão de detalhe está registrada, com a data e o motivo, na seção do 
 - **Rede desenhada pelo próprio sistema** (camadas, marcos, setas em ângulo reto), sem biblioteca externa, para abrir mesmo sem acesso ao CDN.
 - **Simulação reaproveitada** quando nada do que entra nela muda, com resultado idêntico (chave da simulação, seção 5.7).
 - **Dados da versão 1 descartados** na troca (23/10/2026; seção 11).
+- **Conclusão sem data nas tarefas** (27/10/2026; Quadro de tarefas e, no passo 3.4, Lista de tarefas): marca-se uma caixinha, e o sistema guarda só o momento da marcação, porque é o que ele sabe; pedir a data em que o trabalho terminou levaria a datas inventadas. Plano de Ação e Projeto continuam com a data de conclusão, que entra no cálculo.
 
 ---
 
@@ -1442,6 +1452,9 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 3.1. ✔ Tipo "Quadro de tarefas": sem dependências nem previsões, com colunas criadas no dia a dia e experiência no estilo Trello, Planner e Todoist. Exemplo de Quadro de tarefas. Feito em 24/10/2026. Decisões do responsável: começa com as colunas A fazer, Fazendo (situação personalizada, renomeável e retirável) e Concluídas; "+ Adicionar tarefa" no pé de cada coluna, menos Concluídas; abre no Quadro, com Lista e Planilha também à mão; sem fases nem etapas. Regras em `js/tipos.js` (o modelo é o do cronograma aberto, fixo; sem fases, Programa nem aprovação) e no Store (`criarEspaco` preenche modelo, colunas e campos; `alterarEspaco` recusa virar ou deixar de ser quadro); vocabulário em `js/vocabulario.js` ("tarefa" no lugar de "ação"); telas na seção 8 ("Quadro de tarefas"); exemplo em `js/exemplo.js` (`carregarExemploDeQuadro`), aberto junto com o do Plano de Ação. Escolha feita sem consulta: o tipo Quadro de tarefas é fixo depois de criado, porque ele traz modelo, colunas e campos próprios.
 3.2. ~~Recorrência de tarefas (seção 16.8).~~ **Cancelado** (decisão do responsável, 24/10/2026): o sistema segue sem tarefas recorrentes.
+3.3. ✔ Quadro de tarefas revisto (27/10/2026, decisões do responsável, como no Trello; seção 8, "Quadro de tarefas"): só a visualização Quadro; colunas todas iguais e livres, sem Concluídas e sem ícones fixos; caixinha de concluída que guarda só o momento da marcação (`conclusaoMarcadaEm`), com a data de conclusão em branco; a tarefa marcada fica na coluna; filtro "Mostrar as concluídas", ligado por padrão; atraso conta até a marcação. Os quadros que já existiam (de teste) passam a valer assim: as tarefas concluídas contam como marcadas.
+3.4. Tipo **Lista de tarefas** (decisão do responsável, 27/10/2026): quarto tipo, com uma visualização só, a Lista, e a mesma caixinha de concluída do quadro. Na lista, a tarefa marcada **some na hora**, por padrão; o filtro mostra ou esconde as concluídas.
+3.5. **Troca entre Lista de tarefas e Quadro de tarefas** em "Configurar este espaço" (decisão do responsável, 27/10/2026): as tarefas são as mesmas; só muda a forma de ver. Detalhes (o que acontece com as colunas ao passar do quadro para a lista e de volta) a combinar no passo.
 
 ### Fase 4: passagem do protótipo à equipe de TI da UFCI-MG
 
@@ -1641,7 +1654,7 @@ Decisões acordadas com o responsável em 19/10/2026. A fase em que cada uma ent
 
 1. **Plano de Ação:** só os estrategicamente formalizados, derivados do PEI/PDI. Mantém o sentido institucional exato. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano de Ação; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCI-MG.
 2. **Projeto:** os de propósito geral; mesmo motor do tipo 1, sem vínculo obrigatório ao catálogo.
-3. **Quadro de tarefas:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível. Pode ser **individual** (uma pessoa organiza as próprias tarefas) e ser compartilhado depois, quando alguém chega à equipe: é só um espaço restrito em que o criador convida outras pessoas (papéis e visibilidade, seção 16.3). O nome era "Quadro de equipe" até 21/10/2026; mudou porque "de equipe" excluía o uso individual.
+3. **Quadro de tarefas:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível. Pode ser **individual** (uma pessoa organiza as próprias tarefas) e ser compartilhado depois, quando alguém chega à equipe: é só um espaço restrito em que o criador convida outras pessoas (papéis e visibilidade, seção 16.3). O nome era "Quadro de equipe" até 21/10/2026; mudou porque "de equipe" excluía o uso individual. **Revisto em 27/10/2026** (decisão do responsável, como no Trello): uma visualização só, o Quadro; colunas todas iguais e livres, sem a coluna Concluídas; a conclusão é uma **caixinha** que registra o momento da marcação, e não a data em que o trabalho terminou, que não é conhecida (seção 8, "Quadro de tarefas"). Um quarto tipo, **Lista de tarefas**, com a visualização Lista e a mesma caixinha, e a troca entre os dois tipos estão no plano de trabalho (passos 3.4 e 3.5).
 
 **Ação e tarefa são a mesma coisa** (decisão do responsável, 21/10/2026). No Plano de Ação e no Projeto, o item do espaço se chama **ação**; no Quadro de tarefas, **tarefa**, porque é assim que se pensa num quadro (como no Planner e no Todoist) e porque "ação" soa formal para o uso diário. Só a palavra na tela muda conforme o tipo do espaço: a entidade, os campos, o código e o banco são os mesmos (`acao`, seção 4.2). Os textos da tela ficam centralizados, para a troca ser feita num lugar só.
 
@@ -2038,3 +2051,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 185 | Arrumação: o aplicativo instalável (PWA) aparece como feito em "Futuro, sem fase" (seção 12); a seção 13.2 já o marcava. Sem mudança no sistema |
 | 186 | Testes de navegador no repositório (`testes/navegador/`): celular (Voltar, gestos, barra de baixo, teclado, faixa do prazo, campos) e barra do topo de 700 a 1.366 px; dois defeitos da barra do topo encontrados e registrados como pendência. Sem mudança no sistema (seções 3.1, 3.2 e 13.1) |
 | 187 | Barra lateral: "Espaços abertos à consulta" passou para o grupo "Mais", como o primeiro item, para não se misturar com a lista de espaços (decisão do responsável; seções 8.0 e 8) |
+| 188 | Passo 3.3: Quadro de tarefas revisto, como no Trello: só a visualização Quadro, colunas todas iguais e livres (sem Concluídas e sem ícones fixos), caixinha de concluída que guarda o momento da marcação e não move o cartão, filtro "Mostrar as concluídas"; novos passos 3.4 (Lista de tarefas) e 3.5 (troca entre os dois). Dicionário: campo `conclusaoMarcadaEm` da ação (4.2) e regras do quadro em `situacoes` (4.1.8) e `situacaoPersonalizada` (seções 4, 8, 10, 12 e 16.1) |

@@ -24,7 +24,7 @@ import { hojeLocal } from "../dados.js";
 import { copiarTexto } from "./arquivos.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
 import { opcoesDoCalculo, usaSimulacao, usaDependencias } from "../modelos.js";
-import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO } from "../situacoes.js";
+import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO, ehQuadro } from "../situacoes.js";
 import { resumoDoModelo } from "./modelo-espaco.js";
 import { CORES_ETIQUETA, etiquetasDe, tomDaCor, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { pendenciasParaEncerrar } from "../entregas.js";
@@ -537,7 +537,36 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
    * houver ações nela) e acrescentar (Enter). Sem dependências, o nome da inicial é editável.
    */
   let retirandoSituacao = null;
+  /**
+   * Quadro de tarefas (revisão de 27/10/2026, decisão do responsável): a seção vira "Colunas", todas iguais e
+   * editáveis, sem Concluída e sem ícones fixos; fica pelo menos uma.
+   */
+  function colunasHtml() {
+    const lista = personalizadasDe(espaco);
+    const pode = store.podeGravar;
+    const nelas = (id) => acoes.filter((a) => (a.situacaoPersonalizada === id || (!lista.some((x) => x.id === a.situacaoPersonalizada) && lista[0]?.id === id))).length;
+    const destino = (id) => lista.find((x) => x.id !== id)?.nome ?? "";
+    return `<details class="config" data-secao="situacoes"${aberta("situacoes")}>
+      <summary><h3>Colunas</h3><span class="n">${lista.length}</span></summary>
+      <p class="tec">As colunas do quadro, nesta ordem. A tarefa concluída fica na coluna em que está, com a caixinha marcada.</p>
+      <ol class="lista-situacoes">
+        ${lista.map((x, i) => `<li class="situacao-personalizada">
+          ${pode ? `<input data-nome-situacao="${esc(x.id)}" maxlength="40" value="${esc(x.nome)}" aria-label="Nome da coluna">` : `<span>${esc(x.nome)}</span>`}
+          ${pode ? `<span class="botoes-situacao">
+            <button type="button" class="tirar" data-mover-situacao="${i}" data-sentido="-1" aria-label="Subir"${i === 0 ? " disabled" : ""}>↑</button>
+            <button type="button" class="tirar" data-mover-situacao="${i}" data-sentido="1" aria-label="Descer"${i === lista.length - 1 ? " disabled" : ""}>↓</button>
+            <button type="button" class="tirar" data-retirar-situacao="${esc(x.id)}" aria-label="Retirar ${esc(x.nome)}"${lista.length <= 1 ? ' disabled title="O quadro precisa de pelo menos uma coluna"' : ""}>${ICONES.fechar}</button></span>` : ""}
+          ${retirandoSituacao === x.id ? `<div class="aviso-confirmar">
+            <p>${nelas(x.id) ? `${nelas(x.id)} ${plural(nelas(x.id), "tarefa vai", "tarefas vão")} para ${esc(destino(x.id))}.` : "Nenhuma tarefa está nela."} Retirar “${esc(x.nome)}”?</p>
+            <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-situacao="${esc(x.id)}">Retirar</button>
+              <button type="button" class="botao" data-cancelar-retirar-situacao>Cancelar</button></div></div>` : ""}
+        </li>`).join("")}
+      </ol>
+      ${pode ? `<input class="nova-situacao" data-nova-situacao maxlength="40" placeholder="Nova coluna: escreva e tecle Enter" aria-label="Nova coluna">` : ""}
+    </details>`;
+  }
   function situacoesHtml() {
+    if (ehQuadro(espaco)) return colunasHtml();
     const lista = personalizadasDe(espaco);
     const pode = store.podeGravar;
     const nelas = (id) => acoes.filter((a) => a.situacaoPersonalizada === id && !a.concluidaEm).length;

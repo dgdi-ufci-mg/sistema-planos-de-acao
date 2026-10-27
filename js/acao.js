@@ -68,7 +68,7 @@ export function resumoDasEstimativas(acao, calculada) {
 export function pendencias(acao, acoes, hoje) {
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   return {
-    anteriores: (acao.dependeDe ?? []).filter((c) => porNumero.has(c) && !porNumero.get(c).concluidaEm),
+    anteriores: (acao.dependeDe ?? []).filter((c) => porNumero.has(c) && !porNumero.get(c).concluidaEm && !porNumero.get(c).conclusaoMarcadaEm),
     dataMinima: acao.naoAntesDe && acao.naoAntesDe > hoje ? acao.naoAntesDe : null,
   };
 }
