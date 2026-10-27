@@ -15,6 +15,7 @@
  *   espacos/{id}/retratos/{id}      retrato (seção 4.4): cabeçalho; as ações em .../acoes/{numero}
  *   sistema/calendario              calendário geral
  *   sistema/administradores         e-mails dos Administradores do Sistema (passo 2.3), editado só no console
+ *   usuarios/{email}                usuários cadastrados pela tela do Administrador do Sistema (27/10/2026)
  *   sistema/estrategia              camadas do catálogo da estratégia (passo 2.5)
  *   instrumentos/{id}               instrumentos da estratégia (PEI, PDI, políticas…), comuns a todos os espaços
  *   itensEstrategicos/{id}          itens do catálogo da estratégia, com as ligações aos superiores
@@ -322,6 +323,14 @@ export function criarBancoFirestore(db) {
     },
     async gravarCalendarioGeral(dados) {
       await calendarioRef().set(copia(dados));
+    },
+    // --- usuários cadastrados pela tela (27/10/2026; seção 4.1.13): coleção usuarios, id = e-mail ---
+    async listarUsuarios() {
+      const q = await db.collection("usuarios").get();
+      return q.docs.map((d) => d.data());
+    },
+    async gravarUsuario(email, dados) {
+      await db.collection("usuarios").doc(email).set(copia({ ...dados, email }));
     },
     // --- estratégia: catálogo do desdobramento (passo 2.5; seção 4.11) ---
     async lerModeloEstrategia() {

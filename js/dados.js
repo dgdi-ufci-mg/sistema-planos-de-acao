@@ -508,6 +508,12 @@ export function criarStore(banco, opcoes = {}) {
       });
     },
     // --- estratégia: catálogo do desdobramento do PEI/PDI (passo 2.5; seção 4.11) ---
+    /** E-mails dos Administradores do Sistema (para quem entrou), em minúsculas. */
+    async listarAdministradoresDoSistema() {
+      if (opcoes.exigirLogin && !usuario) return [];
+      const e = (await banco.lerAdministradoresDoSistema())?.emails;
+      return (Array.isArray(e) ? e : []).map(emailNormal);
+    },
     /** Gestor da Estratégia: provisoriamente, o Administrador do Sistema. */
     ehGestorDaEstrategia: () => store.ehAdministradorDoSistema(),
     /** Catálogo inteiro: modelo (ou null), camadas (as gravadas ou as de partida), instrumentos e itens ativos. */
@@ -1082,6 +1088,27 @@ export function criarStore(banco, opcoes = {}) {
       validarDatasExcluidas(datasExcluidas, recusarDesconhecidos);
       const ordenadas = [...datasExcluidas].sort((a, b) => a.data.localeCompare(b.data));
       await banco.gravarCalendarioGeral({ datasExcluidas: ordenadas, alteradoEm: agora(), alteradoPor: usuario });
+    },
+
+    // --- usuários (27/10/2026; seção 4.1.13) ---
+    /**
+     * Usuários cadastrados pela tela do Administrador do Sistema, em ordem de e-mail. A conta de acesso fica no
+     * Firebase Authentication, que o navegador não lista; esta lista é o registro do sistema.
+     */
+    async listarUsuarios() {
+      if (opcoes.exigirLogin && !usuario) return [];
+      return (await banco.listarUsuarios()).sort((a, b) => a.email.localeCompare(b.email));
+    },
+    /** Registra (ou atualiza o nome de) um usuário. Só o Administrador do Sistema. */
+    async registrarUsuario(email, { nome = "" } = {}) {
+      if (!(await store.ehAdministradorDoSistema())) throw new ErroDeDados("sem-permissao", "Só o Administrador do Sistema cadastra usuários.");
+      const e = emailNormal(email ?? "");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new ErroDeDados("email-invalido", "Informe um e-mail válido.");
+      const atual = (await banco.listarUsuarios()).find((u) => u.email === e);
+      const dados = { email: e, nome: String(nome).trim().slice(0, 80), cadastradoEm: atual?.cadastradoEm ?? agora(), cadastradoPor: atual?.cadastradoPor ?? usuario };
+      if (!dados.nome) delete dados.nome;
+      await banco.gravarUsuario(e, dados);
+      return e;
     },
 
     // --- tempo real ---

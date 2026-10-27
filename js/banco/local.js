@@ -32,6 +32,8 @@ export function criarBancoLocal() {
   /** Calendário geral, o mesmo para todos os espaços. */
   let calendario = null;
   let administradoresDoSistema = null;
+  /** Usuários cadastrados pela tela (27/10/2026; seção 4.1.13): e-mail → cadastro. */
+  const usuarios = new Map();
   /** Estratégia (passo 2.5): o modelo (camadas) e as coleções do catálogo, comuns a todos os espaços. */
   let modeloEstrategia = null;
   const colecoes = { instrumentos: new Map(), itensEstrategicos: new Map() };
@@ -334,6 +336,13 @@ export function criarBancoLocal() {
     },
     async gravarAdministradoresDoSistema(dados) {
       administradoresDoSistema = copia(dados);
+    },
+    // --- usuários cadastrados pela tela (27/10/2026; seção 4.1.13) ---
+    async listarUsuarios() {
+      return [...usuarios.values()].map(copia);
+    },
+    async gravarUsuario(email, dados) {
+      usuarios.set(email, copia({ ...dados, email }));
     },
 
     // --- estratégia: catálogo do desdobramento (passo 2.5; seção 4.11) ---

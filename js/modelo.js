@@ -25,6 +25,8 @@ export const CAMPOS = Object.freeze({
   nomeacao: ["email", "por", "em"],
   /** Administradores do Sistema (passo 2.3): documento sistema/administradores, editado só no console. */
   administradoresDoSistema: ["emails"],
+  /** Usuários cadastrados pela tela do Administrador do Sistema (27/10/2026): coleção usuarios, id = e-mail. */
+  usuario: ["email", "nome", "cadastradoEm", "cadastradoPor"],
   /** Estratégia (passo 2.5): modelo do catálogo, documento sistema/estrategia. */
   modeloEstrategia: ["camadas", "alteradoEm", "alteradoPor"],
   camada: ["id", "nome", "plural", "opcional"],

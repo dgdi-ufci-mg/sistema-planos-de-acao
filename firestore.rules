@@ -209,5 +209,11 @@ service cloud.firestore {
       allow read: if logado();
       allow write: if false;
     }
+    // usuários cadastrados pela tela (27/10/2026): lidos por quem entrou; gravados só pelo Administrador do Sistema,
+    // com o id igual ao e-mail; ninguém apaga
+    match /usuarios/{email} {
+      allow read: if logado();
+      allow create, update: if adminSistema() && request.resource.data.email == email;
+    }
   }
 }

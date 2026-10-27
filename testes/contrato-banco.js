@@ -202,6 +202,17 @@ export function testarContratoDoBanco(nome, criarBanco) {
       assert.equal(avisos, 2);
     });
 
+    it("usuários: grava pelo e-mail, regrava sem duplicar e lista (27/10/2026)", async () => {
+      const banco = criarBanco();
+      assert.deepEqual(await banco.listarUsuarios(), []);
+      await banco.gravarUsuario("a@x.br", { nome: "Ana" });
+      await banco.gravarUsuario("a@x.br", { nome: "Ana Lima" });
+      await banco.gravarUsuario("b@x.br", {});
+      const lista = await banco.listarUsuarios();
+      assert.equal(lista.length, 2);
+      assert.equal(lista.find((u) => u.email === "a@x.br").nome, "Ana Lima");
+    });
+
     it("recusa alterar o que não existe", async () => {
       const banco = criarBanco();
       await assert.rejects(banco.alterarEspaco("nao-existe", { nome: "x" }), { codigo: "nao-encontrado" });

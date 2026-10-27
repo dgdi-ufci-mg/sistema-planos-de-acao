@@ -134,7 +134,7 @@ async function atualizarTopo() {
 
 const entrar = () => abrirEntrar({ acesso });
 /** "Configurar o sistema"; depois de restaurar uma cópia, reabre o sistema pelo começo. */
-const sistema = (foco = null) => abrirConfiguracaoDoSistema({ store, hoje, foco, aoRestaurar: async () => {
+const sistema = (foco = null) => abrirConfiguracaoDoSistema({ store, hoje, foco, acesso, aoRestaurar: async () => {
   fecharPainel();
   const [primeiro] = (await espacosDoBanco()).meus;
   if (!primeiro || !(await abrirEspaco(primeiro.id))) boasVindas();
