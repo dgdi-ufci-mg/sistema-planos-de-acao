@@ -593,11 +593,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function ajustarBarra() {
     const topo = ferramentas.closest(".topo");
     if (!topo) return;
+    /* mede só os controles da barra (nome do espaço, menus, chip e Nova ação), e não os grupos: um menu aberto
+       (o painel que desce dele) alargava o grupo e fazia os nomes sumirem (correção de 27/10/2026) */
     const encostam = () => {
-      const gs = [...ferramentas.querySelectorAll(":scope > .topo-esquerda, :scope > .topo-centro, :scope > .topo-direita")].filter((g) => g.getClientRects().length);
-      const r = gs.map((g) => g.getBoundingClientRect()).sort((a, b) => a.left - b.left);
-      return r.some((a, i) => i > 0 && r[i - 1].right + 8 > a.left) || gs.some((g) => g.scrollWidth > g.clientWidth + 1)
-        || [...ferramentas.querySelectorAll(".menu-topo, .chip-atrasadas")].some((el) => el.scrollWidth > el.clientWidth + 1);
+      const els = [...ferramentas.querySelectorAll(".titulo-barra, .menu-topo, .chip-atrasadas, .botao[data-nova]")].filter((el) => el.getBoundingClientRect().width > 2); // o nome escondido (só para leitor de tela) mede 1 px
+      const grupo = (el) => el.closest(".topo-esquerda, .topo-centro, .topo-direita");
+      const r = els.map((el) => ({ g: grupo(el), ...el.getBoundingClientRect().toJSON() })).sort((a, b) => a.left - b.left);
+      /* dentro de um grupo, os menus ficam colados de propósito; entre grupos, pede 8 px de folga; e nunca sobrepor */
+      return r.some((a, i) => i > 0 && (r[i - 1].right > a.left || (r[i - 1].g !== a.g && r[i - 1].right + 8 > a.left)))
+        || els.some((el) => !el.matches(".titulo-barra") && el.scrollWidth > el.clientWidth + 1);
     };
     topo.classList.remove("barra-curta", "barra-icones");
     if (!encostam()) return;
