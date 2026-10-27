@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 27/10/2026 (versão 205.1 da página)
+**Última atualização deste documento:** 27/10/2026 (versão 206 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -136,7 +136,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 
 ### 3.3 Fluxo de trabalho
 
-O sistema evolui **passo a passo**, seguindo a regra "uma mudança por vez" do AGENTS.md, na ordem da seção 12. Cada passo é testado, documentado e conferido pelo responsável antes do seguinte.
+O sistema evolui na ordem da seção 12. Desde 27/10/2026 (decisão do responsável), os pedidos podem ser feitos **em bloco**: cada mudança é testada, documentada e tem o seu commit, e o responsável confere o bloco depois.
 
 - **Onde:** a branch `main` é publicada pelo GitHub Pages em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. Até a troca (23/10/2026), a versão 2 foi construída na pasta `/v2/`, ao lado da versão 1; hoje ela está na raiz, e `/v2/` só redireciona.
 - **Dados:** até o passo 1.14, a versão 2 usou só o banco em memória e o espaço de exemplo. Desde então usa **um projeto próprio no Firebase**, `sextante-v2` (decisão do responsável em 19/10/2026), que passou a ser o banco do sistema na troca. O projeto da versão 1 (`sistema-planos-de-acao`) deixou de ser usado, e os dados dele foram descartados (decisão do responsável, 23/10/2026).
@@ -2095,3 +2095,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 204 | Cronograma com rolagem própria: cabeçalho das datas parado ao rolar para baixo e barra horizontal sempre à vista (pedido do responsável; seção 8.4) |
 | 205 | Tema claro ou escuro escolhido em cada aparelho, no menu da conta (Automático, Claro, Escuro), guardado no navegador (pedido do responsável; seções 3.1 e 8.0) |
 | 205.1 | Cronograma: a altura da área desconta o texto de ajuda e a margem do pé da página, para a página não rolar em janelas baixas (relatado na sessão; seção 8.4) |
+| 206 | Regra de trabalho: os pedidos podem ser feitos em bloco, cada mudança com o seu commit, e conferidos depois pelo responsável (decisão do responsável; AGENTS.md e seção 3). Sem mudança no sistema |

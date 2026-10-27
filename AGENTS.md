@@ -28,7 +28,7 @@ Além disso, ele tem estes atributos:
 
 ## 2. Regras de trabalho (obrigatórias)
 
-1. **Uma mudança por vez.** Cada pedido vira uma mudança pequena, testada e publicada isoladamente. Não junte melhorias não pedidas, refatorações oportunistas ou "aproveitei e corrigi também". Se notar outro problema, **relate** e espere a decisão.
+1. **Mudanças em bloco, só as pedidas.** Os pedidos de uma mesma conversa podem ser feitos juntos, testados e publicados de uma vez; o responsável confere depois (decisão do responsável, 27/10/2026). Cada mudança tem o seu commit. Não junte melhorias não pedidas, refatorações oportunistas ou "aproveitei e corrigi também". Se notar outro problema, **relate** e espere a decisão.
 2. **Pergunte antes de decidir pelo usuário.** Isso vale para decisões de metodologia, de texto da interface ou de comportamento que possam ir para mais de um lado. Quando a escolha for técnica e óbvia, decida e diga o que decidiu.
 3. **Toda mudança atualiza a documentação técnica** (`docs/documentacao-tecnica.md`), no mesmo commit (ver seção 6).
 4. **O manual do usuário está congelado** (`docs/manual-do-usuario.md`). Não o altere até o responsável liberar.
@@ -36,7 +36,7 @@ Além disso, ele tem estes atributos:
 6. **Depois de publicar, confira o site no ar.** Se houver navegador disponível, abra o endereço oficial e confirme a mudança, recarregando se preciso: o GitHub Pages leva 1 a 2 minutos. Diga ao usuário o que conferir.
 7. **Avaliações e listas de sugestões não são ordens.** Exemplo: o arquivo `claude/avaliacao-v12.md`, que fica no projeto do claude.ai e não no repositório. Ele foi escrito para a versão 12 e não foi verificado. Só aplique um item quando o responsável pedir aquele item. Antes, confirme no código atual se o problema existe.
 8. **Pontos para reavaliação.** Antes de mexer nas regras de liberação das ações ou de estimativas, leia a seção 14 da documentação técnica ("Pontos para reavaliação"). São decisões provisórias que o responsável quer rever.
-9. **Um passo por vez.** Siga a ordem do plano de trabalho (seção 12 da documentação técnica): um passo por mudança, testado, documentado e conferido pelo responsável antes do seguinte. Ajustes de ordem ou de escopo são combinados com o responsável e registrados lá.
+9. **Plano de trabalho.** Siga a ordem do plano de trabalho (seção 12 da documentação técnica). Vários passos podem ir no mesmo bloco, cada um testado e documentado; a conferência do responsável pode vir depois. Ajustes de ordem ou de escopo são combinados com o responsável e registrados lá.
 
 ## 3. Como se comunicar com quem pede
 
