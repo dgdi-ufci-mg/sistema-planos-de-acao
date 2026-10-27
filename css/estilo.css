@@ -238,6 +238,15 @@ body::before {
 @keyframes surgir-conta { from { opacity: 0; transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .conta-menu { animation: none; } }
 .conta-menu .tec { margin: 0 0 4px; }
+/* tema deste aparelho (27/10/2026): três botões lado a lado no menu da conta */
+.conta-tema { display: flex; flex-direction: column; gap: 4px; padding: 4px 8px 8px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
+.conta-tema > span { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.conta-tema .alternador { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; box-sizing: border-box; }
+.conta-tema .alternador::before { width: calc((100% - 6px) / 3); }
+.conta-tema .alternador:has(button:nth-child(2)[aria-pressed="true"])::before { transform: translateX(100%); }
+.conta-tema .alternador:has(button:nth-child(3)[aria-pressed="true"])::before { transform: translateX(200%); }
+.conta-menu .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 2px; font-size: .8rem; text-align: center; }
+.conta-menu .conta-tema .alternador button:hover { background: none; }
 .conta-menu button, .lateral-acao {
   display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; padding: 7px 8px;
   border-radius: var(--raio); text-align: left; cursor: pointer; color: var(--muted); font-weight: 600;

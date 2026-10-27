@@ -12,6 +12,7 @@
  * - No computador, o menu fica ao lado do conteúdo e pode ser recolhido (lembrado neste aparelho);
  *   no celular, abre por cima, com fundo escurecido, e fecha ao escolher algo.
  */
+import { TEMAS, lerTema, escolherTema } from "../tema.js";
 import { ICONES } from "../icones.js";
 import { NOME } from "../identidade.js";
 import { esc } from "../formato.js";
@@ -85,6 +86,13 @@ function ligar() {
       conta.setAttribute("aria-expanded", String(!menu.hidden));
       return;
     }
+    /* tema deste aparelho (27/10/2026): troca na hora, sem fechar o menu */
+    const tema = e.target.closest("[data-tema]");
+    if (tema) {
+      const escolhido = escolherTema(tema.dataset.tema);
+      for (const b of lateral.querySelectorAll("[data-tema]")) b.setAttribute("aria-pressed", String(b.dataset.tema === escolhido));
+      return;
+    }
     const espaco = e.target.closest("[data-espaco]");
     const configurar = e.target.closest("[data-configurar]");
     const item = e.target.closest("[data-item]");
@@ -145,6 +153,8 @@ export function mostrarNavegacao(opcoes) {
         <span class="conta-texto">${usuario.nome ? `<b>${esc(usuario.nome)}</b>` : ""}<small>${esc(usuario.email)}</small></span>${ICONES.abrir}</button>
       <div class="conta-menu" id="menu-conta" data-menu-conta hidden>
         ${usuario.nome ? "" : '<p class="tec">Sem responsável ligado a este e-mail neste espaço.</p>'}
+        <div class="conta-tema" role="group" aria-label="Tema neste aparelho"><span>Tema</span>
+          <div class="alternador">${TEMAS.map(([v, nome]) => `<button type="button" data-tema="${v}" aria-pressed="${v === lerTema()}">${nome}</button>`).join("")}</div></div>
         <button type="button" data-item="trocarSenha">Trocar senha</button>
         <button type="button" data-item="sair">Sair</button>
       </div>`
