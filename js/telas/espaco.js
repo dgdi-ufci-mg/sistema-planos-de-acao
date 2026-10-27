@@ -1338,7 +1338,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       const inferior = document.querySelector(".barra-inferior");
       const pe = inferior && getComputedStyle(inferior).display !== "none" ? inferior.getBoundingClientRect().height : 0;
       const topo = quadro.getBoundingClientRect().top + window.scrollY;
-      quadro.style.setProperty("--altura-quadro", `${Math.max(320, innerHeight - Math.max(0, topo - window.scrollY) - pe - 20)}px`);
+      /* no computador, o quadro vai até o pé da tela, com a barra de rolagem para o lado colada embaixo */
+      const folga = innerWidth > 640 ? 4 : 20;
+      quadro.style.setProperty("--altura-quadro", `${Math.max(320, innerHeight - Math.max(0, topo - window.scrollY) - pe - folga)}px`);
     };
     medir();
     addEventListener("resize", medir);
