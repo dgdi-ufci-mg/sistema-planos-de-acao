@@ -47,3 +47,26 @@ describe("Visualização lembrada", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 });
+
+describe("Menu da conta", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  test("abre numa caixinha por cima, sem empurrar a barra lateral; clicar fora fecha", async () => {
+    const p = await sessao.abrir({ largura: 1280 });
+    /* sem login nos testes: a conta é montada como a barra lateral a monta com alguém entrado */
+    await p.evaluate(() => {
+      document.querySelector(".lateral-conta").innerHTML = `<button class="conta" type="button" data-abrir-conta aria-expanded="false" aria-controls="menu-conta">
+        <span class="selo-conta">AS</span><span class="conta-texto"><b>Ana Souza</b><small>ana@ufci.edu.br</small></span></button>
+        <div class="conta-menu" id="menu-conta" data-menu-conta hidden><button type="button">Trocar senha</button><button type="button">Sair</button></div>`;
+    });
+    const antes = await p.locator(".lateral-buscar").boundingBox();
+    await p.click("[data-abrir-conta]");
+    await assentar(p, 300);
+    assert.ok(await p.locator("[data-menu-conta]").isVisible());
+    assert.equal((await p.locator(".lateral-buscar").boundingBox()).y, antes.y);
+    await p.mouse.click(800, 400);
+    assert.equal(await p.locator("[data-menu-conta]").isVisible(), false);
+  });
+});

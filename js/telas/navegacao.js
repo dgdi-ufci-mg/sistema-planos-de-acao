@@ -90,7 +90,17 @@ function ligar() {
     if (espaco) { fecharNoCelular(); acoes.aoAbrir(espaco.dataset.espaco); return; }
     if (item) { fecharNoCelular(); acoes[item.dataset.item](); }
   });
+  /* menu da conta aberto (caixinha por cima): clicar fora ou Esc fecha */
+  const fecharConta = () => {
+    const menu = lateral.querySelector("[data-menu-conta]");
+    if (!menu || menu.hidden) return false;
+    menu.hidden = true;
+    lateral.querySelector("[data-abrir-conta]")?.setAttribute("aria-expanded", "false");
+    return true;
+  };
+  document.addEventListener("click", (e) => { if (!e.target.closest?.(".lateral-conta")) fecharConta(); });
   document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && fecharConta()) { e.stopPropagation(); return; }
     if (e.key === "Escape" && document.body.classList.contains("lateral-aberta") && !document.querySelector(".camada")) alternar(false);
     /* Ctrl+B (⌘B no Mac) abre e recolhe a barra lateral, como no VS Code e no Notion; num texto formatável, continua sendo negrito */
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "b" && !e.target.isContentEditable && !document.querySelector(".camada")) {
