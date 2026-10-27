@@ -147,4 +147,38 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.equal(await item(p, "Atualizar o currículo").count(), 0, "na lista, voltam a ficar escondidas");
     assert.deepEqual(p.erros, []);
   });
+
+  test("colunas como no Trello: largura fixa, rolagem própria e arrastar a coluna para outro lugar", async () => {
+    const p = await abrirQuadro(sessao, { largura: 1280, altura: 640 });
+    const primeira = await p.locator(".coluna").first().getAttribute("data-coluna");
+    for (let i = 1; i <= 9; i++) {
+      const campo = p.locator(`[data-rapida="quadro-${primeira}"] input`).first();
+      await campo.fill(`Tarefa extra ${i}`);
+      await campo.press("Enter");
+      await p.waitForTimeout(100);
+    }
+    await assentar(p);
+    const medidas = await p.evaluate(() => {
+      const c = document.querySelector(".quadro .coluna");
+      const cartoes = c.querySelector(".coluna-cartoes");
+      return { largura: c.getBoundingClientRect().width, rola: cartoes.scrollHeight > cartoes.clientHeight + 10,
+        cabe: c.getBoundingClientRect().bottom <= innerHeight, cartao: c.querySelector(".cartao-quadro").getBoundingClientRect().height };
+    });
+    assert.equal(Math.round(medidas.largura), 272);
+    assert.ok(medidas.rola, "os cartões rolam dentro da coluna");
+    assert.ok(medidas.cabe, "a coluna termina dentro da tela");
+    assert.ok(medidas.cartao > 50, "os cartões não são espremidos");
+    /* arrastar o título de A fazer para depois de Fazendo */
+    const h = await p.locator(".quadro .coluna > header").first().boundingBox();
+    await p.mouse.move(h.x + 30, h.y + h.height / 2);
+    await p.mouse.down();
+    for (let i = 1; i <= 20; i++) { await p.mouse.move(h.x + 30 + i * 18, h.y + h.height / 2 + 4); await p.waitForTimeout(16); }
+    assert.equal(await p.locator(".coluna.levantada").count(), 1, "a coluna se levanta enquanto é arrastada");
+    await p.mouse.up();
+    await assentar(p, 700);
+    const titulos = (await p.locator(".quadro .coluna > header").allInnerTexts()).map((t) => t.split("\n")[0].trim());
+    assert.deepEqual(titulos, ["Fazendo", "A fazer", "Em revisão"]);
+    assert.equal(await p.locator(".camada.aberta, .nome-coluna").count(), 0, "soltar não abre o nome para renomear");
+    assert.deepEqual(p.erros, []);
+  });
 });

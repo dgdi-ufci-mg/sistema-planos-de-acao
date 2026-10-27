@@ -981,9 +981,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
     }
     const rolagemDoQuadro = lista.querySelector(".quadro")?.scrollLeft ?? 0; // o redesenho não volta o quadro para a primeira coluna
+    /* nem a rolagem de cada coluna (rolagem própria, como no Trello; 27/10/2026) */
+    const rolagemDasColunas = new Map([...lista.querySelectorAll(".coluna[data-coluna] .coluna-cartoes")].map((c) => [c.closest(".coluna").dataset.coluna, c.scrollTop]));
     lista.innerHTML = corpo;
     const quadro = lista.querySelector(".quadro");
     if (quadro) quadro.scrollLeft = rolagemDoQuadro;
+    if (quadro) {
+      for (const c of quadro.querySelectorAll(".coluna[data-coluna] .coluna-cartoes")) c.scrollTop = rolagemDasColunas.get(c.closest(".coluna").dataset.coluna) ?? 0;
+      medirAlturaDoQuadro(quadro);
+    }
     if (quadro) ligarPontosDoQuadro(quadro);
     lista.toggleAttribute("data-puxadores", ui.modo === "lista" && puxadores());
     const c = colunas();
@@ -1154,9 +1160,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const ordem = personalizadasDe(espaco).map((x) => x.id);
     /* larguras: colunas iguais; a faixa do "+" estreita; a coluna nova aberta, fixa */
     const larguras = colunas.flatMap(({ chave }) => [
-      ...(chave === "concluida" && podeMexerNasColunas() ? [criandoAqui(null) ? "248px" : "40px"] : []),
-      "minmax(220px, 1fr)",
-      ...(coluna.criando?.depois === chave ? ["248px"] : []),
+      ...(chave === "concluida" && podeMexerNasColunas() ? [criandoAqui(null) ? "var(--largura-coluna)" : "40px"] : []),
+      "var(--largura-coluna)",
+      ...(coluna.criando?.depois === chave ? ["var(--largura-coluna)"] : []),
     ]);
     return `<div class="quadro" style="grid-template-columns:${larguras.join(" ")}">${colunas.map(({ chave, titulo }) => {
       const daColuna = ls.filter((l) => l.fluxo === chave);
@@ -1178,7 +1184,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           <button type="button" role="menuitem" class="perigo" data-retirar-coluna="${esc(chave)}">Retirar a coluna</button>
         </div>` : ""}</span>` : "";
       return `${chave === "concluida" ? novaColunaHtml() : ""}<section class="coluna" data-coluna="${esc(chave)}" aria-label="${esc(titulo)}">
-        <header${editavel && coluna.editando !== chave ? ` draggable="true" data-arrastar-coluna="${esc(chave)}" class="arrastavel"` : ""}><span class="${classe}">${ICONES[ic]}</span>${nome}<span class="n">${nelas}</span>${menu}</header>
+        <header${editavel && coluna.editando !== chave ? ` data-arrastar-coluna="${esc(chave)}" class="arrastavel"` : ""}><span class="${classe}">${ICONES[ic]}</span>${nome}<span class="n">${nelas}</span>${menu}</header>
         ${coluna.retirando === chave ? `<div class="aviso-confirmar"><p>${nelas ? `${nelas} ${plural(nelas, `${termos(espaco).acao} volta`, `${termos(espaco).acoes} voltam`)} para ${esc(nomeInicial(espaco))}.` : "A coluna está vazia."} Retirar “${esc(titulo)}”?</p>
           <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-coluna="${esc(chave)}">Retirar</button>
           <button type="button" class="botao" data-cancelar-coluna>Cancelar</button></div></div>` : ""}
@@ -1201,8 +1207,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (ls.some((l) => l.fluxo === "naoLiberada")) colunas.unshift({ chave: "naoLiberada", titulo: "Não liberadas" });
     const ordem = personalizadasDe(espaco).map((x) => x.id);
     const mexe = podeMexerNasColunas();
-    const larguras = colunas.flatMap(({ chave }) => ["minmax(220px, 1fr)", ...(coluna.criando?.depois === chave ? ["248px"] : [])]);
-    if (mexe) larguras.push(criandoAqui(null) ? "248px" : "40px");
+    const larguras = colunas.flatMap(({ chave }) => ["var(--largura-coluna)", ...(coluna.criando?.depois === chave ? ["var(--largura-coluna)"] : [])]);
+    if (mexe) larguras.push(criandoAqui(null) ? "var(--largura-coluna)" : "40px");
     return `<div class="quadro quadro-tarefas" style="grid-template-columns:${larguras.join(" ")}">${colunas.map(({ chave, titulo }) => {
       const daColuna = ls.filter((l) => l.fluxo === chave);
       const propria = chave !== "naoLiberada";
@@ -1222,7 +1228,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         </div>` : ""}</span>` : "";
       const destino = ordem.filter((id) => id !== chave).map((id) => personalizadasDe(espaco).find((x) => x.id === id)?.nome)[0];
       return `<section class="coluna" data-coluna="${esc(chave)}" aria-label="${esc(titulo)}">
-        <header${editavel && coluna.editando !== chave ? ` draggable="true" data-arrastar-coluna="${esc(chave)}" class="arrastavel"` : ""}>${nome}<span class="n">${nelas}</span>${menu}</header>
+        <header${editavel && coluna.editando !== chave ? ` data-arrastar-coluna="${esc(chave)}" class="arrastavel"` : ""}>${nome}<span class="n">${nelas}</span>${menu}</header>
         ${coluna.retirando === chave ? `<div class="aviso-confirmar"><p>${nelas ? `${nelas} ${plural(nelas, `${termos(espaco).acao} vai`, `${termos(espaco).acoes} vão`)} para ${esc(destino ?? "")}.` : "A coluna está vazia."} Retirar “${esc(titulo)}”?</p>
           <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-coluna="${esc(chave)}">Retirar</button>
           <button type="button" class="botao" data-cancelar-coluna>Cancelar</button></div></div>` : ""}
@@ -1316,48 +1322,100 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       priorizar(todos[i], sem[j - 1] ?? null, sem[j] ?? null);
     });
   }
-  /* arrastar o título de uma coluna personalizada muda a ordem delas (24/10/2026; no computador) */
-  let colunaArrastada = null;
-  function ligarArrasteDeColunas() {
-    const alvoDe = (e) => {
-      const c = e.target.closest?.(".coluna[data-coluna]");
-      return c && colunaArrastada && personalizadasDe(espaco).some((x) => x.id === c.dataset.coluna) ? c : null;
+  /**
+   * Altura das colunas do quadro: vão até o pé da tela, e cada uma rola por dentro, com uma barra discreta (como no
+   * Trello; 27/10/2026, pedido do responsável). Mede onde o quadro começa e, no celular, desconta a barra de baixo.
+   */
+  function medirAlturaDoQuadro(quadro) {
+    const medir = () => {
+      if (!quadro.isConnected) { removeEventListener("resize", medir); return; }
+      const inferior = document.querySelector(".barra-inferior");
+      const pe = inferior && getComputedStyle(inferior).display !== "none" ? inferior.getBoundingClientRect().height : 0;
+      const topo = quadro.getBoundingClientRect().top + window.scrollY;
+      quadro.style.setProperty("--altura-quadro", `${Math.max(320, innerHeight - Math.max(0, topo - window.scrollY) - pe - 20)}px`);
     };
-    const limpar = () => lista.querySelectorAll(".coluna.antes, .coluna.depois").forEach((c) => c.classList.remove("antes", "depois"));
-    lista.addEventListener("dragstart", (e) => {
+    medir();
+    addEventListener("resize", medir);
+  }
+
+  /**
+   * Mover colunas arrastando o título (revisão de 27/10/2026, pedido do responsável: "igual ao Trello"): a coluna
+   * se descola, levemente inclinada e com sombra, e acompanha o ponteiro; as outras deslizam para abrir o lugar; ao
+   * soltar, a coluna assenta no lugar novo. Vale para as colunas que se movem (no Quadro de tarefas, todas; nos
+   * demais espaços, as situações personalizadas). Esc desiste. Com "Reduzir movimento", sem as transições.
+   */
+  function ligarArrasteDeColunas() {
+    let g = null;
+    const LIMIAR = 5;
+    const limpar = () => {
+      if (!g) return;
+      for (const c of g.colunas) { c.style.transition = ""; c.style.transform = ""; c.classList.remove("levantada", "abrindo-lugar"); }
+      document.body.classList.remove("arrastando-coluna-quadro");
+      g = null;
+    };
+    lista.addEventListener("pointerdown", (e) => {
       const h = e.target.closest?.("[data-arrastar-coluna]");
-      if (!h || e.target.closest(".cartao-quadro")) return;
-      colunaArrastada = h.dataset.arrastarColuna;
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", `coluna:${colunaArrastada}`);
-      h.closest(".coluna").classList.add("arrastando-coluna");
+      if (!h || e.button > 0 || e.pointerType === "touch" || e.target.closest("input, a, [data-menu-coluna], .menu-da-coluna")) return; // o título (que renomeia ao clicar) também arrasta
+      const quadro = h.closest(".quadro");
+      const ordem = personalizadasDe(espaco).map((x) => x.id);
+      const colunas = [...quadro.querySelectorAll(":scope > .coluna[data-coluna]")].filter((c) => ordem.includes(c.dataset.coluna));
+      const coluna = h.closest(".coluna");
+      g = { x: e.clientX, y: e.clientY, ativo: false, coluna, colunas, quadro, de: colunas.indexOf(coluna), para: colunas.indexOf(coluna),
+        caixas: colunas.map((c) => c.getBoundingClientRect()), id: e.pointerId, h };
     });
-    lista.addEventListener("dragover", (e) => {
-      const c = alvoDe(e);
-      if (!c) return;
-      e.preventDefault();
-      limpar();
-      if (c.dataset.coluna === colunaArrastada) return;
-      const r = c.getBoundingClientRect();
-      c.classList.add(e.clientX < r.left + r.width / 2 ? "antes" : "depois");
+    lista.addEventListener("pointermove", (e) => {
+      if (!g || e.pointerId !== g.id) return;
+      const dx = e.clientX - g.x;
+      const dy = e.clientY - g.y;
+      if (!g.ativo) {
+        if (Math.hypot(dx, dy) < LIMIAR) return;
+        g.ativo = true;
+        g.h.setPointerCapture(e.pointerId);
+        g.coluna.classList.add("levantada");
+        document.body.classList.add("arrastando-coluna-quadro");
+        for (const c of g.colunas) if (c !== g.coluna) c.classList.add("abrindo-lugar");
+      }
+      g.coluna.style.transform = `translate(${dx}px, ${dy * 0.25}px) rotate(3deg)`;
+      /* lugar novo: pelo centro da coluna levantada contra os centros das outras */
+      const centro = g.caixas[g.de].left + g.caixas[g.de].width / 2 + dx;
+      let para = 0;
+      g.caixas.forEach((r, i) => { if (i !== g.de && centro > r.left + r.width / 2) para = i < g.de ? i + 1 : i; });
+      if (centro < g.caixas[0].left + g.caixas[0].width / 2) para = 0;
+      g.para = Math.max(0, Math.min(g.colunas.length - 1, para));
+      const passo = g.caixas.length > 1 ? g.caixas[1].left - g.caixas[0].left : 0;
+      g.colunas.forEach((c, i) => {
+        if (c === g.coluna) return;
+        const desloca = g.para > g.de && i > g.de && i <= g.para ? -passo : g.para < g.de && i < g.de && i >= g.para ? passo : 0;
+        c.style.transform = desloca ? `translateX(${desloca}px)` : "";
+      });
+      /* perto da borda do quadro, ele rola para o lado */
+      const r = g.quadro.getBoundingClientRect();
+      if (e.clientX > r.right - 60) g.quadro.scrollLeft += 12; else if (e.clientX < r.left + 60) g.quadro.scrollLeft -= 12;
     });
-    lista.addEventListener("drop", (e) => {
-      const c = alvoDe(e);
-      if (!c) return;
-      e.preventDefault();
-      const ids = personalizadasDe(espaco).map((x) => x.id);
-      const antes = c.classList.contains("antes");
-      limpar();
-      if (c.dataset.coluna === colunaArrastada) return;
-      const semEla = ids.filter((id) => id !== colunaArrastada);
-      const pos = semEla.indexOf(c.dataset.coluna) + (antes ? 0 : 1);
-      moverColuna(colunaArrastada, pos);
-    });
-    lista.addEventListener("dragend", () => {
-      limpar();
-      lista.querySelector(".arrastando-coluna")?.classList.remove("arrastando-coluna");
-      colunaArrastada = null;
-    });
+    const soltar = (cancelar) => {
+      if (!g) return;
+      const { ativo, de, para, coluna, caixas } = g;
+      if (!ativo) { g = null; return; }
+      /* a coluna assenta no lugar novo antes de a ordem ser gravada */
+      const destino = caixas[para].left - caixas[de].left;
+      coluna.classList.remove("levantada");
+      coluna.style.transition = "transform var(--mov) var(--mov-curva)";
+      coluna.style.transform = cancelar || para === de ? "" : `translateX(${destino}px)`;
+      const id = coluna.dataset.coluna;
+      const ordem = personalizadasDe(espaco).map((x) => x.id);
+      const posicao = ordem.indexOf(g.colunas[para].dataset.coluna);
+      setTimeout(() => {
+        limpar();
+        if (!cancelar && para !== de) moverColuna(id, posicao);
+      }, reduzirMovimento() ? 0 : 200);
+      /* o clique que vem depois de arrastar não abre o nome para renomear */
+      const engolir = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      lista.addEventListener("click", engolir, { capture: true, once: true });
+      setTimeout(() => lista.removeEventListener("click", engolir, { capture: true }), 300);
+    };
+    lista.addEventListener("pointerup", (e) => { if (g && e.pointerId === g.id) soltar(false); });
+    lista.addEventListener("pointercancel", () => soltar(true));
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && g?.ativo) { e.stopPropagation(); soltar(true); } }, true);
   }
   function ligarArraste() {
     ligarArrasteDeColunas();
