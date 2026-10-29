@@ -25,7 +25,7 @@ describe("Mapa do Strata", { skip: pular }, () => {
         const p = await sessao.abrir({ ...o, ...ABRIR });
         assert.equal(await p.locator('[data-aba="mapa"]').getAttribute("aria-selected"), "true");
         const ids = await p.locator(".mapa-faixa").evaluateAll((f) => f.map((x) => x.dataset.camada));
-        assert.deepEqual(ids, ["objetivoEstrategico", "objetivoDesenvolvimento", "politica", "portfolio", "programa", "planosDeAcao"]);
+        assert.deepEqual(ids, ["missao", "objetivoEstrategico", "objetivoDesenvolvimento", "politica", "portfolio", "programa", "planosDeAcao"]);
         assert.ok(await sem(p), "a página não rola para o lado");
         assert.deepEqual(p.erros, []);
       });
@@ -44,7 +44,7 @@ describe("Mapa do Strata", { skip: pular }, () => {
           return { itens, pontos: document.querySelectorAll(".mapa-no").length, faixas: ordem.length };
         });
         assert.deepEqual(fora.itens, []);
-        assert.equal(fora.pontos, 10, "o catálogo de exemplo tem 10 itens");
+        assert.equal(fora.pontos, 11, "o catálogo de exemplo tem 11 itens (a Missão e mais 10)");
       });
 
       test("todo o conteúdo cabe numa única tela ao abrir, e as linhas não passam rente a outros pontos", async () => {
@@ -68,7 +68,7 @@ describe("Mapa do Strata", { skip: pular }, () => {
       test("as linhas ligam cada item ao que ele vem de", async () => {
         const p = await sessao.abrir({ ...o, ...ABRIR });
         const ligacoes = await p.locator(".mapa-ligacao").evaluateAll((l) => l.map((x) => x.dataset.de));
-        assert.equal(ligacoes.length, 10, "OD1, OD2, POL1, POL2 (duas), PF1, PRG1, PRG2 (duas) e PRG3");
+        assert.equal(ligacoes.length, 12, "OE1 e OE2 (à Missão), OD1, OD2, POL1, POL2 (duas), PF1, PRG1, PRG2 (duas) e PRG3");
         const porItem = Object.values(ligacoes.reduce((m, de) => ({ ...m, [de]: (m[de] ?? 0) + 1 }), {}));
         assert.equal(porItem.filter((n) => n === 2).length, 2, "os dois itens com dois superiores (POL2 e PRG2) têm as duas linhas");
       });

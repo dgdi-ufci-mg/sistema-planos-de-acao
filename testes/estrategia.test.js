@@ -5,7 +5,7 @@ import { criarBancoLocal } from "../js/banco/local.js";
 import { criarBancoFirestore } from "../js/banco/firestore.js";
 import { criarFirestoreFalso } from "./firebase-falso.js";
 import { criarStore } from "../js/dados.js";
-import { CAMADAS_PADRAO, camadasAcima, instrumentoVigente, itemVigente, caminhoAteOTopo, problemaDasCamadas, planejarCatalogo, problemaDosVinculos, opcoesDePrograma, programaDoEspaco } from "../js/estrategia.js";
+import { CAMADAS_PADRAO, avisoDaMissao, camadasAcima, instrumentoVigente, itemVigente, caminhoAteOTopo, problemaDasCamadas, planejarCatalogo, problemaDosVinculos, opcoesDePrograma, programaDoEspaco } from "../js/estrategia.js";
 import { normalizar } from "../js/acao.js";
 import { lerColagem } from "../js/planilha.js";
 import { problemaDoTipo } from "../js/tipos.js";
@@ -35,12 +35,23 @@ describe("Estratégia: regras", () => {
 
   it("superiores: a camada logo acima ou, se ela for opcional, também a de cima dela", () => {
     const c = CAMADAS_PADRAO;
-    assert.deepEqual(camadasAcima(c, "objetivoEstrategico"), []);
+    assert.deepEqual(camadasAcima(c, "missao"), []);
+    assert.deepEqual(camadasAcima(c, "objetivoEstrategico"), ["missao"]); // a Missão é opcional, mas é a mais alta
     assert.deepEqual(camadasAcima(c, "politica"), ["objetivoDesenvolvimento"]);
     assert.deepEqual(camadasAcima(c, "programa"), ["portfolio", "politica"]);
     assert.deepEqual(camadasAcima(c, null), ["programa"]); // os Planos de Ação, abaixo da última camada
-    const opcionalNoFim = [...c.slice(0, 4), { ...c[4], opcional: true }];
+    const opcionalNoFim = [...c.slice(0, 5), { ...c[5], opcional: true }];
     assert.deepEqual(camadasAcima(opcionalNoFim, null), ["programa", "portfolio", "politica"]);
+  });
+
+  it("a Missão é uma camada opcional no topo; mais de um item nela gera aviso", () => {
+    assert.equal(CAMADAS_PADRAO[0].id, "missao");
+    assert.equal(CAMADAS_PADRAO[0].opcional, true);
+    const m = (id, extra = {}) => ({ id, camada: "missao", nome: id, ...extra });
+    assert.equal(avisoDaMissao(CAMADAS_PADRAO, [m("a")]), null);
+    assert.match(avisoDaMissao(CAMADAS_PADRAO, [m("a"), m("b")]), /2 itens na Missão/);
+    assert.equal(avisoDaMissao(CAMADAS_PADRAO, [m("a"), m("b", { excluidoEm: "x" })]), null, "o item excluído não conta");
+    assert.equal(avisoDaMissao(CAMADAS_PADRAO.slice(1), [m("a"), m("b")]), null, "sem a camada, sem aviso");
   });
 
   it("vigência pelo instrumento; sem fim, vale sempre depois do início", () => {
@@ -61,7 +72,7 @@ describe("Estratégia: regras", () => {
   it("recusa camadas vazias, repetidas ou sem nome", () => {
     assert.equal(problemaDasCamadas(CAMADAS_PADRAO), null);
     assert.equal(problemaDasCamadas([]).codigo, "camadas-vazias");
-    assert.equal(problemaDasCamadas([CAMADAS_PADRAO[0], { ...CAMADAS_PADRAO[1], nome: "objetivo estratégico" }]).codigo, "nome-repetido");
+    assert.equal(problemaDasCamadas([CAMADAS_PADRAO[1], { ...CAMADAS_PADRAO[2], nome: "objetivo estratégico" }]).codigo, "nome-repetido");
     assert.equal(problemaDasCamadas([{ id: "a", nome: "A", plural: "", opcional: false }]).codigo, "nome-vazio");
   });
 
@@ -97,7 +108,7 @@ for (const [nome, criarBanco, definirAdmins] of [
       await assert.rejects(ana.criarInstrumento({ nome: "PEI", inicio: "2021-01-01" }), { codigo: "sem-permissao" });
       await assert.rejects(ana.criarItemEstrategico({ camada: "programa", nome: "X" }), { codigo: "sem-permissao" });
       const cat = await ana.lerCatalogo();
-      assert.equal(cat.camadas.length, 5);
+      assert.equal(cat.camadas.length, 6);
     });
 
     it("monta a árvore com ligações várias, pulando a camada opcional", async () => {

@@ -18,12 +18,20 @@
 
 /** Camadas de partida, usadas enquanto o gestor não grava as suas. */
 export const CAMADAS_PADRAO = Object.freeze([
+  { id: "missao", nome: "Missão", plural: "Missão", opcional: true },
   { id: "objetivoEstrategico", nome: "Objetivo Estratégico", plural: "Objetivos Estratégicos", opcional: false },
   { id: "objetivoDesenvolvimento", nome: "Objetivo de Desenvolvimento", plural: "Objetivos de Desenvolvimento", opcional: false },
   { id: "politica", nome: "Política", plural: "Políticas", opcional: false },
   { id: "portfolio", nome: "Portfólio", plural: "Portfólios", opcional: true },
   { id: "programa", nome: "Programa", plural: "Programas", opcional: false },
 ]);
+
+/** Aviso quando a camada da Missão tem mais de um item ativo (a Missão é uma só); null se não há o que avisar. */
+export function avisoDaMissao(camadas, itens) {
+  if (!camadas.some((c) => c.id === "missao")) return null;
+  const n = itens.filter((x) => x.camada === "missao" && !x.excluidoEm).length;
+  return n > 1 ? `Há ${n} itens na Missão, e a Missão é uma só. Revise a camada Missão.` : null;
+}
 
 /** Camadas do modelo gravado, ou as de partida. */
 export const camadasDe = (modelo) => (modelo?.camadas?.length ? modelo.camadas : CAMADAS_PADRAO);

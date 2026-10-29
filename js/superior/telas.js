@@ -20,7 +20,7 @@ import { seloDaSituacao } from "../telas/entregas.js";
 import { esqueletoHtml } from "../telas/esqueleto.js";
 import { criarVistaMapa } from "./mapa.js";
 import {
-  camadasAcima, instrumentoVigente, itemVigente, rotuloDoItem, caminhoAteOTopo, subordinadosDe, itensPorCamada, planejarCatalogo,
+  avisoDaMissao, camadasAcima, instrumentoVigente, itemVigente, rotuloDoItem, caminhoAteOTopo, subordinadosDe, itensPorCamada, planejarCatalogo,
 } from "../estrategia.js";
 
 const ABAS = [["mapa", "Mapa"], ["arvore", "Desdobramento"], ["instrumentos", "Instrumentos"], ["camadas", "Camadas"], ["importar", "Importar"]];
@@ -103,11 +103,16 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     if (no.tipo === "item") abrirItem(no.id);
     else if (!no.restrito) location.assign(`../#/espaco/${encodeURIComponent(no.id)}`);
   }
+  /** Aviso quando há mais de um item na Missão (a Missão é uma só). */
+  function avisoMissaoHtml() {
+    const aviso = avisoDaMissao(cat.camadas, cat.itens);
+    return aviso ? `<p class="aviso-papel">${esc(aviso)}</p>` : "";
+  }
   function mapaHtml() {
     const ferramentas = `<div class="superior-ferramentas">
         <label class="alternar"><input type="checkbox" data-so-vigentes${ui.soVigentes ? " checked" : ""}> Só o que vale hoje</label>
         <button type="button" class="botao discreto" data-ver-lista>Ver como lista</button>
-      </div>`;
+      </div>${avisoMissaoHtml()}`;
     if (!cat.itens.some((x) => !x.excluidoEm && vale(x))) {
       return `${cat.itens.length ? ferramentas : ""}<p class="vazio">${cat.itens.length ? "Nada vale hoje. Desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece pela aba Desdobramento, em “Novo item”, ou pela aba Importar." : "O catálogo ainda está vazio."}</p>`;
     }
@@ -181,7 +186,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     const raizes = ativos.filter((x) => !(x.superiores ?? []).some((s) => itemDe(s))).sort(ordem);
     const termo = normalizar(ui.busca).trim();
     const achados = termo ? ativos.filter((x) => normalizar(`${x.codigo ?? ""} ${x.nome}`).includes(termo)).sort(ordem) : [];
-    return `
+    return `${avisoMissaoHtml()}
       <div class="superior-ferramentas">
         <input type="search" data-busca-arvore placeholder="Buscar pelo código ou pelo nome" aria-label="Buscar no catálogo" value="${esc(ui.busca)}">
         <label class="alternar"><input type="checkbox" data-so-vigentes${ui.soVigentes ? " checked" : ""}> Só o que vale hoje</label>
