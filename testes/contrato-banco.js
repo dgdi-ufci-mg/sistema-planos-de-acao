@@ -109,6 +109,19 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await assert.rejects(banco.mudarChecklist("p1", 9, (l) => l), { codigo: "nao-encontrado" });
     });
 
+    it("preferência pessoal do Mapa: por e-mail, uma não enxerga a outra, e apagar volta ao automático (lote 6)", async () => {
+      const banco = criarBanco();
+      assert.equal(await banco.lerPreferenciaDoMapa("ana@x.br"), null);
+      await banco.gravarPreferenciaDoMapa("ana@x.br", { ordem: { politica: ["b", "a"] }, alteradoEm: "2026-10-29T10:00:00.000Z" });
+      await banco.gravarPreferenciaDoMapa("beto@x.br", { ordem: { politica: ["a", "b"] }, alteradoEm: "2026-10-29T10:01:00.000Z" });
+      assert.deepEqual((await banco.lerPreferenciaDoMapa("ana@x.br")).ordem, { politica: ["b", "a"] });
+      assert.deepEqual((await banco.lerPreferenciaDoMapa("beto@x.br")).ordem, { politica: ["a", "b"] });
+      await banco.apagarPreferenciaDoMapa("ana@x.br");
+      assert.equal(await banco.lerPreferenciaDoMapa("ana@x.br"), null);
+      assert.ok(await banco.lerPreferenciaDoMapa("beto@x.br"), "a do outro continua");
+      await banco.apagarPreferenciaDoMapa("ana@x.br"); // apagar de novo não dá erro
+    });
+
     it("estratégia: modelo e coleções do catálogo; criar não sobrescreve; mudar lê e grava de uma vez (passo 2.5)", async () => {
       const banco = criarBanco();
       assert.equal(await banco.lerModeloEstrategia(), null);

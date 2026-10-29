@@ -27,6 +27,8 @@ export const CAMPOS = Object.freeze({
   administradoresDoSistema: ["emails"],
   /** Usuários cadastrados pela tela do Administrador do Sistema (27/10/2026): coleção usuarios, id = e-mail. */
   usuario: ["email", "nome", "cadastradoEm", "cadastradoPor"],
+  /** Preferência pessoal do Mapa do Strata (lote 6, 29/10/2026): usuarios/{e-mail}/preferencias/mapa; ordem de cada camada, da esquerda para a direita. */
+  preferenciaMapa: ["ordem", "alteradoEm"],
   /** Estratégia (passo 2.5): modelo do catálogo, documento sistema/estrategia. */
   modeloEstrategia: ["camadas", "alteradoEm", "alteradoPor"],
   camada: ["id", "nome", "plural", "opcional"],

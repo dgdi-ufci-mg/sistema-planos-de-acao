@@ -65,10 +65,11 @@ export function faixasDoMapa(camadas, itens) {
  * @param {number} [p.passoNivel]  degrau vertical entre pontos vizinhos de uma faixa que precisa de mais de um nível
  * @param {number} [p.niveisMaximos]
  * @param {number} [p.raioPorLargura]  raio da curva, em larguras do mapa
+ * @param {Record<string, string[]>} [p.ordemPessoal]  ordem escolhida pela pessoa (lote 6): para cada camada, as chaves dos pontos, da esquerda para a direita
  */
 export function calcularMapa({
   camadas, itens, planos = [], medir = (t) => t.length * 7, vista = { w: 960, h: 560 },
-  margem = 28, espacoMinimo = 26, passoNivel = 19, niveisMaximos = 4, raioPorLargura = 4,
+  margem = 28, espacoMinimo = 26, passoNivel = 19, niveisMaximos = 4, raioPorLargura = 4, ordemPessoal = {},
 }) {
   const ativos = itens.filter((x) => !x.excluidoEm);
   const faixas = faixasDoMapa(camadas, ativos);
@@ -113,6 +114,15 @@ export function calcularMapa({
   const descer = () => { for (let i = 1; i < lista.length; i++) reordenar(lista[i], (n) => n.superiores); };
   const subir = () => { for (let i = lista.length - 2; i >= 0; i--) reordenar(lista[i], (n) => subordinados.get(n.chave) ?? []); };
   descer(); subir(); descer(); subir(); descer();
+  /* ordem pessoal (lote 6): vale depois das passadas; os pontos que ela não conhece (itens novos) vão ao fim, na ordem automática */
+  faixas.forEach((f, i) => {
+    const salva = ordemPessoal?.[f.id];
+    if (!Array.isArray(salva) || !salva.length) return;
+    const lugar = new Map(salva.map((k, j) => [k, j]));
+    const antes = new Map(lista[i].map((n, j) => [n.chave, j]));
+    lista[i].sort((a, b) => (lugar.get(a.chave) ?? Infinity) - (lugar.get(b.chave) ?? Infinity) || antes.get(a.chave) - antes.get(b.chave));
+    numerar(lista[i]);
+  });
 
   /* largura: a da área (para tudo caber numa tela); só cresce se a faixa mais cheia não couber com os pontos a 26 de distância */
   const RECUO = 9; // do ponto até o começo do nome

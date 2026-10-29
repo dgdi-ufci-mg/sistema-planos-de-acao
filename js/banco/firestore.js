@@ -15,6 +15,7 @@
  *   espacos/{id}/retratos/{id}      retrato (seção 4.4): cabeçalho; as ações em .../acoes/{numero}
  *   sistema/calendario              calendário geral
  *   sistema/administradores         e-mails dos Administradores do Sistema (passo 2.3), editado só no console
+ *   usuarios/{email}/preferencias/mapa  ordem pessoal do Mapa do Strata (lote 6)
  *   usuarios/{email}                usuários cadastrados pela tela do Administrador do Sistema (27/10/2026)
  *   sistema/estrategia              camadas do catálogo da estratégia (passo 2.5)
  *   instrumentos/{id}               instrumentos da estratégia (PEI, PDI, políticas…), comuns a todos os espaços
@@ -331,6 +332,17 @@ export function criarBancoFirestore(db) {
     },
     async gravarUsuario(email, dados) {
       await db.collection("usuarios").doc(email).set(copia({ ...dados, email }));
+    },
+    // --- preferência pessoal do Mapa (lote 6; seção 4.11.5): usuarios/{e-mail}/preferencias/mapa ---
+    async lerPreferenciaDoMapa(email) {
+      const s = await db.collection("usuarios").doc(email).collection("preferencias").doc("mapa").get();
+      return s.exists ? s.data() : null;
+    },
+    async gravarPreferenciaDoMapa(email, dados) {
+      await db.collection("usuarios").doc(email).collection("preferencias").doc("mapa").set(copia(dados));
+    },
+    async apagarPreferenciaDoMapa(email) {
+      await db.collection("usuarios").doc(email).collection("preferencias").doc("mapa").delete();
     },
     // --- estratégia: catálogo do desdobramento (passo 2.5; seção 4.11) ---
     async lerModeloEstrategia() {

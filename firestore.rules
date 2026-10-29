@@ -214,6 +214,13 @@ service cloud.firestore {
     match /usuarios/{email} {
       allow read: if logado();
       allow create, update: if adminSistema() && request.resource.data.email == email;
+
+      // preferências pessoais (lote 6 do Mapa, 29/10/2026): só a própria pessoa lê, grava e apaga as suas
+      match /preferencias/{preferencia} {
+        allow read, delete: if logado() && eu() == email;
+        allow create, update: if logado() && eu() == email
+          && request.resource.data.keys().hasOnly(['ordem', 'alteradoEm']);
+      }
     }
   }
 }

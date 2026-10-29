@@ -83,6 +83,7 @@ export function criarFirestoreFalso({ auth = null, exigirLogin = false } = {}) {
       async get() { await null; return instantaneoDoc(caminho); },
       async set(dados) { exigirPermissao(); await null; gravar(caminho, aplicar({}, dados)); },
       async update(campos) { exigirPermissao(); await null; alterar(caminho, campos); },
+      async delete() { exigirPermissao(); await null; docs.delete(caminho); avisar(caminho); },
       onSnapshot: (f) => ouvir(ouvintesDoc, caminho, f, () => instantaneoDoc(caminho)),
     };
   }

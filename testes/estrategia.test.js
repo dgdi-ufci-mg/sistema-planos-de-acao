@@ -111,6 +111,31 @@ for (const [nome, criarBanco, definirAdmins] of [
       assert.equal(cat.camadas.length, 6);
     });
 
+    it("ordem pessoal do Mapa: cada pessoa tem a sua; só ela a vê; voltar ao automático a apaga (lote 6)", async () => {
+      const { gestor, ana } = await cenario();
+      assert.equal(await ana.lerOrdemDoMapa(), null, "sem ordem guardada, automática");
+      await ana.gravarOrdemDoMapa({ politica: ["b", "a", "a"], programa: ["x"] });
+      assert.deepEqual(await ana.lerOrdemDoMapa(), { politica: ["b", "a"], programa: ["x"] }, "sem repetir pontos");
+      assert.equal(await gestor.lerOrdemDoMapa(), null, "a do outro não aparece");
+      await gestor.gravarOrdemDoMapa({ politica: ["a"] });
+      assert.deepEqual(await ana.lerOrdemDoMapa(), { politica: ["b", "a"], programa: ["x"] });
+      await ana.voltarAoAutomaticoNoMapa();
+      assert.equal(await ana.lerOrdemDoMapa(), null);
+      assert.deepEqual(await gestor.lerOrdemDoMapa(), { politica: ["a"] });
+    });
+
+    it("ordem pessoal do Mapa: recusa formato errado, sem login e sem conexão", async () => {
+      const { banco, ana } = await cenario();
+      for (const ruim of [null, [], "a", { politica: "a" }, { politica: [1] }, { politica: [""] }, { politica: Array.from({ length: 1001 }, (_, i) => `k${i}`) }]) {
+        await assert.rejects(ana.gravarOrdemDoMapa(ruim), { codigo: "ordem-invalida" });
+      }
+      const anonimo = criarStore(banco, { exigirLogin: true, usuario: null });
+      assert.equal(await anonimo.lerOrdemDoMapa(), null);
+      await assert.rejects(anonimo.gravarOrdemDoMapa({ politica: ["a"] }), { codigo: "sem-login" });
+      ana.definirConexao(false);
+      await assert.rejects(ana.gravarOrdemDoMapa({ politica: ["a"] }), { codigo: "sem-conexao" });
+    });
+
     it("monta a árvore com ligações várias, pulando a camada opcional", async () => {
       const { gestor } = await cenario();
       const pdi = await gestor.criarInstrumento({ nome: "PDI 2024–2028", inicio: "2024-01-01", fim: "2028-12-31", aprovacao: { identificacao: "Res. 1/2024" } });

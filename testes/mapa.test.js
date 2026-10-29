@@ -199,6 +199,39 @@ describe("Mapa: limites do movimento e do zoom", () => {
   });
 });
 
+describe("Mapa: ordem pessoal (lote 6)", () => {
+  const ordemDe = (mapa, camada) => mapa.nos.filter((n) => n.faixa === mapa.faixas.findIndex((f) => f.id === camada)).sort((a, b) => a.x - b.x).map((n) => n.chave);
+
+  it("a ordem pessoal vale: os pontos da camada ficam na ordem escolhida, da esquerda para a direita", () => {
+    const automatica = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo() });
+    const [a, b] = ordemDe(automatica, "programa");
+    const invertida = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), ordemPessoal: { programa: [b, a] } });
+    assert.deepEqual(ordemDe(invertida, "programa"), [b, a]);
+    assert.deepEqual(ordemDe(invertida, "politica"), ordemDe(automatica, "politica"), "as outras camadas não mudam");
+  });
+
+  it("ponto que a ordem não conhece (item novo) vai ao fim; chave que não existe mais é ignorada", () => {
+    const automatica = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo() });
+    const [a, b] = ordemDe(automatica, "programa");
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), ordemPessoal: { programa: ["sumiu", b] } });
+    assert.deepEqual(ordemDe(m, "programa"), [b, a]);
+  });
+
+  it("sem ordem pessoal, ou com ela vazia, o resultado é o automático (o mesmo para todos)", () => {
+    const base = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo() });
+    assert.deepEqual(calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), ordemPessoal: {} }).nos, base.nos);
+    assert.deepEqual(calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), ordemPessoal: { programa: [] } }).nos, base.nos);
+  });
+
+  it("com a ordem pessoal, ainda não há nome nem ponto encostando", () => {
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), ordemPessoal: { politica: ["pol2", "pol1"], programa: ["prg2", "prg1"] } });
+    for (const f of m.faixas) {
+      const ns = f.nos.map((k) => m.nos.find((n) => n.chave === k)).sort((a, b) => a.x - b.x);
+      for (let i = 1; i < ns.length; i++) if (ns[i].nivel === ns[i - 1].nivel) assert.ok(ns[i].x - ns[i - 1].x >= 26 - 1e-9);
+    }
+  });
+});
+
 describe("Mapa: caminho de um ponto (lote 2)", () => {
   const mapa = () => calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: [{ id: "pa1", nome: "Plano", superiores: ["prg2"] }] });
 

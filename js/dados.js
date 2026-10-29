@@ -271,6 +271,15 @@ export function criarStore(banco, opcoes = {}) {
     if (p) throw new ErroDeDados(p.codigo, p.mensagem);
   }
   /** O Gestor da Estratégia mantém o catálogo; provisoriamente, é o Administrador do Sistema (decisão do responsável, 24/10/2026). */
+  /** Dono das preferências pessoais: quem está logado; no exemplo (sem login), uma pessoa de mentira. */
+  const donoDasPreferencias = () => (usuario ? emailNormal(usuario) : opcoes.exigirLogin ? null : "exemplo@local");
+  function exigirDonoDasPreferencias() {
+    if (!conectado) throw new ErroDeDados("sem-conexao", "Sem conexão com a internet. A alteração não foi gravada; tente de novo quando a conexão voltar.");
+    const dono = donoDasPreferencias();
+    if (!dono) throw new ErroDeDados("sem-login", "Entre com seu e-mail e senha para guardar a sua ordem do Mapa.");
+    return dono;
+  }
+
   async function exigirGestor() {
     if (!(await store.ehGestorDaEstrategia())) throw new ErroDeDados("sem-permissao", "Só o Gestor da Estratégia altera o catálogo.");
   }
@@ -1109,6 +1118,29 @@ export function criarStore(banco, opcoes = {}) {
       if (!dados.nome) delete dados.nome;
       await banco.gravarUsuario(e, dados);
       return e;
+    },
+
+    // --- preferência pessoal do Mapa do Strata (lote 6, 29/10/2026; seção 4.11.5) ---
+    /** Ordem de cada camada escolhida pela pessoa que está logada (camada → chaves dos pontos), ou null: ordem automática. */
+    async lerOrdemDoMapa() {
+      const dono = donoDasPreferencias();
+      if (!dono) return null;
+      return (await banco.lerPreferenciaDoMapa(dono))?.ordem ?? null;
+    },
+    /** Guarda a ordem da pessoa que está logada (só dela). `ordem`: objeto de camada → lista de chaves de pontos. */
+    async gravarOrdemDoMapa(ordem) {
+      const dono = exigirDonoDasPreferencias();
+      const camadas = ordem && typeof ordem === "object" && !Array.isArray(ordem) ? Object.entries(ordem) : null;
+      const valida = camadas && camadas.length <= 40 && camadas.every(([id, lista]) => id.length <= 80 && Array.isArray(lista) && lista.length <= 1000
+        && lista.every((k) => typeof k === "string" && k.length > 0 && k.length <= 200));
+      if (!valida) throw new ErroDeDados("ordem-invalida", "A ordem do Mapa precisa listar, para cada camada, os pontos em sequência.");
+      const dados = { ordem: Object.fromEntries(camadas.map(([id, lista]) => [id, [...new Set(lista)]])), alteradoEm: agora() };
+      recusarDesconhecidos(dados, "preferenciaMapa");
+      await banco.gravarPreferenciaDoMapa(dono, dados);
+    },
+    /** "Voltar ao automático": apaga a ordem da pessoa. */
+    async voltarAoAutomaticoNoMapa() {
+      await banco.apagarPreferenciaDoMapa(exigirDonoDasPreferencias());
     },
 
     // --- tempo real ---

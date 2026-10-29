@@ -34,11 +34,13 @@ const criar = (nome, atributos = {}) => {
 
 /**
  * @param {HTMLElement} area  contêiner do mapa (com altura definida pelo CSS)
- * @param {{camadas: object[], itens: object[], planos: object[], estado: {t?: {k: number, x: number, y: number}, selecionado?: string}, aoAbrir?: (no: object) => void}} contexto
+ * @param {{camadas: object[], itens: object[], planos: object[], estado: {t?: {k: number, x: number, y: number}, selecionado?: string}, aoAbrir?: (no: object) => void,
+ *   ordemPessoal?: Record<string, string[]>, podeOrdenar?: boolean, aoReordenar?: (camada: string, chaves: string[]) => Promise<void>}} contexto
+ *   `ordemPessoal`: a ordem da pessoa, camada → chaves; `podeOrdenar`: ela pode arrastar pontos (só com o mouse, no computador); `aoReordenar` recebe a nova ordem de uma camada
  *   `estado` guarda a vista e o ponto selecionado entre um desenho e outro da tela; `aoAbrir` recebe o ponto do cartão
  * @returns {{destruir: () => void}}
  */
-export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {} }) {
+export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {}, ordemPessoal = {}, podeOrdenar = false, aoReordenar = async () => {} }) {
   area.innerHTML = `
     <svg class="mapa-svg" role="group" aria-label="Mapa do desdobramento: do alto, o que vem primeiro; embaixo, os Planos de Ação" focusable="false">
       <g data-mapa-mundo></g>
@@ -69,7 +71,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   /* ---------- desenho ---------- */
   function desenhar() {
     const medir = (texto) => { medidor.textContent = texto; return medidor.getComputedTextLength(); };
-    mapa = calcularMapa({ camadas, itens, planos, medir, vista });
+    mapa = calcularMapa({ camadas, itens, planos, medir, vista, ordemPessoal });
     cancelAnimationFrame(molaId);
     elementos.clear();
     ligacoesVivas.length = 0;
@@ -176,11 +178,35 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     ultimoQuadro = performance.now();
     molaId = requestAnimationFrame(passoDaMolaNaTela);
   }
+  /* ---------- ordem pessoal: arrastar um ponto para os lados, só com o mouse (lote 6) ---------- */
+  let segurado = null; // chave do ponto que está na mão da pessoa: a mola não o puxa
+  function arrastarNo(chave, e) {
+    const a = atual.get(chave);
+    if (!a) return;
+    const x = (pontoNaArea(e).x - t.x) / t.k;
+    segurado = chave;
+    a.x = Math.min(mapa.largura - 14, Math.max(14, x));
+    a.vx = 0;
+    pintar();
+    guardarPosicoes();
+    posicionarCartao();
+  }
+  /** Solta o ponto: a nova ordem da camada é a dos pontos da esquerda para a direita; se não mudou, ele volta ao lugar. */
+  async function soltarNo(chave, valeu) {
+    segurado = null;
+    const f = mapa.faixas[noDe(chave)?.faixa];
+    if (!f) return;
+    const nova = [...f.nos].sort((a, b) => atual.get(a).x - atual.get(b).x || f.nos.indexOf(a) - f.nos.indexOf(b));
+    if (!valeu || nova.every((k, i) => k === f.nos[i])) { iniciarMola(); return; }
+    try { await aoReordenar(f.id, nova); } catch { iniciarMola(); }
+  }
+
   function passoDaMolaNaTela(agora) {
     const dt = Math.min(MOLA.passoMaximo, Math.max(0.001, (agora - ultimoQuadro) / 1000));
     ultimoQuadro = agora;
     let mexendo = false;
     for (const [chave, a] of atual) {
+      if (chave === segurado) { mexendo = true; continue; }
       const n = alvoDe(chave);
       const px = passoDaMola({ x: a.x, v: a.vx }, n.x, dt);
       const py = passoDaMola({ x: a.y, v: a.vy }, n.yCurvo, dt);
@@ -336,7 +362,8 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   svg.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     cancelAnimationFrame(quadro);
-    ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, movido: false });
+    const noChave = podeOrdenar && e.pointerType === "mouse" ? e.target.closest?.("[data-no]")?.dataset.no ?? null : null; // o mouse pode arrastar um ponto; o dedo só move o mapa
+    ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, movido: false, noChave, arrastaNo: false });
     if (ponteiros.size === 2) pinca = medidaDaPinca();
   });
   svg.addEventListener("pointermove", (e) => {
@@ -355,8 +382,9 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       p.movido = true;
       p.x = p.x0; p.y = p.y0;
       try { svg.setPointerCapture(e.pointerId); } catch { /* o ponteiro já acabou */ }
-      svg.classList.add("arrastando");
+      if (p.noChave) { p.arrastaNo = true; svg.classList.add("arrastando-ponto"); } else svg.classList.add("arrastando");
     }
+    if (p.arrastaNo) { arrastarNo(p.noChave, e); return; }
     aplicar({ ...t, x: t.x + (e.clientX - p.x), y: t.y + (e.clientY - p.y) });
     p.x = e.clientX; p.y = e.clientY;
   });
@@ -364,6 +392,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const p = ponteiros.get(e.pointerId);
     const toque = e.type === "pointerup" && p && !p.movido && ponteiros.size === 1; // sem passar do tremor e sem pinça
     if (!ponteiros.delete(e.pointerId)) return;
+    if (p?.arrastaNo) { svg.classList.remove("arrastando-ponto"); soltarNo(p.noChave, e.type === "pointerup"); return; }
     if (toque) {
       const chave = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-no]")?.dataset.no ?? null;
       if (chave) selecionar(chave); else if (!e.target.closest?.("[data-mapa-cartao]")) selecionar(null);
@@ -410,6 +439,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     aplicar(t ?? estado.t ?? transformacaoInicial(limites()));
   });
 
+  svg.classList.toggle("ordenavel", podeOrdenar);
   desenhar();
   if (vista.w && vista.h) aplicar(estado.t ?? transformacaoInicial(limites()));
   observador.observe(area);

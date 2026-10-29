@@ -31,7 +31,7 @@ const ABAS = [["mapa", "Mapa"], ["arvore", "Desdobramento"], ["instrumentos", "I
  * @returns {{recarregar: () => Promise<void>}}
  */
 export function mostrarSuperior(alvo, { store, hoje }) {
-  const ui = { aba: "mapa", soVigentes: true, busca: "", recolhidos: new Set(), mapa: {} };
+  const ui = { aba: "mapa", soVigentes: true, busca: "", recolhidos: new Set(), mapa: {}, ordemDoMapa: null };
   /** vista do Mapa montada na tela (para desfazer os ouvintes ao trocar de aba ou desenhar de novo) */
   let vistaMapa = null;
   let cat = { camadas: [], instrumentos: [], itens: [] };
@@ -45,7 +45,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
 
   alvo.innerHTML = esqueletoHtml("lista", 6); // até a primeira leitura do catálogo
   async function recarregar() {
-    [cat, gestor] = await Promise.all([store.lerCatalogo(), store.ehGestorDaEstrategia().catch(() => false)]);
+    [cat, gestor, ui.ordemDoMapa] = await Promise.all([store.lerCatalogo(), store.ehGestorDaEstrategia().catch(() => false), store.lerOrdemDoMapa().catch(() => null)]);
     const espacos = await store.listarEspacos().catch(() => []);
     planos = espacos.filter((e) => tipoDe(e) === "planoDeAcao" && e.vinculos?.length);
     entregasDe = new Map(await Promise.all(planos.filter((e) => store.podeVerEspaco(e)).map(async (e) => {
@@ -78,7 +78,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       </section>
       <section class="superior-corpo">${{ mapa: mapaHtml, arvore: arvoreHtml, instrumentos: instrumentosHtml, camadas: camadasHtml, importar: importarHtml }[ui.aba]()}</section>`;
     const areaDoMapa = alvo.querySelector("[data-mapa-area]");
-    if (areaDoMapa) vistaMapa = criarVistaMapa(areaDoMapa, { camadas: cat.camadas, itens: cat.itens.filter((x) => !x.excluidoEm && vale(x)), planos: planosDoMapa(), estado: ui.mapa, aoAbrir: abrirDoMapa });
+    if (areaDoMapa) vistaMapa = criarVistaMapa(areaDoMapa, { camadas: cat.camadas, itens: cat.itens.filter((x) => !x.excluidoEm && vale(x)), planos: planosDoMapa(), estado: ui.mapa, aoAbrir: abrirDoMapa, ordemPessoal: ui.ordemDoMapa ?? {}, podeOrdenar: store.podeGravar, aoReordenar: reordenarNoMapa });
     const busca = alvo.querySelector("[data-busca-arvore]");
     if (busca && ui.busca) { busca.focus(); busca.setSelectionRange(ui.busca.length, ui.busca.length); }
     /* abas que não cabem (celular, 25/10/2026, item 17 da avaliação de celular): a borda direita esmaece enquanto
@@ -103,6 +103,16 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     if (no.tipo === "item") abrirItem(no.id);
     else if (!no.restrito) location.assign(`../#/espaco/${encodeURIComponent(no.id)}`);
   }
+  const temOrdemPessoal = () => Object.values(ui.ordemDoMapa ?? {}).some((l) => l.length);
+  /** O mouse soltou um ponto em outro lugar: guarda a ordem do nível (só para esta pessoa) e refaz o mapa, com os pontos deslizando. */
+  async function reordenarNoMapa(camada, chaves) {
+    try {
+      const nova = { ...(ui.ordemDoMapa ?? {}), [camada]: chaves };
+      await store.gravarOrdemDoMapa(nova);
+      ui.ordemDoMapa = nova;
+    } catch (f) { avisar(f.message); }
+    desenhar();
+  }
   /** Aviso quando há mais de um item na Missão (a Missão é uma só). */
   function avisoMissaoHtml() {
     const aviso = avisoDaMissao(cat.camadas, cat.itens);
@@ -112,6 +122,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     const ferramentas = `<div class="superior-ferramentas">
         <label class="alternar"><input type="checkbox" data-so-vigentes${ui.soVigentes ? " checked" : ""}> Só o que vale hoje</label>
         <button type="button" class="botao discreto" data-ver-lista>Ver como lista</button>
+        ${temOrdemPessoal() ? '<button type="button" class="botao discreto" data-voltar-automatico>Voltar ao automático</button>' : ""}
       </div>${avisoMissaoHtml()}`;
     if (!cat.itens.some((x) => !x.excluidoEm && vale(x))) {
       return `${cat.itens.length ? ferramentas : ""}<p class="vazio">${cat.itens.length ? "Nada vale hoje. Desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece pela aba Desdobramento, em “Novo item”, ou pela aba Importar." : "O catálogo ainda está vazio."}</p>`;
@@ -120,7 +131,8 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       <div class="mapa-area" data-mapa-area></div>
       <p class="tec mapa-ajuda">Cada ponto é um item. As linhas ligam cada item ao que ele <b>vem de</b>, do nível de baixo para o de cima; embaixo ficam os Planos de Ação.
         Toque num ponto para acender o caminho dele e ver o cartão com “Abrir”; toque no fundo para desfazer.
-        Arraste para mover o mapa. Para aproximar, use a pinça, Ctrl + rolagem ou os botões + e −.</p>`;
+        Arraste para mover o mapa. Para aproximar, use a pinça, Ctrl + rolagem ou os botões + e −.
+        ${store.podeGravar ? "No computador, arraste um ponto para os lados para mudar a ordem dele no nível; a ordem vale só para você, e “Voltar ao automático” a desfaz." : store.conectado ? "Entre para mudar a ordem dos pontos no computador." : ""}</p>`;
   }
   /** "Ver como lista": o Desdobramento, com o item selecionado no Mapa aberto e à vista (o Plano de Ação, no lugar dele). */
   function verComoLista() {
@@ -435,6 +447,10 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     if (!t || t.disabled) return;
     if (t.dataset.aba) { ui.aba = t.dataset.aba; return desenhar(); }
     if (t.matches("[data-ver-lista]")) return verComoLista();
+    if (t.matches("[data-voltar-automatico]")) {
+      try { await store.voltarAoAutomaticoNoMapa(); ui.ordemDoMapa = null; avisar("O Mapa voltou à ordem automática."); } catch (f) { avisar(f.message); }
+      return desenhar();
+    }
     if (t.dataset.item) { ui.mapa.selecionado = t.dataset.item; return abrirItem(t.dataset.item); } // o mesmo ponto fica aceso no Mapa
     if (t.dataset.alternarNo) { if (ui.recolhidos.has(t.dataset.alternarNo)) ui.recolhidos.delete(t.dataset.alternarNo); else ui.recolhidos.add(t.dataset.alternarNo); return desenhar(); }
     if (t.matches("[data-recolher-tudo]")) {

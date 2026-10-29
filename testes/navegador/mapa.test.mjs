@@ -396,4 +396,62 @@ describe("Mapa do Strata", { skip: pular }, () => {
       assert.ok(await coerente(p));
     });
   });
+
+  describe("ordem pessoal: arrastar pontos com o mouse (lote 6)", () => {
+    const ordemDosProgramas = (p) => p.evaluate(() => [...document.querySelectorAll(".mapa-no")]
+      .map((g) => ({ codigo: g.querySelector("title").textContent.split(" ")[0], x: Number(g.querySelector(".mapa-bolinha").getAttribute("cx")) }))
+      .filter((n) => n.codigo.startsWith("PRG")).sort((a, b) => a.x - b.x).map((n) => n.codigo));
+    const parados = (p) => p.waitForSelector(".mapa-svg:not([data-movendo])");
+    const alvo = async (p, codigo) => {
+      const chave = await p.evaluate((c) => [...document.querySelectorAll(".mapa-no")].find((g) => g.querySelector("title").textContent.startsWith(`${c} `))?.dataset.no, codigo);
+      return centro(p.locator(`.mapa-no[data-no="${chave}"] .mapa-alvo`));
+    };
+
+    test("no computador, arrastar um ponto muda a ordem do nível; \"Voltar ao automático\" desfaz; a escolha fica ao trocar de aba", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const original = await ordemDosProgramas(p);
+      assert.equal(await p.locator("[data-voltar-automatico]").count(), 0, "sem ordem pessoal, sem o botão");
+      const primeiro = await alvo(p, original[0]);
+      const ultimo = await alvo(p, original.at(-1));
+      await p.mouse.move(primeiro.x, primeiro.y);
+      await p.mouse.down();
+      await p.mouse.move(primeiro.x + 40, primeiro.y, { steps: 4 });
+      assert.equal(await p.locator(".mapa-svg.arrastando-ponto").count(), 1, "está arrastando um ponto, e não o mapa");
+      await p.mouse.move(ultimo.x + 60, primeiro.y, { steps: 8 });
+      await p.mouse.up();
+      await parados(p);
+      await p.waitForSelector("[data-voltar-automatico]");
+      const nova = await ordemDosProgramas(p);
+      assert.deepEqual(nova, [...original.slice(1), original[0]], "o primeiro foi para o fim");
+      assert.equal(await p.locator(".mapa-no.selecionado").count(), 0, "arrastar não seleciona");
+      await p.click('[data-aba="arvore"]');
+      await p.click('[data-aba="mapa"]');
+      await p.waitForSelector(".mapa-svg:not([data-movendo]) .mapa-no");
+      assert.deepEqual(await ordemDosProgramas(p), nova, "a ordem fica ao trocar de aba");
+      await p.click("[data-voltar-automatico]");
+      await p.waitForSelector(".mapa-svg:not([data-movendo]) .mapa-no");
+      assert.deepEqual(await ordemDosProgramas(p), original, "voltou ao automático");
+      assert.equal(await p.locator("[data-voltar-automatico]").count(), 0);
+      assert.deepEqual(p.erros, []);
+    });
+
+    test("soltar o ponto onde ele estava não muda a ordem: ele volta ao lugar", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const original = await ordemDosProgramas(p);
+      const a = await alvo(p, original[1]);
+      await p.mouse.move(a.x, a.y);
+      await p.mouse.down();
+      await p.mouse.move(a.x + 8, a.y, { steps: 3 });
+      await p.mouse.up();
+      await parados(p);
+      assert.deepEqual(await ordemDosProgramas(p), original);
+      assert.equal(await p.locator("[data-voltar-automatico]").count(), 0);
+    });
+
+    test("no celular, o dedo move o mapa e não o ponto: não há ordem pessoal", async () => {
+      const p = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
+      assert.equal(await p.locator(".mapa-svg.arrastando-ponto").count(), 0);
+      assert.equal(await p.locator("[data-voltar-automatico]").count(), 0);
+    });
+  });
 });
