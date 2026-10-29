@@ -317,4 +317,48 @@ describe("Mapa do Strata", { skip: pular }, () => {
       assert.equal(await p.locator(".mapa-svg.de-longe").count(), 0);
     });
   });
+
+  describe("temas dia e noite (lote 4)", () => {
+    const tintas = () => {
+      const cor = (t) => { const m = t.match(/[\d.]+/g).map(Number); return t.startsWith("color(") ? m.slice(0, 3).map((v) => v * 255) : m.slice(0, 3); };
+      const lum = ([r, g, b]) => { const f = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+      const razao = (a, b) => { const [x, y] = [lum(a), lum(b)]; return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+      const faixas = [...document.querySelectorAll(".mapa-faixa")].map((f) => cor(getComputedStyle(f).fill));
+      const nomes = [...document.querySelectorAll(".mapa-no")].map((g) => ({
+        codigo: g.querySelector("title").textContent.slice(0, 8),
+        razao: razao(faixas[Number(g.dataset.faixa)], cor(getComputedStyle(g.querySelector(".mapa-nome")).fill)),
+      }));
+      const linha = cor(getComputedStyle(document.querySelector(".mapa-ligacao")).stroke);
+      const borda = cor(getComputedStyle(document.querySelector(".mapa-ligacao-borda")).stroke);
+      return { nomes, minimo: Math.min(...nomes.map((n) => n.razao)), linhaSobreBorda: razao(linha, borda), faixasDistintas: new Set(faixas.map((f) => f.join())).size, faixas: faixas.length };
+    };
+
+    for (const tema of ["light", "dark"]) {
+      test(`tema ${tema}: o nome de cada item tem contraste de 4,5:1 ou mais sobre a sua faixa; a linha se separa da borda`, async () => {
+        const p = await sessao.abrir({ largura: 1280, altura: 800, tema, ...ABRIR });
+        const r = await p.evaluate(tintas);
+        assert.ok(r.minimo >= 4.5, `menor contraste ${r.minimo.toFixed(2)}: ${JSON.stringify(r.nomes.filter((n) => n.razao < 4.5))}`);
+        assert.ok(r.linhaSobreBorda >= 3, `linha sobre a borda: ${r.linhaSobreBorda.toFixed(2)}`);
+        assert.equal(r.faixasDistintas, r.faixas, "cada faixa tem o seu tom");
+        assert.deepEqual(p.erros, []);
+      });
+    }
+
+    test("só a noite tem estrelas", async () => {
+      const dia = await sessao.abrir({ largura: 1280, altura: 800, tema: "light", ...ABRIR });
+      assert.equal(await dia.evaluate(() => [...document.querySelectorAll(".mapa-estrela")].filter((e) => getComputedStyle(e).display !== "none").length), 0);
+      const noite = await sessao.abrir({ largura: 1280, altura: 800, tema: "dark", ...ABRIR });
+      assert.ok(await noite.evaluate(() => [...document.querySelectorAll(".mapa-estrela")].filter((e) => getComputedStyle(e).display !== "none").length) > 10);
+    });
+
+    test("trocar o tema com a tela aberta refaz as tintas do texto", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, tema: "light", ...ABRIR });
+      const antes = await p.evaluate(() => getComputedStyle(document.querySelector(".mapa-no")).getPropertyValue("--tinta"));
+      await p.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+      await p.waitForTimeout(150);
+      const r = await p.evaluate(tintas);
+      assert.ok(r.minimo >= 4.5, `depois da troca: ${r.minimo.toFixed(2)}`);
+      assert.ok(antes, "havia tinta definida");
+    });
+  });
 });

@@ -288,3 +288,55 @@ export function caminhoDoNo(mapa, chave) {
   }
   return { nos, ligacoes };
 }
+
+/* ---------- cores: contraste do texto sobre cada faixa e estrelas da noite (lote 4, 29/10/2026) ---------- */
+
+/** Lê uma cor CSS já resolvida pelo navegador: `rgb(…)`, `rgba(…)` ou `color(srgb r g b)`. Devolve [r, g, b] de 0 a 255, ou null. */
+export function lerCor(texto) {
+  const t = String(texto ?? "").trim();
+  let m = t.match(/^rgba?\(\s*([\d.]+)[ ,]+([\d.]+)[ ,]+([\d.]+)/);
+  if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+  m = t.match(/^color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+  if (m) return [Number(m[1]) * 255, Number(m[2]) * 255, Number(m[3]) * 255];
+  m = t.match(/^#([\da-f]{6})$/i);
+  if (m) return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16));
+  return null;
+}
+
+/** Luminância relativa (WCAG 2.x). */
+export function luminancia([r, g, b]) {
+  const f = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+
+/** Razão de contraste entre duas cores (de 1 a 21). O texto normal pede 4,5 ou mais (WCAG 1.4.3, nível AA). */
+export function razaoDeContraste(a, b) {
+  const [x, y] = [luminancia(a), luminancia(b)];
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+/** A tinta (clara ou escura) de maior contraste sobre o fundo. @returns {"clara"|"escura"} */
+export function melhorTinta(fundo, clara, escura) {
+  return razaoDeContraste(fundo, clara) >= razaoDeContraste(fundo, escura) ? "clara" : "escura";
+}
+
+/**
+ * Estrelas do tema noite: pontos pequenos, sempre nos mesmos lugares (gerador fixo, sem Math.random), espalhados
+ * pelas faixas de cima, onde a noite é mais escura. Cada uma fica dentro da sua faixa, já com a curvatura.
+ * @returns {{x: number, y: number, r: number, o: number}[]}
+ */
+export function estrelasDoMapa(mapa, porFaixaAlta = 14) {
+  let semente = 20261029;
+  const proximo = () => { semente = (Math.imul(semente, 1664525) + 1013904223) >>> 0; return semente / 4294967296; };
+  const altas = mapa.faixas.slice(0, Math.max(1, Math.ceil(mapa.faixas.length / 2)));
+  const estrelas = [];
+  altas.forEach((f, i) => {
+    const quantas = Math.round(porFaixaAlta * (1 - (i / altas.length) * 0.6) * (mapa.largura / 360));
+    for (let k = 0; k < quantas; k++) {
+      const x = Math.round(proximo() * mapa.largura * 10) / 10;
+      const y = f.topo + 3 + proximo() * (f.altura - 6);
+      estrelas.push({ x, y: Math.round((y + deslocamentoCurvo(x, mapa.centro, mapa.raio)) * 10) / 10, r: Math.round((0.5 + proximo() * 0.9) * 10) / 10, o: Math.round((0.35 + proximo() * 0.5) * 100) / 100 });
+    }
+  });
+  return estrelas;
+}

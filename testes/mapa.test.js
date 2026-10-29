@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import {
   FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
-  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo,
+  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa,
 } from "../js/mapa.js";
 
 const item = (id, camada, nome, superiores = [], codigo = "") => ({ id, camada, nome, codigo, superiores });
@@ -213,5 +213,40 @@ describe("Mapa: caminho de um ponto (lote 2)", () => {
     const c = caminhoDoNo(mapa(), "oe1");
     assert.deepEqual([...c.nos].sort(), ["od1", "oe1", "plano:pa1", "pol1", "prg1", "prg2"]);
     assert.equal(caminhoDoNo(mapa(), "nada").nos.size, 0);
+  });
+});
+
+describe("Mapa: cores e contraste (lote 4)", () => {
+  it("lê as formas de cor que o navegador devolve", () => {
+    assert.deepEqual(lerCor("rgb(10, 20, 30)"), [10, 20, 30]);
+    assert.deepEqual(lerCor("rgba(10 20 30 / 0.5)"), [10, 20, 30]);
+    assert.deepEqual(lerCor("color(srgb 1 0.5 0)"), [255, 127.5, 0]);
+    assert.deepEqual(lerCor("#0000FF"), [0, 0, 255]);
+    assert.equal(lerCor("azul"), null);
+  });
+
+  it("razão de contraste: preto sobre branco é 21; a mesma cor é 1", () => {
+    assert.ok(Math.abs(razaoDeContraste([0, 0, 0], [255, 255, 255]) - 21) < 1e-9);
+    assert.equal(razaoDeContraste([90, 90, 90], [90, 90, 90]), 1);
+  });
+
+  it("a tinta é a de maior contraste sobre o fundo", () => {
+    const [clara, escura] = [[244, 247, 255], [18, 32, 61]];
+    assert.equal(melhorTinta([220, 235, 250], clara, escura), "escura");
+    assert.equal(melhorTinta([47, 60, 140], clara, escura), "clara");
+    assert.equal(melhorTinta([3, 5, 11], clara, escura), "clara");
+  });
+
+  it("estrelas: sempre as mesmas, nas faixas de cima e dentro delas", () => {
+    const mapa = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo() });
+    const a = estrelasDoMapa(mapa);
+    assert.deepEqual(a, estrelasDoMapa(mapa), "sem aleatoriedade");
+    assert.ok(a.length > 10);
+    const limite = mapa.faixas[Math.ceil(mapa.faixas.length / 2) - 1];
+    for (const e of a) {
+      assert.ok(e.x >= 0 && e.x <= mapa.largura);
+      assert.ok(e.y >= mapa.faixas[0].topo + deslocamentoCurvo(e.x, mapa.centro, mapa.raio) - 1);
+      assert.ok(e.y <= limite.base + deslocamentoCurvo(e.x, mapa.centro, mapa.raio) + 1);
+    }
   });
 });

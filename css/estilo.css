@@ -1633,12 +1633,13 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .mapa-area { position: relative; height: clamp(380px, calc(100dvh - 320px), 880px); border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); overflow: hidden; }
 .mapa-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .mapa-svg.arrastando { cursor: grabbing; }
-.mapa-faixa { fill: color-mix(in srgb, var(--accent) var(--tom, 12%), var(--surface)); stroke: var(--line); stroke-width: 1; }
-.mapa-ligacao { fill: none; stroke: var(--muted); stroke-opacity: .5; stroke-width: 1.3; }
+.mapa-faixa { fill: color-mix(in srgb, var(--mapa-topo) var(--pos, 0%), var(--mapa-chao)); stroke: var(--mapa-contorno); stroke-width: 1; }
+.mapa-ligacao { fill: none; stroke: var(--mapa-linha); stroke-opacity: .9; stroke-width: 1.3; }
+.mapa-ligacao-borda { fill: none; stroke: var(--mapa-borda-da-linha); stroke-opacity: .7; stroke-width: 3.4; }
 .mapa-no .mapa-bolinha { fill: var(--surface); stroke: var(--accent-ink); stroke-width: 2; }
 .mapa-no.plano .mapa-bolinha { fill: var(--accent-ink); }
 .mapa-no.restrito .mapa-nome { font-style: italic; }
-.mapa-nome { fill: var(--ink); font-size: 13px; font-family: var(--f-texto, inherit); stroke: var(--surface); stroke-width: 3px; stroke-opacity: .7; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
+.mapa-nome { fill: var(--tinta, var(--ink)); font-size: 13px; font-family: var(--f-texto, inherit); stroke: var(--halo, var(--surface)); stroke-width: 3px; stroke-opacity: .7; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
 .mapa-medida { opacity: 0; }
 .mapa-rotulos { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .mapa-rotulo-camada { position: absolute; left: 0; top: 0; max-width: calc(100% - 80px); padding: 1px 7px; border-radius: 999px; font-size: 11px; line-height: 1.3; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: color-mix(in srgb, var(--surface) 82%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -2130,6 +2131,7 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
 /* Mapa, lote 2: caminho aceso e cartão do ponto selecionado */
 .mapa-svg.com-selecao .mapa-no:not(.no-caminho) { opacity: .28; }
 .mapa-svg.com-selecao .mapa-ligacao:not(.ligacao-caminho) { stroke-opacity: .15; }
+.mapa-svg.com-selecao .mapa-ligacao-borda:not(.ligacao-caminho) { stroke-opacity: .08; }
 .mapa-ligacao.ligacao-caminho { stroke: var(--warn); stroke-opacity: 1; stroke-width: 2.6; }
 .mapa-no { cursor: pointer; }
 .mapa-no:focus-visible { outline: none; }
@@ -2144,6 +2146,29 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
 .mapa-alvo { fill: transparent; }
 
 /* Mapa, lote 4: de longe, só o código de cada item */
-.mapa-codigo { display: none; fill: var(--ink); font-weight: 700; font-family: var(--f-texto, inherit); stroke: var(--surface); stroke-width: 3px; stroke-opacity: .7; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
+.mapa-codigo { display: none; fill: var(--tinta, var(--ink)); font-weight: 700; font-family: var(--f-texto, inherit); stroke: var(--halo, var(--surface)); stroke-width: 3px; stroke-opacity: .7; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
 .mapa-svg.de-longe .mapa-no .mapa-nome { display: none; } /* não o medidor de texto, que precisa continuar medindo */
 .mapa-svg.de-longe .mapa-codigo { display: inline; }
+
+/* Mapa, lote 4: cores do dia e da noite. De dia, do azul-claro no chão ao anil profundo no alto; de noite, do azul-noite ao preto com estrelas.
+   As tintas do texto (clara e escura) são escolhidas faixa por faixa, pelo contraste (WCAG 1.4.3, 4,5:1), em js/superior/mapa.js. */
+:root {
+  --mapa-chao: #DCEBFA; --mapa-topo: #263278; --mapa-contorno: #AFC2DD;
+  --mapa-linha: #1F2A4D; --mapa-borda-da-linha: #F4F8FF;
+  --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mapa-chao: #1B3158; --mapa-topo: #03050B; --mapa-contorno: #2E4573;
+    --mapa-linha: #CFDAF5; --mapa-borda-da-linha: #05070D;
+    --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
+  }
+  :root:not([data-theme="light"]) .mapa-estrela { display: inline; }
+}
+:root[data-theme="dark"] {
+  --mapa-chao: #1B3158; --mapa-topo: #03050B; --mapa-contorno: #2E4573;
+  --mapa-linha: #CFDAF5; --mapa-borda-da-linha: #05070D;
+  --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
+}
+:root[data-theme="dark"] .mapa-estrela { display: inline; }
+.mapa-estrela { display: none; fill: #FFFFFF; }

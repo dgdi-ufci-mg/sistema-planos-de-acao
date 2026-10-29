@@ -14,7 +14,7 @@
  * - os nomes das camadas ficam presos à borda esquerda, em tamanho fixo, e não encolhem com o zoom.
  */
 import {
-  calcularMapa, caminhoDaFaixa, caminhoDaLigacao, caminhoDoNo, deslocamentoCurvo, limitarTransformacao, transformacaoInicial,
+  calcularMapa, caminhoDaFaixa, caminhoDaLigacao, caminhoDoNo, deslocamentoCurvo, estrelasDoMapa, lerCor, melhorTinta, limitarTransformacao, transformacaoInicial,
 } from "../mapa.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -72,22 +72,26 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     mapa = calcularMapa({ camadas, itens, planos, medir, vista });
     mundo.replaceChildren();
     const grupoFaixas = criar("g");
+    const grupoEstrelas = criar("g", { class: "mapa-estrelas", "aria-hidden": "true" });
     const grupoLigacoes = criar("g");
     const grupoNos = criar("g");
-    mundo.append(grupoFaixas, grupoLigacoes, grupoNos);
+    mundo.append(grupoFaixas, grupoEstrelas, grupoLigacoes, grupoNos);
 
     const quantas = mapa.faixas.length;
     mapa.faixas.forEach((f, i) => {
       const p = criar("path", { class: "mapa-faixa", "data-camada": f.id, d: caminhoDaFaixa(f, mapa) });
-      p.style.setProperty("--tom", `${8 + (quantas > 1 ? 16 * (1 - i / (quantas - 1)) : 8)}%`); // mais forte no alto
+      p.style.setProperty("--pos", `${quantas > 1 ? Math.round(100 * (1 - i / (quantas - 1))) : 0}%`); // 0 no chão (claro de dia) até 100 no alto (anil de dia, preto de noite)
       grupoFaixas.append(p);
     });
+    for (const e of estrelasDoMapa(mapa)) grupoEstrelas.append(criar("circle", { class: "mapa-estrela", cx: e.x, cy: e.y, r: e.r, "fill-opacity": e.o })); // só aparecem no tema noite
     const porChave = new Map(mapa.nos.map((n) => [n.chave, n]));
-    for (const l of mapa.ligacoes) {
-      grupoLigacoes.append(criar("path", { class: "mapa-ligacao", "data-de": l.de, "data-para": l.para, d: caminhoDaLigacao(porChave.get(l.de), porChave.get(l.para)) }));
+    for (const l of mapa.ligacoes) { // cada linha tem uma borda de cor oposta, para aparecer sobre o claro e sobre o escuro
+      const d = caminhoDaLigacao(porChave.get(l.de), porChave.get(l.para));
+      grupoLigacoes.append(criar("path", { class: "mapa-ligacao-borda", "data-de": l.de, "data-para": l.para, d }));
+      grupoLigacoes.append(criar("path", { class: "mapa-ligacao", "data-de": l.de, "data-para": l.para, d }));
     }
     for (const n of mapa.nos) {
-      const g = criar("g", { class: `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}`, "data-no": n.chave, "data-tipo": n.tipo, tabindex: 0, role: "button" });
+      const g = criar("g", { class: `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}`, "data-no": n.chave, "data-tipo": n.tipo, "data-faixa": n.faixa, tabindex: 0, role: "button" });
       g.setAttribute("aria-label", n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`);
       const titulo = criar("title");
       titulo.textContent = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
@@ -117,6 +121,24 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     }));
     escalaDosCodigos = 0;
     marcarSelecao();
+    ajustarTintas();
+  }
+
+  /** O texto de cada faixa usa a tinta (clara ou escura) de maior contraste sobre o fundo dela, no tema de agora. */
+  function ajustarTintas() {
+    const estilo = getComputedStyle(svg);
+    const clara = estilo.getPropertyValue("--mapa-tinta-clara").trim();
+    const escura = estilo.getPropertyValue("--mapa-tinta-escura").trim();
+    const [c, e] = [lerCor(clara), lerCor(escura)];
+    const fundos = [...mundo.querySelectorAll(".mapa-faixa")].map((f) => lerCor(getComputedStyle(f).fill));
+    if (!c || !e) return;
+    for (const g of mundo.querySelectorAll(".mapa-no")) {
+      const fundo = fundos[Number(g.dataset.faixa)];
+      if (!fundo) continue;
+      const clarao = melhorTinta(fundo, c, e) === "clara";
+      g.style.setProperty("--tinta", clarao ? clara : escura);
+      g.style.setProperty("--halo", clarao ? escura : clara);
+    }
   }
 
   /* ---------- seleção: caminho aceso e cartão ---------- */
@@ -130,7 +152,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       g.classList.toggle("selecionado", g.dataset.no === estado.selecionado);
       g.setAttribute("aria-pressed", String(g.dataset.no === estado.selecionado));
     }
-    for (const l of mundo.querySelectorAll(".mapa-ligacao")) l.classList.toggle("ligacao-caminho", Boolean(caminho?.ligacoes.has(`${l.dataset.de}|${l.dataset.para}`)));
+    for (const l of mundo.querySelectorAll(".mapa-ligacao, .mapa-ligacao-borda")) l.classList.toggle("ligacao-caminho", Boolean(caminho?.ligacoes.has(`${l.dataset.de}|${l.dataset.para}`)));
     montarCartao();
   }
   function selecionar(chave) {
@@ -323,5 +345,12 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   /* as fontes mudam a largura dos nomes: desenha de novo quando carregarem, sem mexer na vista */
   document.fonts?.ready.then(() => { if (area.isConnected) { desenhar(); if (t) aplicar(t); } });
 
-  return { destruir() { observador.disconnect(); cancelAnimationFrame(quadro); } };
+  /* trocar entre dia e noite (pela página ou pelo sistema) muda o fundo das faixas: as tintas do texto são refeitas */
+  const mudouTema = () => { if (area.isConnected) ajustarTintas(); };
+  const sobreTema = new MutationObserver(mudouTema);
+  sobreTema.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class"] });
+  const escuroDoSistema = matchMedia("(prefers-color-scheme: dark)");
+  escuroDoSistema.addEventListener?.("change", mudouTema);
+
+  return { destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); } };
 }
