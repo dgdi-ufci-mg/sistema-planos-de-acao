@@ -1,12 +1,15 @@
 /**
- * Telas do módulo Superior (passo 2.5; documentação técnica, seções 4.11 e 8): a gestão da estratégia.
- * Quatro abas:
- * - Desdobramento: a árvore do catálogo, de cima para baixo, com os Planos de Ação ligados no fim e, sob cada
- *   um, as entregas, com a situação e o alcance (passo 2.6); cada item
- *   abre um painel com camada, instrumento, superiores, subordinados e Planos de Ação;
- * - Instrumentos: PEI, PDI, políticas…, com vigência e prorrogações;
- * - Camadas: o modelo do desdobramento;
- * - Importar: a carga por planilha.
+ * Telas do Strata, antes módulo Superior (passo 2.5; documentação técnica, seções 4.11 e 8): a gestão da estratégia.
+ * Desde 29/10/2026, tarde (decisão do responsável), o **Mapa ocupa a tela toda e é a porta de entrada**; nada tira a
+ * pessoa do mapa: o resto abre por cima dele e, ao fechar, volta ao mesmo ponto, com o item ainda aceso.
+ * - no alto, à esquerda, o título e a universidade (na página); à direita, "Só o que vale hoje" e o **menu**;
+ * - o menu leva às **folhas**, que abrem por cima do mapa:
+ *   - Ver como lista (o Desdobramento): a árvore do catálogo, com os Planos de Ação e as entregas (passo 2.6);
+ *   - Instrumentos: PEI, PDI, políticas…, com vigência e prorrogações;
+ *   - Camadas: o modelo do desdobramento;
+ *   - Importar: a carga por planilha;
+ *   e também a "Novo item", "Voltar ao automático", "Como usar o mapa", ao tema e à conta;
+ * - cada item abre um painel (camada, instrumento, superiores, subordinados e Planos de Ação), também por cima.
  * Todos consultam; só o Gestor da Estratégia (provisoriamente, o Administrador do Sistema) altera.
  */
 import { esc, dataBr, plural } from "../formato.js";
@@ -14,7 +17,10 @@ import { ICONES } from "../icones.js";
 import { normalizar } from "../acao.js";
 import { lerColagem } from "../planilha.js";
 import { abrirPainel, fecharPainel, avisar } from "../telas/painel.js";
+import { abrirCamada } from "../telas/voltar.js";
 import { tipoDe } from "../tipos.js";
+import { NOME } from "../identidade.js";
+import { lerTema, escolherTema } from "../tema.js";
 import { alcanceAtual, textoDoValor } from "../entregas.js";
 import { seloDaSituacao } from "../telas/entregas.js";
 import { esqueletoHtml } from "../telas/esqueleto.js";
@@ -23,15 +29,21 @@ import {
   avisoDaMissao, camadasAcima, instrumentoVigente, itemVigente, rotuloDoItem, caminhoAteOTopo, subordinadosDe, itensPorCamada, planejarCatalogo,
 } from "../estrategia.js";
 
-const ABAS = [["mapa", "Mapa"], ["arvore", "Desdobramento"], ["instrumentos", "Instrumentos"], ["camadas", "Camadas"], ["importar", "Importar"]];
+/** Folhas que abrem por cima do mapa: chave → título. */
+const FOLHAS = { arvore: "Desdobramento", instrumentos: "Instrumentos", camadas: "Camadas", importar: "Importar" };
+/** Tema do aparelho, com os nomes do Strata (o céu de dia e de noite); os valores são os do Sextante (js/tema.js). */
+const TEMAS_DO_STRATA = [["automatico", "Automático"], ["claro", "Dia"], ["escuro", "Noite"]];
 
 /**
  * @param {HTMLElement} alvo
- * @param {{store: object, hoje: string}} contexto
+ * @param {{store: object, hoje: string, conta?: object, comandos?: HTMLElement, avisos?: HTMLElement, cima?: HTMLElement}} contexto
+ *   `conta`: {usuario(), podeEntrar(), entrar(), trocarSenha(), sair()}; `comandos`: onde vão o filtro e o menu, no alto à
+ *   direita; `avisos`: os avisos por cima do mapa; `cima`: o alto da tela (título e menu), que o mapa deixa livre
  * @returns {{recarregar: () => Promise<void>}}
  */
-export function mostrarSuperior(alvo, { store, hoje }) {
-  const ui = { aba: "mapa", soVigentes: true, busca: "", recolhidos: new Set(), mapa: {}, ordemDoMapa: null };
+export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = null, avisos = null, cima = null }) {
+  /** `folha`: a folha aberta por cima do mapa (chave de FOLHAS), ou null; `menu`: o menu aberto */
+  const ui = { folha: null, menu: false, soVigentes: true, busca: "", recolhidos: new Set(), mapa: {}, ordemDoMapa: null };
   /** vista do Mapa montada na tela (para desfazer os ouvintes ao trocar de aba ou desenhar de novo) */
   let vistaMapa = null;
   let cat = { camadas: [], instrumentos: [], itens: [] };
@@ -43,7 +55,22 @@ export function mostrarSuperior(alvo, { store, hoje }) {
   let rascunho = null;
   let planoImportacao = null;
 
-  alvo.innerHTML = esqueletoHtml("lista", 6); // até a primeira leitura do catálogo
+  /* a tela: o mapa embaixo de tudo, a mensagem de vazio sobre o céu e a folha por cima */
+  alvo.innerHTML = `
+    <div class="mapa-area strata-mapa" data-mapa-area></div>
+    <div class="strata-vazio" data-vazio hidden></div>
+    <section class="strata-folha" data-folha role="dialog" aria-modal="false" aria-labelledby="strata-folha-titulo" hidden>
+      <header class="strata-folha-cabeca"><h2 id="strata-folha-titulo" tabindex="-1"></h2>
+        <button type="button" class="botao" data-fechar-folha>Voltar ao mapa</button></header>
+      <div class="strata-folha-corpo superior-corpo" data-folha-corpo>${esqueletoHtml("lista", 6)}</div>
+    </section>`;
+  const areaDoMapa = alvo.querySelector("[data-mapa-area]");
+  const vazio = alvo.querySelector("[data-vazio]");
+  const folha = alvo.querySelector("[data-folha]");
+  const folhaCorpo = folha.querySelector("[data-folha-corpo]");
+  const avisoMissao = document.createElement("div");
+  avisos?.append(avisoMissao);
+
   async function recarregar() {
     [cat, gestor, ui.ordemDoMapa] = await Promise.all([store.lerCatalogo(), store.ehGestorDaEstrategia().catch(() => false), store.lerOrdemDoMapa().catch(() => null)]);
     const espacos = await store.listarEspacos().catch(() => []);
@@ -65,29 +92,132 @@ export function mostrarSuperior(alvo, { store, hoje }) {
   const ordem = (a, b) => posicaoDaCamada(a.camada) - posicaoDaCamada(b.camada)
     || String(a.codigo ?? "").localeCompare(String(b.codigo ?? ""), "pt-BR", { numeric: true }) || a.nome.localeCompare(b.nome, "pt-BR");
 
+  /** Desenha tudo: o mapa, o filtro e o menu e, se houver, a folha aberta. */
   function desenhar() {
+    desenharMapa();
+    desenharComandos();
+    desenharFolha();
+  }
+
+  /** O mapa, a tela inteira, e o que fica sobre o céu: o aviso da Missão e a mensagem de vazio. */
+  function desenharMapa() {
     vistaMapa?.destruir();
     vistaMapa = null;
-    const abas = ABAS.filter(([v]) => gestor || v !== "importar");
-    alvo.innerHTML = `
-      <section class="superior-cabeca">
-        <h1 class="superior-titulo">Estratégia</h1>
-        <p class="tec">O desdobramento do PEI/PDI, de cima para baixo, até os Planos de Ação.
-          ${gestor ? "Você é Gestor da Estratégia: pode alterar o catálogo." : "Só o Gestor da Estratégia altera o catálogo; aqui você consulta."}</p>
-        <div class="superior-abas" role="tablist">${abas.map(([v, t]) => `<button type="button" role="tab" data-aba="${v}" aria-selected="${ui.aba === v}">${t}</button>`).join("")}</div>
-      </section>
-      <section class="superior-corpo">${{ mapa: mapaHtml, arvore: arvoreHtml, instrumentos: instrumentosHtml, camadas: camadasHtml, importar: importarHtml }[ui.aba]()}</section>`;
-    const areaDoMapa = alvo.querySelector("[data-mapa-area]");
-    if (areaDoMapa) vistaMapa = criarVistaMapa(areaDoMapa, { camadas: cat.camadas, itens: cat.itens.filter((x) => !x.excluidoEm && vale(x)), planos: planosDoMapa(), estado: ui.mapa, aoAbrir: abrirDoMapa, ordemPessoal: ui.ordemDoMapa ?? {}, podeOrdenar: store.podeGravar, aoReordenar: reordenarNoMapa });
-    const busca = alvo.querySelector("[data-busca-arvore]");
+    avisoMissao.innerHTML = avisoMissaoHtml();
+    const mostrados = cat.itens.filter((x) => !x.excluidoEm && vale(x));
+    vistaMapa = criarVistaMapa(areaDoMapa, {
+      camadas: cat.camadas, itens: mostrados, planos: planosDoMapa(), estado: ui.mapa, aoAbrir: abrirDoMapa, ordemPessoal: ui.ordemDoMapa ?? {},
+      podeOrdenar: store.podeGravar, aoReordenar: reordenarNoMapa, folga: folgaDoMapa,
+    });
+    const mensagem = mostrados.length ? "" : cat.itens.length ? "Nada vale hoje. Desligue “Só o que vale hoje”, no alto, para ver tudo."
+      : gestor ? "O catálogo está vazio. Comece por “Novo item” ou por “Importar”." : "O catálogo ainda está vazio.";
+    vazio.hidden = !mensagem;
+    vazio.innerHTML = mensagem ? `<p>${mensagem}</p>${!cat.itens.length && gestor ? `<div class="botoes">
+      <button type="button" class="botao principal" data-novo-item>${ICONES.mais}Novo item</button>
+      <button type="button" class="botao" data-abrir-folha="importar">Importar</button></div>` : ""}` : "";
+  }
+  /** O alto da tela (título, menu e avisos) fica por cima do mapa: o conteúdo do mapa não vai para baixo dele. */
+  function folgaDoMapa() {
+    const topoDaArea = areaDoMapa.getBoundingClientRect().top;
+    const baixo = Math.max(cima?.getBoundingClientRect().bottom ?? 0, ...[...(avisos?.children ?? [])].filter((e) => e.offsetHeight).map((e) => e.getBoundingClientRect().bottom));
+    /* os botões +, − e Centralizar em fila (celular) ocupam o pé da tela: o mapa também o deixa livre */
+    const area = areaDoMapa.getBoundingClientRect();
+    const botoes = areaDoMapa.querySelector(".mapa-controles")?.getBoundingClientRect();
+    const base = botoes && botoes.width > botoes.height ? Math.max(0, Math.round(area.bottom - botoes.top + 4)) : 0;
+    return { topo: Math.max(0, Math.round(baixo - topoDaArea)), base };
+  }
+
+  /* ---------- comandos: o filtro, sempre à vista, e o menu ---------- */
+  function desenharComandos() {
+    if (!comandos) return;
+    const usuario = conta?.usuario() ?? null;
+    const item = (atributos, texto) => `<button type="button" class="strata-menu-item" ${atributos}>${texto}</button>`;
+    const tema = lerTema();
+    comandos.innerHTML = `
+      <button type="button" class="strata-filtro" data-alternar-vigentes aria-pressed="${ui.soVigentes}">
+        <span class="strata-filtro-chave" aria-hidden="true"></span>Só o que vale hoje</button>
+      <button type="button" class="strata-menu-botao" data-alternar-menu aria-expanded="${ui.menu}" aria-controls="strata-menu">${ICONES.menu}<span>Menu</span></button>
+      <div class="strata-menu${ui.menu ? " aberto" : ""}" id="strata-menu" data-menu${ui.menu ? "" : " inert"}>
+        <p class="tec strata-menu-nota">${gestor ? "Você é Gestor da Estratégia: pode alterar o catálogo." : "Só o Gestor da Estratégia altera o catálogo; aqui você consulta."}</p>
+        <div class="strata-menu-grupo">
+          ${item('data-abrir-folha="arvore"', "Ver como lista")}
+          ${gestor ? item("data-novo-item", "Novo item") : ""}
+          ${item('data-abrir-folha="instrumentos"', "Instrumentos")}
+          ${item('data-abrir-folha="camadas"', "Camadas")}
+          ${gestor ? item('data-abrir-folha="importar"', "Importar") : ""}
+          ${temOrdemPessoal() ? item("data-voltar-automatico", "Voltar ao automático") : ""}
+          ${item("data-como-usar", "Como usar o mapa")}
+        </div>
+        <div class="strata-menu-grupo">
+          <span class="strata-menu-rotulo">Tema</span>
+          <div class="strata-temas" role="group" aria-label="Tema">${TEMAS_DO_STRATA.map(([v, t]) => `<button type="button" class="strata-tema" data-tema="${v}" aria-pressed="${tema === v}">${t}</button>`).join("")}</div>
+        </div>
+        <div class="strata-menu-grupo">
+          ${usuario ? `<span class="tec strata-menu-email">${esc(usuario)}</span>${item("data-conta-acao=\"senha\"", "Trocar senha")}${item("data-conta-acao=\"sair\"", "Sair")}`
+            : conta?.podeEntrar() ? item("data-conta-acao=\"entrar\"", "Entrar") : ""}
+          <a class="strata-menu-item" href="../sextante/">${esc(NOME)}: planos</a>
+        </div>
+      </div>`;
+  }
+  let soltarMenu = null;
+  function alternarMenu(aberto = !ui.menu) {
+    if (aberto === ui.menu) return;
+    ui.menu = aberto;
+    const menu = comandos.querySelector("[data-menu]");
+    menu.classList.toggle("aberto", aberto);
+    menu.inert = !aberto;
+    comandos.querySelector("[data-alternar-menu]").setAttribute("aria-expanded", String(aberto));
+    if (aberto) {
+      soltarMenu = abrirCamada(() => alternarMenu(false)); // Voltar (celular) fecha o menu
+      menu.querySelector("button, a")?.focus({ preventScroll: true });
+    } else { soltarMenu?.(); soltarMenu = null; }
+  }
+
+  /* ---------- folhas: abrem por cima do mapa; ao fechar, o mapa está onde estava ---------- */
+  let soltarFolha = null;
+  function abrirFolha(chave) {
+    alternarMenu(false);
+    const nova = !ui.folha;
+    ui.folha = chave;
+    desenharFolha();
+    if (nova) soltarFolha = abrirCamada(() => fecharFolha({ peloVoltar: true }));
+    folha.querySelector("h2").focus({ preventScroll: true });
+  }
+  function fecharFolha({ peloVoltar = false } = {}) {
+    if (!ui.folha) return;
+    ui.folha = null;
+    if (!peloVoltar) soltarFolha?.();
+    soltarFolha = null;
+    folha.classList.remove("aberta");
+    const reduzir = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduzir) folha.hidden = true;
+    else setTimeout(() => { if (!ui.folha) folha.hidden = true; }, 260); // depois da transição (--mov)
+    desenharMapa(); // o item aberto na lista fica aceso no mapa
+    comandos?.querySelector("[data-alternar-menu]")?.focus({ preventScroll: true });
+  }
+  function desenharFolha() {
+    if (!ui.folha) return;
+    if (ui.folha === "importar" && !gestor) { fecharFolha(); return; }
+    folha.querySelector("h2").textContent = FOLHAS[ui.folha];
+    folhaCorpo.innerHTML = { arvore: arvoreHtml, instrumentos: instrumentosHtml, camadas: camadasHtml, importar: importarHtml }[ui.folha]();
+    if (folha.hidden) {
+      folha.hidden = false;
+      requestAnimationFrame(() => requestAnimationFrame(() => { if (ui.folha) folha.classList.add("aberta"); }));
+    } else folha.classList.add("aberta");
+    const busca = folha.querySelector("[data-busca-arvore]");
     if (busca && ui.busca) { busca.focus(); busca.setSelectionRange(ui.busca.length, ui.busca.length); }
-    /* abas que não cabem (celular, 25/10/2026, item 17 da avaliação de celular): a borda direita esmaece enquanto
-       houver aba escondida, e a aba escolhida rola para a vista */
-    const faixa = alvo.querySelector(".superior-abas");
-    const marcarFaixa = () => faixa.classList.toggle("tem-mais", faixa.scrollLeft + faixa.clientWidth < faixa.scrollWidth - 2);
-    faixa.addEventListener("scroll", marcarFaixa, { passive: true });
-    faixa.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
-    marcarFaixa();
+  }
+
+  /** "Como usar o mapa": o texto de ajuda que ficava sob o mapa. */
+  function abrirComoUsar() {
+    alternarMenu(false);
+    abrirPainel("Como usar o mapa", `<div class="strata-ajuda">
+      <p>Cada ponto é um item. As linhas ligam cada item ao que ele <b>vem de</b>, do nível de baixo para o de cima; embaixo ficam os Planos de Ação.</p>
+      <p>Toque num ponto para acender o caminho dele e ver o cartão com “Abrir”; toque no fundo para desfazer.</p>
+      <p>Arraste para mover o mapa. Para aproximar, use a pinça, Ctrl + rolagem ou os botões + e −; “Centralizar” mostra o mapa inteiro.</p>
+      <p>“Só o que vale hoje”, no alto, mostra só os itens dos instrumentos vigentes.</p>
+      ${store.podeGravar ? "<p>No computador, arraste um ponto para os lados para mudar a ordem dele no nível; a ordem vale só para você, e “Voltar ao automático”, no menu, a desfaz.</p>" : store.conectado ? "<p>Entre para mudar a ordem dos pontos no computador.</p>" : ""}
+    </div>`);
   }
 
   /* ---------- mapa ---------- */
@@ -127,26 +257,9 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     const aviso = avisoDaMissao(cat.camadas, cat.itens);
     return aviso ? `<p class="aviso-papel">${esc(aviso)}</p>` : "";
   }
-  function mapaHtml() {
-    const ferramentas = `<div class="superior-ferramentas">
-        <label class="alternar"><input type="checkbox" data-so-vigentes${ui.soVigentes ? " checked" : ""}> Só o que vale hoje</label>
-        <button type="button" class="botao discreto" data-ver-lista>Ver como lista</button>
-        ${temOrdemPessoal() ? '<button type="button" class="botao discreto" data-voltar-automatico>Voltar ao automático</button>' : ""}
-      </div>${avisoMissaoHtml()}`;
-    if (!cat.itens.some((x) => !x.excluidoEm && vale(x))) {
-      return `${cat.itens.length ? ferramentas : ""}<p class="vazio">${cat.itens.length ? "Nada vale hoje. Desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece pela aba Desdobramento, em “Novo item”, ou pela aba Importar." : "O catálogo ainda está vazio."}</p>`;
-    }
-    return `${ferramentas}
-      <div class="mapa-area" data-mapa-area></div>
-      <p class="tec mapa-ajuda">Cada ponto é um item. As linhas ligam cada item ao que ele <b>vem de</b>, do nível de baixo para o de cima; embaixo ficam os Planos de Ação.
-        Toque num ponto para acender o caminho dele e ver o cartão com “Abrir”; toque no fundo para desfazer.
-        Arraste para mover o mapa. Para aproximar, use a pinça, Ctrl + rolagem ou os botões + e −.
-        ${store.podeGravar ? "No computador, arraste um ponto para os lados para mudar a ordem dele no nível; a ordem vale só para você, e “Voltar ao automático” a desfaz." : store.conectado ? "Entre para mudar a ordem dos pontos no computador." : ""}</p>`;
-  }
   /** "Ver como lista": o Desdobramento, com o item selecionado no Mapa aberto e à vista (o Plano de Ação, no lugar dele). */
   function verComoLista() {
     const chave = ui.mapa.selecionado ?? null;
-    ui.aba = "arvore";
     ui.busca = "";
     if (chave && !chave.startsWith("plano:")) {
       const acima = new Set();
@@ -154,8 +267,8 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       subir(chave);
       for (const k of [...ui.recolhidos]) if (acima.has(k.split("/").pop())) ui.recolhidos.delete(k); // abre o caminho até o item
     }
-    desenhar();
-    const el = alvo.querySelector(".selecionado");
+    abrirFolha("arvore");
+    const el = folha.querySelector(".selecionado");
     el?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 
@@ -217,7 +330,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       ${termo ? `<ul class="arvore-estrategia busca">${achados.map((x) => `<li class="no-estrategia"><div class="no-linha"><span class="no-seta vazia"></span>${itemHtml(x)}</div>
           <small class="tec caminho-estrategia">${caminhoAteOTopo(x, cat.itens).slice(0, -1).map((c) => esc(rotuloDoItem(c))).join(" › ")}</small></li>`).join("") || '<li class="vazio">Nada encontrado.</li>'}</ul>`
         : raizes.length ? `<ul class="arvore-estrategia">${raizes.map((r) => noHtml(r, new Set())).join("")}</ul>`
-        : `<p class="vazio">${cat.itens.length ? "Nada vale hoje. Desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece por “Novo item” ou pela aba Importar." : "O catálogo ainda está vazio."}</p>`}
+        : `<p class="vazio">${cat.itens.length ? "Nada vale hoje. Desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece por “Novo item” ou por “Importar”, no menu." : "O catálogo ainda está vazio."}</p>`}
       <p class="tec">${cat.camadas.map((c) => esc(c.plural) + (c.opcional ? " (opcional)" : "")).join(" › ")} › Planos de Ação. Um item pode estar sob mais de um superior; nesse caso, aparece sob cada um.</p>`;
   }
 
@@ -451,26 +564,60 @@ export function mostrarSuperior(alvo, { store, hoje }) {
   }
 
   /* ---------- eventos ---------- */
+  /** Comandos que existem no menu e também sobre o mapa ou numa folha. Devolve true se tratou o botão. */
+  async function comandoComum(t) {
+    if (t.dataset.abrirFolha) { if (t.dataset.abrirFolha === "arvore") verComoLista(); else abrirFolha(t.dataset.abrirFolha); return true; }
+    if (t.matches("[data-novo-item]")) { alternarMenu(false); abrirNovoItem(); return true; }
+    if (t.matches("[data-voltar-automatico]")) {
+      alternarMenu(false);
+      const antes = ui.ordemDoMapa;
+      ui.ordemDoMapa = null; // na hora; se o servidor recusar, volta
+      desenharMapa(); desenharComandos();
+      try { await store.voltarAoAutomaticoNoMapa(); avisar("O Mapa voltou à ordem automática."); } catch (f) { ui.ordemDoMapa = antes; avisar(f.message); desenharMapa(); desenharComandos(); }
+      return true;
+    }
+    return false;
+  }
+  comandos?.addEventListener("click", async (e) => {
+    const t = e.target.closest("button, a");
+    if (!t) return;
+    if (t.matches("[data-alternar-menu]")) { alternarMenu(); return; }
+    if (t.matches("[data-alternar-vigentes]")) { ui.soVigentes = !ui.soVigentes; desenhar(); return; }
+    if (t.dataset.tema) {
+      const escolhido = escolherTema(t.dataset.tema); // troca na hora, sem fechar o menu
+      for (const b of comandos.querySelectorAll("[data-tema]")) b.setAttribute("aria-pressed", String(b.dataset.tema === escolhido));
+      return;
+    }
+    if (t.matches("[data-como-usar]")) { abrirComoUsar(); return; }
+    if (t.dataset.contaAcao) {
+      alternarMenu(false);
+      if (t.dataset.contaAcao === "entrar") conta.entrar();
+      if (t.dataset.contaAcao === "senha") conta.trocarSenha();
+      if (t.dataset.contaAcao === "sair") conta.sair();
+      return;
+    }
+    await comandoComum(t);
+  });
+  /* o menu fecha com Esc e com um toque fora dele */
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || e.defaultPrevented) return;
+    if (ui.menu) { e.preventDefault(); alternarMenu(false); comandos.querySelector("[data-alternar-menu]")?.focus(); return; }
+    if (ui.folha && !document.querySelector(".camada")) { e.preventDefault(); fecharFolha(); }
+  });
+  document.addEventListener("pointerdown", (e) => { if (ui.menu && !e.target.closest?.("[data-menu], [data-alternar-menu]")) alternarMenu(false); }, true);
+
   alvo.addEventListener("click", async (e) => {
     const t = e.target.closest("button");
     if (!t || t.disabled) return;
-    if (t.dataset.aba) { ui.aba = t.dataset.aba; return desenhar(); }
-    if (t.matches("[data-ver-lista]")) return verComoLista();
-    if (t.matches("[data-voltar-automatico]")) {
-      const antes = ui.ordemDoMapa;
-      ui.ordemDoMapa = null; // na hora; se o servidor recusar, volta
-      desenhar();
-      try { await store.voltarAoAutomaticoNoMapa(); avisar("O Mapa voltou à ordem automática."); } catch (f) { ui.ordemDoMapa = antes; avisar(f.message); desenhar(); }
-      return;
-    }
+    if (t.matches("[data-fechar-folha]")) { fecharFolha(); return; }
+    if (await comandoComum(t)) return;
     if (t.dataset.item) { ui.mapa.selecionado = t.dataset.item; return abrirItem(t.dataset.item); } // o mesmo ponto fica aceso no Mapa
-    if (t.dataset.alternarNo) { if (ui.recolhidos.has(t.dataset.alternarNo)) ui.recolhidos.delete(t.dataset.alternarNo); else ui.recolhidos.add(t.dataset.alternarNo); return desenhar(); }
+    if (t.dataset.alternarNo) { if (ui.recolhidos.has(t.dataset.alternarNo)) ui.recolhidos.delete(t.dataset.alternarNo); else ui.recolhidos.add(t.dataset.alternarNo); return desenharFolha(); }
     if (t.matches("[data-recolher-tudo]")) {
       if (ui.recolhidos.size) ui.recolhidos.clear();
       else for (const el of alvo.querySelectorAll("[data-alternar-no]")) ui.recolhidos.add(el.dataset.alternarNo);
-      return desenhar();
+      return desenharFolha();
     }
-    if (t.matches("[data-novo-item]")) return abrirNovoItem();
     if (t.matches("[data-novo-instrumento]")) return abrirInstrumento();
     if (t.dataset.editarInstrumento) return abrirInstrumento(t.dataset.editarInstrumento);
     if (t.dataset.prorrogar) return abrirProrrogacao(t.dataset.prorrogar);
@@ -482,12 +629,12 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       const i = Number(t.dataset.moverCamada);
       const j = i + Number(t.dataset.sentido);
       [rascunho[i], rascunho[j]] = [rascunho[j], rascunho[i]];
-      return desenhar();
+      return desenharFolha();
     }
-    if (t.dataset.tirarCamada != null) { rascunho.splice(Number(t.dataset.tirarCamada), 1); return desenhar(); }
+    if (t.dataset.tirarCamada != null) { rascunho.splice(Number(t.dataset.tirarCamada), 1); return desenharFolha(); }
     if (t.matches("[data-nova-camada]")) {
       rascunho.push({ id: `c${Date.now().toString(36)}`, nome: "", plural: "", opcional: false });
-      desenhar();
+      desenharFolha();
       const campos = alvo.querySelectorAll('[data-campo="nome"]');
       return campos[campos.length - 1]?.focus();
     }
@@ -512,7 +659,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     }
   });
   alvo.addEventListener("input", (e) => {
-    if (e.target.matches("[data-busca-arvore]")) { ui.busca = e.target.value; desenhar(); return; }
+    if (e.target.matches("[data-busca-arvore]")) { ui.busca = e.target.value; desenharFolha(); return; }
     const i = e.target.dataset.camada;
     if (i != null && e.target.type !== "checkbox") rascunho[Number(i)][e.target.dataset.campo] = e.target.value;
   });

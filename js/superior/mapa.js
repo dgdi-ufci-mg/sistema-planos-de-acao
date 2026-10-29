@@ -38,9 +38,10 @@ const criar = (nome, atributos = {}) => {
  *   ordemPessoal?: Record<string, string[]>, podeOrdenar?: boolean, aoReordenar?: (camada: string, chaves: string[]) => Promise<void>}} contexto
  *   `ordemPessoal`: a ordem da pessoa, camada → chaves; `podeOrdenar`: ela pode arrastar pontos (só com o mouse, no computador); `aoReordenar` recebe a nova ordem de uma camada
  *   `estado` guarda a vista e o ponto selecionado entre um desenho e outro da tela; `aoAbrir` recebe o ponto do cartão
+ *   `folga`: pixels reservados no alto e no pé da área, que ficam sob o título e o menu da tela cheia (o conteúdo não vai para baixo deles)
  * @returns {{destruir: () => void}}
  */
-export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {}, ordemPessoal = {}, podeOrdenar = false, aoReordenar = async () => {} }) {
+export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {}, ordemPessoal = {}, podeOrdenar = false, aoReordenar = async () => {}, folga = () => ({ topo: 0, base: 0 }) }) {
   area.innerHTML = `
     <svg class="mapa-svg" role="group" aria-label="Mapa do desdobramento: do alto, o que vem primeiro; embaixo, os Planos de Ação" focusable="false">
       <g data-mapa-mundo></g>
@@ -66,7 +67,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   let quadro = 0;
 
   const conteudo = () => ({ w: mapa.largura, h: mapa.altura });
-  const limites = () => ({ conteudo: conteudo(), vista, escalaMaxima: ESCALA_MAXIMA });
+  const limites = () => ({ conteudo: conteudo(), vista, escalaMaxima: ESCALA_MAXIMA, folga: folga() });
 
   /* ---------- desenho ---------- */
   function desenhar() {
@@ -288,7 +289,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const alt = cartao.offsetHeight;
     const esquerda = Math.max(8, Math.min(vista.w - larg - 8, px - larg / 2));
     const abaixo = py + 14 + alt <= vista.h - 8;
-    const topo = abaixo ? py + 14 : Math.max(8, py - 14 - alt);
+    const topo = abaixo ? py + 14 : Math.max(8 + folga().topo, py - 14 - alt); // não sobe para baixo do título e do menu
     cartao.style.transform = `translate(${esquerda.toFixed(1)}px, ${topo.toFixed(1)}px)`;
   }
 
@@ -319,12 +320,13 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const xMundo = Math.min(mapa.largura, Math.max(0, (12 - t.x) / t.k));
     const curva = deslocamentoCurvo(xMundo, mapa.centro, mapa.raio);
     const fonte = `${Math.max(8, Math.min(11, 11 * t.k)).toFixed(1)}px`; // menor quando o mapa inteiro é reduzido, para não cobrir os pontos
+    const livre = folga().topo; // o nome da camada não entra sob o título e o menu da tela cheia
     for (const s of rotulos.children) {
       s.style.fontSize = fonte;
       const f = mapa.faixas.find((x) => x.id === s.dataset.camada);
       const topo = t.y + t.k * (f.topo + curva);
       const base = t.y + t.k * (f.base + curva);
-      const de = Math.max(topo, 0);
+      const de = Math.max(topo, livre);
       const ate = Math.min(base, vista.h);
       const cabe = ate - de >= 16;
       s.hidden = !cabe;

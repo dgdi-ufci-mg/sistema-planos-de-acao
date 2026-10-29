@@ -7,9 +7,8 @@ import { FIREBASE_CONFIG } from "../../config.js";
 import { conectarFirebase } from "../banco/firebase.js";
 import { criarBancoLocal } from "../banco/local.js";
 import { criarStore, hojeLocal } from "../dados.js";
-import { NOME } from "../identidade.js";
+import { INSTITUICAO, INSTITUICAO_POR_EXTENSO } from "../identidade.js";
 import { strataLogotipoSvg } from "../marca.js";
-import { esc } from "../formato.js";
 import { abrirEntrar, abrirTrocarSenha } from "../telas/acesso.js";
 import { avisar } from "../telas/painel.js";
 import { mostrarSuperior } from "./telas.js";
@@ -25,10 +24,12 @@ registrarAplicativo("../sw.js"); // o mesmo service worker; o manifesto é o do 
 export const NOME_DO_MODULO = "Strata";
 document.title = NOME_DO_MODULO;
 document.querySelector("[data-logotipo]")?.insertAdjacentHTML("afterbegin", strataLogotipoSvg(24)); // logotipo do Strata, nas cores do tema (29/10/2026)
+/* sob o título, o nome da universidade: por extenso; na tela estreita, a sigla (tela cheia, 29/10/2026) */
+document.querySelector("[data-instituicao]")?.insertAdjacentHTML("afterbegin",
+  `<span class="extenso">${INSTITUICAO_POR_EXTENSO}</span><span class="sigla" aria-hidden="true">${INSTITUICAO}</span>`);
 
 const hoje = hojeLocal();
 const principal = document.querySelector("#principal");
-const conta = document.querySelector("[data-conta]");
 let store = null;
 let acesso = null;
 let usuario = null;
@@ -50,24 +51,14 @@ window.addEventListener("offline", () => vigia.verificar());
 window.addEventListener("online", () => vigia.verificar());
 document.addEventListener("visibilitychange", () => { if (!document.hidden) vigia.verificar(); });
 
-/* barra do topo: vidro ao rolar, como no sistema de planos */
-const topo = document.querySelector(".topo");
-window.addEventListener("scroll", () => topo.classList.toggle("rolou", window.scrollY > 4), { passive: true });
-
-function desenharConta() {
-  conta.innerHTML = `
-    <a class="botao discreto" href="../sextante/">← ${esc(NOME)}: planos</a>
-    ${usuario ? `<span class="tec superior-email">${esc(usuario)}</span>
-      <button class="botao discreto" type="button" data-conta-acao="senha">Trocar senha</button>
-      <button class="botao discreto" type="button" data-conta-acao="sair">Sair</button>`
-      : acesso ? '<button class="botao" type="button" data-conta-acao="entrar">Entrar</button>' : ""}`;
-}
-conta.addEventListener("click", async (e) => {
-  const acao = e.target.closest("[data-conta-acao]")?.dataset.contaAcao;
-  if (acao === "entrar") abrirEntrar({ acesso });
-  if (acao === "senha") abrirTrocarSenha({ acesso });
-  if (acao === "sair") { try { await acesso.sair(); avisar("Você saiu."); } catch (falha) { avisar(falha.message); } }
-});
+/* a conta (entrar, trocar senha, sair) fica no menu do Mapa (tela cheia, 29/10/2026), desenhado por js/superior/telas.js */
+const conta = {
+  usuario: () => usuario,
+  podeEntrar: () => Boolean(acesso),
+  entrar: () => abrirEntrar({ acesso }),
+  trocarSenha: () => abrirTrocarSenha({ acesso }),
+  sair: async () => { try { await acesso.sair(); avisar("Você saiu."); } catch (falha) { avisar(falha.message); } },
+};
 
 async function partida() {
   if (FIREBASE_CONFIG) {
@@ -83,16 +74,14 @@ async function partida() {
   if (!store) {
     store = criarStore(criarBancoLocal());
     await carregarCatalogoDeExemplo(store);
-    principal.insertAdjacentHTML("beforebegin", '<p class="aviso-papel superior-aviso-exemplo">Catálogo de exemplo, na memória: nada é gravado.</p>');
+    document.querySelector("[data-avisos]").insertAdjacentHTML("beforeend", '<p class="aviso-papel superior-aviso-exemplo">Catálogo de exemplo, na memória: nada é gravado.</p>');
   }
-  tela = mostrarSuperior(principal, { store, hoje });
-  desenharConta();
+  tela = mostrarSuperior(principal, { store, hoje, conta, comandos: document.querySelector("[data-comandos]"), avisos: document.querySelector("[data-avisos]"), cima: document.querySelector(".strata-cima") });
   if (!acesso) return tela.recarregar();
   vigia.verificar();
   acesso.aoMudarUsuario(async (email) => {
     usuario = email;
     store.definirUsuario(email);
-    desenharConta();
     await tela.recarregar();
   });
 }

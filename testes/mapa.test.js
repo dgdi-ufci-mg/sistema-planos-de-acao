@@ -197,6 +197,21 @@ describe("Mapa: limites do movimento e do zoom", () => {
     assert.ok(conteudo.w * t.k <= vista.w && conteudo.h * t.k <= vista.h, "cabe nas duas direções");
     assert.ok(Math.abs(t.x - (400 - 2000 * t.k) / 2) < 1e-9);
   });
+
+  it("tela cheia: a folga do alto e do pé fica livre ao abrir e ao mover (o título e o menu ficam por cima)", () => {
+    const folga = { topo: 80, base: 20 };
+    const t = transformacaoInicial({ conteudo: { w: 300, h: 800 }, vista, folga });
+    assert.ok(t.y >= 80 + 24 - 1e-9, "o conteúdo começa abaixo do título");
+    assert.ok(t.y + 800 * t.k <= 500 - 20 - 24 + 1e-9, "e termina acima do pé");
+    assert.ok(Math.abs(t.k - (500 - 100 - 48) / 800) < 1e-9, "a escala usa só a faixa útil");
+    const longe = limitarTransformacao({ k: 1, x: 0, y: 5000 }, { conteudo, vista, folga });
+    assert.equal(longe.y, 80 + 24);
+    const alem = limitarTransformacao({ k: 1, x: 0, y: -99999 }, { conteudo, vista, folga });
+    assert.equal(alem.y, 500 - 20 - 600 - 24);
+    const pequeno = limitarTransformacao({ k: 1, x: 0, y: 0 }, { conteudo: { w: 100, h: 100 }, vista, folga });
+    assert.equal(pequeno.y, 80 + (400 - 100) / 2, "conteúdo pequeno fica no meio da faixa útil");
+    assert.deepEqual(limitarTransformacao({ k: 1, x: 0, y: 0 }, { conteudo: { w: 100, h: 100 }, vista, folga: { topo: 0, base: 0 } }), { k: 1, x: 150, y: 200 }, "sem folga, como antes");
+  });
 });
 
 describe("Mapa: ordem pessoal (lote 6)", () => {

@@ -2160,12 +2160,14 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
   --mapa-chao: #DCEBFA; --mapa-topo: #263278; --mapa-contorno: #AFC2DD;
   --mapa-linha: #1F2A4D; --mapa-borda-da-linha: #F4F8FF;
   --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
+  --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --mapa-chao: #1B3158; --mapa-topo: #03050B; --mapa-contorno: #2E4573;
     --mapa-linha: #CFDAF5; --mapa-borda-da-linha: #05070D;
     --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
+    --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
   }
   :root:not([data-theme="light"]) .mapa-estrela { display: inline; }
 }
@@ -2173,6 +2175,93 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
   --mapa-chao: #1B3158; --mapa-topo: #03050B; --mapa-contorno: #2E4573;
   --mapa-linha: #CFDAF5; --mapa-borda-da-linha: #05070D;
   --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
+  --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
 }
 :root[data-theme="dark"] .mapa-estrela { display: inline; }
 .mapa-estrela { display: none; fill: #FFFFFF; }
+
+/* ---------- Strata: Mapa em tela cheia como porta de entrada (29/10/2026, tarde, decisão do responsável) ----------
+   O mapa ocupa a tela toda; o título (alto, à esquerda), o filtro e o menu (alto, à direita), os avisos, os botões
+   +, − e Centralizar e as folhas ficam por cima dele. A página não rola: cada folha rola por dentro. */
+body.strata-cheia { margin: 0; padding: 0; height: 100dvh; overflow: hidden; overscroll-behavior: none; }
+@media (min-width: 900px) { body.modulo-superior.strata-cheia { padding-left: 0; } }
+/* sem posição própria: o mapa, a mensagem de vazio e as folhas se empilham com o alto da tela (z-index 0, 5, 20 e 30) */
+.strata-principal { position: static; }
+.mapa-area.strata-mapa { position: fixed; inset: 0; height: auto; border: 0; border-radius: 0; background: var(--mapa-topo); }
+.strata-mapa .mapa-controles { right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+.strata-mapa .mapa-controles .botao { background: color-mix(in srgb, var(--surface) 90%, transparent); }
+.strata-mapa .mapa-rotulo-camada { margin-left: env(safe-area-inset-left, 0px); }
+/* no celular, os botões ficam em fila, embaixo, e o mapa deixa livre o pé da tela para eles */
+@media (max-width: 640px) { .strata-mapa .mapa-controles { flex-direction: row; } }
+
+/* alto da tela: o título sobre o céu, sem bloquear o toque no mapa; à direita, o filtro e o menu */
+.strata-cima { position: fixed; z-index: 20; top: 0; left: 0; right: 0; display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) 6px max(14px, env(safe-area-inset-left, 0px)); pointer-events: none; }
+.strata-cima .superior-marca { pointer-events: auto; color: var(--mapa-sobre-ceu); --accent: var(--mapa-sobre-ceu); min-width: 0; filter: drop-shadow(0 1px 2px var(--mapa-sombra-do-texto)); }
+.strata-cima .superior-marca small { color: var(--mapa-sobre-ceu); opacity: .85; font-size: .74rem; max-width: 34ch; white-space: normal; line-height: 1.25; }
+.strata-cima .superior-marca .sigla { display: none; }
+@media (max-width: 640px) {
+  .strata-cima .superior-marca small { display: block; }
+  .strata-cima .superior-marca .extenso { display: none; } .strata-cima .superior-marca .sigla { display: inline; }
+}
+.strata-comandos { position: relative; pointer-events: auto; display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap-reverse; gap: 8px; min-width: 0; }
+.strata-filtro, .strata-menu-botao { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--ink); font: 600 .88rem var(--f-texto); cursor: pointer; white-space: nowrap;
+  box-shadow: 0 1px 6px color-mix(in srgb, var(--ink) 16%, transparent); transition: background-color var(--mov-rapido), border-color var(--mov-rapido); }
+.strata-menu-botao .icone, .strata-menu-botao svg { width: 18px; height: 18px; }
+.strata-filtro-chave { position: relative; width: 28px; height: 16px; border-radius: 999px; background: var(--line); flex: none; transition: background-color var(--mov-rapido); }
+.strata-filtro-chave::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 30%, transparent); transition: transform var(--mov-rapido) var(--mov-curva); }
+.strata-filtro[aria-pressed="true"] .strata-filtro-chave { background: var(--accent); }
+.strata-filtro[aria-pressed="true"] .strata-filtro-chave::after { transform: translateX(12px); }
+.strata-filtro:focus-visible, .strata-menu-botao:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
+
+/* o menu: abre por cima do mapa, sob o botão, com os nomes escritos */
+.strata-menu { position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; width: 270px; max-width: calc(100vw - 28px); max-height: calc(100dvh - 90px); overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--sombra);
+  opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.98); transform-origin: top right;
+  transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva), visibility 0s var(--mov-rapido); }
+.strata-menu.aberto { opacity: 1; visibility: visible; transform: none; transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva), visibility 0s; }
+.strata-menu-nota { margin: 2px 6px 4px; font-size: .78rem; }
+.strata-menu-grupo { display: flex; flex-direction: column; gap: 1px; padding-top: 4px; border-top: 1px solid var(--line); }
+.strata-menu-grupo:first-of-type { border-top: 0; padding-top: 0; }
+.strata-menu-item { display: flex; align-items: center; min-height: 40px; padding: 6px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink);
+  font: 400 .95rem var(--f-texto); text-align: left; text-decoration: none; cursor: pointer; transition: background-color var(--mov-rapido); }
+.strata-menu-item:hover, .strata-menu-item:focus-visible { background: var(--sunk); outline: none; }
+.strata-menu-rotulo { padding: 4px 10px 2px; font-size: .78rem; font-weight: 600; color: var(--muted); }
+.strata-menu-email { padding: 4px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.strata-temas { display: flex; gap: 4px; padding: 2px 6px 6px; }
+.strata-tema { flex: 1; min-height: 34px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--muted); font: 600 .84rem var(--f-texto); cursor: pointer; }
+.strata-tema[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+
+/* avisos (sem conexão, exemplo, Missão): por cima do mapa, sob o título */
+.strata-avisos { position: fixed; z-index: 19; top: calc(64px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: min(560px, calc(100vw - 28px));
+  display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
+.strata-avisos > *:empty { display: none; }
+.strata-avisos .aviso-papel, .strata-avisos .aviso-conexao, .strata-avisos .superior-aviso-exemplo { margin: 0; max-width: none; pointer-events: auto; box-shadow: 0 1px 6px color-mix(in srgb, var(--ink) 14%, transparent); }
+.strata-avisos .aviso-papel { padding: 6px 10px; font-size: .85rem; }
+@media (max-width: 640px) { .strata-avisos { top: calc(106px + env(safe-area-inset-top, 0px)); } }
+
+/* catálogo vazio ou "Nada vale hoje": mensagem sobre o céu */
+.strata-vazio { position: fixed; z-index: 5; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); padding: 16px 18px;
+  border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--surface) 94%, transparent); box-shadow: var(--sombra); text-align: center; }
+.strata-vazio[hidden] { display: none; }
+.strata-vazio p { margin: 0 0 10px; }
+.strata-vazio .botoes { justify-content: center; }
+
+/* folhas (Ver como lista, Instrumentos, Camadas, Importar): por cima do mapa; à esquerda no computador, a tela toda no celular */
+.strata-folha { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; width: min(640px, 92vw); display: flex; flex-direction: column; background: var(--bg);
+  box-shadow: var(--sombra); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  transform: translateX(-102%); transition: transform var(--mov) var(--mov-curva); }
+.strata-folha.aberta { transform: none; }
+.strata-folha[hidden] { display: none; }
+.strata-folha-cabeca { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.strata-folha-cabeca h2 { font-size: 1.2rem; outline: none; }
+.strata-folha-corpo { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px 24px; }
+@media (max-width: 640px) {
+  .strata-folha { width: 100%; transform: translateY(102%); }
+  .strata-folha.aberta { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .strata-folha, .strata-menu, .strata-menu.aberto { transition: none; } }
+.strata-ajuda { display: flex; flex-direction: column; gap: 10px; }
+

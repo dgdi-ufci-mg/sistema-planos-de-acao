@@ -23,7 +23,9 @@ describe("Mapa do Strata", { skip: pular }, () => {
     describe(nome, () => {
       test("abre no Mapa, com as faixas na ordem do catálogo e os Planos de Ação por último", async () => {
         const p = await sessao.abrir({ ...o, ...ABRIR });
-        assert.equal(await p.locator('[data-aba="mapa"]').getAttribute("aria-selected"), "true");
+        const tela = await p.evaluate(() => { const r = document.querySelector(".mapa-area").getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; });
+        assert.deepEqual(tela, [0, 0, o.largura, o.altura], "o Mapa ocupa a tela toda (tela cheia, 29/10/2026)");
+        assert.equal(await p.locator('[role="tablist"], [data-aba]').count(), 0, "sem abas: o resto abre pelo menu");
         const ids = await p.locator(".mapa-faixa").evaluateAll((f) => f.map((x) => x.dataset.camada));
         assert.deepEqual(ids, ["missao", "objetivoEstrategico", "objetivoDesenvolvimento", "politica", "portfolio", "programa", "planosDeAcao"]);
         assert.ok(await sem(p), "a página não rola para o lado");
@@ -193,9 +195,11 @@ describe("Mapa do Strata", { skip: pular }, () => {
   test("os textos do Mapa usam palavras simples: vem de, nível; nunca deriva de, estrato ou cadeia de derivação", async () => {
     const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
     const texto = await p.evaluate(() => {
-      const corpo = document.querySelector(".superior-corpo");
-      const extra = [...corpo.querySelectorAll("[aria-label], title")].map((e) => e.getAttribute("aria-label") ?? e.textContent);
-      return `${corpo.innerText}\n${extra.join("\n")}`.toLowerCase();
+      document.querySelector("[data-alternar-menu]").click();
+      document.querySelector("[data-como-usar]").click(); // o texto de ajuda que ficava sob o mapa (tela cheia, 29/10/2026)
+      const partes = [document.querySelector(".mapa-area"), document.querySelector(".strata-cima"), document.querySelector(".camada .painel")];
+      const extra = partes.flatMap((c) => [...c.querySelectorAll("[aria-label], title")].map((e) => e.getAttribute("aria-label") ?? e.textContent));
+      return `${partes.map((c) => c.innerText).join("\n")}\n${extra.join("\n")}`.toLowerCase();
     });
     assert.match(texto, /vem de/);
     assert.match(texto, /nível/);
@@ -265,23 +269,29 @@ describe("Mapa do Strata", { skip: pular }, () => {
     test("\"Ver como lista\" mantém o item selecionado, aberto e à vista; voltar ao Mapa mantém o acendido", async () => {
       const p = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
       await (await no(p, "PRG2")).click();
-      await p.click("[data-ver-lista]");
-      assert.equal(await p.locator('[data-aba="arvore"]').getAttribute("aria-selected"), "true");
+      await p.click("[data-alternar-menu]");
+      await p.click('[data-abrir-folha="arvore"]');
+      await p.waitForSelector(".strata-folha.aberta");
+      assert.equal(await p.locator("#strata-folha-titulo").innerText(), "Desdobramento");
       const marcado = p.locator(".item-estrategia.selecionado").first();
       assert.match(await marcado.innerText(), /PRG2/);
       assert.ok(await marcado.isVisible());
-      await p.click('[data-aba="mapa"]');
-      await p.waitForSelector(".mapa-no");
+      await p.click("[data-fechar-folha]");
+      await p.waitForSelector(".strata-folha", { state: "hidden" });
       assert.match(await selecionado(p), /^PRG2 /);
     });
 
-    test("\"Só o que vale hoje\" fica no próprio Mapa e muda os pontos mostrados", async () => {
+    test("\"Só o que vale hoje\" fica sempre à vista sobre o Mapa, como botão de liga e desliga, e muda os pontos mostrados", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
       const antes = await p.locator(".mapa-no").count();
-      await p.uncheck("[data-so-vigentes]");
+      assert.equal(await p.locator("[data-alternar-vigentes]").getAttribute("aria-pressed"), "true", "ligado ao abrir");
+      await p.click("[data-alternar-vigentes]");
       await p.waitForSelector(".mapa-no");
-      assert.ok(await p.locator(".mapa-no").count() >= antes, "desmarcar nunca mostra menos");
-      assert.equal(await p.locator("[data-so-vigentes]").isChecked(), false);
+      assert.ok(await p.locator(".mapa-no").count() >= antes, "desligar nunca mostra menos");
+      assert.equal(await p.locator("[data-alternar-vigentes]").getAttribute("aria-pressed"), "false");
+      await p.click("[data-alternar-menu]");
+      await p.click('[data-abrir-folha="arvore"]');
+      assert.equal(await p.locator("[data-so-vigentes]").isChecked(), false, "o filtro do Desdobramento é o mesmo");
     });
 
     test("Plano de Ação restrito: o cartão não mostra o nome nem oferece \"Abrir\"", async () => {
@@ -303,7 +313,8 @@ describe("Mapa do Strata", { skip: pular }, () => {
 
   describe("acabamento (lote 4)", () => {
     test("de longe (celular), só o código de cada item, sem se sobrepor; aproximando, os nomes voltam", async () => {
-      const p = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
+      /* com a tela cheia (29/10/2026), o celular de 800 px já abre perto o bastante para os nomes; numa tela baixa, de longe */
+      const p = await sessao.abrir({ largura: 390, altura: 520, ...ABRIR });
       assert.ok(await p.locator(".mapa-svg.de-longe").count(), "o mapa inteiro, no celular, está de longe");
       const r = await p.evaluate(() => {
         const visiveis = (sel) => [...document.querySelectorAll(sel)].filter((e) => getComputedStyle(e).display !== "none");
@@ -417,7 +428,7 @@ describe("Mapa do Strata", { skip: pular }, () => {
       return centro(p.locator(`.mapa-no[data-no="${chave}"] .mapa-alvo`));
     };
 
-    test("no computador, arrastar um ponto muda a ordem do nível; \"Voltar ao automático\" desfaz; a escolha fica ao trocar de aba", async () => {
+    test("no computador, arrastar um ponto muda a ordem do nível; \"Voltar ao automático\", no menu, desfaz; a escolha fica ao abrir e fechar a lista", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
       const original = await ordemDosProgramas(p);
       assert.equal(await p.locator("[data-voltar-automatico]").count(), 0, "sem ordem pessoal, sem o botão");
@@ -430,14 +441,16 @@ describe("Mapa do Strata", { skip: pular }, () => {
       await p.mouse.move(ultimo.x + 60, primeiro.y, { steps: 8 });
       await p.mouse.up();
       await parados(p);
-      await p.waitForSelector("[data-voltar-automatico]");
+      await p.waitForSelector("[data-voltar-automatico]", { state: "attached" }); // no menu (tela cheia)
       const nova = await ordemDosProgramas(p);
       assert.deepEqual(nova, [...original.slice(1), original[0]], "o primeiro foi para o fim");
       assert.equal(await p.locator(".mapa-no.selecionado").count(), 0, "arrastar não seleciona");
-      await p.click('[data-aba="arvore"]');
-      await p.click('[data-aba="mapa"]');
+      await p.click("[data-alternar-menu]");
+      await p.click('[data-abrir-folha="arvore"]');
+      await p.click("[data-fechar-folha]");
       await p.waitForSelector(".mapa-svg:not([data-movendo]) .mapa-no");
-      assert.deepEqual(await ordemDosProgramas(p), nova, "a ordem fica ao trocar de aba");
+      assert.deepEqual(await ordemDosProgramas(p), nova, "a ordem fica ao abrir e fechar a lista");
+      await p.click("[data-alternar-menu]");
       await p.click("[data-voltar-automatico]");
       await p.waitForSelector(".mapa-svg:not([data-movendo]) .mapa-no");
       assert.deepEqual(await ordemDosProgramas(p), original, "voltou ao automático");
