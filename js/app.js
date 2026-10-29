@@ -249,7 +249,10 @@ function semAcesso(espaco) {
   atualizarTopo();
 }
 
-function boasVindas({ comFormulario = false } = {}) {
+async function boasVindas({ comFormulario = false } = {}) {
+  /* vindo da barra lateral do celular ou da busca, a camada que fechou ainda devolve a entrada dela no histórico;
+     sem esperar, essa devolução voltava ao endereço do espaço e o reabria por cima do formulário (29/10/2026) */
+  await historicoPronto();
   const anterior = abertoId;
   pararEspaco();
   pararEspaco = () => {};

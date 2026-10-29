@@ -27,7 +27,7 @@ describe("Barra lateral", { skip: pular }, () => {
       assert.deepEqual(p.erros, []);
     });
 
-    test(`${largura} px: "Novo espaço" vem logo abaixo de "Buscar", fora da lista de espaços`, async () => {
+    test(`${largura} px: "Novo espaço" vem logo abaixo de "Buscar", fora da lista de espaços, abre o formulário e "Cancelar" volta`, async () => {
       const p = await sessao.abrir({ largura });
       if (largura <= 640) { await p.click('[data-inferior="espacos"]'); await assentar(p); }
       assert.equal(await p.locator(".lateral-espacos [data-item=novo]").count(), 0);
@@ -36,10 +36,36 @@ describe("Barra lateral", { skip: pular }, () => {
       const novo = await p.locator(".lateral [data-item=novo]").boundingBox();
       const lista = await p.locator(".lateral-espacos").boundingBox();
       assert.ok(novo.y > buscar.y && novo.y + novo.height <= lista.y + 1, "entre Buscar e a lista");
-      if (largura > 640) {
-        await p.locator(".lateral [data-item=novo]").click();
-        await p.getByRole("heading", { name: "Novo espaço de planejamento" }).waitFor({ state: "visible", timeout: 3000 });
-      }
+      /* no celular, a barra fecha ao tocar, e a devolução da entrada dela no histórico não pode reabrir o espaço (29/10/2026) */
+      await p.locator(".lateral [data-item=novo]").click();
+      await assentar(p, 800);
+      assert.ok(await p.getByRole("heading", { name: "Novo espaço de planejamento" }).isVisible());
+      assert.equal(new URL(p.url()).hash, "");
+      /* "Cancelar" volta ao espaço que estava aberto */
+      await p.locator("[data-formulario] [data-acao=cancelar]").click();
+      await assentar(p, 800);
+      assert.match(new URL(p.url()).hash, /^#\/espaco\//);
+      assert.equal(await p.getByRole("heading", { name: "Novo espaço de planejamento" }).isVisible(), false);
+      assert.deepEqual(p.erros, []);
+    });
+  }
+});
+
+describe("Novo espaço pela busca", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  for (const largura of [390, 1280]) {
+    test(`${largura} px: escolher "Novo espaço" na busca abre o formulário, sem reabrir o espaço`, async () => {
+      const p = await sessao.abrir({ largura });
+      await p.keyboard.press("Control+k");
+      await assentar(p);
+      await p.keyboard.type("Novo espaço");
+      await assentar(p, 300);
+      await p.locator(".busca-item").filter({ hasText: "Novo espaço" }).first().click();
+      await assentar(p, 800);
+      assert.ok(await p.getByRole("heading", { name: "Novo espaço de planejamento" }).isVisible());
       assert.deepEqual(p.erros, []);
     });
   }
