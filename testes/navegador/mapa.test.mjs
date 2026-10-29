@@ -47,6 +47,24 @@ describe("Mapa do Strata", { skip: pular }, () => {
         assert.equal(fora.pontos, 10, "o catálogo de exemplo tem 10 itens");
       });
 
+      test("todo o conteúdo cabe numa única tela ao abrir, e as linhas não passam rente a outros pontos", async () => {
+        const p = await sessao.abrir({ ...o, ...ABRIR });
+        const r = await p.evaluate(() => {
+          const area = document.querySelector(".mapa-area").getBoundingClientRect();
+          const caixas = [...document.querySelectorAll(".mapa-faixa, .mapa-no")].map((e) => e.getBoundingClientRect());
+          const fora = caixas.filter((c) => c.left < area.left - 1 || c.right > area.right + 1 || c.top < area.top - 1 || c.bottom > area.bottom + 1).length;
+          return { fora, total: caixas.length };
+        });
+        assert.equal(r.fora, 0, `${r.fora} de ${r.total} elementos fora da área`);
+        const tela = await p.evaluate(async () => {
+          const { problemasDasLigacoes, calcularMapa } = await import("../js/mapa.js");
+          const nos = [...document.querySelectorAll(".mapa-no")].map((g) => ({ chave: g.dataset.no, x: Number(g.querySelector("circle").getAttribute("cx")), yCurvo: Number(g.querySelector("circle").getAttribute("cy")) }));
+          const ligacoes = [...document.querySelectorAll(".mapa-ligacao")].map((l) => ({ de: l.dataset.de, para: l.dataset.para }));
+          return problemasDasLigacoes({ nos, ligacoes }).length;
+        });
+        assert.equal(tela, 0, "nenhuma linha passa rente a outro ponto nem se sobrepõe a outra do mesmo ponto");
+      });
+
       test("as linhas ligam cada item ao que ele vem de", async () => {
         const p = await sessao.abrir({ ...o, ...ABRIR });
         const ligacoes = await p.locator(".mapa-ligacao").evaluateAll((l) => l.map((x) => x.dataset.de));
@@ -79,7 +97,9 @@ describe("Mapa do Strata", { skip: pular }, () => {
   test("os nomes das camadas ficam em tamanho fixo na borda esquerda, também ao aproximar", async () => {
     const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
     const rotulo = p.locator('.mapa-rotulo-camada[data-camada="politica"]');
-    const antes = await rotulo.boundingBox();
+    await p.click("[data-mapa-mais]");
+    await p.waitForTimeout(400);
+    const antes = await rotulo.boundingBox(); // com o mapa na escala 1 ou mais, o nome tem o tamanho fixo
     await p.click("[data-mapa-mais]");
     await p.waitForTimeout(400);
     const depois = await rotulo.boundingBox();
@@ -152,6 +172,7 @@ describe("Mapa do Strata", { skip: pular }, () => {
     const p = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
     const d = await dedo(p);
     const area = await centro(p.locator(".mapa-area"));
+    for (let i = 0; i < 3; i++) { await p.click("[data-mapa-mais]"); await p.waitForTimeout(300); } // tudo cabe na tela: aproxima para haver o que mover
     const antes = await vista(p);
     await d.arrastar(area.x + 60, area.y, -120, 0);
     const depois = await vista(p);

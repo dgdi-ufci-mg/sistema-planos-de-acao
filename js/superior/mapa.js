@@ -5,7 +5,8 @@
  * repositório: nada de dependências novas); os gestos usam eventos de ponteiro.
  *
  * Regras de comportamento (atalhos do esboço que não entram):
- * - o mapa só se centraliza ao abrir e no botão, nunca a cada mudança de tamanho (no celular, a barra de endereço
+ * - o mapa cabe inteiro na área ao abrir e no botão "Centralizar" (a largura do mapa acompanha a da área);
+ *   fora isso, nunca se centraliza, nunca a cada mudança de tamanho (no celular, a barra de endereço
  *   dispara essa mudança); ao mudar de tamanho, apenas reaplica os limites;
  * - o movimento só começa depois de `LIMIAR_DO_TOQUE` pixels, para um toque com tremor continuar sendo toque
  *   (a seleção de pontos entra no lote 2);
@@ -19,8 +20,6 @@ import {
 const NS = "http://www.w3.org/2000/svg";
 const LIMIAR_DO_TOQUE = 6;
 const ESCALA_MAXIMA = 3;
-/** Até esta largura da área, o nome da camada vai acima da faixa, e não no meio dela. */
-const LARGURA_DE_CELULAR = 640;
 
 const criar = (nome, atributos = {}) => {
   const e = document.createElementNS(NS, nome);
@@ -63,7 +62,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
   /* ---------- desenho ---------- */
   function desenhar() {
     const medir = (texto) => { medidor.textContent = texto; return medidor.getComputedTextLength(); };
-    mapa = calcularMapa({ camadas, itens, planos, medir });
+    mapa = calcularMapa({ camadas, itens, planos, medir, vista });
     mundo.replaceChildren();
     const grupoFaixas = criar("g");
     const grupoLigacoes = criar("g");
@@ -85,9 +84,12 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
       const titulo = criar("title");
       titulo.textContent = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
       const ponto = criar("circle", { cx: n.x, cy: n.yCurvo, r: 6 });
-      const nome = criar("text", { class: "mapa-nome", x: n.x, y: n.yCurvo - 12, "text-anchor": "middle" });
-      nome.textContent = n.rotulo;
-      g.append(titulo, ponto, nome);
+      g.append(titulo, ponto);
+      if (n.rotulo) {
+        const nome = criar("text", { class: "mapa-nome", x: n.x + mapa.recuo, y: n.yCurvo + 4 });
+        nome.textContent = n.rotulo;
+        g.append(nome);
+      }
       grupoNos.append(g);
     }
 
@@ -108,12 +110,13 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
     posicionarRotulos();
   }
 
-  /** Nome de cada camada, preso à borda esquerda, em tamanho fixo; some quando a faixa sai da vista. */
+  /** Nome de cada camada, no alto da faixa e preso à borda esquerda, em tamanho fixo; some quando a faixa sai da vista. */
   function posicionarRotulos() {
-    const estreito = vista.w <= LARGURA_DE_CELULAR;
     const xMundo = Math.min(mapa.largura, Math.max(0, (12 - t.x) / t.k));
     const curva = deslocamentoCurvo(xMundo, mapa.centro, mapa.raio);
+    const fonte = `${Math.max(8, Math.min(11, 11 * t.k)).toFixed(1)}px`; // menor quando o mapa inteiro é reduzido, para não cobrir os pontos
     for (const s of rotulos.children) {
+      s.style.fontSize = fonte;
       const f = mapa.faixas.find((x) => x.id === s.dataset.camada);
       const topo = t.y + t.k * (f.topo + curva);
       const base = t.y + t.k * (f.base + curva);
@@ -121,7 +124,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
       const ate = Math.min(base, vista.h);
       const cabe = ate - de >= 16;
       s.hidden = !cabe;
-      if (cabe) s.style.transform = `translate(12px, ${(estreito ? de + 4 : (de + ate) / 2 - 8).toFixed(1)}px)`;
+      if (cabe) s.style.transform = `translate(12px, ${(de + 3).toFixed(1)}px)`;
     }
   }
 
@@ -212,7 +215,9 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
   const observador = new ResizeObserver(() => {
     const novo = { w: area.clientWidth, h: area.clientHeight };
     if (!novo.w || !novo.h) return;
+    const largouMais = Math.abs(novo.w - vista.w) > 1;
     vista = novo;
+    if (largouMais) desenhar(); // a largura do mapa acompanha a da área; só a altura mudar (barra de endereço) não refaz nada
     aplicar(t ?? estado.t ?? transformacaoInicial(limites()));
   });
 

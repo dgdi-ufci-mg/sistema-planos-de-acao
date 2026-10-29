@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import {
-  FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao,
+  FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
   escalaMinima, limitarTransformacao, transformacaoInicial,
 } from "../js/mapa.js";
 
@@ -93,52 +93,75 @@ describe("Mapa: ordem, posição e curva", () => {
     assert.deepEqual(um.nos.map((n) => [n.chave, n.x]), outro.nos.map((n) => [n.chave, n.x]));
   });
 
-  it("nenhum nome encosta noutro, nenhum ponto sai das pontas e a largura cresce com os itens", () => {
-    const muitos = Array.from({ length: 30 }, (_, i) => item(`p${i}`, "programa", `Programa de nome comprido número ${i}`, [], `PRG${i}`));
-    const pequeno = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo() });
-    const grande = calcularMapa({ camadas: CAMADAS_PADRAO, itens: [...catalogo(), ...muitos] });
-    assert.ok(grande.largura > pequeno.largura);
-    for (const m of [pequeno, grande]) {
-      for (const f of m.faixas) {
-        const nos = f.nos.map((k) => m.nos.find((n) => n.chave === k));
-        nos.forEach((n, i) => {
-          assert.ok(n.x - n.largura / 2 >= 0 && n.x + n.largura / 2 <= m.largura, `${n.chave} dentro da largura`);
-          if (i) assert.ok(n.x - nos[i - 1].x >= (n.largura + nos[i - 1].largura) / 2, `${n.chave} não encosta no vizinho`);
-        });
+  const planosDe = (n, pais = ["prg1", "prg2"]) => Array.from({ length: n }, (_, i) => ({ id: `pa${i}`, nome: `Plano de Ação número ${i}`, superiores: [pais[i % pais.length]] }));
+  const caixaDoNome = (n, m) => ({ x0: n.x + m.recuo, x1: n.x + m.recuo + n.largura, y0: n.yCurvo - 7, y1: n.yCurvo + 7 });
+  const cruzam = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
+
+  it("a largura é a da área (tudo cabe numa tela); nenhum ponto sai das pontas, e nomes e pontos não se cobrem", () => {
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(12), vista: { w: 1000, h: 600 } });
+    assert.equal(m.largura, 1000);
+    for (const f of m.faixas) {
+      const nos = f.nos.map((k) => m.nos.find((n) => n.chave === k));
+      for (const n of nos) {
+        assert.ok(n.x >= 0 && n.x + m.recuo + n.largura <= m.largura, `${n.chave} dentro da largura`);
+        const ponto = { x0: n.x - 6, x1: n.x + 6, y0: n.yCurvo - 6, y1: n.yCurvo + 6 };
+        for (const o of nos) {
+          if (o === n) continue;
+          assert.ok(!cruzam(ponto, caixaDoNome(o, m)), `o ponto ${n.chave} não fica sobre o nome de ${o.chave}`);
+          if (o.chave > n.chave) assert.ok(!cruzam(caixaDoNome(n, m), caixaDoNome(o, m)), `os nomes de ${n.chave} e ${o.chave} não se sobrepõem`);
+        }
       }
     }
   });
 
-  it("usa a largura medida do nome, e não um número por letra", () => {
-    const itens = [item("a", "objetivoEstrategico", "Aa", [], ""), item("b", "objetivoEstrategico", "Bb", [], "")];
-    const estreito = calcularMapa({ camadas: CAMADAS_PADRAO, itens, medir: () => 30, larguraMinima: 100 });
-    const largo = calcularMapa({ camadas: CAMADAS_PADRAO, itens, medir: () => 400, larguraMinima: 100 });
-    const dist = (m) => Math.abs(m.nos[1].x - m.nos[0].x);
-    assert.ok(dist(largo) >= 400 + 18);
-    assert.ok(dist(estreito) < dist(largo));
+  it("só cresce além da área quando os pontos não cabem a 26 de distância", () => {
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(80), vista: { w: 400, h: 600 } });
+    assert.ok(m.largura > 400);
+    assert.ok(m.largura >= 2 * 28 + 60 + 79 * 26);
+  });
+
+  it("faixa cheia alterna os pontos em níveis; o nome que não cabe é cortado com reticências", () => {
+    const largos = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), vista: { w: 1000, h: 600 }, medir: () => 400 });
+    assert.ok(largos.faixas[0].niveis >= 2, "dois objetivos com nomes de 400 não cabem lado a lado");
+    const curtos = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), vista: { w: 1000, h: 600 }, medir: () => 10 });
+    assert.ok(curtos.faixas.every((f) => f.niveis === 1));
+    const longo = calcularMapa({ camadas: CAMADAS_PADRAO, itens: [item("a", "objetivoEstrategico", "x".repeat(120), [], "OE1")], vista: { w: 300, h: 600 } });
+    assert.ok(longo.nos[0].rotulo.endsWith("…") && longo.nos[0].rotulo.length < 120);
+    assert.equal(longo.nos[0].nome.length, 120, "o nome inteiro continua no ponto");
   });
 
   it("a curva é (x − centro)² ÷ (2R): zero no centro, para baixo nas pontas, igual para ponto e faixa", () => {
     assert.equal(deslocamentoCurvo(500, 500, 3000), 0);
     assert.equal(deslocamentoCurvo(0, 500, 3000), 250000 / 6000);
-    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo() });
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(6) });
     for (const n of m.nos) {
       const f = m.faixas[n.faixa];
       const sag = deslocamentoCurvo(n.x, m.centro, m.raio);
       assert.ok(n.yCurvo - sag > f.topo && n.yCurvo - sag < f.base, `${n.chave} dentro da faixa, sem a curva`);
       assert.ok(Math.abs(n.yCurvo - (n.y + sag)) < 0.1);
     }
-    assert.equal(m.altura, Math.ceil(m.faixas.length * m.alturaFaixa + deslocamentoCurvo(0, m.centro, m.raio)));
+    const ultima = m.faixas[m.faixas.length - 1];
+    assert.equal(m.altura, Math.ceil(ultima.base + deslocamentoCurvo(0, m.centro, m.raio)));
   });
 
-  it("o contorno da faixa é uma curva fechada, e a ligação sai e chega na vertical", () => {
+  it("o contorno da faixa é uma curva fechada e a ligação é uma reta entre o ponto e o que ele vem de", () => {
     const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo() });
-    const d = caminhoDaFaixa(m.faixas[0], m);
-    assert.match(d, /^M0 [\d.]+ Q[\d.]+ [-\d.]+ [\d.]+ [\d.]+ L[\d.]+ [\d.]+ Q[\d.]+ [-\d.]+ 0 [\d.]+ Z$/);
+    assert.match(caminhoDaFaixa(m.faixas[0], m), /^M0 [\d.]+ Q[\d.]+ [-\d.]+ [\d.]+ [\d.]+ L[\d.]+ [\d.]+ Q[\d.]+ [-\d.]+ 0 [\d.]+ Z$/);
     const [filho, superior] = [m.nos.find((n) => n.id === "od1"), m.nos.find((n) => n.id === "oe1")];
-    const l = caminhoDaLigacao(filho, superior);
-    assert.ok(l.startsWith(`M${filho.x} ${filho.yCurvo} C${filho.x} `));
-    assert.ok(l.endsWith(`${superior.x} ${superior.yCurvo}`));
+    assert.equal(caminhoDaLigacao(filho, superior), `M${filho.x} ${filho.yCurvo} L${superior.x} ${superior.yCurvo}`);
+  });
+
+  it("as linhas não passam rente a outro ponto nem saem do mesmo ponto na mesma direção", () => {
+    for (const w of [1236, 358]) {
+      const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(6), vista: { w, h: 560 } });
+      assert.deepEqual(problemasDasLigacoes(m).map((p) => [p.tipo, p.ligacao.de]), [], `largura ${w}`);
+    }
+    /* o verificador enxerga os dois problemas */
+    const fake = {
+      nos: [{ chave: "a", x: 0, yCurvo: 0 }, { chave: "b", x: 100, yCurvo: 0 }, { chave: "c", x: 50, yCurvo: 2 }, { chave: "d", x: 300, yCurvo: 3 }],
+      ligacoes: [{ de: "a", para: "b" }, { de: "a", para: "d" }],
+    };
+    assert.deepEqual(problemasDasLigacoes(fake).map((p) => p.tipo).sort(), ["ponto", "ponto", "ponto", "sobreposta"]);
   });
 });
 
@@ -168,9 +191,10 @@ describe("Mapa: limites do movimento e do zoom", () => {
     assert.deepEqual(t, { k: 1, x: 150, y: 200 });
   });
 
-  it("a vista de abertura cabe na altura e fica no meio", () => {
+  it("a vista de abertura mostra o conteúdo inteiro, no meio", () => {
     const t = transformacaoInicial({ conteudo, vista });
-    assert.ok(Math.abs(t.k - (500 - 48) / 600) < 1e-9);
+    assert.ok(Math.abs(t.k - escalaMinima({ conteudo, vista })) < 1e-9);
+    assert.ok(conteudo.w * t.k <= vista.w && conteudo.h * t.k <= vista.h, "cabe nas duas direções");
     assert.ok(Math.abs(t.x - (400 - 2000 * t.k) / 2) < 1e-9);
   });
 });

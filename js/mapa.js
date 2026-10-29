@@ -13,8 +13,11 @@
  * - **Ordem na faixa** por regras, e não por posições escritas à mão: começa pela ordem de código e nome e faz
  *   poucas passadas de baricentro (a posição de cada ponto é a média das posições dos pontos a que ele se liga,
  *   primeiro para baixo, depois para cima), para reduzir os cruzamentos de linhas.
- * - **Posição horizontal**: proporcional à ordem e afastada pela largura medida de cada nome. A largura do mapa
- *   cresce com o número de itens.
+ * - **Posição horizontal**: a largura do mapa é a da área (tudo cabe numa tela) e só cresce se a faixa mais cheia
+ *   não couber com os pontos a 26 unidades de distância. Cada ponto procura ficar sob a média dos pontos a que se
+ *   liga (as linhas ficam quase na vertical). O nome fica à direita do ponto; faixa cheia alterna os pontos em até 4
+ *   níveis (degrau vertical) e corta com reticências o nome que ainda assim não couber.
+ * - **Ligações**: retas. Duas linhas do mesmo ponto nunca saem na mesma direção, e nenhuma passa rente a outro ponto.
  * - **Curvatura**: a faixa e os pontos seguem uma curva suave por uma correção simples de altura,
  *   `deslocamento = (x − centro)² ÷ (2 × R)`, com R grande e a mesma correção no desenho das faixas e dos pontos.
  *   Sem coordenadas polares.
@@ -56,15 +59,16 @@ export function faixasDoMapa(camadas, itens) {
  * @param {object[]} p.itens  itens a mostrar (a tela já tirou os que não valem hoje, se for o caso)
  * @param {{id: string, nome: string, superiores: string[], restrito?: boolean}[]} [p.planos]  Planos de Ação, com os itens a que se ligam
  * @param {(texto: string) => number} [p.medir]  largura do texto na tela; sem a tela, 7 unidades por letra
- * @param {number} [p.alturaFaixa]
+ * @param {{w: number, h: number}} [p.vista]  tamanho da área do mapa: a largura do mapa acompanha a da área
  * @param {number} [p.margem]  espaço nas pontas de cada faixa
- * @param {number} [p.folga]  espaço mínimo entre dois nomes
+ * @param {number} [p.espacoMinimo]  menor distância entre dois pontos da mesma faixa
+ * @param {number} [p.passoNivel]  degrau vertical entre pontos vizinhos de uma faixa que precisa de mais de um nível
+ * @param {number} [p.niveisMaximos]
  * @param {number} [p.raioPorLargura]  raio da curva, em larguras do mapa
- * @param {number} [p.larguraMinima]
  */
 export function calcularMapa({
-  camadas, itens, planos = [], medir = (t) => t.length * 7,
-  alturaFaixa = 96, margem = 44, folga = 18, raioPorLargura = 3, larguraMinima = 640,
+  camadas, itens, planos = [], medir = (t) => t.length * 7, vista = { w: 960, h: 560 },
+  margem = 28, espacoMinimo = 26, passoNivel = 19, niveisMaximos = 4, raioPorLargura = 4,
 }) {
   const ativos = itens.filter((x) => !x.excluidoEm);
   const faixas = faixasDoMapa(camadas, ativos);
@@ -110,35 +114,74 @@ export function calcularMapa({
   const subir = () => { for (let i = lista.length - 2; i >= 0; i--) reordenar(lista[i], (n) => subordinados.get(n.chave) ?? []); };
   descer(); subir(); descer(); subir(); descer();
 
-  /* largura: a maior faixa manda; cada ponto ocupa a largura do nome */
-  for (const n of nos) {
-    n.rotulo = rotuloDoPonto(n.codigo, n.nome);
-    n.largura = Math.max(24, medir(n.rotulo));
-  }
-  const precisa = (l) => 2 * margem + l.reduce((s, n) => s + n.largura, 0) + folga * Math.max(0, l.length - 1);
-  const largura = Math.ceil(Math.max(larguraMinima, ...lista.map(precisa)));
+  /* largura: a da área (para tudo caber numa tela); só cresce se a faixa mais cheia não couber com os pontos a 26 de distância */
+  const RECUO = 9; // do ponto até o começo do nome
+  const reservaFinal = 60; // espaço para o nome do último ponto
+  const maisCheia = Math.max(1, ...lista.map((l) => l.length));
+  const largura = Math.ceil(Math.max(vista.w, 2 * margem + reservaFinal + (maisCheia - 1) * espacoMinimo));
+  const xMin = margem;
+  const xMax = largura - margem - reservaFinal;
+
+  /* posição: começa pela ordem; depois, para baixo e para cima, cada ponto tenta ficar sob (ou sobre) a média dos
+     pontos a que se liga, sem passar do vizinho (as linhas ficam quase na vertical e se cruzam menos) */
+  for (const l of lista) for (const n of l) n.x = xMin + n.posicao * (xMax - xMin);
+  const afastar = (l) => {
+    if (!l.length) return;
+    l.forEach((n) => { n.x = Math.min(xMax, Math.max(xMin, n.x)); });
+    for (let i = 1; i < l.length; i++) l[i].x = Math.max(l[i].x, l[i - 1].x + espacoMinimo);
+    l[l.length - 1].x = Math.min(l[l.length - 1].x, xMax);
+    for (let i = l.length - 2; i >= 0; i--) l[i].x = Math.min(l[i].x, l[i + 1].x - espacoMinimo);
+  };
+  /* só um puxão suave (30%): puxar tudo para a média juntaria os pontos no meio da faixa */
+  const media = (chaves, atual) => (chaves.length ? 0.7 * atual + 0.3 * (chaves.reduce((s2, k) => s2 + porChave.get(k).x, 0) / chaves.length) : atual);
+  const paraBaixo = () => { for (let i = 1; i < lista.length; i++) { lista[i].forEach((n) => { n.x = media(n.superiores, n.x); }); afastar(lista[i]); } };
+  const paraCima = () => { for (let i = lista.length - 2; i >= 0; i--) { lista[i].forEach((n) => { n.x = media(subordinados.get(n.chave) ?? [], n.x); }); afastar(lista[i]); } };
+  lista.forEach(afastar);
+  paraBaixo(); paraCima(); paraBaixo();
+  for (const n of nos) n.x = Math.round(n.x * 10) / 10;
+
+  /* nomes: à direita do ponto; quando não cabem lado a lado, os pontos da faixa se alternam em até 4 níveis
+     (um pequeno degrau vertical); o que ainda não couber é cortado com reticências */
+  const ajustar = (texto, disponivel) => {
+    if (medir(texto) <= disponivel) return texto;
+    let ate = texto.length - 1;
+    while (ate > 1 && medir(`${texto.slice(0, ate).trimEnd()}…`) > disponivel) ate--;
+    return ate > 1 && medir(`${texto.slice(0, ate).trimEnd()}…`) <= disponivel ? `${texto.slice(0, ate).trimEnd()}…` : "";
+  };
+  const limiteDireito = largura - margem / 2;
+  const espaco = (l, i, niveis) => (i + niveis < l.length ? l[i + niveis].x - l[i].x - RECUO - 6 : limiteDireito - l[i].x - RECUO);
+  for (const n of nos) n.completo = n.tipo === "plano" || !n.codigo ? String(n.nome) : `${n.codigo} · ${n.nome}`;
   for (const l of lista) {
-    if (!l.length) continue;
-    const d = (i) => (l[i].largura + l[i + 1].largura) / 2 + folga;
-    for (const n of l) n.x = n.posicao * largura;
-    l[0].x = Math.max(l[0].x, margem + l[0].largura / 2);
-    for (let i = 1; i < l.length; i++) l[i].x = Math.max(l[i].x, l[i - 1].x + d(i - 1));
-    const ultimo = l[l.length - 1];
-    ultimo.x = Math.min(ultimo.x, largura - margem - ultimo.largura / 2);
-    for (let i = l.length - 2; i >= 0; i--) l[i].x = Math.min(l[i].x, l[i + 1].x - d(i));
-    for (const n of l) n.x = Math.round(n.x * 10) / 10;
+    let niveis = niveisMaximos;
+    for (let k = 1; k <= niveisMaximos; k++) {
+      if (l.every((n, i) => medir(n.completo) <= espaco(l, i, k))) { niveis = k; break; }
+    }
+    l.niveis = niveis;
+    l.forEach((n, i) => {
+      n.nivel = i % niveis;
+      n.rotulo = ajustar(n.completo, espaco(l, i, niveis));
+      n.largura = n.rotulo ? medir(n.rotulo) : 0;
+    });
   }
 
-  /* altura e curvatura */
+  /* altura e curvatura: cada faixa tem a altura dos seus níveis */
   const centro = largura / 2;
   const raio = raioPorLargura * largura;
-  faixas.forEach((f, i) => { f.topo = i * alturaFaixa; f.base = (i + 1) * alturaFaixa; f.nos = lista[i].map((n) => n.chave); });
+  const alturaMinima = Math.min(72, Math.max(52, (vista.h - 60) / faixas.length)); // área baixa (celular): faixas mais baixas
+  let topo = 0;
+  faixas.forEach((f, i) => {
+    f.niveis = lista[i].niveis ?? 1;
+    f.altura = Math.max(alturaMinima, 40 + f.niveis * passoNivel);
+    f.topo = topo; f.base = topo + f.altura; topo = f.base;
+    f.nos = lista[i].map((n) => n.chave);
+  });
   for (const n of nos) {
-    n.y = faixas[n.faixa].topo + alturaFaixa * 0.62;
+    const f = faixas[n.faixa];
+    n.y = f.topo + f.altura / 2 + (n.nivel - (f.niveis - 1) / 2) * passoNivel;
     n.yCurvo = Math.round((n.y + deslocamentoCurvo(n.x, centro, raio)) * 10) / 10;
   }
-  const altura = Math.ceil(faixas.length * alturaFaixa + deslocamentoCurvo(0, centro, raio));
-  return { faixas, nos, ligacoes, largura, altura, centro, raio, alturaFaixa };
+  const altura = Math.ceil(topo + deslocamentoCurvo(0, centro, raio));
+  return { faixas, nos, ligacoes, largura, altura, centro, raio, recuo: RECUO };
 }
 
 const n1 = (v) => Math.round(v * 10) / 10;
@@ -152,10 +195,44 @@ export function caminhoDaFaixa(faixa, { largura, centro, raio }) {
     + ` L${n1(largura)} ${n1(base + d(largura))} Q${n1(centro)} ${n1(controle(base))} 0 ${n1(base + d(0))} Z`;
 }
 
-/** Linha entre um ponto e o que ele "vem de": curva suave, saindo e chegando na vertical. */
-export function caminhoDaLigacao(filho, superior) {
-  const meio = (filho.yCurvo + superior.yCurvo) / 2;
-  return `M${filho.x} ${filho.yCurvo} C${filho.x} ${n1(meio)} ${superior.x} ${n1(meio)} ${superior.x} ${superior.yCurvo}`;
+/** Linha entre um ponto e o que ele "vem de": reta (duas linhas do mesmo ponto nunca se sobrepõem, só se separam). */
+export const caminhoDaLigacao = (filho, superior) => `M${filho.x} ${filho.yCurvo} L${superior.x} ${superior.yCurvo}`;
+
+const distanciaAoSegmento = (p, a, b) => {
+  const dx = b.x - a.x; const dy = b.y - a.y;
+  const u = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy || 1)));
+  return Math.hypot(p.x - (a.x + u * dx), p.y - (a.y + u * dy));
+};
+
+/**
+ * Confere as linhas do mapa: devolve as que passam rente a um ponto que não é delas (`folga` unidades) e os pares de
+ * linhas do mesmo ponto que saem quase na mesma direção (menos de 2°), isto é, que se sobrepõem.
+ * @returns {{tipo: "ponto"|"sobreposta", ligacao: object, outro: object}[]}
+ */
+export function problemasDasLigacoes(mapa, folga = 6) {
+  const porChave = new Map(mapa.nos.map((n) => [n.chave, n]));
+  const P = (n) => ({ x: n.x, y: n.yCurvo });
+  const problemas = [];
+  for (const l of mapa.ligacoes) {
+    const a = porChave.get(l.de); const b = porChave.get(l.para);
+    for (const n of mapa.nos) {
+      if (n === a || n === b) continue;
+      if (distanciaAoSegmento(P(n), P(a), P(b)) < folga) problemas.push({ tipo: "ponto", ligacao: l, outro: n });
+    }
+  }
+  const angulo = (de, para) => Math.atan2(para.yCurvo - de.yCurvo, para.x - de.x);
+  const porPonto = new Map();
+  for (const l of mapa.ligacoes) for (const k of [l.de, l.para]) porPonto.set(k, [...(porPonto.get(k) ?? []), l]);
+  for (const [chave, ls] of porPonto) {
+    const de = porChave.get(chave);
+    for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
+      const outroDe = (l) => porChave.get(l.de === chave ? l.para : l.de);
+      let d = Math.abs(angulo(de, outroDe(ls[i])) - angulo(de, outroDe(ls[j])));
+      d = Math.min(d, 2 * Math.PI - d);
+      if (d < (2 * Math.PI) / 180) problemas.push({ tipo: "sobreposta", ligacao: ls[i], outro: ls[j] });
+    }
+  }
+  return problemas;
 }
 
 const limitar = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -180,8 +257,8 @@ export function limitarTransformacao(t, { conteudo, vista, margem = 24, escalaMa
   return { k, x: eixo(t.x, conteudo.w, vista.w), y: eixo(t.y, conteudo.h, vista.h) };
 }
 
-/** Vista de abertura e do botão "Centralizar": o conteúdo na altura da vista (até a escala 1), no meio. */
+/** Vista de abertura e do botão "Centralizar": **todo o conteúdo numa tela**, no meio (no máximo na escala 1). */
 export function transformacaoInicial({ conteudo, vista, margem = 24, escalaMaxima = 3 }) {
-  const k = Math.min(1, (vista.h - 2 * margem) / conteudo.h);
+  const k = escalaMinima({ conteudo, vista, margem });
   return limitarTransformacao({ k, x: (vista.w - conteudo.w * k) / 2, y: (vista.h - conteudo.h * k) / 2 }, { conteudo, vista, margem, escalaMaxima });
 }
