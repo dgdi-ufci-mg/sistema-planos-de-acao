@@ -263,20 +263,36 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
 
   /* ---------- seleção: caminho aceso e cartão ---------- */
   const noDe = (chave) => mapa.nos.find((n) => n.chave === chave);
+  /**
+   * Acende o caminho do ponto em foco: o selecionado (fixo) ou, sem seleção, o ponto sob o mouse (prévia, só no
+   * computador; lote 2, item 7). O cartão é só do selecionado.
+   */
   function marcarSelecao() {
     if (estado.selecionado && !noDe(estado.selecionado)) estado.selecionado = null; // o ponto saiu do mapa (filtro, exclusão)
-    const caminho = estado.selecionado ? caminhoDoNo(mapa, estado.selecionado) : null;
+    if (previa && !noDe(previa)) previa = null;
+    const foco = estado.selecionado ?? previa;
+    const caminho = foco ? caminhoDoNo(mapa, foco) : null;
     svg.classList.toggle("com-selecao", Boolean(caminho));
+    svg.classList.toggle("em-previa", Boolean(caminho) && !estado.selecionado);
     for (const g of mundo.querySelectorAll(".mapa-no")) {
       g.classList.toggle("no-caminho", Boolean(caminho?.nos.has(g.dataset.no)));
+      g.classList.toggle("foco", g.dataset.no === foco);
       g.classList.toggle("selecionado", g.dataset.no === estado.selecionado);
       g.setAttribute("aria-pressed", String(g.dataset.no === estado.selecionado));
     }
     for (const l of mundo.querySelectorAll(".mapa-ligacao, .mapa-ligacao-borda")) l.classList.toggle("ligacao-caminho", Boolean(caminho?.ligacoes.has(`${l.dataset.de}|${l.dataset.para}`)));
     montarCartao();
   }
+  /** Prévia do caminho: o ponto sob o mouse, quando nada está selecionado (o clique fixa a seleção). */
+  let previa = null;
+  function mostrarPrevia(chave) {
+    if (chave === previa) return;
+    previa = chave;
+    if (!estado.selecionado) marcarSelecao();
+  }
   function selecionar(chave) {
     estado.selecionado = chave;
+    previa = null;
     marcarSelecao();
     if (t) posicionarCartao();
   }
@@ -440,6 +456,18 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   }, { passive: false });
 
   const meioDaVista = () => ({ x: vista.w / 2, y: vista.h / 2 });
+  /* prévia ao passar o mouse: só com mouse de verdade (no celular, só o toque); nunca durante um arrasto */
+  const passaMouse = (e) => e.pointerType === "mouse" && matchMedia("(hover: hover)").matches;
+  svg.addEventListener("pointerover", (e) => {
+    if (!passaMouse(e) || ponteiros.size) return;
+    const chave = e.target.closest?.("[data-no]")?.dataset.no;
+    if (chave) mostrarPrevia(chave);
+  });
+  svg.addEventListener("pointerout", (e) => {
+    if (!passaMouse(e) || !previa) return;
+    if (e.relatedTarget?.closest?.("[data-no]")?.dataset.no === previa) return; // ainda dentro do mesmo ponto
+    mostrarPrevia(null);
+  });
   svg.addEventListener("keydown", (e) => {
     const chave = e.target.closest?.("[data-no]")?.dataset.no;
     if (chave && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selecionar(chave); }

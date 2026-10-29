@@ -245,6 +245,26 @@ describe("Mapa do Strata", { skip: pular }, () => {
       });
     }
 
+    test("no computador, passar o mouse mostra a prévia do caminho, sem cartão; sair desfaz; o clique fixa", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const pf1 = await no(p, "PF1");
+      await pf1.hover({ force: true });
+      await p.waitForSelector(".mapa-svg.em-previa");
+      assert.ok((await acesos(p)).length > 1, "o caminho acende");
+      assert.equal(await p.locator(".mapa-no.foco title").textContent().then((t) => t.startsWith("PF1 ")), true, "o ponto sob o mouse em destaque");
+      assert.ok(await p.locator("[data-mapa-cartao]").isHidden(), "a prévia não abre o cartão");
+      await p.mouse.move(640, 790);
+      await p.waitForSelector(".mapa-svg:not(.com-selecao)");
+      await pf1.hover({ force: true });
+      await pf1.click({ force: true });
+      assert.match(await selecionado(p), /^PF1 /);
+      assert.equal(await p.locator(".mapa-svg.em-previa").count(), 0, "fixado, já não é prévia");
+      const outro = await no(p, "PRG3");
+      await outro.hover({ force: true });
+      assert.match(await selecionado(p), /^PF1 /, "com um ponto fixo, passar o mouse noutro não muda o caminho aceso");
+      assert.equal(await p.locator(".mapa-no.foco title").textContent().then((t) => t.startsWith("PF1 ")), true);
+    });
+
     test("\"Abrir\" leva ao painel do item", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
       await (await no(p, "PRG1")).click();
