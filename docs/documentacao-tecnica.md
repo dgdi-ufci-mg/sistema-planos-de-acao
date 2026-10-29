@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 29/10/2026 (versão 215.1 da página)
+**Última atualização deste documento:** 29/10/2026 (versão 215.2 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2146,8 +2146,5 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 213 | Strata, Mapa (item 1 do lote 1): nova aba e vista principal, com o catálogo em faixas curvas, do chão aos objetivos; pontos ligados pela relação "vem de"; ordem na faixa por baricentro; largura pela medida do nome (regras em `js/mapa.js`; seção 8, "Mapa"). Sem mudança no banco |
 | 214 | Strata, Mapa (item 2 do lote 1): movimento com o dedo ou o mouse, pinça, Ctrl + rolagem, botões + e − e Centralizar, limitados ao conteúdo; só centraliza ao abrir e no botão (seção 8, "Mapa"). Sem biblioteca e sem mudança no banco |
 | 215 | Strata, Mapa (item 3 do lote 1): termos simples em todos os textos do Mapa ("vem de", "nível", "caminho"), altura da área no celular e testes de navegador no computador e num celular de 390 px (seção 8, "Mapa"). Fecha o lote 1 |
-<<<<<<< Updated upstream
 | 215.1 | Sextante e Strata: o `id` de cada manifesto vira caminho absoluto próprio, para o Chrome instalá-los como aplicativos diferentes (relatado ao instalar; seção 8) |
-=======
-| 215.1 | Strata, Mapa (ajuste do lote 1, a pedido do responsável): todo o conteúdo cabe numa única tela ao abrir (largura do mapa igual à da área, nomes ao lado do ponto com degraus e reticências, vista inicial mostrando tudo) e linhas retas que não se sobrepõem, com verificador nas regras (seção 8, "Mapa"). Sem mudança no banco |
->>>>>>> Stashed changes
+| 215.2 | Strata, Mapa (ajuste do lote 1, a pedido do responsável): todo o conteúdo cabe numa única tela ao abrir (largura do mapa igual à da área, nomes ao lado do ponto com degraus e reticências, vista inicial mostrando tudo) e linhas retas que não se sobrepõem, com verificador nas regras (seção 8, "Mapa"). Sem mudança no banco |
