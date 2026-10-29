@@ -80,6 +80,8 @@ function lerColunas() {
 }
 
 export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra }) {
+  /** Números das ações na ordem em que a tela as mostra (cada coluna do quadro segue esta ordem; ver o arrastar). */
+  let ordemNaTela = [];
   /** concluidas: no Quadro de tarefas, mostrar as tarefas marcadas como concluídas (revisão de 27/10/2026; padrão: sim, como no Trello) */
   const ui = { modo: "lista", situacao: "todas", concluidas: true, responsavel: "", minhas: false, etiqueta: "", ordem: "espaco", recolhidos: new Set(), legenda: false,
     /** painel aberto sob um botão da barra: "filtrar", "ordenar" ou null */
@@ -946,6 +948,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const antes = new Map();
     if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.numero, el.getBoundingClientRect());
     const ls = visiveis();
+    ordemNaTela = ls.map((l) => l.acao.numero);
     let corpo;
     if (ui.modo === "planilha") { planilha.desenhar(lista, { ...dadosDaJanela(), ocultas: ui.ocultasPlanilha }); return; }
     if (ui.modo === "cronograma") {
@@ -1315,6 +1318,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       for (const x of itensDe(cont)) if (arr.py < topo + (x.offsetTop - base) + x.offsetHeight / 2) return x;
       return null;
     }
+    /** Cartão antes do qual a ação fica na coluna, pela ordem da tela (null: no fim). */
+    function lugarPelaOrdem(cont) {
+      const pos = (x) => ordemNaTela.indexOf(Number(x.dataset.numero));
+      const minha = ordemNaTela.indexOf(arr.numero);
+      return itensDe(cont).find((x) => pos(x) > minha) ?? null;
+    }
     const proximoItem = (ph) => { let n = ph.nextElementSibling; while (n && (n === arr.item || !n.classList.contains("item"))) n = n.nextElementSibling; return n; };
     function posicionarCartao() {
       const { item } = arr;
@@ -1345,18 +1354,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       }
       if (py < 70) window.scrollBy(0, -12); else if (py > innerHeight - 70) window.scrollBy(0, 12);
       if (cont) {
-        const ordena = arr.modo === "lista" || podeOrdenarQuadro();
-        const mudaDeColuna = arr.modo === "quadro" && chave !== arr.colunaOrigem;
-        if (cont !== arr.ph.parentElement) {
-          /* entrou noutra coluna: a vaga vai para o lugar certo (com a ordem por prioridade) ou para o fim */
-          moverVaga(cont, null);
-          arr.chave = chave;
-        } else if (ordena || mudaDeColuna) {
-          arr.chave = chave;
-        }
-        if (cont === arr.ph.parentElement && (ordena || (mudaDeColuna && false))) {
+        arr.chave = chave;
+        if (arr.modo === "lista" || podeOrdenarQuadro()) {
+          /* com "Prioridade da equipe", a vaga segue o ponteiro, na coluna em que ele estiver */
+          if (cont !== arr.ph.parentElement) moverVaga(cont, null);
           const antesDe = cartaoAbaixo(cont);
           if (proximoItem(arr.ph) !== antesDe) moverVaga(cont, antesDe);
+        } else if (cont !== arr.ph.parentElement) {
+          /* com outra ordem, a posição na coluna não se escolhe: a vaga vai para onde o cartão vai ficar depois de
+             gravar (na coluna de origem, o lugar de antes), para que ele não salte ao redesenhar (correção de 29/10/2026) */
+          moverVaga(cont, lugarPelaOrdem(cont));
         }
       }
       posicionarCartao();
