@@ -38,6 +38,11 @@ Além disso, ele tem estes atributos:
 8. **Pontos para reavaliação.** Antes de mexer nas regras de liberação das ações ou de estimativas, leia a seção 14 da documentação técnica ("Pontos para reavaliação"). São decisões provisórias que o responsável quer rever.
 9. **Plano de trabalho.** Siga a ordem do plano de trabalho (seção 12 da documentação técnica). Vários passos podem ir no mesmo bloco, cada um testado e documentado; a conferência do responsável pode vir depois. Ajustes de ordem ou de escopo são combinados com o responsável e registrados lá.
 
+10. **Sessões em paralelo (decisão do responsável, 29/10/2026).** Duas sessões mexendo nos mesmos arquivos geram conflito, sobretudo no cabeçalho e na tabela de histórico da documentação técnica e em `css/estilo.css`. Por isso:
+    - **Mudanças que alteram a documentação técnica rodam uma sessão por vez.** Antes de começar, faça `git pull` e veja se há outra sessão em andamento.
+    - **Se for mesmo em paralelo,** cada sessão trabalha numa branch própria e entra por *pull request*. O número da linha no histórico de versões só é definido na hora de juntar, sobre a `main` atualizada.
+    - **Nunca faça commit com marcas de conflito** (`<<<<<<<`, `=======`, `>>>>>>>`). Antes de cada commit, procure por elas.
+
 ## 3. Como se comunicar com quem pede
 
 - Responda sempre em **português do Brasil**.

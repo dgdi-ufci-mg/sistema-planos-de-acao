@@ -12,5 +12,6 @@ O projeto do claude.ai "Criação de uma ferramenta online para gerenciamento de
 
 - **Quando:** depois de cada commit que altere `docs/documentacao-tecnica.md`.
 - **Como:** com a ferramenta de Projetos do claude.ai, use `project_write` no caminho `claude/documentacao-tecnica.md`, com `local_path` apontando para o caminho **absoluto** do arquivo no repositório. O arquivo é enviado inteiro e substitui a cópia.
+- **Só com a `main` limpa:** antes de enviar, confirme que `docs/documentacao-tecnica.md` está sem marcas de conflito (`<<<<<<<`) e que o `git pull` não deixou nada pendente. Enviar durante um conflito deixa a cópia quebrada.
 - **Sentido:** sempre do repositório para a cópia. Nunca edite a cópia nem traga conteúdo dela para o repositório.
 - **Sem a ferramenta de Projetos na sessão:** pule este passo e avise o responsável de que a cópia ficou desatualizada.
