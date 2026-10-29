@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 29/10/2026 (versão 215.2 da página)
+**Última atualização deste documento:** 29/10/2026 (versão 215.3 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2148,3 +2148,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 215 | Strata, Mapa (item 3 do lote 1): termos simples em todos os textos do Mapa ("vem de", "nível", "caminho"), altura da área no celular e testes de navegador no computador e num celular de 390 px (seção 8, "Mapa"). Fecha o lote 1 |
 | 215.1 | Sextante e Strata: o `id` de cada manifesto vira caminho absoluto próprio, para o Chrome instalá-los como aplicativos diferentes (relatado ao instalar; seção 8) |
 | 215.2 | Strata, Mapa (ajuste do lote 1, a pedido do responsável): todo o conteúdo cabe numa única tela ao abrir (largura do mapa igual à da área, nomes ao lado do ponto com degraus e reticências, vista inicial mostrando tudo) e linhas retas que não se sobrepõem, com verificador nas regras (seção 8, "Mapa"). Sem mudança no banco |
+| 215.3 | Arquivo `GEMINI.md`, igual ao `CLAUDE.md`: aponta para o `AGENTS.md`, para o Gemini CLI carregar as regras no início da sessão (decisão do responsável de incluir o Gemini no desenvolvimento); `AGENTS.md` e README citam o novo arquivo. Sem mudança no sistema |

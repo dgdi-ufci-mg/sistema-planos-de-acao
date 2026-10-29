@@ -69,6 +69,7 @@ Depois disso, o site passa a abrir já conectado: qualquer pessoa consulta, e qu
 | `CONTRIBUTING.md` | Como colaborar |
 | `AGENTS.md` | Regras de trabalho para quem contribui, pessoa ou assistente de IA |
 | `CLAUDE.md` | Aponta para o `AGENTS.md` e traz instruções exclusivas do Claude |
+| `GEMINI.md` | Aponta para o `AGENTS.md`, para o Gemini CLI carregá-lo sozinho |
 
 O manual do usuário está **congelado** até o responsável liberar, para evitar retrabalho com telas que ainda mudam. Por isso, ele ainda descreve a versão 1.
 

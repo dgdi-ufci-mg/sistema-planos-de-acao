@@ -2,7 +2,7 @@
 
 Leia este arquivo inteiro antes de qualquer tarefa. Ele vale para **qualquer pessoa ou assistente de IA** (Claude, Gemini, Copilot, Codex, Cursor ou outro) que trabalhar aqui.
 
-**Este arquivo é a fonte única das regras.** Outros arquivos de instrução, como o `CLAUDE.md`, apenas apontam para este e acrescentam o que for exclusivo de uma ferramenta. Não copie estas regras para outros arquivos: altere-as somente aqui. Se a sua ferramenta de IA não lê este arquivo automaticamente, cole-o no início da conversa.
+**Este arquivo é a fonte única das regras.** Outros arquivos de instrução, como o `CLAUDE.md` e o `GEMINI.md`, apenas apontam para este e acrescentam o que for exclusivo de uma ferramenta. Não copie estas regras para outros arquivos: altere-as somente aqui. Se a sua ferramenta de IA não lê este arquivo automaticamente, cole-o no início da conversa.
 
 ## 1. O que é este projeto
 
