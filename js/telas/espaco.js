@@ -1485,6 +1485,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       if (!a.ativo) { arr = null; return; }
       cancelAnimationFrame(a.quadro);
       a.ativo = false;
+      /* o gesto acabou: enquanto o cartão assenta, nenhum toque ou movimento abre outro gesto (correção de 29/10/2026;
+         um mouse de verdade ainda se mexe um pouco depois de soltar, e isso levantava o cartão de novo, no meio da
+         animação, e o jogava para o canto da tela) */
+      a.soltando = true;
       document.body.classList.remove("arrastando-cartao-corpo");
       try { lista.releasePointerCapture(a.id); } catch { /* sem captura */ }
       const engolir = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
@@ -1523,7 +1527,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       setTimeout(() => { if (!arr) desenharLista(); }, 700);
     }
     lista.addEventListener("pointerdown", (e) => {
-      if (arr?.ativo || e.button > 0) return;
+      if (arr?.ativo || arr?.soltando || e.button > 0) return;
       if (arr) { clearTimeout(arr.relogio); arr = null; } // gesto que não chegou a começar
       const puxador = e.target.closest?.("[data-puxar]");
       let item;
@@ -1545,7 +1549,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       }
     });
     lista.addEventListener("pointermove", (e) => {
-      if (!arr || e.pointerId !== arr.id) return;
+      if (!arr || arr.soltando || e.pointerId !== arr.id) return;
       arr.px = e.clientX;
       arr.py = e.clientY;
       const longe = Math.hypot(arr.px - arr.x0, arr.py - arr.y0);
@@ -1558,11 +1562,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       posicionarCartao();
     });
     lista.addEventListener("pointerup", (e) => {
-      if (!arr || e.pointerId !== arr.id) return;
+      if (!arr || arr.soltando || e.pointerId !== arr.id) return;
       if (arr.ativo && arr.toque && !arr.moveu) return soltar(false, { menu: true }); // segurou e soltou: menu do cartão
       soltar(false);
     });
-    lista.addEventListener("pointercancel", (e) => { if (arr && e.pointerId === arr.id) soltar(true); });
+    lista.addEventListener("pointercancel", (e) => { if (arr && !arr.soltando && e.pointerId === arr.id) soltar(true); });
     /* depois de segurar, o dedo arrasta o cartão em vez de rolar a página */
     lista.addEventListener("touchmove", (e) => { if (arr?.ativo) e.preventDefault(); }, { passive: false });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && arr?.ativo) { e.stopPropagation(); soltar(true); } }, true);
