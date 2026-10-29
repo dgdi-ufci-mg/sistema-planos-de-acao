@@ -158,4 +158,25 @@ describe("Mapa do Strata", { skip: pular }, () => {
     assert.ok(depois.x < antes.x, "o mapa andou para a esquerda");
     assert.ok(await sem(p), "a página não rola para o lado");
   });
+
+  test("os textos do Mapa usam palavras simples: vem de, nível; nunca deriva de, estrato ou cadeia de derivação", async () => {
+    const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+    const texto = await p.evaluate(() => {
+      const corpo = document.querySelector(".superior-corpo");
+      const extra = [...corpo.querySelectorAll("[aria-label], title")].map((e) => e.getAttribute("aria-label") ?? e.textContent);
+      return `${corpo.innerText}\n${extra.join("\n")}`.toLowerCase();
+    });
+    assert.match(texto, /vem de/);
+    assert.match(texto, /nível/);
+    assert.doesNotMatch(texto, /deriva|estrato|cadeia de deriva/);
+  });
+
+  test("no celular, os botões do mapa ficam à vista sem rolar a página e os nomes das camadas vão no alto da faixa", async () => {
+    const p = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
+    const botao = await p.locator("[data-mapa-centralizar]").boundingBox();
+    assert.ok(botao.y + botao.height <= 800, "o botão Centralizar cabe na tela de 800 px");
+    const rotulo = await p.locator('.mapa-rotulo-camada[data-camada="objetivoDesenvolvimento"]').boundingBox();
+    const caixa = await p.locator('.mapa-faixa[data-camada="objetivoDesenvolvimento"]').boundingBox();
+    assert.ok(rotulo.y - caixa.y < 30, "o nome da camada fica junto do alto da faixa, e não no meio dela");
+  });
 });

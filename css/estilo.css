@@ -1640,6 +1640,7 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .mapa-controles { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .mapa-controles .botao { min-width: 40px; min-height: 40px; justify-content: center; background: var(--surface); }
 .mapa-ajuda { margin: 0; }
+@media (max-width: 640px) { .mapa-area { height: clamp(340px, calc(100dvh - 360px), 880px); } }
 a.lateral-acao { text-decoration: none; }
 
 /* ---------- entregas do Plano de Ação (passo 2.6): visualização e painel ---------- */
