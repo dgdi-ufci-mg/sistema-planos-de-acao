@@ -9,12 +9,12 @@
  *   fora isso, nunca se centraliza, nunca a cada mudança de tamanho (no celular, a barra de endereço
  *   dispara essa mudança); ao mudar de tamanho, apenas reaplica os limites;
  * - o movimento só começa depois de `LIMIAR_DO_TOQUE` pixels, para um toque com tremor continuar sendo toque
- *   (a seleção de pontos entra no lote 2);
+ *   (tocar num ponto seleciona: acende o caminho e abre o cartão com "Abrir"; tocar no fundo desfaz);
  * - o movimento e a aproximação ficam limitados ao conteúdo, nos dois sentidos (`limitarTransformacao`);
  * - os nomes das camadas ficam presos à borda esquerda, em tamanho fixo, e não encolhem com o zoom.
  */
 import {
-  calcularMapa, caminhoDaFaixa, caminhoDaLigacao, deslocamentoCurvo, limitarTransformacao, transformacaoInicial,
+  calcularMapa, caminhoDaFaixa, caminhoDaLigacao, caminhoDoNo, deslocamentoCurvo, limitarTransformacao, transformacaoInicial,
 } from "../mapa.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -29,17 +29,18 @@ const criar = (nome, atributos = {}) => {
 
 /**
  * @param {HTMLElement} area  contêiner do mapa (com altura definida pelo CSS)
- * @param {{camadas: object[], itens: object[], planos: object[], estado: {t?: {k: number, x: number, y: number}}}} contexto
- *   `estado` guarda a vista do mapa entre um desenho e outro da tela
+ * @param {{camadas: object[], itens: object[], planos: object[], estado: {t?: {k: number, x: number, y: number}, selecionado?: string}, aoAbrir?: (no: object) => void}} contexto
+ *   `estado` guarda a vista e o ponto selecionado entre um desenho e outro da tela; `aoAbrir` recebe o ponto do cartão
  * @returns {{destruir: () => void}}
  */
-export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
+export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {} }) {
   area.innerHTML = `
     <svg class="mapa-svg" role="group" aria-label="Mapa do desdobramento: do alto, o que vem primeiro; embaixo, os Planos de Ação" focusable="false">
       <g data-mapa-mundo></g>
       <text class="mapa-nome mapa-medida" x="0" y="0" aria-hidden="true"></text>
     </svg>
     <div class="mapa-rotulos" aria-hidden="true"></div>
+    <div class="mapa-cartao" data-mapa-cartao hidden></div>
     <div class="mapa-controles" role="group" aria-label="Aproximar e afastar o mapa">
       <button type="button" class="botao" data-mapa-mais aria-label="Aproximar">+</button>
       <button type="button" class="botao" data-mapa-menos aria-label="Afastar">−</button>
@@ -49,6 +50,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
   const mundo = svg.querySelector("[data-mapa-mundo]");
   const medidor = svg.querySelector(".mapa-medida");
   const rotulos = area.querySelector(".mapa-rotulos");
+  const cartao = area.querySelector("[data-mapa-cartao]");
   const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let mapa = null;
@@ -80,11 +82,13 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
       grupoLigacoes.append(criar("path", { class: "mapa-ligacao", "data-de": l.de, "data-para": l.para, d: caminhoDaLigacao(porChave.get(l.de), porChave.get(l.para)) }));
     }
     for (const n of mapa.nos) {
-      const g = criar("g", { class: `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}`, "data-no": n.chave, "data-tipo": n.tipo });
+      const g = criar("g", { class: `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}`, "data-no": n.chave, "data-tipo": n.tipo, tabindex: 0, role: "button" });
+      g.setAttribute("aria-label", n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`);
       const titulo = criar("title");
       titulo.textContent = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
-      const ponto = criar("circle", { cx: n.x, cy: n.yCurvo, r: 6 });
-      g.append(titulo, ponto);
+      const alvo = criar("circle", { class: "mapa-alvo", cx: n.x, cy: n.yCurvo, r: 11 }); // área de toque maior que o ponto
+      const ponto = criar("circle", { class: "mapa-bolinha", cx: n.x, cy: n.yCurvo, r: 6 });
+      g.append(titulo, alvo, ponto);
       if (n.rotulo) {
         const nome = criar("text", { class: "mapa-nome", x: n.x + mapa.recuo, y: n.yCurvo + 4 });
         nome.textContent = n.rotulo;
@@ -100,6 +104,60 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
       s.textContent = f.plural;
       return s;
     }));
+    marcarSelecao();
+  }
+
+  /* ---------- seleção: caminho aceso e cartão ---------- */
+  const noDe = (chave) => mapa.nos.find((n) => n.chave === chave);
+  function marcarSelecao() {
+    if (estado.selecionado && !noDe(estado.selecionado)) estado.selecionado = null; // o ponto saiu do mapa (filtro, exclusão)
+    const caminho = estado.selecionado ? caminhoDoNo(mapa, estado.selecionado) : null;
+    svg.classList.toggle("com-selecao", Boolean(caminho));
+    for (const g of mundo.querySelectorAll(".mapa-no")) {
+      g.classList.toggle("no-caminho", Boolean(caminho?.nos.has(g.dataset.no)));
+      g.classList.toggle("selecionado", g.dataset.no === estado.selecionado);
+      g.setAttribute("aria-pressed", String(g.dataset.no === estado.selecionado));
+    }
+    for (const l of mundo.querySelectorAll(".mapa-ligacao")) l.classList.toggle("ligacao-caminho", Boolean(caminho?.ligacoes.has(`${l.dataset.de}|${l.dataset.para}`)));
+    montarCartao();
+  }
+  function selecionar(chave) {
+    estado.selecionado = chave;
+    marcarSelecao();
+    if (t) posicionarCartao();
+  }
+  function montarCartao() {
+    const n = estado.selecionado ? noDe(estado.selecionado) : null;
+    cartao.hidden = !n;
+    if (!n) { cartao.replaceChildren(); return; }
+    const faixa = mapa.faixas[n.faixa];
+    const nome = document.createElement("strong");
+    nome.textContent = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
+    const tipo = document.createElement("small");
+    tipo.className = "tec";
+    tipo.textContent = n.restrito ? "Só quem participa dele vê o nome." : faixa.nome;
+    cartao.replaceChildren(nome, tipo);
+    if (!n.restrito) {
+      const abrir = document.createElement("button");
+      abrir.type = "button";
+      abrir.className = "botao principal";
+      abrir.dataset.mapaAbrir = "";
+      abrir.textContent = "Abrir";
+      cartao.append(abrir);
+    }
+  }
+  /** O cartão fica junto ao ponto (abaixo dele, ou acima se faltar lugar) e nunca sai da área. */
+  function posicionarCartao() {
+    const n = estado.selecionado ? noDe(estado.selecionado) : null;
+    if (!n || cartao.hidden) return;
+    const px = t.x + t.k * n.x;
+    const py = t.y + t.k * n.yCurvo;
+    const larg = cartao.offsetWidth;
+    const alt = cartao.offsetHeight;
+    const esquerda = Math.max(8, Math.min(vista.w - larg - 8, px - larg / 2));
+    const abaixo = py + 14 + alt <= vista.h - 8;
+    const topo = abaixo ? py + 14 : Math.max(8, py - 14 - alt);
+    cartao.style.transform = `translate(${esquerda.toFixed(1)}px, ${topo.toFixed(1)}px)`;
   }
 
   /* ---------- vista (movimento e aproximação) ---------- */
@@ -108,6 +166,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
     estado.t = t;
     mundo.setAttribute("transform", `translate(${t.x.toFixed(2)} ${t.y.toFixed(2)}) scale(${t.k.toFixed(4)})`);
     posicionarRotulos();
+    posicionarCartao();
   }
 
   /** Nome de cada camada, no alto da faixa e preso à borda esquerda, em tamanho fixo; some quando a faixa sai da vista. */
@@ -184,7 +243,13 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
     p.x = e.clientX; p.y = e.clientY;
   });
   const soltar = (e) => {
+    const p = ponteiros.get(e.pointerId);
+    const toque = e.type === "pointerup" && p && !p.movido && ponteiros.size === 1; // sem passar do tremor e sem pinça
     if (!ponteiros.delete(e.pointerId)) return;
+    if (toque) {
+      const chave = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-no]")?.dataset.no ?? null;
+      if (chave) selecionar(chave); else if (!e.target.closest?.("[data-mapa-cartao]")) selecionar(null);
+    }
     pinca = null;
     for (const p of ponteiros.values()) { p.movido = true; } // o dedo que sobra continua movendo o mapa
     if (!ponteiros.size) svg.classList.remove("arrastando");
@@ -203,10 +268,16 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado }) {
   }, { passive: false });
 
   const meioDaVista = () => ({ x: vista.w / 2, y: vista.h / 2 });
+  svg.addEventListener("keydown", (e) => {
+    const chave = e.target.closest?.("[data-no]")?.dataset.no;
+    if (chave && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selecionar(chave); }
+    if (e.key === "Escape") selecionar(null);
+  });
   area.addEventListener("click", (e) => {
     const botao = e.target.closest("button");
     if (!botao) return;
-    if (botao.matches("[data-mapa-mais]")) animarPara(zoomEm(meioDaVista(), 1.3));
+    if (botao.matches("[data-mapa-abrir]")) { const n = noDe(estado.selecionado); if (n) aoAbrir(n); }
+    else if (botao.matches("[data-mapa-mais]")) animarPara(zoomEm(meioDaVista(), 1.3));
     else if (botao.matches("[data-mapa-menos]")) animarPara(zoomEm(meioDaVista(), 1 / 1.3));
     else if (botao.matches("[data-mapa-centralizar]")) animarPara(transformacaoInicial(limites()));
   });

@@ -200,4 +200,94 @@ describe("Mapa do Strata", { skip: pular }, () => {
     const caixa = await p.locator('.mapa-faixa[data-camada="objetivoDesenvolvimento"]').boundingBox();
     assert.ok(rotulo.y - caixa.y < 30, "o nome da camada fica junto do alto da faixa, e não no meio dela");
   });
+
+  describe("interação (lote 2)", () => {
+    /** o ponto de um item pelo código (os identificadores do exemplo são gerados na hora) */
+    const no = async (p, codigo) => {
+      const chave = await p.evaluate((c) => [...document.querySelectorAll(".mapa-no")].find((g) => g.querySelector("title").textContent.startsWith(`${c} `))?.dataset.no, codigo);
+      return p.locator(`.mapa-no[data-no="${chave}"] .mapa-alvo`);
+    };
+    const selecionado = (p) => p.locator(".mapa-no.selecionado title").textContent();
+    const acesos = (p) => p.locator(".mapa-no.no-caminho").evaluateAll((l) => l.map((x) => x.dataset.no).sort());
+
+    for (const [nome, o] of [["computador", { largura: 1280, altura: 800 }], ["celular (390 px)", { largura: 390, altura: 800 }]]) {
+      test(`${nome}: tocar num ponto acende o caminho e abre o cartão com "Abrir"; tocar noutro troca; tocar no fundo desfaz`, async () => {
+        const p = await sessao.abrir({ ...o, ...ABRIR });
+        await (await no(p, "PRG2")).click();
+        assert.equal(await p.locator(".mapa-no.selecionado").count(), 1);
+        assert.ok((await acesos(p)).length > 3, "o caminho (pelos dois superiores) está aceso");
+        const cartao = p.locator("[data-mapa-cartao]");
+        assert.ok(await cartao.isVisible());
+        assert.match(await cartao.innerText(), /PRG2/);
+        const area = await p.locator(".mapa-area").boundingBox();
+        const c = await cartao.boundingBox();
+        assert.ok(c.x >= area.x - 1 && c.x + c.width <= area.x + area.width + 1 && c.y >= area.y - 1 && c.y + c.height <= area.y + area.height + 1, "o cartão fica dentro da área");
+        await (await no(p, "OE2")).click();
+        assert.match(await selecionado(p), /^OE2 /);
+        await p.locator(".mapa-area").click({ position: { x: 4, y: 4 } });
+        assert.equal(await p.locator(".mapa-no.selecionado").count(), 0);
+        assert.ok(await cartao.isHidden());
+        assert.deepEqual(p.erros, []);
+      });
+    }
+
+    test("\"Abrir\" leva ao painel do item", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      await (await no(p, "PRG1")).click();
+      await p.click("[data-mapa-abrir]");
+      await p.waitForSelector(".painel");
+      assert.match(await p.locator(".painel").first().innerText(), /PRG1/);
+    });
+
+    test("no celular, um toque com tremor de 3 px seleciona; um arrasto de verdade só move o mapa", async () => {
+      const p = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
+      const d = await dedo(p);
+      const alvo = await centro((await no(p, "PRG1")));
+      await d.arrastar(alvo.x, alvo.y, 3, 2, { passos: 3 });
+      assert.match(await selecionado(p), /^PRG1 /);
+      await p.locator(".mapa-area").click({ position: { x: 4, y: 4 } });
+      for (let i = 0; i < 3; i++) { await p.click("[data-mapa-mais]"); await p.waitForTimeout(300); }
+      const outro = await centro((await no(p, "PRG1")).first());
+      await d.arrastar(Math.min(380, Math.max(10, outro.x)), outro.y, -60, 0);
+      assert.equal(await p.locator(".mapa-no.selecionado").count(), 0, "arrastar não seleciona");
+    });
+
+    test("\"Ver como lista\" mantém o item selecionado, aberto e à vista; voltar ao Mapa mantém o acendido", async () => {
+      const p = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
+      await (await no(p, "PRG2")).click();
+      await p.click("[data-ver-lista]");
+      assert.equal(await p.locator('[data-aba="arvore"]').getAttribute("aria-selected"), "true");
+      const marcado = p.locator(".item-estrategia.selecionado").first();
+      assert.match(await marcado.innerText(), /PRG2/);
+      assert.ok(await marcado.isVisible());
+      await p.click('[data-aba="mapa"]');
+      await p.waitForSelector(".mapa-no");
+      assert.match(await selecionado(p), /^PRG2 /);
+    });
+
+    test("\"Só o que vale hoje\" fica no próprio Mapa e muda os pontos mostrados", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const antes = await p.locator(".mapa-no").count();
+      await p.uncheck("[data-so-vigentes]");
+      await p.waitForSelector(".mapa-no");
+      assert.ok(await p.locator(".mapa-no").count() >= antes, "desmarcar nunca mostra menos");
+      assert.equal(await p.locator("[data-so-vigentes]").isChecked(), false);
+    });
+
+    test("Plano de Ação restrito: o cartão não mostra o nome nem oferece \"Abrir\"", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const r = await p.evaluate(async () => {
+        const { criarVistaMapa } = await import("../js/superior/mapa.js");
+        const area = document.createElement("div");
+        area.className = "mapa-area";
+        document.body.append(area);
+        const camadas = [{ id: "a", nome: "Objetivo", plural: "Objetivos" }];
+        const itens = [{ id: "i1", camada: "a", nome: "Item", codigo: "I1", superiores: [] }];
+        criarVistaMapa(area, { camadas, itens, planos: [{ id: "x", nome: "Plano de Ação restrito", restrito: true, superiores: ["i1"] }], estado: { selecionado: "plano:x" } });
+        return { texto: area.querySelector("[data-mapa-cartao]").innerText, abrir: area.querySelectorAll("[data-mapa-abrir]").length };
+      });
+      assert.match(r.texto, /Plano de Ação restrito/);
+      assert.equal(r.abrir, 0);
+    });
+  });
 });

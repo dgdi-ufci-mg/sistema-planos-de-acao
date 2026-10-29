@@ -78,7 +78,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       </section>
       <section class="superior-corpo">${{ mapa: mapaHtml, arvore: arvoreHtml, instrumentos: instrumentosHtml, camadas: camadasHtml, importar: importarHtml }[ui.aba]()}</section>`;
     const areaDoMapa = alvo.querySelector("[data-mapa-area]");
-    if (areaDoMapa) vistaMapa = criarVistaMapa(areaDoMapa, { camadas: cat.camadas, itens: cat.itens.filter((x) => !x.excluidoEm && vale(x)), planos: planosDoMapa(), estado: ui.mapa });
+    if (areaDoMapa) vistaMapa = criarVistaMapa(areaDoMapa, { camadas: cat.camadas, itens: cat.itens.filter((x) => !x.excluidoEm && vale(x)), planos: planosDoMapa(), estado: ui.mapa, aoAbrir: abrirDoMapa });
     const busca = alvo.querySelector("[data-busca-arvore]");
     if (busca && ui.busca) { busca.focus(); busca.setSelectionRange(ui.busca.length, ui.busca.length); }
     /* abas que não cabem (celular, 25/10/2026, item 17 da avaliação de celular): a borda direita esmaece enquanto
@@ -98,14 +98,39 @@ export function mostrarSuperior(alvo, { store, hoje }) {
       return { id: e.id, nome: visivel ? e.nome : "Plano de Ação restrito", restrito: !visivel, superiores: e.vinculos };
     });
   }
+  /** "Abrir" do cartão do Mapa: o painel do item, ou o espaço do Plano de Ação (que o restrito nunca oferece). */
+  function abrirDoMapa(no) {
+    if (no.tipo === "item") abrirItem(no.id);
+    else if (!no.restrito) location.assign(`../#/espaco/${encodeURIComponent(no.id)}`);
+  }
   function mapaHtml() {
+    const ferramentas = `<div class="superior-ferramentas">
+        <label class="alternar"><input type="checkbox" data-so-vigentes${ui.soVigentes ? " checked" : ""}> Só o que vale hoje</label>
+        <button type="button" class="botao discreto" data-ver-lista>Ver como lista</button>
+      </div>`;
     if (!cat.itens.some((x) => !x.excluidoEm && vale(x))) {
-      return `<p class="vazio">${cat.itens.length ? "Nada vale hoje. Na aba Desdobramento, desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece pela aba Desdobramento, em “Novo item”, ou pela aba Importar." : "O catálogo ainda está vazio."}</p>`;
+      return `${cat.itens.length ? ferramentas : ""}<p class="vazio">${cat.itens.length ? "Nada vale hoje. Desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece pela aba Desdobramento, em “Novo item”, ou pela aba Importar." : "O catálogo ainda está vazio."}</p>`;
     }
-    return `
+    return `${ferramentas}
       <div class="mapa-area" data-mapa-area></div>
       <p class="tec mapa-ajuda">Cada ponto é um item. As linhas ligam cada item ao que ele <b>vem de</b>, do nível de baixo para o de cima; embaixo ficam os Planos de Ação.
+        Toque num ponto para acender o caminho dele e ver o cartão com “Abrir”; toque no fundo para desfazer.
         Arraste para mover o mapa. Para aproximar, use a pinça, Ctrl + rolagem ou os botões + e −.</p>`;
+  }
+  /** "Ver como lista": o Desdobramento, com o item selecionado no Mapa aberto e à vista (o Plano de Ação, no lugar dele). */
+  function verComoLista() {
+    const chave = ui.mapa.selecionado ?? null;
+    ui.aba = "arvore";
+    ui.busca = "";
+    if (chave && !chave.startsWith("plano:")) {
+      const acima = new Set();
+      const subir = (id) => { for (const sup of itemDe(id)?.superiores ?? []) if (!acima.has(sup)) { acima.add(sup); subir(sup); } };
+      subir(chave);
+      for (const k of [...ui.recolhidos]) if (acima.has(k.split("/").pop())) ui.recolhidos.delete(k); // abre o caminho até o item
+    }
+    desenhar();
+    const el = alvo.querySelector(".selecionado");
+    el?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 
   /* ---------- desdobramento ---------- */
@@ -113,7 +138,7 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     const instr = instrumentoDe(item.instrumento);
     const fora = !itemVigente(item, cat.instrumentos, hoje);
     const n = recebePlanos(item) ? planosDe(item.id).length : 0;
-    return `<button type="button" class="item-estrategia" data-item="${esc(item.id)}">
+    return `<button type="button" class="item-estrategia${ui.mapa.selecionado === item.id ? " selecionado" : ""}" data-item="${esc(item.id)}">
       <span class="item-estrategia-nome">${item.codigo ? `<b class="mono">${esc(item.codigo)}</b> ` : ""}${esc(item.nome)}</span>
       <small class="tec">${esc(camadaDe(item.camada)?.nome ?? "")}${instr ? ` · ${esc(instr.nome)}` : ""}${fora ? " · fora da vigência" : ""}${n ? ` · ${n} ${plural(n, "Plano de Ação", "Planos de Ação")}` : ""}</small>
     </button>`;
@@ -146,8 +171,8 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     const dados = entregasDe.get(e.id);
     const rascunho = dados && !dados.entregas.length;
     return `<li class="no-estrategia no-plano"><div class="no-linha"><span class="no-seta vazia"></span>
-      ${visivel ? `<a class="item-estrategia plano" href="../#/espaco/${esc(e.id)}"><span class="item-estrategia-nome">${esc(e.nome)}</span><small class="tec">Plano de Ação${e.encerradoEm ? " · encerrado" : ""}${rascunho ? " · rascunho, sem entregas" : dados ? ` · ${dados.entregas.length} ${plural(dados.entregas.length, "entrega", "entregas")}` : ""}</small></a>`
-        : `<span class="item-estrategia plano"><span class="item-estrategia-nome">Plano de Ação restrito</span><small class="tec">Só quem participa dele vê o nome.</small></span>`}</div>
+      ${visivel ? `<a class="item-estrategia plano${ui.mapa.selecionado === `plano:${e.id}` ? " selecionado" : ""}" href="../#/espaco/${esc(e.id)}"><span class="item-estrategia-nome">${esc(e.nome)}</span><small class="tec">Plano de Ação${e.encerradoEm ? " · encerrado" : ""}${rascunho ? " · rascunho, sem entregas" : dados ? ` · ${dados.entregas.length} ${plural(dados.entregas.length, "entrega", "entregas")}` : ""}</small></a>`
+        : `<span class="item-estrategia plano${ui.mapa.selecionado === `plano:${e.id}` ? " selecionado" : ""}"><span class="item-estrategia-nome">Plano de Ação restrito</span><small class="tec">Só quem participa dele vê o nome.</small></span>`}</div>
       ${visivel ? entregasDoPlanoHtml(e) : ""}</li>`;
   }
   function arvoreHtml() {
@@ -404,7 +429,8 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     const t = e.target.closest("button");
     if (!t || t.disabled) return;
     if (t.dataset.aba) { ui.aba = t.dataset.aba; return desenhar(); }
-    if (t.dataset.item) return abrirItem(t.dataset.item);
+    if (t.matches("[data-ver-lista]")) return verComoLista();
+    if (t.dataset.item) { ui.mapa.selecionado = t.dataset.item; return abrirItem(t.dataset.item); } // o mesmo ponto fica aceso no Mapa
     if (t.dataset.alternarNo) { if (ui.recolhidos.has(t.dataset.alternarNo)) ui.recolhidos.delete(t.dataset.alternarNo); else ui.recolhidos.add(t.dataset.alternarNo); return desenhar(); }
     if (t.matches("[data-recolher-tudo]")) {
       if (ui.recolhidos.size) ui.recolhidos.clear();

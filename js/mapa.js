@@ -262,3 +262,29 @@ export function transformacaoInicial({ conteudo, vista, margem = 24, escalaMaxim
   const k = escalaMinima({ conteudo, vista, margem });
   return limitarTransformacao({ k, x: (vista.w - conteudo.w * k) / 2, y: (vista.h - conteudo.h * k) / 2 }, { conteudo, vista, margem, escalaMaxima });
 }
+
+/**
+ * Caminho de um ponto (lote 2, 29/10/2026): ele mesmo, tudo o que ele "vem de" até o topo e tudo o que vem dele até os
+ * Planos de Ação, por todas as ligações (um item com dois superiores acende os dois caminhos).
+ * @returns {{nos: Set<string>, ligacoes: Set<string>}}  chaves dos pontos e das ligações (`de|para`)
+ */
+export function caminhoDoNo(mapa, chave) {
+  const nos = new Set();
+  const ligacoes = new Set();
+  if (!mapa.nos.some((n) => n.chave === chave)) return { nos, ligacoes };
+  nos.add(chave);
+  for (const [lado, seguinte] of [["de", "para"], ["para", "de"]]) {
+    const fila = [chave];
+    const visto = new Set([chave]);
+    while (fila.length) {
+      const atual = fila.shift();
+      for (const l of mapa.ligacoes) {
+        if (l[lado] !== atual) continue;
+        ligacoes.add(`${l.de}|${l.para}`);
+        nos.add(l[seguinte]);
+        if (!visto.has(l[seguinte])) { visto.add(l[seguinte]); fila.push(l[seguinte]); }
+      }
+    }
+  }
+  return { nos, ligacoes };
+}

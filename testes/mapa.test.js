@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import {
   FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
-  escalaMinima, limitarTransformacao, transformacaoInicial,
+  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo,
 } from "../js/mapa.js";
 
 const item = (id, camada, nome, superiores = [], codigo = "") => ({ id, camada, nome, codigo, superiores });
@@ -196,5 +196,22 @@ describe("Mapa: limites do movimento e do zoom", () => {
     assert.ok(Math.abs(t.k - escalaMinima({ conteudo, vista })) < 1e-9);
     assert.ok(conteudo.w * t.k <= vista.w && conteudo.h * t.k <= vista.h, "cabe nas duas direções");
     assert.ok(Math.abs(t.x - (400 - 2000 * t.k) / 2) < 1e-9);
+  });
+});
+
+describe("Mapa: caminho de um ponto (lote 2)", () => {
+  const mapa = () => calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: [{ id: "pa1", nome: "Plano", superiores: ["prg2"] }] });
+
+  it("acende o que o ponto vem de até o topo e o que vem dele até os Planos de Ação, por todos os superiores", () => {
+    const c = caminhoDoNo(mapa(), "prg2"); // Programa com duas Políticas
+    assert.deepEqual([...c.nos].sort(), ["od1", "od2", "oe1", "oe2", "plano:pa1", "pol1", "pol2", "prg2"]);
+    assert.ok(c.ligacoes.has("prg2|pol1") && c.ligacoes.has("prg2|pol2") && c.ligacoes.has("plano:pa1|prg2"));
+    assert.ok(!c.nos.has("prg1"), "o irmão não acende");
+  });
+
+  it("um ponto do topo acende só o que desce dele; chave desconhecida não acende nada", () => {
+    const c = caminhoDoNo(mapa(), "oe1");
+    assert.deepEqual([...c.nos].sort(), ["od1", "oe1", "plano:pa1", "pol1", "prg1", "prg2"]);
+    assert.equal(caminhoDoNo(mapa(), "nada").nos.size, 0);
   });
 });

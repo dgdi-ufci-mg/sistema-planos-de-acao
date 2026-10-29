@@ -1628,13 +1628,13 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 
 /* Strata, aba Mapa (29/10/2026; seção 8 da documentação técnica): faixas horizontais curvas, do chão aos objetivos.
    Só variáveis do tema, nos três blocos de cores. */
-.mapa-area { position: relative; height: clamp(380px, calc(100dvh - 250px), 880px); border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); overflow: hidden; }
+.mapa-area { position: relative; height: clamp(380px, calc(100dvh - 320px), 880px); border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); overflow: hidden; }
 .mapa-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .mapa-svg.arrastando { cursor: grabbing; }
 .mapa-faixa { fill: color-mix(in srgb, var(--accent) var(--tom, 12%), var(--surface)); stroke: var(--line); stroke-width: 1; }
 .mapa-ligacao { fill: none; stroke: var(--muted); stroke-opacity: .5; stroke-width: 1.3; }
-.mapa-no circle { fill: var(--surface); stroke: var(--accent-ink); stroke-width: 2; }
-.mapa-no.plano circle { fill: var(--accent-ink); }
+.mapa-no .mapa-bolinha { fill: var(--surface); stroke: var(--accent-ink); stroke-width: 2; }
+.mapa-no.plano .mapa-bolinha { fill: var(--accent-ink); }
 .mapa-no.restrito .mapa-nome { font-style: italic; }
 .mapa-nome { fill: var(--ink); font-size: 13px; font-family: var(--f-texto, inherit); stroke: var(--surface); stroke-width: 3px; stroke-opacity: .7; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
 .mapa-medida { opacity: 0; }
@@ -1643,7 +1643,7 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .mapa-controles { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
 .mapa-controles .botao { min-width: 40px; min-height: 40px; justify-content: center; background: var(--surface); }
 .mapa-ajuda { margin: 0; }
-@media (max-width: 640px) { .mapa-area { height: clamp(340px, calc(100dvh - 360px), 880px); } }
+@media (max-width: 640px) { .mapa-area { height: clamp(320px, calc(100dvh - 430px), 880px); } }
 a.lateral-acao { text-decoration: none; }
 
 /* ---------- entregas do Plano de Ação (passo 2.6): visualização e painel ---------- */
@@ -2124,3 +2124,19 @@ button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: 
 td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .abrir-escolha { opacity: 1; }
 .abrir-escolha:hover { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .caixa-planilha { animation: none; } }
+
+/* Mapa, lote 2: caminho aceso e cartão do ponto selecionado */
+.mapa-svg.com-selecao .mapa-no:not(.no-caminho) { opacity: .28; }
+.mapa-svg.com-selecao .mapa-ligacao:not(.ligacao-caminho) { stroke-opacity: .15; }
+.mapa-ligacao.ligacao-caminho { stroke: var(--warn); stroke-opacity: 1; stroke-width: 2.6; }
+.mapa-no { cursor: pointer; }
+.mapa-no:focus-visible { outline: none; }
+.mapa-no:focus-visible .mapa-bolinha { stroke-width: 4; }
+.mapa-no.no-caminho .mapa-bolinha { stroke: var(--warn-ink); stroke-width: 2.6; }
+.mapa-no.selecionado .mapa-bolinha { fill: var(--warn); stroke: var(--warn-ink); stroke-width: 3; }
+.mapa-cartao { font-size: 13px; line-height: 1.3; position: absolute; left: 0; top: 0; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: max-content; max-width: min(260px, calc(100% - 16px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 18%, transparent); }
+.mapa-cartao[hidden] { display: none; }
+.mapa-cartao .botao { min-height: 32px; padding: 3px 14px; }
+.mapa-cartao small { font-size: 11px; }
+.item-estrategia.selecionado { background: var(--warn-soft); border-color: var(--warn); }
+.mapa-alvo { fill: transparent; }
