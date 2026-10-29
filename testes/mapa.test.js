@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import {
   FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
-  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa,
+  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
 } from "../js/mapa.js";
 
 const item = (id, camada, nome, superiores = [], codigo = "") => ({ id, camada, nome, codigo, superiores });
@@ -248,5 +248,32 @@ describe("Mapa: cores e contraste (lote 4)", () => {
       assert.ok(e.y >= mapa.faixas[0].topo + deslocamentoCurvo(e.x, mapa.centro, mapa.raio) - 1);
       assert.ok(e.y <= limite.base + deslocamentoCurvo(e.x, mapa.centro, mapa.raio) + 1);
     }
+  });
+});
+
+describe("Mapa: mola (lote 5)", () => {
+  const simular = (de, alvo, vmax = 10, dt = 1 / 60) => {
+    let e = { x: de, v: 0 };
+    let passos = 0; let maior = de;
+    while (!emRepouso(e, alvo) && passos++ < 600) { e = passoDaMola(e, alvo, dt); maior = Math.max(maior, e.x); }
+    return { e, passos, maior };
+  };
+
+  it("chega ao alvo em menos de 1,5 s, quase sem passar dele (amortecimento perto do crítico)", () => {
+    const r = simular(0, 100);
+    assert.ok(r.passos / 60 < 1.5, `${r.passos / 60} s`);
+    assert.ok(r.maior < 101.5, `passou até ${r.maior}`);
+    assert.ok(Math.abs(r.e.x - 100) < MOLA.repouso);
+  });
+
+  it("é determinística: a mesma partida dá o mesmo caminho; parado no alvo, fica parado", () => {
+    assert.deepEqual(simular(5, 80), simular(5, 80));
+    assert.deepEqual(passoDaMola({ x: 7, v: 0 }, 7, 1 / 60), { x: 7, v: 0 });
+    assert.ok(emRepouso({ x: 7, v: 0 }, 7));
+  });
+
+  it("anda também para trás (do alto para o baixo, da direita para a esquerda)", () => {
+    const r = simular(300, 20);
+    assert.ok(Math.abs(r.e.x - 20) < MOLA.repouso);
   });
 });

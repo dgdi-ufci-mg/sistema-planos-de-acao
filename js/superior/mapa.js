@@ -14,7 +14,7 @@
  * - os nomes das camadas ficam presos à borda esquerda, em tamanho fixo, e não encolhem com o zoom.
  */
 import {
-  calcularMapa, caminhoDaFaixa, caminhoDaLigacao, caminhoDoNo, deslocamentoCurvo, estrelasDoMapa, lerCor, melhorTinta, limitarTransformacao, transformacaoInicial,
+  calcularMapa, caminhoDaFaixa, caminhoDaLigacao, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
 } from "../mapa.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -70,6 +70,9 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   function desenhar() {
     const medir = (texto) => { medidor.textContent = texto; return medidor.getComputedTextLength(); };
     mapa = calcularMapa({ camadas, itens, planos, medir, vista });
+    cancelAnimationFrame(molaId);
+    elementos.clear();
+    ligacoesVivas.length = 0;
     mundo.replaceChildren();
     const grupoFaixas = criar("g");
     const grupoEstrelas = criar("g", { class: "mapa-estrelas", "aria-hidden": "true" });
@@ -87,8 +90,10 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const porChave = new Map(mapa.nos.map((n) => [n.chave, n]));
     for (const l of mapa.ligacoes) { // cada linha tem uma borda de cor oposta, para aparecer sobre o claro e sobre o escuro
       const d = caminhoDaLigacao(porChave.get(l.de), porChave.get(l.para));
-      grupoLigacoes.append(criar("path", { class: "mapa-ligacao-borda", "data-de": l.de, "data-para": l.para, d }));
-      grupoLigacoes.append(criar("path", { class: "mapa-ligacao", "data-de": l.de, "data-para": l.para, d }));
+      const borda = criar("path", { class: "mapa-ligacao-borda", "data-de": l.de, "data-para": l.para, d });
+      const linha = criar("path", { class: "mapa-ligacao", "data-de": l.de, "data-para": l.para, d });
+      grupoLigacoes.append(borda, linha);
+      ligacoesVivas.push({ de: l.de, para: l.para, borda, linha });
     }
     for (const n of mapa.nos) {
       const g = criar("g", { class: `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}`, "data-no": n.chave, "data-tipo": n.tipo, "data-faixa": n.faixa, tabindex: 0, role: "button" });
@@ -98,13 +103,17 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       const alvo = criar("circle", { class: "mapa-alvo", cx: n.x, cy: n.yCurvo, r: 11 }); // área de toque maior que o ponto
       const ponto = criar("circle", { class: "mapa-bolinha", cx: n.x, cy: n.yCurvo, r: 6 });
       g.append(titulo, alvo, ponto);
+      const partes = { alvo, ponto, nome: null, codigo: null };
+      elementos.set(n.chave, partes);
       if (n.rotulo) {
         const nome = criar("text", { class: "mapa-nome", x: n.x + mapa.recuo, y: n.yCurvo + 4 });
+        partes.nome = nome;
         nome.textContent = n.rotulo;
         g.append(nome);
         if (n.codigo) { // de longe, só o código, no maior tamanho que cabe no espaço do nome
           const codigo = criar("text", { class: "mapa-codigo", x: n.x + mapa.recuo, y: n.yCurvo + 4 });
           codigo.textContent = n.codigo;
+          partes.codigo = codigo;
           codigo.dataset.maximo = String(Math.min(TAMANHO_MAXIMO_DO_CODIGO, TAMANHO_DO_NOME * Math.max(1, n.largura / Math.max(1, medir(n.codigo)))));
           g.append(codigo);
         }
@@ -122,6 +131,67 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     escalaDosCodigos = 0;
     marcarSelecao();
     ajustarTintas();
+    iniciarMola();
+  }
+
+  /* ---------- mola: os pontos deslizam do lugar em que estavam até o destino calculado pelas regras ---------- */
+  const elementos = new Map(); // chave → elementos SVG do ponto
+  const ligacoesVivas = []; // linhas (com borda), para seguir os pontos
+  const atual = new Map(); // chave → {x, y, vx, vy}: onde cada ponto está agora
+  let molaId = 0;
+  let ultimoQuadro = 0;
+  const alvoDe = (chave) => noDe(chave);
+
+  /** Põe cada ponto, e as linhas e nomes dele, na posição de agora. */
+  function pintar() {
+    for (const [chave, p] of elementos) {
+      const a = atual.get(chave);
+      p.alvo.setAttribute("cx", a.x); p.alvo.setAttribute("cy", a.y);
+      p.ponto.setAttribute("cx", a.x); p.ponto.setAttribute("cy", a.y);
+      for (const texto of [p.nome, p.codigo]) if (texto) { texto.setAttribute("x", a.x + mapa.recuo); texto.setAttribute("y", a.y + 4); }
+    }
+    for (const l of ligacoesVivas) {
+      const [f, u] = [atual.get(l.de), atual.get(l.para)];
+      const d = `M${f.x.toFixed(1)} ${f.y.toFixed(1)} L${u.x.toFixed(1)} ${u.y.toFixed(1)}`;
+      l.borda.setAttribute("d", d); l.linha.setAttribute("d", d);
+    }
+  }
+  const guardarPosicoes = () => { estado.posicoes = new Map([...atual].map(([k, a]) => [k, { x: a.x, y: a.y }])); };
+
+  /** Começa a mola: o ponto que já existia parte de onde estava; o novo aparece no destino. Sem movimento, tudo no destino. */
+  function iniciarMola() {
+    const antes = estado.posicoes ?? new Map();
+    atual.clear();
+    let mexe = false;
+    for (const n of mapa.nos) {
+      const p = antes.get(n.chave);
+      const longe = p && Math.hypot(p.x - n.x, p.y - n.yCurvo) > MOLA.distanciaMinima;
+      if (longe && !reduzirMovimento()) mexe = true;
+      atual.set(n.chave, longe && !reduzirMovimento() ? { x: p.x, y: p.y, vx: 0, vy: 0 } : { x: n.x, y: n.yCurvo, vx: 0, vy: 0 });
+    }
+    pintar();
+    guardarPosicoes();
+    if (!mexe) { svg.removeAttribute("data-movendo"); return; }
+    svg.dataset.movendo = "1";
+    ultimoQuadro = performance.now();
+    molaId = requestAnimationFrame(passoDaMolaNaTela);
+  }
+  function passoDaMolaNaTela(agora) {
+    const dt = Math.min(MOLA.passoMaximo, Math.max(0.001, (agora - ultimoQuadro) / 1000));
+    ultimoQuadro = agora;
+    let mexendo = false;
+    for (const [chave, a] of atual) {
+      const n = alvoDe(chave);
+      const px = passoDaMola({ x: a.x, v: a.vx }, n.x, dt);
+      const py = passoDaMola({ x: a.y, v: a.vy }, n.yCurvo, dt);
+      [a.x, a.vx, a.y, a.vy] = [px.x, px.v, py.x, py.v];
+      if (emRepouso({ x: a.x, v: a.vx }, n.x) && emRepouso({ x: a.y, v: a.vy }, n.yCurvo)) { [a.x, a.y, a.vx, a.vy] = [n.x, n.yCurvo, 0, 0]; } else mexendo = true;
+    }
+    pintar();
+    guardarPosicoes();
+    posicionarCartao();
+    if (mexendo) molaId = requestAnimationFrame(passoDaMolaNaTela);
+    else svg.removeAttribute("data-movendo");
   }
 
   /** O texto de cada faixa usa a tinta (clara ou escura) de maior contraste sobre o fundo dela, no tema de agora. */
@@ -184,8 +254,9 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   function posicionarCartao() {
     const n = estado.selecionado ? noDe(estado.selecionado) : null;
     if (!n || cartao.hidden) return;
-    const px = t.x + t.k * n.x;
-    const py = t.y + t.k * n.yCurvo;
+    const onde = atual.get(n.chave) ?? { x: n.x, y: n.yCurvo };
+    const px = t.x + t.k * onde.x;
+    const py = t.y + t.k * onde.y;
     const larg = cartao.offsetWidth;
     const alt = cartao.offsetHeight;
     const esquerda = Math.max(8, Math.min(vista.w - larg - 8, px - larg / 2));
@@ -352,5 +423,5 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   const escuroDoSistema = matchMedia("(prefers-color-scheme: dark)");
   escuroDoSistema.addEventListener?.("change", mudouTema);
 
-  return { destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); } };
+  return { destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); cancelAnimationFrame(molaId); } };
 }

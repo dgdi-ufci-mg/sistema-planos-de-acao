@@ -340,3 +340,21 @@ export function estrelasDoMapa(mapa, porFaixaAlta = 14) {
   });
   return estrelas;
 }
+
+/* ---------- física (lote 5, 29/10/2026): mola até o destino calculado pelas regras ---------- */
+
+/** Constantes da mola: quase amortecimento crítico (a razão de amortecimento é c ÷ (2 × √k) ≈ 0,97), sem balançar. */
+export const MOLA = Object.freeze({ rigidez: 180, amortecimento: 26, distanciaMinima: 1.5, repouso: 0.05, passoMaximo: 0.032 });
+
+/**
+ * Um passo da mola de um ponto (uma coordenada): Euler semi-implícito, aceleração = rigidez × (alvo − x) − amortecimento × v.
+ * @param {{x: number, v: number}} estado
+ * @returns {{x: number, v: number}}
+ */
+export function passoDaMola({ x, v }, alvo, dt, { rigidez, amortecimento } = MOLA) {
+  const v2 = v + (rigidez * (alvo - x) - amortecimento * v) * dt;
+  return { x: x + v2 * dt, v: v2 };
+}
+
+/** A coordenada está em repouso: perto do alvo e quase parada. */
+export const emRepouso = ({ x, v }, alvo) => Math.abs(alvo - x) < MOLA.repouso && Math.abs(v) < MOLA.repouso;

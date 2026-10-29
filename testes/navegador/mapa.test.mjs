@@ -7,7 +7,7 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { pular, iniciar, dedo, centro } from "./apoio.mjs";
 
-const ABRIR = { caminho: "strata/", aguardar: ".mapa-no" };
+const ABRIR = { caminho: "strata/", aguardar: ".mapa-svg:not([data-movendo]) .mapa-no" }; // espera os pontos pararem (lote 5)
 const sem = (p) => p.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 const vista = (p) => p.evaluate(() => {
   const m = document.querySelector("[data-mapa-mundo]").getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\) scale\(([-\d.]+)\)/);
@@ -359,6 +359,41 @@ describe("Mapa do Strata", { skip: pular }, () => {
       const r = await p.evaluate(tintas);
       assert.ok(r.minimo >= 4.5, `depois da troca: ${r.minimo.toFixed(2)}`);
       assert.ok(antes, "havia tinta definida");
+    });
+  });
+
+  describe("física: mola até o destino (lote 5)", () => {
+    const coerente = (p) => p.evaluate(() => [...document.querySelectorAll(".mapa-no")].every((g) => {
+      const c = g.querySelector(".mapa-bolinha");
+      const t = g.querySelector(".mapa-nome") ?? g.querySelector(".mapa-codigo");
+      return !t || Math.abs(Number(t.getAttribute("x")) - Number(c.getAttribute("cx")) - 9) < 0.01;
+    }));
+
+    test("ao mudar a largura, os pontos deslizam até o novo lugar e param exatamente nele, com as linhas junto", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const antes = await p.evaluate(() => document.querySelector(".mapa-bolinha").getAttribute("cx"));
+      await p.setViewportSize({ width: 800, height: 800 });
+      await p.waitForSelector(".mapa-svg[data-movendo]", { timeout: 3000 });
+      await p.waitForSelector(".mapa-svg:not([data-movendo])", { timeout: 5000 });
+      assert.ok(await coerente(p), "nomes e pontos andam juntos");
+      const r = await p.evaluate(() => {
+        const g = document.querySelector(".mapa-no");
+        const l = document.querySelector(".mapa-ligacao");
+        const [x, y] = [Number(g.querySelector(".mapa-bolinha").getAttribute("cx")), Number(g.querySelector(".mapa-bolinha").getAttribute("cy"))];
+        return { depois: String(x), liga: l.getAttribute("d"), y };
+      });
+      assert.notEqual(r.depois, antes, "mudou de lugar");
+      assert.match(r.liga, /^M[\d.]+ [\d.]+ L[\d.]+ [\d.]+$/);
+      assert.deepEqual(p.erros, []);
+    });
+
+    test("com \"Reduzir movimento\", os pontos vão direto ao destino", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      await p.emulateMedia({ reducedMotion: "reduce" });
+      await p.setViewportSize({ width: 800, height: 800 });
+      await p.waitForTimeout(400);
+      assert.equal(await p.locator(".mapa-svg[data-movendo]").count(), 0);
+      assert.ok(await coerente(p));
     });
   });
 });
