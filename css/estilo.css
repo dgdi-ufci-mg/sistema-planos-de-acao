@@ -2142,3 +2142,8 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
 .mapa-cartao small { font-size: 11px; }
 .item-estrategia.selecionado { background: var(--warn-soft); border-color: var(--warn); }
 .mapa-alvo { fill: transparent; }
+
+/* Mapa, lote 4: de longe, só o código de cada item */
+.mapa-codigo { display: none; fill: var(--ink); font-weight: 700; font-family: var(--f-texto, inherit); stroke: var(--surface); stroke-width: 3px; stroke-opacity: .7; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
+.mapa-svg.de-longe .mapa-no .mapa-nome { display: none; } /* não o medidor de texto, que precisa continuar medindo */
+.mapa-svg.de-longe .mapa-codigo { display: inline; }

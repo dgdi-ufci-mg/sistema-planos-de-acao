@@ -20,6 +20,11 @@ import {
 const NS = "http://www.w3.org/2000/svg";
 const LIMIAR_DO_TOQUE = 6;
 const ESCALA_MAXIMA = 3;
+/** Abaixo desta escala (o nome de 13 px ficaria com menos de 8,5 px na tela), o mapa mostra só o código de cada item. */
+const ESCALA_DOS_NOMES = 0.65;
+const TAMANHO_DO_NOME = 13;
+const TAMANHO_MAXIMO_DO_CODIGO = 20;
+const TAMANHO_APARENTE_DO_CODIGO = 9;
 
 const criar = (nome, atributos = {}) => {
   const e = document.createElementNS(NS, nome);
@@ -93,6 +98,12 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
         const nome = criar("text", { class: "mapa-nome", x: n.x + mapa.recuo, y: n.yCurvo + 4 });
         nome.textContent = n.rotulo;
         g.append(nome);
+        if (n.codigo) { // de longe, só o código, no maior tamanho que cabe no espaço do nome
+          const codigo = criar("text", { class: "mapa-codigo", x: n.x + mapa.recuo, y: n.yCurvo + 4 });
+          codigo.textContent = n.codigo;
+          codigo.dataset.maximo = String(Math.min(TAMANHO_MAXIMO_DO_CODIGO, TAMANHO_DO_NOME * Math.max(1, n.largura / Math.max(1, medir(n.codigo)))));
+          g.append(codigo);
+        }
       }
       grupoNos.append(g);
     }
@@ -104,6 +115,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       s.textContent = f.plural;
       return s;
     }));
+    escalaDosCodigos = 0;
     marcarSelecao();
   }
 
@@ -167,6 +179,19 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     mundo.setAttribute("transform", `translate(${t.x.toFixed(2)} ${t.y.toFixed(2)}) scale(${t.k.toFixed(4)})`);
     posicionarRotulos();
     posicionarCartao();
+    mostrarNomesOuCodigos();
+  }
+
+  /** De longe (escala menor que `ESCALA_DOS_NOMES`), só o código de cada item, em tamanho que pareça de 9 px e caiba. */
+  let escalaDosCodigos = 0;
+  function mostrarNomesOuCodigos() {
+    const longe = t.k < ESCALA_DOS_NOMES;
+    svg.classList.toggle("de-longe", longe);
+    if (!longe || Math.abs(t.k - escalaDosCodigos) < 0.005) return;
+    escalaDosCodigos = t.k;
+    for (const c of svg.querySelectorAll(".mapa-codigo")) {
+      c.style.fontSize = `${Math.max(TAMANHO_DO_NOME, Math.min(Number(c.dataset.maximo), TAMANHO_APARENTE_DO_CODIGO / t.k)).toFixed(1)}px`;
+    }
   }
 
   /** Nome de cada camada, no alto da faixa e preso à borda esquerda, em tamanho fixo; some quando a faixa sai da vista. */

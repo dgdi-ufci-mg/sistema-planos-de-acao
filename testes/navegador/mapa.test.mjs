@@ -290,4 +290,31 @@ describe("Mapa do Strata", { skip: pular }, () => {
       assert.equal(r.abrir, 0);
     });
   });
+
+  describe("acabamento (lote 4)", () => {
+    test("de longe (celular), só o código de cada item, sem se sobrepor; aproximando, os nomes voltam", async () => {
+      const p = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
+      assert.ok(await p.locator(".mapa-svg.de-longe").count(), "o mapa inteiro, no celular, está de longe");
+      const r = await p.evaluate(() => {
+        const visiveis = (sel) => [...document.querySelectorAll(sel)].filter((e) => getComputedStyle(e).display !== "none");
+        const caixas = visiveis(".mapa-codigo").map((e) => e.getBoundingClientRect());
+        let encostam = 0;
+        for (let i = 0; i < caixas.length; i++) for (let j = i + 1; j < caixas.length; j++) {
+          const a = caixas[i]; const b = caixas[j];
+          if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) encostam++;
+        }
+        return { codigos: caixas.length, nomes: visiveis(".mapa-no .mapa-nome").length, encostam };
+      });
+      assert.ok(r.codigos >= 8, `${r.codigos} códigos à vista`);
+      assert.equal(r.nomes, 0, "nenhum nome inteiro de longe");
+      assert.equal(r.encostam, 0, "os códigos não se sobrepõem");
+      for (let i = 0; i < 4; i++) { await p.click("[data-mapa-mais]"); await p.waitForTimeout(300); }
+      assert.equal(await p.locator(".mapa-svg.de-longe").count(), 0, "de perto, os nomes");
+    });
+
+    test("no computador, o mapa abre com os nomes inteiros", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      assert.equal(await p.locator(".mapa-svg.de-longe").count(), 0);
+    });
+  });
 });
