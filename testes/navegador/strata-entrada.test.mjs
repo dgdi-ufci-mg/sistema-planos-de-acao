@@ -140,6 +140,24 @@ describe("Strata: Mapa em tela cheia como porta de entrada", { skip: pular }, ()
         assert.equal(await p.locator(".mapa-area").count(), 1);
       });
 
+      test("céu e solo: as faixas continuam até as bordas da tela, o solo fica abaixo dos Planos de Ação e as estrelas do céu, só à noite", async () => {
+        const p = await sessao.abrir({ ...o, ...ABRIR, tema: "dark" });
+        const r = await p.evaluate(() => {
+          const caixa = (s) => document.querySelector(s).getBoundingClientRect();
+          const alem = [...document.querySelectorAll(".mapa-faixa-alem")].map((f) => f.getBoundingClientRect());
+          const solo = caixa(".mapa-solo");
+          const planos = caixa('.mapa-faixa[data-camada="planosDeAcao"]');
+          const visiveis = [...document.querySelectorAll(".mapa-estrela")].filter((e) => getComputedStyle(e).display !== "none").length;
+          return { faixas: alem.length, cobrem: alem.every((f) => f.left <= 0 && f.right >= innerWidth), soloAbaixo: solo.top >= planos.top + planos.height / 2, visiveis };
+        });
+        assert.equal(r.faixas, await p.locator(".mapa-faixa").count(), "uma continuação por faixa");
+        assert.ok(r.cobrem, "as faixas vão de uma borda à outra da tela, sem emenda");
+        assert.ok(r.soloAbaixo, "o solo começa na base dos Planos de Ação");
+        assert.ok(r.visiveis > 0, "estrelas à noite");
+        const dia = await sessao.abrir({ ...o, ...ABRIR, tema: "light" });
+        assert.equal(await dia.evaluate(() => [...document.querySelectorAll(".mapa-estrela")].filter((e) => getComputedStyle(e).display !== "none").length), 0, "de dia, sem estrelas");
+      });
+
       test("o tema escolhido no menu troca na hora e fica neste aparelho", async () => {
         const p = await sessao.abrir({ ...o, ...ABRIR });
         await abrirMenu(p);

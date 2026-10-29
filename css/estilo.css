@@ -2161,6 +2161,7 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
   --mapa-linha: #1F2A4D; --mapa-borda-da-linha: #F4F8FF;
   --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
   --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
+  --mapa-terra-cima: #8CBDE8; --mapa-terra-baixo: #1E3F73; --mapa-solo: #FFFFFF;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -2168,6 +2169,7 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
     --mapa-linha: #CFDAF5; --mapa-borda-da-linha: #05070D;
     --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
     --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
+    --mapa-terra-cima: #2A6FB3; --mapa-terra-baixo: #03060D; --mapa-solo: #BFE6FF;
   }
   :root:not([data-theme="light"]) .mapa-estrela { display: inline; }
 }
@@ -2176,6 +2178,7 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
   --mapa-linha: #CFDAF5; --mapa-borda-da-linha: #05070D;
   --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
   --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
+  --mapa-terra-cima: #2A6FB3; --mapa-terra-baixo: #03060D; --mapa-solo: #BFE6FF;
 }
 :root[data-theme="dark"] .mapa-estrela { display: inline; }
 .mapa-estrela { display: none; fill: #FFFFFF; }
@@ -2187,7 +2190,7 @@ body.strata-cheia { margin: 0; padding: 0; height: 100dvh; overflow: hidden; ove
 @media (min-width: 900px) { body.modulo-superior.strata-cheia { padding-left: 0; } }
 /* sem posição própria: o mapa, a mensagem de vazio e as folhas se empilham com o alto da tela (z-index 0, 5, 20 e 30) */
 .strata-principal { position: static; }
-.mapa-area.strata-mapa { position: fixed; inset: 0; height: auto; border: 0; border-radius: 0; background: var(--mapa-topo); }
+.mapa-area.strata-mapa { position: fixed; inset: 0; height: auto; border: 0; border-radius: 0; background: linear-gradient(var(--mapa-topo) 0 50%, var(--mapa-terra-baixo) 50% 100%); }
 .strata-mapa .mapa-controles { right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
 .strata-mapa .mapa-controles .botao { background: color-mix(in srgb, var(--surface) 90%, transparent); }
 .strata-mapa .mapa-rotulo-camada { margin-left: env(safe-area-inset-left, 0px); }
@@ -2264,4 +2267,15 @@ body.strata-cheia { margin: 0; padding: 0; height: 100dvh; overflow: hidden; ove
 }
 @media (prefers-reduced-motion: reduce) { .strata-folha, .strata-menu, .strata-menu.aberto { transition: none; } }
 .strata-ajuda { display: flex; flex-direction: column; gap: 10px; }
+
+/* céu e solo da tela cheia (29/10/2026, tarde; referência: o esboço): as faixas continuam para os lados, só como desenho,
+   com o mesmo tom; abaixo dos Planos de Ação, o solo, num gradiente linear, com a linha do solo e um brilho sem desfoque */
+/* a faixa do mapa fica invisível sobre a sua continuação (mesma cor e mesma curva), que desenha o tom e o contorno sem
+   emenda; ela continua servindo à tela (tinta do texto pelo tom da faixa) e aos testes (ponto dentro da faixa) */
+.mapa-faixa { stroke: none; fill-opacity: 0; }
+.mapa-faixa-alem { fill: color-mix(in srgb, var(--mapa-topo) var(--pos, 0%), var(--mapa-chao)); stroke: var(--mapa-contorno); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.mapa-solo-cima { stop-color: var(--mapa-terra-cima); }
+.mapa-solo-baixo { stop-color: var(--mapa-terra-baixo); }
+.mapa-solo-brilho { fill: none; stroke: var(--mapa-solo); stroke-width: 12; stroke-opacity: .18; }
+.mapa-solo-linha { fill: none; stroke: var(--mapa-solo); stroke-width: 1.4; stroke-opacity: .9; }
 

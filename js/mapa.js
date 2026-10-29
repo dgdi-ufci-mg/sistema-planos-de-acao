@@ -205,6 +205,61 @@ export function caminhoDaFaixa(faixa, { largura, centro, raio }) {
     + ` L${n1(largura)} ${n1(base + d(largura))} Q${n1(centro)} ${n1(controle(base))} 0 ${n1(base + d(0))} Z`;
 }
 
+/**
+ * Céu e solo da tela cheia (29/10/2026, tarde; a referência é o esboço): as faixas continuam, só como desenho, para os
+ * dois lados além do mapa (`alem` unidades), pela mesma curva; abaixo da faixa dos Planos de Ação fica o solo, e acima
+ * da faixa mais alta, o céu (o fundo da tela, com estrelas de noite). Sem círculos gigantes nem desfoque: só caminhos
+ * com a mesma correção de altura e um gradiente linear no solo.
+ * Contorno de uma faixa de `topo` a `base`, de x = −alem a x = largura + alem (simétrico em torno do centro, então a
+ * curva de Bézier quadrática com o ponto de controle no centro é exatamente a parábola).
+ */
+export function caminhoAlem({ topo, base }, mapa, alem) {
+  const x0 = -alem; const x1 = mapa.largura + alem;
+  return `${curvaPorPartes(topo, x0, x1, mapa, "M")} L${n1(x1)} ${n1(base + deslocamentoCurvo(x1, mapa.centro, mapa.raio))}${curvaPorPartes(base, x1, x0, mapa, "")} Z`;
+}
+
+/**
+ * A curva `y + deslocamento(x)` de xa a xb em partes, cada uma uma Bézier quadrática exata da parábola (o ponto de
+ * controle sai da tangente). Uma parte só, longa demais, sai facetada na tela do navegador; por isso, partes de no
+ * máximo meia largura do mapa.
+ */
+function curvaPorPartes(y, xa, xb, { largura, centro, raio }, inicio) {
+  const partes = Math.max(1, Math.ceil(Math.abs(xb - xa) / (largura / 2)));
+  const altura = (x) => y + deslocamentoCurvo(x, centro, raio);
+  let d = inicio ? `${inicio}${n1(xa)} ${n1(altura(xa))}` : "";
+  for (let i = 0; i < partes; i++) {
+    const a = xa + ((xb - xa) * i) / partes; const b = xa + ((xb - xa) * (i + 1)) / partes;
+    const controle = altura(a) + ((b - a) / 2) * ((a - centro) / raio); // tangente da parábola em a
+    d += ` Q${n1((a + b) / 2)} ${n1(controle)} ${n1(b)} ${n1(altura(b))}`;
+  }
+  return d;
+}
+
+/** Linha do solo: a borda de baixo da faixa dos Planos de Ação, estendida para os dois lados. */
+export function linhaDoSolo(mapa, alem) {
+  return curvaPorPartes(mapa.faixas[mapa.faixas.length - 1].base, -alem, mapa.largura + alem, mapa, "M");
+}
+
+/**
+ * Estrelas do céu acima da faixa mais alta (só no tema noite, como as das faixas): sempre nos mesmos lugares
+ * (gerador fixo), de x = −alem a largura + alem, até `altura` unidades acima do mapa, cada uma acima da curva do topo.
+ * @returns {{x: number, y: number, r: number, o: number}[]}
+ */
+export function estrelasDoCeu(mapa, { alem = mapa.largura, altura = mapa.largura, porArea = 1 / 2600 } = {}) {
+  let semente = 7;
+  const proximo = () => { semente = (Math.imul(semente, 1664525) + 1013904223) >>> 0; return semente / 4294967296; };
+  const topo = mapa.faixas[0]?.topo ?? 0;
+  const largura = mapa.largura + 2 * alem;
+  const quantas = Math.round(largura * altura * porArea);
+  const estrelas = [];
+  for (let k = 0; k < quantas; k++) {
+    const x = -alem + proximo() * largura;
+    const y = topo - 4 - proximo() * altura + deslocamentoCurvo(x, mapa.centro, mapa.raio);
+    estrelas.push({ x: n1(x), y: n1(y), r: n1(0.4 + proximo() * 1.0), o: Math.round((0.3 + proximo() * 0.6) * 100) / 100 });
+  }
+  return estrelas;
+}
+
 /** Linha entre um ponto e o que ele "vem de": reta (duas linhas do mesmo ponto nunca se sobrepõem, só se separam). */
 export const caminhoDaLigacao = (filho, superior) => `M${filho.x} ${filho.yCurvo} L${superior.x} ${superior.yCurvo}`;
 

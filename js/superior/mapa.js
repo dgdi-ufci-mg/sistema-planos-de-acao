@@ -14,7 +14,7 @@
  * - os nomes das camadas ficam presos à borda esquerda, em tamanho fixo, e não encolhem com o zoom.
  */
 import {
-  calcularMapa, caminhoDaFaixa, caminhoDaLigacao, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
+  calcularMapa, caminhoAlem, caminhoDaFaixa, caminhoDaLigacao, estrelasDoCeu, linhaDoSolo, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
 } from "../mapa.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -25,7 +25,10 @@ const ESCALA_DOS_NOMES = 0.65;
 const TAMANHO_DO_NOME = 13;
 const TAMANHO_MAXIMO_DO_CODIGO = 20;
 const TAMANHO_APARENTE_DO_CODIGO = 9;
+/** Quanto as faixas, o céu e o solo continuam para os lados e para baixo, em larguras do mapa (só desenho). */
+const ALEM = 3;
 
+let contador = 0; // identificadores únicos dos gradientes, se houver mais de um mapa na página
 const criar = (nome, atributos = {}) => {
   const e = document.createElementNS(NS, nome);
   for (const [k, v] of Object.entries(atributos)) e.setAttribute(k, v);
@@ -77,16 +80,35 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     elementos.clear();
     ligacoesVivas.length = 0;
     mundo.replaceChildren();
+    const grupoCeu = criar("g", { "aria-hidden": "true" }); // céu e solo da tela cheia: as faixas continuam para os lados, só como desenho
     const grupoFaixas = criar("g");
     const grupoEstrelas = criar("g", { class: "mapa-estrelas", "aria-hidden": "true" });
     const grupoLigacoes = criar("g");
     const grupoNos = criar("g");
-    mundo.append(grupoFaixas, grupoEstrelas, grupoLigacoes, grupoNos);
+    mundo.append(grupoCeu, grupoFaixas, grupoEstrelas, grupoLigacoes, grupoNos);
 
     const quantas = mapa.faixas.length;
+    const alem = ALEM * mapa.largura;
+    const posicao = (i) => `${quantas > 1 ? Math.round(100 * (1 - i / (quantas - 1))) : 0}%`; // 0 no chão (claro de dia) até 100 no alto (anil de dia, preto de noite)
+    for (const e of estrelasDoCeu(mapa, { alem, altura: 1.5 * mapa.largura })) grupoCeu.append(criar("circle", { class: "mapa-estrela", cx: e.x, cy: e.y, r: e.r, "fill-opacity": e.o }));
+    mapa.faixas.forEach((f, i) => {
+      const fora = criar("path", { class: "mapa-faixa-alem", d: caminhoAlem(f, mapa, alem) });
+      fora.style.setProperty("--pos", posicao(i));
+      grupoCeu.append(fora);
+    });
+    const base = mapa.faixas[quantas - 1].base;
+    const gradiente = criar("linearGradient", { id: `mapa-solo-${++contador}`, gradientUnits: "userSpaceOnUse", x1: 0, x2: 0, y1: base, y2: base + mapa.largura });
+    gradiente.append(criar("stop", { offset: 0, class: "mapa-solo-cima" }), criar("stop", { offset: 1, class: "mapa-solo-baixo" }));
+    grupoCeu.append(criar("defs"));
+    grupoCeu.lastChild.append(gradiente);
+    grupoCeu.append(
+      criar("path", { class: "mapa-solo", fill: `url(#${gradiente.id})`, d: caminhoAlem({ topo: base, base: base + alem }, mapa, alem) }),
+      criar("path", { class: "mapa-solo-brilho", d: linhaDoSolo(mapa, alem) }),
+      criar("path", { class: "mapa-solo-linha", d: linhaDoSolo(mapa, alem) }),
+    );
     mapa.faixas.forEach((f, i) => {
       const p = criar("path", { class: "mapa-faixa", "data-camada": f.id, d: caminhoDaFaixa(f, mapa) });
-      p.style.setProperty("--pos", `${quantas > 1 ? Math.round(100 * (1 - i / (quantas - 1))) : 0}%`); // 0 no chão (claro de dia) até 100 no alto (anil de dia, preto de noite)
+      p.style.setProperty("--pos", posicao(i));
       grupoFaixas.append(p);
     });
     for (const e of estrelasDoMapa(mapa)) grupoEstrelas.append(criar("circle", { class: "mapa-estrela", cx: e.x, cy: e.y, r: e.r, "fill-opacity": e.o })); // só aparecem no tema noite
