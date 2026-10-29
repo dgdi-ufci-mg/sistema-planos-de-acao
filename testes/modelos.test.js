@@ -139,7 +139,7 @@ describe("Modelos: importação e exportação", async () => {
   it("a planilha exportada do espaço aberto tem Data-limite e não tem estimativas, dependências nem folga", () => {
     const acoes = [{ numero: 1, ordem: 1, rotulo: "Publicar", dependeDe: [], responsaveis: [], estimativas: [], dataLimite: "2026-11-30" }];
     const [titulos, linha] = planilhaDoEspaco({ espaco: aberto, acoes, responsaveis: [], geral: {}, hoje: "2026-11-10" }).split("\n").map((l) => l.split("\t"));
-    assert.deepEqual(titulos, ["Número", "Ação", "Descrição", "Data-limite", "Responsáveis", "Situação", "Atrasada"]);
+    assert.deepEqual(titulos, ["Número", "Ação", "Descrição", "Data-limite", "Responsáveis", "Prioridade da equipe", "Situação", "Atrasada"]); // a prioridade da equipe vem ligada por padrão (29/10/2026)
     assert.equal(linha[3], "30/11/2026");
   });
 });

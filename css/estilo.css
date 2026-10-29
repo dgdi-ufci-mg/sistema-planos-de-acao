@@ -1521,6 +1521,9 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .item.solta-depois { box-shadow: 0 3px 0 0 var(--accent), var(--relevo); }
 /* posicionado em relação à linha inteira, e não à coluna da grade (na lista estreita, ".linha > *" vai para a coluna 2) */
 .lista[data-puxadores] .linha > .puxador { grid-column: auto; grid-row: auto; }
+/* no quadro (29/10/2026): o puxador fica à esquerda do cartão; a coluna de destino se destaca (.coluna.alvo) */
+.lista[data-puxadores] .cartao-quadro .linha { position: relative; padding-left: 40px; }
+.cartao-quadro .puxador { left: 6px; }
 
 /* papéis (passo 2.1): aviso no alto do espaço */
 .aviso-papel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 10px; padding: 10px 14px; border-radius: 10px;

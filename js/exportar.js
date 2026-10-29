@@ -50,7 +50,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
   const usaDescricao = opcionais.descricao !== false;
   const comEtiquetas = usaEtiquetas(espaco); // passo 2.10a: nomes separados por ";"
   const comJustificativa = opcionais.justificativa === true; // passo 2.10a
-  const posicao = opcionais.prioridade === true ? posicoesDaPrioridade(acoes) : null; // passo 2.10a: 1, 2, 3…
+  const posicao = opcionais.prioridade !== false ? posicoesDaPrioridade(acoes) : null; // passo 2.10a: 1, 2, 3…
   const comLocal = opcionais.local === true;
   const comDocumentos = opcionais.documentos === true; // passo 2.10a: "nome (link ou identificação)", separados por ";"
   const comEntrega = entregas.length > 0 || acoes.some((a) => a.entregaDoPlano); // passo 2.6: o título da entrega

@@ -43,7 +43,7 @@ const CAMPOS_OPCIONAIS = [
   ["documentos", "Documentos e links das ações", "Termos, pareceres e páginas ligados a cada ação, com a identificação no SIPAC/Protocolo ou o link."],
 ];
 /** Campos opcionais desligados por padrão (seção 4.1.4); os demais vêm ligados. */
-const DESLIGADOS_POR_PADRAO = new Set(["codigos", "prioridade", "etiquetas", "documentos", "justificativa", "local"]);
+const DESLIGADOS_POR_PADRAO = new Set(["codigos", "etiquetas", "documentos", "justificativa", "local"]);
 const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[chave] === true : campos?.[chave] !== false);
 
 /** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void}} opcoes */

@@ -56,7 +56,7 @@ export function colunasDaPlanilha(d) {
     { chave: "concluidaEm", titulo: "Concluída em", largura: 9 },
     campos.notas !== false && { chave: "notas", titulo: "Anotações", largura: 16 },
     { chave: "checklist", titulo: "Checklist", largura: 5.5 },
-    campos.prioridade === true && { chave: "prioridade", titulo: "Prioridade da equipe", largura: 6.5 },
+    campos.prioridade !== false && { chave: "prioridade", titulo: "Prioridade da equipe", largura: 6.5 },
     usaEtiquetas(d.espaco) && { chave: "etiquetas", titulo: "Etiquetas", largura: 9 },
     campos.documentos === true && { chave: "documentos", titulo: "Documentos e links", largura: 12 },
     { chave: "situacao", titulo: "Situação", largura: 7, calculada: true },

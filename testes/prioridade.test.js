@@ -82,3 +82,13 @@ describe("Prioridade: Store", () => {
     await assert.rejects(store.alterarAcao(id, 1, { posicaoPrioridade: "a0" }), { codigo: "posicao-invalida" });
   });
 });
+
+describe("Prioridade: ligada por padrão (29/10/2026)", () => {
+  it("vale como ligada sem escolha gravada, e só desliga com `prioridade: false`", async () => {
+    const { usaPrioridade } = await import("../js/prioridade.js");
+    assert.equal(usaPrioridade({}), true);
+    assert.equal(usaPrioridade({ camposOpcionais: {} }), true);
+    assert.equal(usaPrioridade({ camposOpcionais: { prioridade: true } }), true);
+    assert.equal(usaPrioridade({ camposOpcionais: { prioridade: false } }), false);
+  });
+});

@@ -14,6 +14,12 @@ const DIGITOS = "0123456789abcdefghijklmnopqrstuvwxyz";
 const BASE = DIGITOS.length;
 const valor = (c) => DIGITOS.indexOf(c);
 
+/**
+ * O espaço usa a prioridade da equipe? Ligada por padrão, em todos os espaços (decisão do responsável, 29/10/2026):
+ * só fica desligada quando o campo opcional foi desligado de propósito (`prioridade: false`).
+ */
+export const usaPrioridade = (espaco) => espaco?.camposOpcionais?.prioridade !== false;
+
 /** Chave válida: só dígitos da base 36, sem terminar em "0" (assim sempre há espaço antes dela). */
 export const chaveValida = (k) => typeof k === "string" && /^[0-9a-z]*[1-9a-z]$/.test(k);
 

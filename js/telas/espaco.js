@@ -12,6 +12,7 @@ import { colunasDoQuadro, nomeInicial, nomeDoFluxo, personalizadasDe, estaConclu
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo } from "../modelos.js";
+import { usaPrioridade } from "../prioridade.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
@@ -181,7 +182,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /* separadores de fases e etapas em qualquer ordenação: a ordem escolhida vale dentro de cada etapa.
      Só somem ao desligar "Fases e etapas" em Campos opcionais (decisão do responsável, 22/10/2026) */
   const agrupado = () => usaFases && ui.modo === "lista";
-  const ativos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (etiquetaAtiva() ? 1 : 0) + (ui.ordem !== "espaco" ? 1 : 0) + (concluidasForaDoPadrao() ? 1 : 0);
+  /** Ordem com que o espaço abre (29/10/2026): os tipos de tarefas, por prioridade da equipe; os demais, pela ordem do espaço. */
+  const ordemPadrao = () => (deTarefas() && usaPrioridade(espaco) ? "prioridade" : "espaco");
+  const ativos = () => (ui.situacao !== "todas" ? 1 : 0) + (ui.responsavel ? 1 : 0) + (ui.minhas ? 1 : 0) + (etiquetaAtiva() ? 1 : 0) + (ui.ordem !== ordemPadrao() ? 1 : 0) + (concluidasForaDoPadrao() ? 1 : 0);
   /** O filtro das concluídas conta como ativo quando difere do padrão do tipo (Quadro: à vista; Lista: escondidas). */
   const concluidasForaDoPadrao = () => deTarefas() && ui.concluidas !== !ehLista();
   /** Quadro de tarefas com as concluídas escondidas pelo filtro (revisão de 27/10/2026). */
@@ -282,6 +285,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       modoInicial = true;
       if (ehQuadro()) { ui.modo = "quadro"; ui.concluidas = true; }
       if (ehLista()) { ui.modo = "lista"; ui.concluidas = false; }
+      ui.ordem = ordemPadrao(); // tarefas abrem por prioridade da equipe (29/10/2026)
       /* o espaço abre na última visualização usada nele, neste aparelho (pedido do responsável, 27/10/2026) */
       const salvo = lembrado(`sextante.modo.${espacoId}`, "");
       /* no celular, rede, cronograma e planilha não existem: vale a padrão */
@@ -290,7 +294,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }
     if (!modos().some(([v]) => v === ui.modo)) ui.modo = modos()[0]?.[0] ?? "lista";
     if (!barras().some(([v]) => v === ui.barra)) ui.barra = "tempo";
-    if (!ordens().some(([v]) => v === ui.ordem)) ui.ordem = "espaco";
+    if (!ordens().some(([v]) => v === ui.ordem)) ui.ordem = ordemPadrao();
     if (!base) montarBase();
     if (!comAcoes) montar();
     cabeca.innerHTML = cabecaHtml();
@@ -365,7 +369,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /** Indicadores que o espaço tem: os dois índices vêm da simulação (passo 2.4b). */
   const barras = () => (usaSimulacao(espaco) ? BARRAS : BARRAS.filter(([v]) => v === "tempo"));
   /** Ordens que o espaço tem; no espaço com data-limite, "Conclusão prevista" vira "Data-limite". */
-  const ordens = () => ORDENS.filter(([v]) => (usaSimulacao(espaco) || !["execucao", "revisao"].includes(v)) && (v !== "prioridade" || espaco.camposOpcionais?.prioridade === true))
+  const ordens = () => ORDENS.filter(([v]) => (usaSimulacao(espaco) || !["execucao", "revisao"].includes(v)) && (v !== "prioridade" || usaPrioridade(espaco)))
     .map(([v, t]) => [v, v === "conclusao" && usaDataLimite(espaco) ? "Data-limite" : t]);
   /* no mesmo padrão do seletor de modo: símbolos, com o nome só no escolhido (22/10/2026) */
   const NOMES_BARRA = { tempo: "Tempo restante", execucao: "Índice de criticidade", revisao: "Contribuição para a incerteza" }; /* nomes técnicos de volta (22/10/2026) */
@@ -588,7 +592,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       <div class="topo-centro so-computador">
         <div class="menus-topo">
           ${planilha ? "" : menu("classificar", ICONES.funil, "Classificar e filtrar",
-            (ui.ordem !== "espaco" ? '<span class="ponto-menu" title="Ordem diferente da do espaço" aria-label="Ordem diferente da do espaço"></span>' : "")
+            (ui.ordem !== ordemPadrao() ? '<span class="ponto-menu" title="Ordem diferente da inicial" aria-label="Ordem diferente da inicial"></span>' : "")
             + (nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : ""))}
           ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
           ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
@@ -997,7 +1001,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       medirAlturaDoQuadro(quadro);
     }
     if (quadro) ligarPontosDoQuadro(quadro);
-    lista.toggleAttribute("data-puxadores", ui.modo === "lista" && puxadores());
+    lista.toggleAttribute("data-puxadores", puxadores());
     const c = colunas();
     lista.style.setProperty("--colunas", ["18px", "minmax(0, 2.4fr)", c.descricao && "minmax(0, 2.4fr)",
       c.participantes && "minmax(0, 1.5fr)", c.barras && "minmax(0, 1.6fr)"].filter(Boolean).join(" "));
@@ -1052,7 +1056,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus, todos: true });
     const arrastavel = l.situacao !== "naoLiberada" && store.podeGravar !== false && perm.atualizar(a);
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
-      <div class="linha" role="button" tabindex="0" data-abrir-acao>
+      <div class="linha" role="button" tabindex="0" data-abrir-acao>${puxadores() ? `<button type="button" class="puxador" data-puxar="${a.numero}"
+        aria-label="Mudar a prioridade de ${esc(a.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a prioridade">${ICONES.puxador}</button>` : ""}
         <div class="acao-nome"><span class="nome-linha">${deTarefas() ? caixaHtml(l) : ""}${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${checklistNota(a)}${etiquetasNota(a)}</div>
         <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div></div>
@@ -1262,7 +1267,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   };
   /* ---------- prioridade da equipe (passo 2.10a; seção 5.8): arrastar pelo puxador, com o mouse, o dedo ou as setas ---------- */
   /** Puxadores à vista: ordenação "Prioridade da equipe", campo ligado, na lista e com permissão de gravar. */
-  const puxadores = () => ui.ordem === "prioridade" && espaco.camposOpcionais?.prioridade === true && ui.modo === "lista" && store.podeGravar !== false && perm.priorizar;
+  const puxadores = () => ui.ordem === "prioridade" && usaPrioridade(espaco) && ["lista", "quadro"].includes(ui.modo) && store.podeGravar !== false && perm.priorizar;
   /** Ações irmãs do item (a mesma etapa, ou a lista inteira sem fases), na ordem da tela. */
   const irmaosDe = (item) => [...item.parentElement.querySelectorAll(":scope > .item")];
   let puxando = null;
@@ -1283,29 +1288,61 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       e.preventDefault();
       const item = puxador.closest(".item");
       puxador.setPointerCapture(e.pointerId);
-      puxando = { numero: Number(item.dataset.numero), item, irmaos: irmaosDe(item).filter((x) => x !== item), indice: null };
+      const numero = Number(item.dataset.numero);
+      /* no quadro (29/10/2026), o cartão também se arrasta entre colunas: guarda a coluna de origem e a de destino */
+      const quadro = Boolean(item.closest(".quadro"));
+      puxando = { numero, item, irmaos: irmaosDe(item).filter((x) => x !== item), indice: null, quadro, colunaOrigem: quadro ? linhaDe(numero)?.fluxo ?? null : null, destino: null };
+      puxando.destino = puxando.colunaOrigem;
       item.classList.add("puxando");
     });
     lista.addEventListener("pointermove", (e) => {
       if (!puxando) return;
+      let i;
+      if (puxando.quadro) {
+        const col = document.elementFromPoint(e.clientX, e.clientY)?.closest(".coluna[data-coluna]");
+        if (col) {
+          const destino = col.dataset.coluna;
+          const valido = destino === puxando.colunaOrigem || destinoValido(destino, puxando.numero);
+          puxando.destino = valido ? destino : null;
+          lista.querySelectorAll(".coluna.alvo").forEach((c) => c.classList.remove("alvo"));
+          if (valido && destino !== puxando.colunaOrigem) col.classList.add("alvo");
+          puxando.irmaos = valido ? [...col.querySelectorAll(":scope > .coluna-cartoes > .item")].filter((x) => x !== puxando.item) : [];
+          /* a coluna do destino rola por dentro, perto da borda de cima ou de baixo dela */
+          const cartoes = col.querySelector(".coluna-cartoes");
+          const rc = cartoes?.getBoundingClientRect();
+          if (rc && e.clientY < rc.top + 40) cartoes.scrollTop -= 10; else if (rc && e.clientY > rc.bottom - 40) cartoes.scrollTop += 10;
+        }
+        /* perto da borda do quadro, ele rola para o lado */
+        const q = puxando.item.closest(".quadro");
+        const r = q?.getBoundingClientRect();
+        if (r && e.clientX > r.right - 60) q.scrollLeft += 12; else if (r && e.clientX < r.left + 60) q.scrollLeft -= 12;
+      }
       const { irmaos } = puxando;
-      let i = irmaos.findIndex((x) => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+      i = irmaos.findIndex((x) => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
       if (i < 0) i = irmaos.length;
-      puxando.indice = i;
+      puxando.indice = puxando.destino == null ? null : i;
       limparAlvos();
+      if (puxando.indice == null) return;
       if (i < irmaos.length) irmaos[i].classList.add("solta-antes"); else irmaos.at(-1)?.classList.add("solta-depois");
       /* perto da borda da tela, rola a página */
       if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 70) window.scrollBy(0, 14);
     });
-    const soltar = (cancelar) => {
+    const soltar = async (cancelar) => {
       if (!puxando) return;
-      const { numero, item, irmaos, indice } = puxando;
+      const { numero, item, irmaos, indice, quadro, colunaOrigem, destino } = puxando;
       puxando = null;
       item.classList.remove("puxando");
       limparAlvos();
+      lista.querySelectorAll(".coluna.alvo").forEach((c) => c.classList.remove("alvo"));
       if (cancelar || indice == null) return;
       const depoisDe = irmaos[indice - 1] ? Number(irmaos[indice - 1].dataset.numero) : null;
       const antesDe = irmaos[indice] ? Number(irmaos[indice].dataset.numero) : null;
+      /* outra coluna do quadro: muda a situação e a posição de uma vez (Concluídas abre o registro da conclusão, sem posição) */
+      if (quadro && destino && destino !== colunaOrigem) {
+        await moverPara(numero, destino);
+        if (destino !== "concluida") priorizar(numero, depoisDe, antesDe);
+        return;
+      }
       const todos = irmaosDe(item);
       const pos = todos.indexOf(item);
       const [cima, baixo] = [todos[pos - 1], todos[pos + 1]].map((x) => (x ? Number(x.dataset.numero) : null));
@@ -1433,6 +1470,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     lista.addEventListener("dragstart", (e) => {
       const cartao = e.target.closest?.(".cartao-quadro");
       if (!cartao) return;
+      if (puxando) { e.preventDefault(); return; } // o puxador da prioridade tem o seu próprio arrastar
       arrastada = Number(cartao.dataset.numero);
       e.dataTransfer.effectAllowed = "move";
       e.dataTransfer.setData("text/plain", String(arrastada));
@@ -1711,7 +1749,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       if (modo) mudarModo(modo.dataset.modo);
       const filtro = e.target.closest("[data-filtro]");
       if (filtro) mudar("situacao", filtro.dataset.filtro);
-      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.situacao = "todas"; ui.concluidas = !ehLista(); mudar("ordem", "espaco"); }
+      if (e.target.closest("[data-limpar]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.situacao = "todas"; ui.concluidas = !ehLista(); mudar("ordem", ordemPadrao()); }
       /* Exibir e indicador, no celular (25/10/2026) */
       const b = e.target.closest("button");
       if (!b) return;
