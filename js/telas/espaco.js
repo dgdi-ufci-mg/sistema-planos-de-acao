@@ -1299,6 +1299,36 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /** Move a vaga, e os outros cartões deslizam do lugar em que estavam para o novo (técnica FLIP). */
     const CURVA = "cubic-bezier(.2,.7,.2,1)";
     const vao = (cont) => parseFloat(getComputedStyle(cont).rowGap) || 0;
+    /**
+     * Mostra ou recolhe o aviso de coluna vazia, partindo de onde ele está (mesmo no meio de outra animação).
+     * Recolhido, ele não ocupa lugar: altura e margens zeradas e a margem de baixo descontando o vão entre cartões.
+     */
+    function mostrarVazio(cont, mostrar) {
+      let v = cont.querySelector(":scope > .vazio");
+      const recolhido = { height: "0px", marginTop: "0px", marginBottom: `${-vao(cont)}px`, opacity: "0" };
+      if (!v) {
+        if (!mostrar) return;
+        v = document.createElement("p");
+        v.className = "vazio";
+        v.textContent = `Nenhuma ${termos(espaco).acao}.`;
+        Object.assign(v.style, recolhido);
+        v.dataset.recolhido = "1";
+        cont.append(v);
+      }
+      if ((v.dataset.recolhido !== "1") === mostrar) return;
+      const agora = getComputedStyle(v);
+      const de = { height: agora.height, marginTop: agora.marginTop, marginBottom: agora.marginBottom, opacity: agora.opacity };
+      v.getAnimations().forEach((a) => a.cancel());
+      for (const k of Object.keys(recolhido)) v.style[k] = "";
+      const natural = getComputedStyle(v);
+      const aberto = { height: natural.height, marginTop: natural.marginTop, marginBottom: natural.marginBottom, opacity: "1" };
+      v.style.overflow = "hidden";
+      if (mostrar) delete v.dataset.recolhido;
+      else { v.dataset.recolhido = "1"; Object.assign(v.style, recolhido); }
+      if (reduzirMovimento()) { if (mostrar) v.style.overflow = ""; return; }
+      const a = v.animate([de, mostrar ? aberto : recolhido], { duration: 220, easing: CURVA });
+      if (mostrar) a.finished.then(() => { v.style.overflow = ""; }, () => {});
+    }
     function moverVaga(cont, antesDe) {
       const { ph } = arr;
       const origem = ph.parentElement;
@@ -1319,6 +1349,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       }
       if (antesDe) cont.insertBefore(ph, antesDe);
       else { const ultimo = itensDe(cont).at(-1); if (ultimo) ultimo.after(ph); else cont.prepend(ph); }
+      if (origem !== cont) {
+        /* coluna vazia (correção de 29/10/2026): o "Nenhuma tarefa." some aos poucos quando a vaga entra e volta
+           aos poucos na coluna que fica sem cartões, em vez de mudar só no redesenho, de uma vez */
+        mostrarVazio(cont, false);
+        mostrarVazio(origem, itensDe(origem).length === 0);
+      }
       if (reduzirMovimento()) return;
       if (trocaDeColuna) {
         ph.getAnimations().forEach((a) => a.cancel());

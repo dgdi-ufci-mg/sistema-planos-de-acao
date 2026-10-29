@@ -166,6 +166,49 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("coluna vazia: o aviso some aos poucos quando a vaga entra e volta aos poucos quando a coluna esvazia (correção de 29/10/2026)", async () => {
+    const p = await abrirQuadro(sessao, { largura: 1366, altura: 768 });
+    const vazio = (i) => coluna(p, i).locator(".coluna-cartoes > .vazio").evaluate((v) => {
+      const cs = getComputedStyle(v);
+      return { altura: v.getBoundingClientRect().height, opacidade: Number(cs.opacity) };
+    }).catch(() => null);
+    const posicoes = () => p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".quadro-tarefas .cartao-quadro")]
+      .map((x) => { const r = x.getBoundingClientRect(); return [x.dataset.numero, [Math.round(r.left), Math.round(r.top)]]; })));
+    /** Leva o primeiro cartão da coluna `de` até a coluna `para`; `durante` roda com o cartão ainda no ar. */
+    const levar = async (de, para, durante) => {
+      const a = await centro(cartaoDe(p, de, 0).locator(".rotulo"));
+      const b = await coluna(p, para).boundingBox();
+      await p.mouse.move(a.x, a.y);
+      await p.mouse.down();
+      await p.mouse.move(a.x + 4, a.y + 4, { steps: 2 });
+      await p.mouse.move(b.x + b.width / 2, b.y + 60, { steps: 10 });
+      await assentar(p, 350);
+      await durante?.();
+      await p.mouse.up();
+      await assentar(p, 450);
+      const logo = await posicoes();
+      await assentar(p, 1000);
+      assert.deepEqual(await posicoes(), logo, "nada salta depois de soltar");
+    };
+    const total = await coluna(p, 2).locator(".cartao-quadro").count();
+    assert.ok(total >= 1);
+    for (let i = 1; i < total; i++) await levar(2, 1);
+    /* o último cartão sai: a coluna esvazia e o aviso aparece ainda durante o arrasto */
+    await levar(2, 1, async () => {
+      const v = await vazio(2);
+      assert.ok(v && v.altura > 10 && v.opacidade > 0.9, "aviso de coluna vazia à vista na coluna que esvaziou");
+    });
+    assert.equal(await coluna(p, 2).locator(".cartao-quadro").count(), 0);
+    /* um cartão entra na coluna vazia: o aviso some durante o arrasto, e não volta para baixo do cartão */
+    await levar(0, 2, async () => {
+      const v = await vazio(2);
+      assert.ok(!v || v.altura < 1 || v.opacidade < 0.05, "aviso escondido com a vaga na coluna");
+    });
+    assert.equal(await coluna(p, 2).locator(".cartao-quadro").count(), 1);
+    assert.equal(await coluna(p, 2).locator(".coluna-cartoes > .vazio").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("clicar no cartão do quadro, sem arrastar, continua abrindo a ação", async () => {
     const p = await abrirQuadro(sessao, { largura: 1280 });
     await cartaoDe(p, 0, 0).locator(".rotulo").click();
