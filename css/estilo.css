@@ -1626,7 +1626,8 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 /* Strata, aba Mapa (29/10/2026; seção 8 da documentação técnica): faixas horizontais curvas, do chão aos objetivos.
    Só variáveis do tema, nos três blocos de cores. */
 .mapa-area { position: relative; height: clamp(380px, calc(100dvh - 250px), 880px); border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); overflow: hidden; }
-.mapa-svg { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-select: none; }
+.mapa-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
+.mapa-svg.arrastando { cursor: grabbing; }
 .mapa-faixa { fill: color-mix(in srgb, var(--accent) var(--tom, 12%), var(--surface)); stroke: var(--line); stroke-width: 1; }
 .mapa-ligacao { fill: none; stroke: var(--muted); stroke-opacity: .5; stroke-width: 1.3; }
 .mapa-no circle { fill: var(--surface); stroke: var(--accent-ink); stroke-width: 2; }
@@ -1636,6 +1637,8 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .mapa-medida { opacity: 0; }
 .mapa-rotulos { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .mapa-rotulo-camada { position: absolute; left: 0; top: 0; max-width: calc(100% - 80px); padding: 2px 8px; border-radius: 999px; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: color-mix(in srgb, var(--surface) 82%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mapa-controles { position: absolute; right: 10px; bottom: 10px; display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.mapa-controles .botao { min-width: 40px; min-height: 40px; justify-content: center; background: var(--surface); }
 .mapa-ajuda { margin: 0; }
 a.lateral-acao { text-decoration: none; }
 

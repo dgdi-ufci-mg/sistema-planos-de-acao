@@ -157,3 +157,31 @@ export function caminhoDaLigacao(filho, superior) {
   const meio = (filho.yCurvo + superior.yCurvo) / 2;
   return `M${filho.x} ${filho.yCurvo} C${filho.x} ${n1(meio)} ${superior.x} ${n1(meio)} ${superior.x} ${superior.yCurvo}`;
 }
+
+const limitar = (v, a, b) => Math.min(b, Math.max(a, v));
+
+/** Menor escala: a que mostra o conteúdo inteiro (conteúdo menor que a vista não é obrigado a crescer: no máximo 1). */
+export const escalaMinima = ({ conteudo, vista, margem = 24 }) =>
+  Math.min(1, (vista.w - 2 * margem) / conteudo.w, (vista.h - 2 * margem) / conteudo.h);
+
+/**
+ * Mantém o movimento e a aproximação dentro do conteúdo, nos dois sentidos: não afasta além de ver o conteúdo
+ * inteiro, não aproxima além de `escalaMaxima` e não deixa o conteúdo sair da vista. Conteúdo menor que a vista
+ * fica centralizado.
+ * @param {{k: number, x: number, y: number}} t  escala e deslocamento (tela = escala × mundo + deslocamento)
+ */
+export function limitarTransformacao(t, { conteudo, vista, margem = 24, escalaMaxima = 3 }) {
+  const minima = Math.min(escalaMinima({ conteudo, vista, margem }), escalaMaxima);
+  const k = limitar(t.k, minima, escalaMaxima);
+  const eixo = (pos, tamConteudo, tamVista) => {
+    const ocupa = tamConteudo * k;
+    return ocupa + 2 * margem <= tamVista ? (tamVista - ocupa) / 2 : limitar(pos, tamVista - ocupa - margem, margem);
+  };
+  return { k, x: eixo(t.x, conteudo.w, vista.w), y: eixo(t.y, conteudo.h, vista.h) };
+}
+
+/** Vista de abertura e do botão "Centralizar": o conteúdo na altura da vista (até a escala 1), no meio. */
+export function transformacaoInicial({ conteudo, vista, margem = 24, escalaMaxima = 3 }) {
+  const k = Math.min(1, (vista.h - 2 * margem) / conteudo.h);
+  return limitarTransformacao({ k, x: (vista.w - conteudo.w * k) / 2, y: (vista.h - conteudo.h * k) / 2 }, { conteudo, vista, margem, escalaMaxima });
+}

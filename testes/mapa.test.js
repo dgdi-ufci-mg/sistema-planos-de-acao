@@ -1,9 +1,10 @@
-/** Mapa do Strata: faixas, pontos, ordem, posição e curvatura (documentação técnica, seção 8, "Mapa"). */
+/** Mapa do Strata: faixas, ordem, posição, curvatura e limites do movimento (documentação técnica, seção 8, "Mapa"). */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import {
   FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao,
+  escalaMinima, limitarTransformacao, transformacaoInicial,
 } from "../js/mapa.js";
 
 const item = (id, camada, nome, superiores = [], codigo = "") => ({ id, camada, nome, codigo, superiores });
@@ -138,5 +139,38 @@ describe("Mapa: ordem, posição e curva", () => {
     const l = caminhoDaLigacao(filho, superior);
     assert.ok(l.startsWith(`M${filho.x} ${filho.yCurvo} C${filho.x} `));
     assert.ok(l.endsWith(`${superior.x} ${superior.yCurvo}`));
+  });
+});
+
+describe("Mapa: limites do movimento e do zoom", () => {
+  const conteudo = { w: 2000, h: 600 };
+  const vista = { w: 400, h: 500 };
+
+  it("não afasta além de ver o conteúdo inteiro nem aproxima além do máximo", () => {
+    const minima = escalaMinima({ conteudo, vista });
+    assert.ok(Math.abs(minima - (400 - 48) / 2000) < 1e-9);
+    assert.equal(limitarTransformacao({ k: 0.001, x: 0, y: 0 }, { conteudo, vista }).k, minima);
+    assert.equal(limitarTransformacao({ k: 99, x: 0, y: 0 }, { conteudo, vista }).k, 3);
+  });
+
+  it("não deixa o conteúdo sair da vista, para nenhum lado", () => {
+    const k = 1;
+    const longe = limitarTransformacao({ k, x: 5000, y: 5000 }, { conteudo, vista });
+    assert.equal(longe.x, 24);
+    assert.equal(longe.y, 24);
+    const alem = limitarTransformacao({ k, x: -99999, y: -99999 }, { conteudo, vista });
+    assert.equal(alem.x, 400 - 2000 - 24);
+    assert.equal(alem.y, 500 - 600 - 24);
+  });
+
+  it("conteúdo menor que a vista fica no meio", () => {
+    const t = limitarTransformacao({ k: 1, x: 0, y: 0 }, { conteudo: { w: 100, h: 100 }, vista });
+    assert.deepEqual(t, { k: 1, x: 150, y: 200 });
+  });
+
+  it("a vista de abertura cabe na altura e fica no meio", () => {
+    const t = transformacaoInicial({ conteudo, vista });
+    assert.ok(Math.abs(t.k - (500 - 48) / 600) < 1e-9);
+    assert.ok(Math.abs(t.x - (400 - 2000 * t.k) / 2) < 1e-9);
   });
 });
