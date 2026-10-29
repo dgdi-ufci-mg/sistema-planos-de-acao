@@ -1567,10 +1567,10 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 /* ---------- módulo Superior (passo 2.5): gestão da estratégia, sem a barra lateral ---------- */
 @media (min-width: 900px) { body.modulo-superior { padding-left: max(16px, env(safe-area-inset-left, 0px)); } body.modulo-superior .topo { margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); padding-left: max(16px, env(safe-area-inset-left, 0px)); } }
 body.modulo-superior .topo-linha { display: flex; justify-content: space-between; padding-left: 0; }
-.superior-marca { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); text-decoration: none; min-width: 0; }
-.superior-simbolo { display: inline-flex; flex: none; width: 26px; height: 26px; }
-.superior-marca span:not(.superior-simbolo) { display: flex; flex-direction: column; line-height: 1.1; }
-.superior-marca b { font-family: var(--f-titulo); font-size: 1.05rem; }
+/* marca do Strata (29/10/2026): o logotipo (js/marca.js), com "Gestão da estratégia" pequeno embaixo */
+.superior-marca { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 3px; color: var(--ink); text-decoration: none; min-width: 0; line-height: 1.1; }
+.superior-logotipo { display: inline-flex; flex: none; height: 24px; }
+.superior-logotipo svg { display: block; }
 .superior-marca small { font-size: .72rem; color: var(--muted); font-weight: 400; }
 .superior-conta { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; min-width: 0; }
 .superior-conta .botao { padding: 5px 8px; font-size: .88rem; }

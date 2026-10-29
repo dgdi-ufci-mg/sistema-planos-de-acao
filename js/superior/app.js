@@ -8,7 +8,7 @@ import { conectarFirebase } from "../banco/firebase.js";
 import { criarBancoLocal } from "../banco/local.js";
 import { criarStore, hojeLocal } from "../dados.js";
 import { NOME } from "../identidade.js";
-import { strataSvg } from "../marca.js";
+import { strataLogotipoSvg } from "../marca.js";
 import { esc } from "../formato.js";
 import { abrirEntrar, abrirTrocarSenha } from "../telas/acesso.js";
 import { avisar } from "../telas/painel.js";
@@ -24,7 +24,7 @@ registrarAplicativo("../sw.js"); // o mesmo service worker; o manifesto é o do 
  * testes/aplicativo.test.js). */
 export const NOME_DO_MODULO = "Strata";
 document.title = NOME_DO_MODULO;
-document.querySelector("[data-simbolo]")?.insertAdjacentHTML("afterbegin", strataSvg(26)); // símbolo do Strata, nas cores do tema
+document.querySelector("[data-logotipo]")?.insertAdjacentHTML("afterbegin", strataLogotipoSvg(24)); // logotipo do Strata, nas cores do tema (29/10/2026)
 
 const hoje = hojeLocal();
 const principal = document.querySelector("#principal");
