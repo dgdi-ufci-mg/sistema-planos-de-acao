@@ -209,6 +209,41 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("mexer o mouse logo depois de soltar não levanta o cartão de novo nem o joga para o canto (correção de 29/10/2026)", async () => {
+    const p = await abrirQuadro(sessao, { largura: 1366, altura: 768 });
+    const a = await centro(cartaoDe(p, 0, 0).locator(".rotulo"));
+    const b = await coluna(p, 1).boundingBox();
+    await p.mouse.move(a.x, a.y);
+    await p.mouse.down();
+    await p.mouse.move(a.x + 4, a.y + 4, { steps: 2 });
+    await p.mouse.move(b.x + b.width / 2, b.y + 90, { steps: 10 });
+    await assentar(p, 350);
+    /* a cada quadro, enquanto assenta: onde está o cartão solto e quantas vagas existem */
+    await p.evaluate(() => {
+      window.__quadros = [];
+      const fim = performance.now() + 700;
+      const medir = () => {
+        const l = document.querySelector(".item.levantado");
+        const r = l?.getBoundingClientRect();
+        window.__quadros.push({ x: r?.left ?? null, y: r?.top ?? null, vagas: document.querySelectorAll(".espaco-solto:not(.fechando)").length });
+        if (performance.now() < fim) requestAnimationFrame(medir);
+      };
+      medir();
+    });
+    await p.mouse.up();
+    /* como um mouse de verdade: ainda se mexe um pouco depois de soltar */
+    for (let i = 1; i <= 6; i++) { await p.mouse.move(b.x + b.width / 2 + i * 3, b.y + 90 + i * 2); await p.waitForTimeout(16); }
+    await assentar(p, 800);
+    const quadros = await p.evaluate(() => window.__quadros);
+    const destino = await cartaoDe(p, 1, 0).boundingBox();
+    for (const q of quadros) {
+      assert.ok(q.vagas <= 1, "não há uma segunda vaga: o cartão não foi levantado de novo");
+      if (q.x != null) assert.ok(Math.hypot(q.x - destino.x, q.y - destino.y) < 400, `o cartão não vai para o canto (${Math.round(q.x)}, ${Math.round(q.y)})`);
+    }
+    assert.equal(await p.locator(".item.levantado").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("clicar no cartão do quadro, sem arrastar, continua abrindo a ação", async () => {
     const p = await abrirQuadro(sessao, { largura: 1280 });
     await cartaoDe(p, 0, 0).locator(".rotulo").click();
