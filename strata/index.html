@@ -21,17 +21,17 @@
 </head>
 <!-- Strata (antes "Superior"; passo 2.5 e 27/10/2026): gestão da estratégia, aplicativo próprio (manifesto, ícones e
      paleta), com o mesmo banco, o mesmo login e o mesmo desenho do Sextante -->
-<body class="modulo-superior">
-<header class="topo">
-  <div class="topo-linha superior-topo">
-    <a class="superior-marca" href="./" aria-label="Strata: gestão da estratégia"><span class="superior-logotipo" data-logotipo></span><small>Gestão da estratégia</small></a>
-    <nav class="superior-conta" data-conta></nav>
-  </div>
-  <p class="aviso-conexao" data-sem-conexao role="status" hidden><b>Sem conexão.</b> As alterações não serão gravadas até a internet voltar.</p>
+<body class="modulo-superior strata-cheia">
+<!-- Mapa em tela cheia como porta de entrada (29/10/2026, tarde, decisão do responsável): o Strata abre no Mapa, que
+     ocupa a tela toda; o título fica no alto à esquerda, o menu no alto à direita, e todo o resto abre por cima do mapa -->
+<header class="strata-cima">
+  <a class="superior-marca" href="./" aria-label="Strata: gestão da estratégia"><span class="superior-logotipo" data-logotipo></span><small data-instituicao></small></a>
+  <div class="strata-comandos" data-comandos></div>
 </header>
-<main class="conteudo">
-  <div id="principal"></div>
-</main>
+<div class="strata-avisos" data-avisos>
+  <p class="aviso-conexao" data-sem-conexao role="status" hidden><b>Sem conexão.</b> As alterações não serão gravadas até a internet voltar.</p>
+</div>
+<main id="principal" class="strata-principal"></main>
 <script type="module" src="../js/superior/app.js"></script>
 </body>
 </html>

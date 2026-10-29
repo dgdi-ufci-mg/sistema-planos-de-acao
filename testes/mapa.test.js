@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import {
   FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
-  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
+  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, caminhoAlem, linhaDoSolo, estrelasDoCeu, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
 } from "../js/mapa.js";
 
 const item = (id, camada, nome, superiores = [], codigo = "") => ({ id, camada, nome, codigo, superiores });
@@ -197,6 +197,21 @@ describe("Mapa: limites do movimento e do zoom", () => {
     assert.ok(conteudo.w * t.k <= vista.w && conteudo.h * t.k <= vista.h, "cabe nas duas direções");
     assert.ok(Math.abs(t.x - (400 - 2000 * t.k) / 2) < 1e-9);
   });
+
+  it("tela cheia: a folga do alto e do pé fica livre ao abrir e ao mover (o título e o menu ficam por cima)", () => {
+    const folga = { topo: 80, base: 20 };
+    const t = transformacaoInicial({ conteudo: { w: 300, h: 800 }, vista, folga });
+    assert.ok(t.y >= 80 + 24 - 1e-9, "o conteúdo começa abaixo do título");
+    assert.ok(t.y + 800 * t.k <= 500 - 20 - 24 + 1e-9, "e termina acima do pé");
+    assert.ok(Math.abs(t.k - (500 - 100 - 48) / 800) < 1e-9, "a escala usa só a faixa útil");
+    const longe = limitarTransformacao({ k: 1, x: 0, y: 5000 }, { conteudo, vista, folga });
+    assert.equal(longe.y, 80 + 24);
+    const alem = limitarTransformacao({ k: 1, x: 0, y: -99999 }, { conteudo, vista, folga });
+    assert.equal(alem.y, 500 - 20 - 600 - 24);
+    const pequeno = limitarTransformacao({ k: 1, x: 0, y: 0 }, { conteudo: { w: 100, h: 100 }, vista, folga });
+    assert.equal(pequeno.y, 80 + (400 - 100) / 2, "conteúdo pequeno fica no meio da faixa útil");
+    assert.deepEqual(limitarTransformacao({ k: 1, x: 0, y: 0 }, { conteudo: { w: 100, h: 100 }, vista, folga: { topo: 0, base: 0 } }), { k: 1, x: 150, y: 200 }, "sem folga, como antes");
+  });
 });
 
 describe("Mapa: ordem pessoal (lote 6)", () => {
@@ -308,5 +323,50 @@ describe("Mapa: mola (lote 5)", () => {
   it("anda também para trás (do alto para o baixo, da direita para a esquerda)", () => {
     const r = simular(300, 20);
     assert.ok(Math.abs(r.e.x - 20) < MOLA.repouso);
+  });
+});
+
+describe("Mapa: céu e solo da tela cheia", () => {
+  const mapa = { largura: 400, centro: 200, raio: 1600, faixas: [{ topo: 0, base: 60 }, { topo: 60, base: 140 }] };
+  const numeros = (d) => d.match(/-?\d+(\.\d+)?/g).map(Number);
+
+  /** pontos de um caminho feito de M, Q e L: as pontas de cada parte e os pontos de controle */
+  const partes = (d) => [...d.matchAll(/([MQL])([^MQLZ]+)/g)].map(([, letra, resto]) => [letra, resto.trim().split(/\s+/).map(Number)]);
+  const naCurva = (x, y, base) => Math.abs(y - (base + deslocamentoCurvo(x, 200, 1600))) < 0.11;
+
+  it("a faixa estendida segue a mesma curva, em partes exatas, de −além a largura + além", () => {
+    const p = partes(caminhoAlem(mapa.faixas[0], mapa, 300));
+    assert.deepEqual(p[0], ["M", [-300, Math.round(deslocamentoCurvo(-300, 200, 1600) * 10) / 10]]);
+    const qs = p.filter(([l]) => l === "Q");
+    assert.ok(qs.length >= 8, "várias partes, para não sair facetada");
+    for (const [, [cx, cy, x, y]] of qs) {
+      assert.ok(naCurva(x, y, 0) || naCurva(x, y, 60), `ponta (${x}, ${y}) sobre a curva do topo ou da base`);
+      assert.ok(Number.isFinite(cx) && Number.isFinite(cy));
+    }
+    const xs = qs.map(([, v]) => v[2]);
+    assert.equal(Math.max(...xs), 700); assert.equal(Math.min(...xs), -300);
+    /* a parte do meio da curva, avaliada na Bézier, cai sobre a parábola (exata, sem facetas) */
+    const [, [cx, cy, x1, y1]] = qs[3];
+    const [, ant] = qs[2];
+    const [x0, y0] = [ant[2], ant[3]];
+    const meio = { x: 0.25 * x0 + 0.5 * cx + 0.25 * x1, y: 0.25 * y0 + 0.5 * cy + 0.25 * y1 };
+    assert.ok(naCurva(meio.x, meio.y, 0), "o meio de cada parte também está na curva");
+  });
+
+  it("a linha do solo é a borda de baixo da última faixa", () => {
+    const p = partes(linhaDoSolo(mapa, 0));
+    assert.equal(p[0][0], "M");
+    assert.deepEqual(p[0][1], [0, Math.round((140 + deslocamentoCurvo(0, 200, 1600)) * 10) / 10]);
+    for (const [l, v] of p.slice(1)) { assert.equal(l, "Q"); assert.ok(naCurva(v[2], v[3], 140)); }
+  });
+
+  it("as estrelas do céu ficam acima da faixa mais alta, sempre nos mesmos lugares", () => {
+    const a = estrelasDoCeu(mapa, { alem: 200, altura: 300 });
+    assert.ok(a.length > 50);
+    assert.deepEqual(estrelasDoCeu(mapa, { alem: 200, altura: 300 }), a, "determinístico");
+    for (const e of a) {
+      assert.ok(e.y < deslocamentoCurvo(e.x, 200, 1600), "acima da curva do topo");
+      assert.ok(e.x >= -200 && e.x <= 600);
+    }
   });
 });
