@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 29/10/2026 (versão 233 da página)
+**Última atualização deste documento:** 29/10/2026 (versão 234 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1198,6 +1198,31 @@ Os painéis abrem sob o menu, com a transição padrão. Os menus do centro most
 - **Instrumentos:** do mais recente para o mais antigo, cada um com nome, vigência ("dd/mm/aaaa a dd/mm/aaaa · vigente", "ainda não começou" ou "encerrado"; "sem fim definido"), número de itens, documento de aprovação (com link, se houver) e as prorrogações registradas (de quando para quando, documento, quem e quando). O vigente tem a borda esquerda verde-azulada. O Gestor tem "Novo instrumento", "Editar" (nome, início e aprovação; o fim só muda por "Prorrogar", que registra a mudança), "Prorrogar" (novo fim, documento e link opcionais) e "Excluir", só no instrumento sem itens.
 - **Camadas:** a lista, de cima para baixo, terminando em "Planos de Ação", com a explicação das camadas opcionais. Para o Gestor, cada camada tem dois campos com rótulo visível, "Nome no singular" (exemplo no campo vazio: "Ex.: Programa") e "Nome no plural" ("Ex.: Programas"), e uma frase acima da lista explica que o singular nomeia um item e o plural, os títulos das listas; depois, "Opcional", ↑ ↓ e × (desativado na camada com itens), "+ Camada" e "Salvar camadas"; nada grava antes de salvar, e uma recusa (como uma ligação que deixaria de valer) aparece em aviso, com o rascunho mantido. Para os demais, só a consulta, com o número de itens de cada camada.
 - **Importar** (só o Gestor): colar as linhas da planilha (colunas Camada, Nome, Código, Superiores e Instrumento; seção 4.11), "Conferir" mostra cada linha como Novo, Atualiza, Sem mudança ou Fica de fora (com o motivo) e os avisos, e "Gravar" grava, com o resumo em aviso.
+
+**Mapa em tela cheia como porta de entrada: levantamento das funções** (29/10/2026, tarde; decisão do responsável na passagem do Mapa: o Strata abre no Mapa, que ocupa a tela toda, e todo o resto fica por cima dele, sem tirar a pessoa do mapa). Antes de mudar a entrada, cada tela e comando que o Strata tinha foi listado com o lugar para onde vai, para nenhuma função ficar sem caminho. Os testes de navegador da nova entrada conferem cada linha desta tabela.
+
+| Função (antes da nova entrada) | Onde ficava | Para onde vai |
+|---|---|---|
+| Logotipo do Strata, que leva ao início | barra do topo, à esquerda | alto, à esquerda, pequeno, sobre o céu; abaixo, o nome da universidade (no lugar de "Gestão da estratégia") |
+| "← Sextante: planos" | barra do topo, à direita | menu |
+| E-mail de quem entrou, "Trocar senha", "Sair" ou "Entrar" | barra do topo, à direita | menu, no grupo da conta |
+| Tema do aparelho (Automático, Claro, Escuro) | só no menu da conta do Sextante (valia também aqui) | menu |
+| Aviso "Sem conexão" e aviso "Catálogo de exemplo" | sob a barra do topo e acima da página | por cima do mapa, sob o título |
+| Título "Estratégia" e a frase sobre quem altera o catálogo | cabeça da página | a frase vai para o alto do menu; o título sai (o mapa é a tela) |
+| Abas Mapa, Desdobramento, Instrumentos, Camadas e Importar | cabeça da página | as abas saem: o Mapa é a tela; as demais viram itens do menu e abrem **por cima do mapa** |
+| "Só o que vale hoje" | alto do Mapa e do Desdobramento | botão de liga e desliga **sempre visível** sobre o mapa; o do Desdobramento continua |
+| "Ver como lista" (o Desdobramento) | alto do Mapa | menu |
+| "Voltar ao automático" (só com ordem pessoal) | alto do Mapa | menu |
+| Aviso de mais de um item na Missão | alto do Mapa e do Desdobramento | por cima do mapa, junto dos outros avisos; no Desdobramento, como antes |
+| Texto de ajuda sob o mapa | pé do Mapa | menu, "Como usar o mapa" |
+| +, − e Centralizar | canto de baixo, à direita, do mapa | o mesmo canto, agora da tela |
+| Cartão do ponto, com "Abrir", e o painel do item (editar, ligar, excluir, novo subordinado) | sobre o mapa e ao lado (computador) ou de baixo (celular) | como antes, por cima do mapa |
+| Mapa vazio ou "Nada vale hoje" | no lugar do mapa | mensagem por cima do céu, com o caminho (o filtro; para o Gestor, "Novo item" e "Importar") |
+| Desdobramento (busca, filtro, "Recolher tudo", árvore, Planos de Ação e entregas, "Novo item") | aba | "Ver como lista", no menu, por cima do mapa, sem outra mudança |
+| "Novo item" (cadastrar itens; só o Gestor) | Desdobramento | também no menu |
+| Instrumentos (lista, "Novo instrumento", "Editar", "Prorrogar", "Excluir") | aba | "Instrumentos", no menu, por cima do mapa |
+| Camadas (consulta; para o Gestor, edição e "Salvar camadas") | aba | "Camadas", no menu, por cima do mapa |
+| Importar (só o Gestor) | aba | "Importar", no menu, por cima do mapa |
 - **Movimento:** a troca de aba entra com a transição padrão; painéis como no sistema de planos.
 
 **Entregas do Plano de Ação** (passo 2.6, parte 2; seções 4.12 e 16.7; `js/telas/entregas.js`):
@@ -2193,3 +2218,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 231 | Correção da animação de arrastar cartões entre colunas do quadro: a coluna de origem encolhia num salto e cortava os cartões que deslizavam, e "Adicionar tarefa" pulava; agora a vaga fecha aos poucos na coluna que o cartão deixa e abre aos poucos na que ele entra. Novo teste de navegador. Sem mudança no banco (seção 8, "Prioridade da equipe") |
 | 232 | Strata: logotipo próprio na barra do topo, no lugar do símbolo e do nome em texto: o símbolo das três camadas e o nome "Strata" desenhado no mesmo traço do logotipo do Sextante, nas cores do tema (decisão do responsável; seções 3.1 e 8, "Strata"). Sem mudança no banco |
 | 233 | Correção da animação de arrastar cartões entre colunas do quadro, com colunas vazias: o aviso "Nenhuma tarefa." ficava abaixo da vaga e do cartão solto e só sumia (ou surgia, na coluna que esvaziou) ao refazer a tela, de uma vez; agora some e surge aos poucos durante o arrasto. Novo teste de navegador com coluna vazia. Sem mudança no banco (seção 8, "Prioridade da equipe") |
+| 234 | Strata, nova entrada (item 1 do lote 1 da passagem da tarde de 29/10/2026): levantamento de todas as telas e comandos do Strata e do lugar de cada um no Mapa em tela cheia (menu, painel ou botão no mapa), para nenhuma função ficar sem caminho (seção 8, "Strata"). Só documentação; sem mudança no sistema |
