@@ -114,10 +114,26 @@ describe("Mapa: ordem, posição e curva", () => {
     }
   });
 
-  it("só cresce além da área quando os pontos não cabem a 26 de distância", () => {
+  it("faixa cheia demais cresce para baixo, em fileiras, e não para os lados (lote 4)", () => {
     const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(80), vista: { w: 400, h: 600 } });
+    assert.equal(m.largura, 400, "a largura continua a da área");
+    const pa = m.faixas.at(-1);
+    const nos = m.nos.filter((n) => n.faixa === m.faixas.length - 1).sort((a, b) => a.x - b.x);
+    assert.ok(pa.niveis >= 8, `${pa.niveis} fileiras`);
+    assert.ok(pa.altura >= 40 + 8 * 19, "a faixa fica mais alta");
+    const porFileira = new Map();
+    for (const n of nos) porFileira.set(n.nivel, [...(porFileira.get(n.nivel) ?? []), n]);
+    for (const fila of porFileira.values()) for (let i = 1; i < fila.length; i++) assert.ok(fila[i].x - fila[i - 1].x >= 26 - 1e-6, "26 entre vizinhos da mesma fileira");
+    for (const n of nos) assert.ok(n.y > pa.topo && n.y < pa.base, "cada ponto dentro da faixa");
+    const outras = m.faixas.slice(0, -1).filter((f) => f.nos.length <= 3);
+    assert.ok(outras.every((f) => f.altura < pa.altura), "as faixas com poucos itens ficam baixas, com a altura mínima");
+  });
+
+  it("só passa da largura da área quando nem 8 fileiras bastam", () => {
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(200), vista: { w: 400, h: 600 } });
     assert.ok(m.largura > 400);
-    assert.ok(m.largura >= 2 * 28 + 60 + 79 * 26);
+    assert.ok(m.largura >= 2 * 28 + 60 + (199 * 26) / 8 - 1);
+    assert.equal(m.faixas.at(-1).niveis, 8);
   });
 
   it("faixa cheia alterna os pontos em níveis; o nome que não cabe é cortado com reticências", () => {
