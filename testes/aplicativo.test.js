@@ -42,6 +42,14 @@ describe("Aplicativo instalável", () => {
     assert.match(readFileSync("superior/index.html", "utf8"), /location\.replace\("\.\.\/strata\/"/, "o endereço antigo leva ao novo");
   });
 
+  it("Sextante e Strata têm identidades diferentes (29/10/2026): o id é caminho absoluto, porque o Chrome o resolve pela raiz do site", () => {
+    const sextante = JSON.parse(readFileSync("sextante/manifest.webmanifest", "utf8"));
+    const strata = JSON.parse(readFileSync("strata/manifest.webmanifest", "utf8"));
+    assert.equal(sextante.id, "/sistema-planos-de-acao/sextante/");
+    assert.equal(strata.id, "/sistema-planos-de-acao/strata/");
+    assert.notEqual(sextante.id, strata.id);
+  });
+
   it("Sextante e Strata lado a lado, cada um com o seu escopo (27/10/2026): a raiz leva ao Sextante", () => {
     assert.equal(manifesto.scope, "./");
     assert.match(readFileSync("index.html", "utf8"), /location\.replace\("sextante\/"/);
