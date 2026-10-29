@@ -104,14 +104,23 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     else if (!no.restrito) location.assign(`../#/espaco/${encodeURIComponent(no.id)}`);
   }
   const temOrdemPessoal = () => Object.values(ui.ordemDoMapa ?? {}).some((l) => l.length);
-  /** O mouse soltou um ponto em outro lugar: guarda a ordem do nível (só para esta pessoa) e refaz o mapa, com os pontos deslizando. */
+  /**
+   * O mouse soltou um ponto em outro lugar: o mapa é refeito **na hora**, com os pontos deslizando, e a ordem do nível
+   * (só desta pessoa) é guardada em seguida, sem fazer a pessoa esperar o servidor. Se a gravação falhar, avisa e
+   * volta à ordem de antes.
+   */
   async function reordenarNoMapa(camada, chaves) {
-    try {
-      const nova = { ...(ui.ordemDoMapa ?? {}), [camada]: chaves };
-      await store.gravarOrdemDoMapa(nova);
-      ui.ordemDoMapa = nova;
-    } catch (f) { avisar(f.message); }
+    const antes = ui.ordemDoMapa;
+    const nova = { ...(antes ?? {}), [camada]: chaves };
+    ui.ordemDoMapa = nova;
     desenhar();
+    try {
+      await store.gravarOrdemDoMapa(nova);
+    } catch (f) {
+      if (ui.ordemDoMapa === nova) ui.ordemDoMapa = antes;
+      avisar(f.message);
+      desenhar();
+    }
   }
   /** Aviso quando há mais de um item na Missão (a Missão é uma só). */
   function avisoMissaoHtml() {
@@ -448,8 +457,11 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     if (t.dataset.aba) { ui.aba = t.dataset.aba; return desenhar(); }
     if (t.matches("[data-ver-lista]")) return verComoLista();
     if (t.matches("[data-voltar-automatico]")) {
-      try { await store.voltarAoAutomaticoNoMapa(); ui.ordemDoMapa = null; avisar("O Mapa voltou à ordem automática."); } catch (f) { avisar(f.message); }
-      return desenhar();
+      const antes = ui.ordemDoMapa;
+      ui.ordemDoMapa = null; // na hora; se o servidor recusar, volta
+      desenhar();
+      try { await store.voltarAoAutomaticoNoMapa(); avisar("O Mapa voltou à ordem automática."); } catch (f) { ui.ordemDoMapa = antes; avisar(f.message); desenhar(); }
+      return;
     }
     if (t.dataset.item) { ui.mapa.selecionado = t.dataset.item; return abrirItem(t.dataset.item); } // o mesmo ponto fica aceso no Mapa
     if (t.dataset.alternarNo) { if (ui.recolhidos.has(t.dataset.alternarNo)) ui.recolhidos.delete(t.dataset.alternarNo); else ui.recolhidos.add(t.dataset.alternarNo); return desenhar(); }
