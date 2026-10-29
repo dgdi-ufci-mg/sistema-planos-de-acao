@@ -1504,17 +1504,29 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * Trello; 27/10/2026, pedido do responsável). Mede onde o quadro começa e, no celular, desconta a barra de baixo.
    */
   function medirAlturaDoQuadro(quadro) {
+    /* o que fica acima do quadro (resumo do espaço, legenda, avisos, barra do topo) pode mudar de altura a qualquer
+       momento, por exemplo quando a simulação termina num aparelho lento: observa essas partes e mede de novo
+       (29/10/2026; antes, só aos 0,4 s, e a página passava a rolar) */
+    const acima = [];
+    for (let a = quadro; a && !a.matches("body"); a = a.parentElement)
+      for (let irmao = a.previousElementSibling; irmao; irmao = irmao.previousElementSibling) acima.push(irmao);
+    const observador = typeof ResizeObserver === "function" ? new ResizeObserver(() => medir()) : null;
     const medir = () => {
-      if (!quadro.isConnected) { removeEventListener("resize", medir); return; }
+      if (!quadro.isConnected) { removeEventListener("resize", medir); observador?.disconnect(); return; }
       const inferior = document.querySelector(".barra-inferior");
       const pe = inferior && getComputedStyle(inferior).display !== "none" ? inferior.getBoundingClientRect().height : 0;
       const topo = quadro.getBoundingClientRect().top + window.scrollY;
       /* no computador, o quadro vai até o pé da tela, com a barra de rolagem para o lado colada embaixo */
-      const folga = innerWidth > 640 ? 4 : 20;
-      quadro.style.setProperty("--altura-quadro", `${Math.max(320, innerHeight - Math.max(0, topo - window.scrollY) - pe - folga)}px`);
+      const largo = innerWidth > 640;
+      const folga = largo ? 4 : 20;
+      /* no computador, mede pelo início do quadro na página, e não na tela: medido na tela, uma rolagem qualquer
+         (por exemplo, de algo que cresceu acima) se mantinha, porque o quadro encolhia na mesma medida (29/10/2026) */
+      const acimaDoQuadro = largo ? topo : Math.max(0, topo - window.scrollY);
+      quadro.style.setProperty("--altura-quadro", `${Math.max(320, innerHeight - acimaDoQuadro - pe - folga)}px`);
     };
     medir();
     addEventListener("resize", medir);
+    for (const el of acima) observador?.observe(el);
     /* o que fica acima do quadro pode mudar de altura logo depois (fontes carregando, avisos): mede de novo */
     document.fonts?.ready.then(medir);
     setTimeout(medir, 400);

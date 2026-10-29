@@ -46,6 +46,24 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("algo que cresce acima do quadro depois de aberto (aviso, resumo): o quadro encolhe e a página continua sem rolar", async () => {
+    /* num aparelho lento, a simulação pode terminar depois da última medida; antes de 29/10/2026, a página passava
+       a rolar e assim ficava (o teste da tela larga falhava às vezes, com todos os testes rodando juntos) */
+    const p = await sessao.abrir({ largura: 2400, altura: 800 });
+    await p.click('.menu-topo[data-pop="modo"]');
+    await p.locator('[data-modo="quadro"]').first().click();
+    await p.waitForSelector(".quadro .coluna");
+    const antes = await assentado(p);
+    await assentar(p, 600); // depois da última medida programada (0,4 s)
+    await p.evaluate(() => { const d = document.createElement("div"); d.style.height = "42px"; document.querySelector(".cabeca-espaco").append(d); });
+    await assentar(p, 300);
+    const m = await medidas(p);
+    assert.ok(!m.paginaRola, `a página não rola (${m.altura} × ${m.alto})`);
+    assert.ok(m.alto - m.base < 12, "o quadro continua indo até o pé da tela");
+    assert.ok(m.base <= antes.base + 1, "e não passa do pé");
+    assert.deepEqual(p.erros, []);
+  });
+
   test("tela estreita: as colunas começam da esquerda e a barra para o lado fica no pé da tela", async () => {
     const p = await sessao.abrir({ largura: 900, altura: 700 });
     await p.click('.menu-topo[data-pop="modo"]');
