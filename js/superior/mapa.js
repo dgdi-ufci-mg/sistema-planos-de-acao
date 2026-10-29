@@ -198,6 +198,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     if (!f) return;
     const nova = [...f.nos].sort((a, b) => atual.get(a).x - atual.get(b).x || f.nos.indexOf(a) - f.nos.indexOf(b));
     if (!valeu || nova.every((k, i) => k === f.nos[i])) { iniciarMola(); return; }
+    estado.posicoes = null; // sem deslizar: o mapa refeito já nasce com todos os pontos no lugar novo
     try { await aoReordenar(f.id, nova); } catch { iniciarMola(); }
   }
 
