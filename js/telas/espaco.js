@@ -1297,25 +1297,64 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     };
     const itensDe = (cont) => [...cont.querySelectorAll(":scope > .item")].filter((x) => x !== arr?.item);
     /** Move a vaga, e os outros cartões deslizam do lugar em que estavam para o novo (técnica FLIP). */
+    const CURVA = "cubic-bezier(.2,.7,.2,1)";
+    const vao = (cont) => parseFloat(getComputedStyle(cont).rowGap) || 0;
     function moverVaga(cont, antesDe) {
       const { ph } = arr;
-      const afetados = [...new Set([...itensDe(ph.parentElement), ...itensDe(cont)])];
+      const origem = ph.parentElement;
+      const afetados = [...new Set([...itensDe(origem), ...itensDe(cont)])];
       const antes = new Map(afetados.map((x) => [x, x.getBoundingClientRect().top]));
       for (const x of afetados) x.getAnimations().forEach((a) => a.cancel());
+      /* Troca de coluna (correção de 29/10/2026): a vaga não some nem surge de uma vez. Na coluna que ela deixa,
+         fica uma cópia que fecha; na que ela entra, a vaga abre do zero. Assim a altura das colunas muda aos
+         poucos, e os cartões que deslizam não ficam cortados pela borda da coluna. */
+      const trocaDeColuna = origem !== cont && !reduzirMovimento();
+      if (trocaDeColuna) {
+        const fecha = ph.cloneNode(false);
+        fecha.classList.add("fechando");
+        ph.before(fecha);
+        const a = fecha.animate([{ height: `${arr.altura}px`, marginBottom: "0px", opacity: 1 },
+          { height: "0px", marginBottom: `${-vao(origem)}px`, opacity: 0 }], { duration: 220, easing: CURVA, fill: "forwards" });
+        a.finished.then(() => fecha.remove(), () => fecha.remove());
+      }
       if (antesDe) cont.insertBefore(ph, antesDe);
       else { const ultimo = itensDe(cont).at(-1); if (ultimo) ultimo.after(ph); else cont.prepend(ph); }
       if (reduzirMovimento()) return;
+      if (trocaDeColuna) {
+        ph.getAnimations().forEach((a) => a.cancel());
+        ph.animate([{ height: "0px", marginBottom: `${-vao(cont)}px`, opacity: 0 },
+          { height: `${arr.altura}px`, marginBottom: "0px", opacity: 1 }], { duration: 220, easing: CURVA });
+      }
       for (const x of afetados) {
         const dy = antes.get(x) - x.getBoundingClientRect().top;
-        if (Math.abs(dy) > 1) x.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.7,.2,1)" });
+        if (Math.abs(dy) > 1) x.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 220, easing: CURVA });
       }
     }
-    /** Cartão logo abaixo da posição do ponteiro (null: no fim), pelas medidas sem as animações em curso. */
+    /**
+     * Cartão logo abaixo da posição do ponteiro (null: no fim). Mede como se a vaga já estivesse aberta e as
+     * cópias que fecham já tivessem sumido, e sem as animações em curso; assim a escolha não oscila enquanto
+     * as alturas mudam.
+     */
     function cartaoAbaixo(cont) {
-      const { ph } = arr;
-      const topo = ph.getBoundingClientRect().top;
-      const base = ph.offsetTop;
-      for (const x of itensDe(cont)) if (arr.py < topo + (x.offsetTop - base) + x.offsetHeight / 2) return x;
+      if (arr.modo === "lista") {
+        /* na lista a vaga não troca de grupo: as medidas de hoje bastam */
+        const topo = arr.ph.getBoundingClientRect().top;
+        const base = arr.ph.offsetTop;
+        for (const x of itensDe(cont)) if (arr.py < topo + (x.offsetTop - base) + x.offsetHeight / 2) return x;
+        return null;
+      }
+      const cs = getComputedStyle(cont);
+      const gap = vao(cont);
+      let y = cont.getBoundingClientRect().top + cont.clientTop + parseFloat(cs.paddingTop) - cont.scrollTop;
+      let primeiro = true;
+      for (const n of cont.children) {
+        if (n === arr.item || n.classList.contains("fechando")) continue;
+        if (!primeiro) y += gap;
+        primeiro = false;
+        const h = n === arr.ph ? arr.altura : n.offsetHeight;
+        if (n !== arr.ph && n.classList.contains("item") && arr.py < y + h / 2) return n;
+        y += h;
+      }
       return null;
     }
     /** Cartão antes do qual a ação fica na coluna, pela ordem da tela (null: no fim). */
@@ -1383,6 +1422,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       arr.baixoOrig = vizinho(item, item, 1);
       arr.colunaOrigem = item.closest(".coluna")?.dataset.coluna ?? null;
       arr.chave = arr.colunaOrigem;
+      arr.altura = r.height;
       arr.dentroX = arr.px - r.left;
       arr.dentroY = arr.py - r.top;
       item.before(ph);
