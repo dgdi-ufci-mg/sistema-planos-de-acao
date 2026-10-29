@@ -2138,10 +2138,14 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
 .mapa-svg.com-selecao .mapa-ligacao-borda:not(.ligacao-caminho) { stroke-opacity: .08; }
 .mapa-ligacao.ligacao-caminho { stroke: var(--warn); stroke-opacity: 1; stroke-width: 2.6; }
 .mapa-no { cursor: pointer; }
-.mapa-no:focus-visible { outline: none; }
+.mapa-no:focus, .mapa-no:focus-visible { outline: none; } /* o foco aparece na bolinha, abaixo */
 .mapa-no:focus-visible .mapa-bolinha { stroke-width: 4; }
 .mapa-no.no-caminho .mapa-bolinha { stroke: var(--warn-ink); stroke-width: 2.6; }
-.mapa-no.foco .mapa-bolinha { fill: var(--warn); stroke: var(--warn-ink); stroke-width: 3; } /* o selecionado e, sem seleção, o ponto sob o mouse (prévia) */
+.mapa-no.foco .mapa-bolinha { fill: var(--warn); stroke: var(--warn-ink); stroke-width: 3; }
+/* rótulos por zoom (lote 4): o código em seminegrito; o nome do ponto em foco, maior (no tamanho, pela tela), em negrito e
+   âmbar, com contorno escuro, legível no dia e na noite */
+.mapa-nome.e-codigo { font-weight: 600; }
+.mapa-no.foco .mapa-nome { font-weight: 700; fill: var(--warn); stroke: var(--mapa-tinta-escura); stroke-opacity: .85; } /* o selecionado e, sem seleção, o ponto sob o mouse (prévia) */
 .mapa-cartao { font-size: 13px; line-height: 1.3; position: absolute; left: 0; top: 0; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: max-content; max-width: min(260px, calc(100% - 16px)); padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: 0 2px 10px color-mix(in srgb, var(--ink) 18%, transparent); }
 .mapa-cartao[hidden] { display: none; }
 .mapa-cartao .botao { min-height: 32px; padding: 3px 14px; }
@@ -2150,9 +2154,6 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
 .mapa-alvo { fill: transparent; }
 
 /* Mapa, lote 4: de longe, só o código de cada item */
-.mapa-codigo { display: none; fill: var(--tinta, var(--ink)); font-weight: 700; font-family: var(--f-texto, inherit); stroke: var(--halo, var(--surface)); stroke-width: 3px; stroke-opacity: .7; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
-.mapa-svg.de-longe .mapa-no .mapa-nome { display: none; } /* não o medidor de texto, que precisa continuar medindo */
-.mapa-svg.de-longe .mapa-codigo { display: inline; }
 
 /* Mapa, lote 4: cores do dia e da noite. De dia, do azul-claro no chão ao anil profundo no alto; de noite, do azul-noite ao preto com estrelas.
    As tintas do texto (clara e escura) são escolhidas faixa por faixa, pelo contraste (WCAG 1.4.3, 4,5:1), em js/superior/mapa.js. */

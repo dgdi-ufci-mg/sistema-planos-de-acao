@@ -199,7 +199,7 @@ export function calcularMapa({
     n.yCurvo = Math.round((n.y + deslocamentoCurvo(n.x, centro, raio)) * 10) / 10;
   }
   const altura = Math.ceil(topo + deslocamentoCurvo(0, centro, raio));
-  return { faixas, nos, ligacoes, largura, altura, centro, raio, recuo: RECUO };
+  return { faixas, nos, ligacoes, largura, altura, centro, raio, recuo: RECUO, passoNivel };
 }
 
 const n1 = (v) => Math.round(v * 10) / 10;

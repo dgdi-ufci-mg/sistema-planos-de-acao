@@ -332,30 +332,70 @@ describe("Mapa do Strata", { skip: pular }, () => {
   });
 
   describe("acabamento (lote 4)", () => {
-    test("de longe (celular), só o código de cada item, sem se sobrepor; aproximando, os nomes voltam", async () => {
-      /* com a tela cheia (29/10/2026), o celular de 800 px já abre perto o bastante para os nomes; numa tela baixa, de longe */
+    test("três níveis de zoom, faixa a faixa: de longe só os pontos, no meio os códigos, de perto os nomes; sempre do mesmo tamanho na tela", async () => {
+      /* uma tela baixa de celular abre de longe; aproximando, os níveis sobem */
       const p = await sessao.abrir({ largura: 390, altura: 520, ...ABRIR });
-      assert.ok(await p.locator(".mapa-svg.de-longe").count(), "o mapa inteiro, no celular, está de longe");
-      const r = await p.evaluate(() => {
-        const visiveis = (sel) => [...document.querySelectorAll(sel)].filter((e) => getComputedStyle(e).display !== "none");
-        const caixas = visiveis(".mapa-codigo").map((e) => e.getBoundingClientRect());
+      const estado = () => p.evaluate(() => {
+        const visiveis = [...document.querySelectorAll(".mapa-no .mapa-nome")].filter((e) => e.textContent);
+        const caixas = visiveis.map((e) => e.getBoundingClientRect());
         let encostam = 0;
         for (let i = 0; i < caixas.length; i++) for (let j = i + 1; j < caixas.length; j++) {
           const a = caixas[i]; const b = caixas[j];
           if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) encostam++;
         }
-        return { codigos: caixas.length, nomes: visiveis(".mapa-no .mapa-nome").length, encostam };
+        const tamanhos = visiveis.map((e) => Math.round(e.getBoundingClientRect().height));
+        return { niveis: document.querySelector(".mapa-svg").dataset.niveis.split(" "), codigos: visiveis.filter((e) => e.classList.contains("e-codigo")).length, nomes: visiveis.filter((e) => !e.classList.contains("e-codigo")).length, encostam, tamanhos };
       });
-      assert.ok(r.codigos >= 8, `${r.codigos} códigos à vista`);
-      assert.equal(r.nomes, 0, "nenhum nome inteiro de longe");
-      assert.equal(r.encostam, 0, "os códigos não se sobrepõem");
-      for (let i = 0; i < 4; i++) { await p.click("[data-mapa-mais]"); await p.waitForTimeout(300); }
-      assert.equal(await p.locator(".mapa-svg.de-longe").count(), 0, "de perto, os nomes");
+      const longe = await estado();
+      assert.ok(longe.niveis.some((n) => n !== "nomes"), `de longe, as faixas mais cheias não mostram os nomes (${longe.niveis})`);
+      assert.ok(longe.niveis.includes("codigos") || longe.niveis.includes("pontos"));
+      assert.equal(longe.encostam, 0, "nada se sobrepõe");
+      let perto = longe;
+      for (let i = 0; i < 6 && !perto.niveis.slice(0, -1).every((n) => n === "nomes"); i++) { await p.click("[data-mapa-mais]"); await p.waitForTimeout(300); perto = await estado(); }
+      assert.ok(perto.nomes > 0, "de perto, os nomes");
+      assert.equal(perto.encostam, 0, "os nomes não se encostam");
+      assert.ok(Math.max(...perto.tamanhos) <= 20, `o texto continua do mesmo tamanho na tela (${Math.max(...perto.tamanhos)} px de altura)`);
+      /* o nível do meio: um mapa com pontos próximos, códigos que cabem e nomes que não cabem */
+      const meio = await p.evaluate(async () => {
+        const { criarVistaMapa } = await import("../js/superior/mapa.js");
+        const area = document.createElement("div");
+        area.className = "mapa-area";
+        area.style.cssText = "position:fixed;inset:0;width:600px;height:500px";
+        document.body.append(area);
+        const camadas = [{ id: "a", nome: "Objetivo", plural: "Objetivos" }];
+        const itens = Array.from({ length: 30 }, (_, i) => ({ id: `i${i}`, camada: "a", nome: `Objetivo com um nome bem comprido número ${i}`, codigo: `O${i}`, superiores: [] }));
+        criarVistaMapa(area, { camadas, itens, planos: [], estado: {} });
+        await new Promise((r) => setTimeout(r, 50));
+        return area.querySelector(".mapa-svg").dataset.niveis.split(" ")[0];
+      });
+      assert.equal(meio, "codigos", "no meio, os códigos");
     });
 
     test("no computador, o mapa abre com os nomes inteiros", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
-      assert.equal(await p.locator(".mapa-svg.de-longe").count(), 0);
+      const niveis = await p.locator(".mapa-svg").getAttribute("data-niveis");
+      assert.ok(niveis.split(" ").slice(0, -1).every((n) => n === "nomes"), `todas as faixas com itens mostram os nomes (${niveis})`);
+    });
+
+    test("ao passar o mouse ou tocar, só os nomes do caminho aparecem, inteiros; o do ponto em foco, maior, em negrito e âmbar", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const chave = await p.evaluate(() => [...document.querySelectorAll(".mapa-no")].find((g) => g.querySelector("title").textContent.startsWith("PF1 ")).dataset.no);
+      await p.locator(`.mapa-no[data-no="${chave}"] .mapa-alvo`).hover({ force: true });
+      await p.waitForSelector(".mapa-svg.com-selecao");
+      const r = await p.evaluate((k) => {
+        const g = document.querySelector(`.mapa-no[data-no="${k}"]`);
+        const nomes = [...document.querySelectorAll(".mapa-no")].map((n) => ({ caminho: n.classList.contains("no-caminho"), texto: n.querySelector(".mapa-nome").textContent, titulo: n.querySelector("title").textContent }));
+        const estilo = getComputedStyle(g.querySelector(".mapa-nome"));
+        const outro = [...document.querySelectorAll(".mapa-no.no-caminho:not(.foco) .mapa-nome")][0];
+        return { nomes, peso: estilo.fontWeight, cor: estilo.fill, altura: g.querySelector(".mapa-nome").getBoundingClientRect().height, alturaOutro: outro.getBoundingClientRect().height, ambar: getComputedStyle(document.documentElement).getPropertyValue("--warn").trim() };
+      }, chave);
+      assert.ok(r.nomes.filter((n) => !n.caminho).every((n) => !n.texto), "fora do caminho, sem nome");
+      assert.ok(r.nomes.filter((n) => n.caminho).every((n) => n.texto === n.titulo), "no caminho, o nome inteiro, sem reticências");
+      assert.equal(r.peso, "700");
+      assert.ok(r.altura > r.alturaOutro, "o do ponto em foco é maior");
+      await p.mouse.move(640, 790);
+      await p.waitForSelector(".mapa-svg:not(.com-selecao)");
+      assert.ok(await p.evaluate(() => [...document.querySelectorAll(".mapa-no:not(.plano) .mapa-nome")].some((e) => e.textContent.endsWith("…") || e.textContent)), "os nomes voltam");
     });
   });
 
@@ -404,11 +444,15 @@ describe("Mapa do Strata", { skip: pular }, () => {
   });
 
   describe("física: mola até o destino (lote 5)", () => {
-    const coerente = (p) => p.evaluate(() => [...document.querySelectorAll(".mapa-no")].every((g) => {
-      const c = g.querySelector(".mapa-bolinha");
-      const t = g.querySelector(".mapa-nome") ?? g.querySelector(".mapa-codigo");
-      return !t || Math.abs(Number(t.getAttribute("x")) - Number(c.getAttribute("cx")) - 9) < 0.01;
-    }));
+    /* o texto fica 9 px (na tela) à direita do ponto: 9 ÷ escala no mundo (lote 4) */
+    const coerente = (p) => p.evaluate(() => {
+      const k = Number(document.querySelector("[data-mapa-mundo]").getAttribute("transform").match(/scale\(([-\d.]+)\)/)[1]);
+      return [...document.querySelectorAll(".mapa-no")].every((g) => {
+        const c = g.querySelector(".mapa-bolinha");
+        const t = g.querySelector(".mapa-nome");
+        return !t || Math.abs(Number(t.getAttribute("x")) - Number(c.getAttribute("cx")) - 9 / k) < 0.05;
+      });
+    });
 
     test("ao mudar a largura, os pontos deslizam até o novo lugar e param exatamente nele, com as linhas junto", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });

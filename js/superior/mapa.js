@@ -20,11 +20,16 @@ import {
 const NS = "http://www.w3.org/2000/svg";
 const LIMIAR_DO_TOQUE = 6;
 const ESCALA_MAXIMA = 3;
-/** Abaixo desta escala (o nome de 13 px ficaria com menos de 8,5 px na tela), o mapa mostra só o código de cada item. */
-const ESCALA_DOS_NOMES = 0.65;
-const TAMANHO_DO_NOME = 13;
-const TAMANHO_MAXIMO_DO_CODIGO = 20;
-const TAMANHO_APARENTE_DO_CODIGO = 9;
+/*
+ * Rótulos em três níveis de zoom (lote 4, 29/10/2026, tarde), faixa a faixa, sempre do mesmo tamanho na tela:
+ * de longe, só os pontos; no meio, só os códigos; de perto, os nomes (cortados com reticências no espaço que houver).
+ */
+const TAMANHO_DO_NOME = 13; // px na tela
+const TAMANHO_DO_FOCO = 15; // o ponto em foco (selecionado ou sob o mouse), em negrito e âmbar
+const TAMANHO_DO_CODIGO = 11;
+const RECUO_NA_TELA = 9; // do ponto até o começo do texto, px na tela
+/** Uma faixa mostra os nomes quando cada ponto tem pelo menos isto de espaço na tela, à direita. */
+const ESPACO_PARA_NOMES = 72;
 /** Quanto as faixas, o céu e o solo continuam para os lados e para baixo, em larguras do mapa (só desenho). */
 const ALEM = 3;
 
@@ -128,21 +133,9 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       const alvo = criar("circle", { class: "mapa-alvo", cx: n.x, cy: n.yCurvo, r: 11 }); // área de toque maior que o ponto
       const ponto = criar("circle", { class: "mapa-bolinha", cx: n.x, cy: n.yCurvo, r: 6 });
       g.append(titulo, alvo, ponto);
-      const partes = { alvo, ponto, nome: null, codigo: null };
-      elementos.set(n.chave, partes);
-      if (n.rotulo) {
-        const nome = criar("text", { class: "mapa-nome", x: n.x + mapa.recuo, y: n.yCurvo + 4 });
-        partes.nome = nome;
-        nome.textContent = n.rotulo;
-        g.append(nome);
-        if (n.codigo) { // de longe, só o código, no maior tamanho que cabe no espaço do nome
-          const codigo = criar("text", { class: "mapa-codigo", x: n.x + mapa.recuo, y: n.yCurvo + 4 });
-          codigo.textContent = n.codigo;
-          partes.codigo = codigo;
-          codigo.dataset.maximo = String(Math.min(TAMANHO_MAXIMO_DO_CODIGO, TAMANHO_DO_NOME * Math.max(1, n.largura / Math.max(1, medir(n.codigo)))));
-          g.append(codigo);
-        }
-      }
+      const nome = criar("text", { class: "mapa-nome", x: n.x + mapa.recuo, y: n.yCurvo + 4 }); // o texto muda com o zoom e o caminho
+      g.append(nome);
+      elementos.set(n.chave, { alvo, ponto, nome });
       grupoNos.append(g);
     }
 
@@ -153,7 +146,8 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       s.textContent = f.plural;
       return s;
     }));
-    escalaDosCodigos = 0;
+    escalaDosRotulos = 0;
+    larguras.clear(); // as fontes podem ter mudado
     marcarSelecao();
     ajustarTintas();
     iniciarMola();
@@ -173,7 +167,8 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       const a = atual.get(chave);
       p.alvo.setAttribute("cx", a.x); p.alvo.setAttribute("cy", a.y);
       p.ponto.setAttribute("cx", a.x); p.ponto.setAttribute("cy", a.y);
-      for (const texto of [p.nome, p.codigo]) if (texto) { texto.setAttribute("x", a.x + mapa.recuo); texto.setAttribute("y", a.y + 4); }
+      const k = t?.k ?? 1;
+      p.nome.setAttribute("x", (a.x + RECUO_NA_TELA / k).toFixed(2)); p.nome.setAttribute("y", (a.y + 4 / k).toFixed(2));
     }
     for (const l of ligacoesVivas) {
       const [f, u] = [atual.get(l.de), atual.get(l.para)];
@@ -281,6 +276,8 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       g.setAttribute("aria-pressed", String(g.dataset.no === estado.selecionado));
     }
     for (const l of mundo.querySelectorAll(".mapa-ligacao, .mapa-ligacao-borda")) l.classList.toggle("ligacao-caminho", Boolean(caminho?.ligacoes.has(`${l.dataset.de}|${l.dataset.para}`)));
+    caminhoAceso = caminho;
+    if (t) atualizarRotulos(true);
     montarCartao();
   }
   /** Prévia do caminho: o ponto sob o mouse, quando nada está selecionado (o clique fixa a seleção). */
@@ -338,18 +335,61 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     mundo.setAttribute("transform", `translate(${t.x.toFixed(2)} ${t.y.toFixed(2)}) scale(${t.k.toFixed(4)})`);
     posicionarRotulos();
     posicionarCartao();
-    mostrarNomesOuCodigos();
+    atualizarRotulos();
   }
 
-  /** De longe (escala menor que `ESCALA_DOS_NOMES`), só o código de cada item, em tamanho que pareça de 9 px e caiba. */
-  let escalaDosCodigos = 0;
-  function mostrarNomesOuCodigos() {
-    const longe = t.k < ESCALA_DOS_NOMES;
-    svg.classList.toggle("de-longe", longe);
-    if (!longe || Math.abs(t.k - escalaDosCodigos) < 0.005) return;
-    escalaDosCodigos = t.k;
-    for (const c of svg.querySelectorAll(".mapa-codigo")) {
-      c.style.fontSize = `${Math.max(TAMANHO_DO_NOME, Math.min(Number(c.dataset.maximo), TAMANHO_APARENTE_DO_CODIGO / t.k)).toFixed(1)}px`;
+  /* ---------- rótulos: três níveis de zoom, faixa a faixa, e os nomes do caminho aceso ---------- */
+  let escalaDosRotulos = 0;
+  let caminhoAceso = null;
+  const larguras = new Map(); // texto → largura na tela com 13 px (o medidor tem o estilo do nome)
+  const largura13 = (texto) => {
+    if (!larguras.has(texto)) { medidor.textContent = texto; larguras.set(texto, medidor.getComputedTextLength()); }
+    return larguras.get(texto);
+  };
+  /** O texto que cabe em `px` (na tela, com 13 px), cortado com reticências; vazio se nem duas letras couberem. */
+  const caber = (texto, px) => {
+    if (largura13(texto) <= px) return texto;
+    let [baixo, alto] = [1, texto.length - 1];
+    while (baixo < alto) { const meio = Math.ceil((baixo + alto) / 2); if (largura13(`${texto.slice(0, meio).trimEnd()}…`) <= px) baixo = meio; else alto = meio - 1; }
+    return baixo > 1 ? `${texto.slice(0, baixo).trimEnd()}…` : "";
+  };
+  const larguraDoCodigo = (codigo) => (largura13(codigo) * TAMANHO_DO_CODIGO) / TAMANHO_DO_NOME * 1.06; // em seminegrito
+
+  /**
+   * Nível de cada faixa pelo espaço que os pontos dela têm na tela, à direita (`espacoDoNome` × escala): com pelo menos
+   * `ESPACO_PARA_NOMES` px em todos, os nomes; se os códigos couberem, os códigos; senão, só os pontos. Com um caminho
+   * aceso, só os nomes do caminho aparecem, inteiros (o ponto em foco maior, em negrito e âmbar); os demais somem,
+   * para não encavalar. Refeito quando a escala muda mais de 3% ou o caminho muda.
+   */
+  function atualizarRotulos(forcar = false) {
+    const k = t.k;
+    if (!forcar && escalaDosRotulos && Math.abs(k - escalaDosRotulos) / escalaDosRotulos < 0.03) return;
+    escalaDosRotulos = k;
+    const niveis = mapa.faixas.map((f, i) => {
+      const nos = mapa.nos.filter((n) => n.faixa === i);
+      if (!nos.length) return "pontos";
+      /* com degraus, o texto de uma fileira não pode encostar no da fileira de baixo: o degrau, na tela, tem de ter a altura do texto */
+      const cabeEmPe = (tamanho) => f.niveis <= 1 || mapa.passoNivel * k >= tamanho + 5; // a caixa do texto, com o contorno, passa um pouco do tamanho da letra
+      if (cabeEmPe(TAMANHO_DO_NOME) && nos.every((n) => n.espacoDoNome * k >= ESPACO_PARA_NOMES)) return "nomes";
+      return cabeEmPe(TAMANHO_DO_CODIGO) && nos.every((n) => !n.codigo || larguraDoCodigo(n.codigo) + 4 <= n.espacoDoNome * k) ? "codigos" : "pontos";
+    });
+    svg.dataset.niveis = niveis.join(" ");
+    const foco = estado.selecionado ?? previa;
+    for (const n of mapa.nos) {
+      const p = elementos.get(n.chave);
+      let texto = "";
+      let tamanho = TAMANHO_DO_NOME;
+      let codigo = false;
+      if (caminhoAceso) {
+        if (caminhoAceso.nos.has(n.chave)) { texto = n.completo; if (n.chave === foco) tamanho = TAMANHO_DO_FOCO; }
+      } else if (niveis[n.faixa] === "nomes") texto = caber(n.completo, n.espacoDoNome * k - 2);
+      else if (niveis[n.faixa] === "codigos" && n.codigo) { texto = n.codigo; tamanho = TAMANHO_DO_CODIGO; codigo = true; }
+      if (p.nome.textContent !== texto) p.nome.textContent = texto;
+      p.nome.classList.toggle("e-codigo", codigo);
+      p.nome.style.fontSize = `${(tamanho / k).toFixed(3)}px`;
+      p.nome.style.strokeWidth = `${(3 / k).toFixed(3)}px`;
+      const a = atual.get(n.chave) ?? { x: n.x, y: n.yCurvo };
+      p.nome.setAttribute("x", (a.x + RECUO_NA_TELA / k).toFixed(2)); p.nome.setAttribute("y", (a.y + 4 / k).toFixed(2));
     }
   }
 
