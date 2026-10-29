@@ -99,6 +99,35 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("com outra ordem, o cartão assenta onde vai ficar: nada salta ao redesenhar (correção de 29/10/2026)", async () => {
+    const p = await abrirQuadro(sessao, { largura: 1280 });
+    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('[data-ordem="espaco"]');
+    await p.keyboard.press("Escape");
+    await assentar(p, 600);
+    /* posição de cada cartão logo depois de assentar e depois do redesenho de segurança (0,7 s) */
+    const posicoes = () => p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".quadro-tarefas .cartao-quadro")]
+      .map((x) => { const r = x.getBoundingClientRect(); return [x.dataset.numero, [Math.round(r.left), Math.round(r.top)]]; })));
+    const gesto = async (volta) => {
+      const a = await centro(cartaoDe(p, 0, 0).locator(".rotulo"));
+      const b = await coluna(p, 1).boundingBox();
+      await p.mouse.move(a.x, a.y);
+      await p.mouse.down();
+      await p.mouse.move(a.x + 4, a.y + 4, { steps: 2 });
+      await p.mouse.move(b.x + b.width / 2, b.y + 90, { steps: 12 });
+      await assentar(p, 300);
+      if (volta) { await p.mouse.move(a.x, a.y, { steps: 12 }); await assentar(p, 300); }
+      await p.mouse.up();
+      await assentar(p, 450);
+      const logo = await posicoes();
+      await assentar(p, 1000);
+      assert.deepEqual(await posicoes(), logo, volta ? "de volta à coluna de origem" : "noutra coluna");
+    };
+    await gesto(true);
+    await gesto(false);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("clicar no cartão do quadro, sem arrastar, continua abrindo a ação", async () => {
     const p = await abrirQuadro(sessao, { largura: 1280 });
     await cartaoDe(p, 0, 0).locator(".rotulo").click();
