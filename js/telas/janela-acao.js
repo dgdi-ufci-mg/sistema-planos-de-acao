@@ -1065,9 +1065,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       const nome = e.target.selectedOptions[0]?.textContent.trim();
       return executar(() => store.mudarSituacao(espacoId, numero, e.target.value || null), `Situação: ${nome}.`);
     }
-    if (e.target.dataset.auto) gravarCampo(e.target);
+    /* campos de data só gravam ao sair deles ou com Enter: o navegador dispara "change" a cada parte digitada
+       (dia, mês, ano) que forme uma data válida, e gravar no meio redesenha o campo e devolve o cursor ao dia */
+    if (e.target.dataset.auto && e.target.type !== "date") gravarCampo(e.target);
   });
   corpo.addEventListener("focusout", (e) => {
+    if (e.target.dataset?.auto && e.target.type === "date" && e.relatedTarget !== e.target) gravarCampo(e.target);
     /* anotações: grava ao sair do editor (não ao ir para a barra de formatação dele) */
     const caixa = e.target.closest?.("[data-caixa-notas]");
     if (caixa && !caixa.contains(e.relatedTarget)) gravarNotas();
@@ -1103,6 +1106,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       return;
     }
     if (e.target.dataset.buscar) return; // o seletor cuida das teclas
+    if (e.key === "Enter" && e.target.dataset.auto && e.target.type === "date") { e.preventDefault(); return gravarCampo(e.target); }
     if (e.target.matches("[data-endereco-link]")) {
       if (e.key === "Enter") { e.preventDefault(); aplicarLink(); }
       if (e.key === "Escape") { e.preventDefault(); corpo.querySelector("[data-barra-link]").hidden = true; editorNotas()?.focus(); }
