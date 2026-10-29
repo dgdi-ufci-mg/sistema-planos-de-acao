@@ -1622,6 +1622,21 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .linha-ligar select { flex: 1 1 auto; min-width: 0; padding: 7px 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
 .linha-ligar .botao { flex: none; }
 @media (max-width: 520px) { .superior-abas button { padding: 8px 7px; font-size: .9rem; } }
+
+/* Strata, aba Mapa (29/10/2026; seção 8 da documentação técnica): faixas horizontais curvas, do chão aos objetivos.
+   Só variáveis do tema, nos três blocos de cores. */
+.mapa-area { position: relative; height: clamp(380px, calc(100dvh - 250px), 880px); border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); overflow: hidden; }
+.mapa-svg { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-select: none; }
+.mapa-faixa { fill: color-mix(in srgb, var(--accent) var(--tom, 12%), var(--surface)); stroke: var(--line); stroke-width: 1; }
+.mapa-ligacao { fill: none; stroke: var(--muted); stroke-opacity: .5; stroke-width: 1.3; }
+.mapa-no circle { fill: var(--surface); stroke: var(--accent-ink); stroke-width: 2; }
+.mapa-no.plano circle { fill: var(--accent-ink); }
+.mapa-no.restrito .mapa-nome { font-style: italic; }
+.mapa-nome { fill: var(--ink); font-size: 13px; font-family: var(--f-texto, inherit); stroke: var(--surface); stroke-width: 3px; stroke-opacity: .7; paint-order: stroke; stroke-linejoin: round; pointer-events: none; }
+.mapa-medida { opacity: 0; }
+.mapa-rotulos { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.mapa-rotulo-camada { position: absolute; left: 0; top: 0; max-width: calc(100% - 80px); padding: 2px 8px; border-radius: 999px; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink); background: color-mix(in srgb, var(--surface) 82%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mapa-ajuda { margin: 0; }
 a.lateral-acao { text-decoration: none; }
 
 /* ---------- entregas do Plano de Ação (passo 2.6): visualização e painel ---------- */

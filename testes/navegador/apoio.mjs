@@ -68,9 +68,10 @@ export async function iniciar() {
   const contextos = [];
   /**
    * Abre uma página nova, já com o exemplo aberto.
-   * @param {{largura?: number, altura?: number, toque?: boolean, tema?: "light"|"dark", exemplo?: boolean}} [o]
+   * Com `caminho` (por exemplo, "strata/"), abre essa página e espera o seletor `aguardar`, sem clicar em "Ver um exemplo".
+   * @param {{largura?: number, altura?: number, toque?: boolean, tema?: "light"|"dark", exemplo?: boolean, caminho?: string, aguardar?: string}} [o]
    */
-  async function abrir({ largura = 390, altura = 800, toque = largura <= 640, tema = "light", exemplo = true } = {}) {
+  async function abrir({ largura = 390, altura = 800, toque = largura <= 640, tema = "light", exemplo = true, caminho = "sextante/", aguardar = null } = {}) {
     const contexto = await navegador.newContext({
       viewport: { width: largura, height: altura }, hasTouch: toque, isMobile: toque, locale: "pt-BR", colorScheme: tema,
     });
@@ -81,7 +82,12 @@ export async function iniciar() {
     const pagina = await contexto.newPage();
     pagina.erros = [];
     pagina.on("pageerror", (e) => pagina.erros.push(e.message));
-    await pagina.goto(endereco + "sextante/");
+    await pagina.goto(endereco + caminho);
+    if (aguardar) {
+      await pagina.waitForSelector(aguardar);
+      await pagina.waitForTimeout(300);
+      return pagina;
+    }
     if (exemplo) {
       await pagina.click("[data-acao=exemplo]");
       await pagina.waitForSelector(".linha[data-abrir-acao]");

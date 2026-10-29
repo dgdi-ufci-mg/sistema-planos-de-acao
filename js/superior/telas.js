@@ -18,11 +18,12 @@ import { tipoDe } from "../tipos.js";
 import { alcanceAtual, textoDoValor } from "../entregas.js";
 import { seloDaSituacao } from "../telas/entregas.js";
 import { esqueletoHtml } from "../telas/esqueleto.js";
+import { criarVistaMapa } from "./mapa.js";
 import {
   camadasAcima, instrumentoVigente, itemVigente, rotuloDoItem, caminhoAteOTopo, subordinadosDe, itensPorCamada, planejarCatalogo,
 } from "../estrategia.js";
 
-const ABAS = [["arvore", "Desdobramento"], ["instrumentos", "Instrumentos"], ["camadas", "Camadas"], ["importar", "Importar"]];
+const ABAS = [["mapa", "Mapa"], ["arvore", "Desdobramento"], ["instrumentos", "Instrumentos"], ["camadas", "Camadas"], ["importar", "Importar"]];
 
 /**
  * @param {HTMLElement} alvo
@@ -30,7 +31,9 @@ const ABAS = [["arvore", "Desdobramento"], ["instrumentos", "Instrumentos"], ["c
  * @returns {{recarregar: () => Promise<void>}}
  */
 export function mostrarSuperior(alvo, { store, hoje }) {
-  const ui = { aba: "arvore", soVigentes: true, busca: "", recolhidos: new Set() };
+  const ui = { aba: "mapa", soVigentes: true, busca: "", recolhidos: new Set(), mapa: {} };
+  /** vista do Mapa montada na tela (para desfazer os ouvintes ao trocar de aba ou desenhar de novo) */
+  let vistaMapa = null;
   let cat = { camadas: [], instrumentos: [], itens: [] };
   let gestor = false;
   let planos = [];
@@ -63,6 +66,8 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     || String(a.codigo ?? "").localeCompare(String(b.codigo ?? ""), "pt-BR", { numeric: true }) || a.nome.localeCompare(b.nome, "pt-BR");
 
   function desenhar() {
+    vistaMapa?.destruir();
+    vistaMapa = null;
     const abas = ABAS.filter(([v]) => gestor || v !== "importar");
     alvo.innerHTML = `
       <section class="superior-cabeca">
@@ -71,7 +76,9 @@ export function mostrarSuperior(alvo, { store, hoje }) {
           ${gestor ? "Você é Gestor da Estratégia: pode alterar o catálogo." : "Só o Gestor da Estratégia altera o catálogo; aqui você consulta."}</p>
         <div class="superior-abas" role="tablist">${abas.map(([v, t]) => `<button type="button" role="tab" data-aba="${v}" aria-selected="${ui.aba === v}">${t}</button>`).join("")}</div>
       </section>
-      <section class="superior-corpo">${{ arvore: arvoreHtml, instrumentos: instrumentosHtml, camadas: camadasHtml, importar: importarHtml }[ui.aba]()}</section>`;
+      <section class="superior-corpo">${{ mapa: mapaHtml, arvore: arvoreHtml, instrumentos: instrumentosHtml, camadas: camadasHtml, importar: importarHtml }[ui.aba]()}</section>`;
+    const areaDoMapa = alvo.querySelector("[data-mapa-area]");
+    if (areaDoMapa) vistaMapa = criarVistaMapa(areaDoMapa, { camadas: cat.camadas, itens: cat.itens.filter((x) => !x.excluidoEm && vale(x)), planos: planosDoMapa(), estado: ui.mapa });
     const busca = alvo.querySelector("[data-busca-arvore]");
     if (busca && ui.busca) { busca.focus(); busca.setSelectionRange(ui.busca.length, ui.busca.length); }
     /* abas que não cabem (celular, 25/10/2026, item 17 da avaliação de celular): a borda direita esmaece enquanto
@@ -81,6 +88,24 @@ export function mostrarSuperior(alvo, { store, hoje }) {
     faixa.addEventListener("scroll", marcarFaixa, { passive: true });
     faixa.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
     marcarFaixa();
+  }
+
+  /* ---------- mapa ---------- */
+  /** Planos de Ação do mapa: os ligados a itens; o que a pessoa não pode consultar entra como "restrito", sem o nome. */
+  function planosDoMapa() {
+    return planos.map((e) => {
+      const visivel = store.podeVerEspaco(e);
+      return { id: e.id, nome: visivel ? e.nome : "Plano de Ação restrito", restrito: !visivel, superiores: e.vinculos };
+    });
+  }
+  function mapaHtml() {
+    if (!cat.itens.some((x) => !x.excluidoEm && vale(x))) {
+      return `<p class="vazio">${cat.itens.length ? "Nada vale hoje. Na aba Desdobramento, desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece pela aba Desdobramento, em “Novo item”, ou pela aba Importar." : "O catálogo ainda está vazio."}</p>`;
+    }
+    return `
+      <div class="mapa-area" data-mapa-area></div>
+      <p class="tec mapa-ajuda">Cada ponto é um item. As linhas ligam cada item ao que ele <b>vem de</b>, do nível de baixo para o de cima; embaixo ficam os Planos de Ação.
+        Arraste para mover o mapa. Para aproximar, use a pinça, Ctrl + rolagem ou os botões + e −.</p>`;
   }
 
   /* ---------- desdobramento ---------- */
