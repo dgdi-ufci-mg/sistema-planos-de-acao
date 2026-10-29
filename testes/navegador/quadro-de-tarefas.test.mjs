@@ -82,12 +82,13 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     const { x, y } = await centro(cartao(p, "Marcar reunião").locator(".rotulo"));
     const d = await dedo(p);
     await d.encostar(x, y);
-    await p.waitForTimeout(700);
-    await assentar(p, 300);
+    await p.waitForTimeout(700); // o cartão sobe (arrastar); soltar sem mexer abre o menu
+    assert.equal(await p.locator(".item.levantado").count(), 1);
+    await d.soltar();
+    await assentar(p, 500);
     const menu = p.locator(".camada.aberta .menu-cartao");
     assert.match(await menu.innerText(), /Marcar como concluída/);
     assert.match(await menu.innerText(), /Mover para[\s\S]*Fazendo/);
-    await d.cancelar();
     await menu.getByRole("button", { name: "Fazendo" }).click();
     await assentar(p);
     assert.equal(await colunaDe(p, "Marcar reunião"), await p.locator(".coluna").filter({ has: p.locator("header", { hasText: "Fazendo" }) }).getAttribute("data-coluna"));

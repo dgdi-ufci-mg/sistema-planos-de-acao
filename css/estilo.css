@@ -740,8 +740,16 @@ body.arrastando-coluna-quadro, body.arrastando-coluna-quadro * { cursor: grabbin
 .cartao-base { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .cartao-base .data { font-family: var(--f-dados); font-size: .82rem; }
 .cartao-base .data.atrasada { color: var(--crit-ink); }
-.cartao-quadro[draggable="true"] { cursor: grab; }
-.cartao-quadro.arrastando { opacity: .45; }
+.cartao-quadro[data-arrasta] { cursor: grab; }
+.quadro .cartao-quadro[data-arrasta] { touch-action: pan-x pan-y; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+/* arrastar cartões, como no Trello: o cartão sobe e inclina, e no lugar dele fica uma vaga */
+.espaco-solto { border-radius: var(--raio, 10px); background: color-mix(in srgb, var(--ink) 9%, transparent); outline: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: -2px; flex-shrink: 0; }
+.item.levantado { position: fixed; z-index: 1000; margin: 0; pointer-events: none; box-sizing: border-box; cursor: grabbing;
+  transform: none; transition: transform .16s var(--mov-curva, ease), box-shadow .16s var(--mov-curva, ease); }
+.item.levantado.inclinado { transform: rotate(3deg) scale(1.02); box-shadow: 0 14px 28px color-mix(in srgb, var(--ink) 28%, transparent); }
+.item.levantado.assentando { transition: left .2s var(--mov-curva, ease), top .2s var(--mov-curva, ease), transform .2s var(--mov-curva, ease), box-shadow .2s var(--mov-curva, ease); }
+body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing !important; -webkit-user-select: none; user-select: none; }
+@media (prefers-reduced-motion: reduce) { .item.levantado, .item.levantado.assentando { transition: none; } }
 @media (max-width: 640px) {
   /* celular: colunas lado a lado, deslizando para o lado, uma por vez */
   .quadro { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; margin: 0 -16px; padding: 0 16px 6px; scrollbar-width: none; }
@@ -1515,15 +1523,9 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
   background: none; border: 0; padding: 0; color: var(--faint); cursor: grab; touch-action: none; border-radius: 6px; }
 .puxador:hover, .puxador:focus-visible { color: var(--ink); background: var(--accent-soft); }
 .puxador svg { width: 18px; height: 18px; }
-.item.puxando { opacity: .55; }
-.item.puxando .puxador { cursor: grabbing; }
-.item.solta-antes { box-shadow: 0 -3px 0 0 var(--accent), var(--relevo); }
-.item.solta-depois { box-shadow: 0 3px 0 0 var(--accent), var(--relevo); }
 /* posicionado em relação à linha inteira, e não à coluna da grade (na lista estreita, ".linha > *" vai para a coluna 2) */
 .lista[data-puxadores] .linha > .puxador { grid-column: auto; grid-row: auto; }
 /* no quadro (29/10/2026): o puxador fica à esquerda do cartão; a coluna de destino se destaca (.coluna.alvo) */
-.lista[data-puxadores] .cartao-quadro .linha { position: relative; padding-left: 40px; }
-.cartao-quadro .puxador { left: 6px; }
 
 /* papéis (passo 2.1): aviso no alto do espaço */
 .aviso-papel { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0 0 10px; padding: 10px 14px; border-radius: 10px;

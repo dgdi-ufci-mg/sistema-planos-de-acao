@@ -266,7 +266,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ligarArraste();
     ligarSegurar();
     ligarDeslizar();
-    ligarPrioridade();
+    ligarTecladoDaPrioridade();
     lista.addEventListener("keydown", (e) => {
       if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-abrir-acao]")) { e.preventDefault(); e.target.click(); }
       else if (e.key.startsWith("Arrow") && e.target.matches(".linha[data-abrir-acao]")) andarEntreCartoes(e);
@@ -1054,10 +1054,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function cartaoHtml(l) {
     const a = l.acao;
     const donos = donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus, todos: true });
-    const arrastavel = l.situacao !== "naoLiberada" && store.podeGravar !== false && perm.atualizar(a);
-    return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${arrastavel ? ' draggable="true"' : ""}>
-      <div class="linha" role="button" tabindex="0" data-abrir-acao>${puxadores() ? `<button type="button" class="puxador" data-puxar="${a.numero}"
-        aria-label="Mudar a prioridade de ${esc(a.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a prioridade">${ICONES.puxador}</button>` : ""}
+    return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${podeArrastarCartao(l) ? " data-arrasta" : ""}>
+      <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome"><span class="nome-linha">${deTarefas() ? caixaHtml(l) : ""}${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${checklistNota(a)}${etiquetasNota(a)}</div>
         <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div></div>
@@ -1249,9 +1247,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }).join("")}${novaColunaHtml()}</div>`;
   }
 
-  /* arrastar no quadro (computador): entre a inicial e as personalizadas muda a situação (passo 2.7);
-     para Concluídas registra a conclusão; de Concluídas para a inicial desfaz */
-  let arrastada = null;
+  /* arrastar no quadro: entre a inicial e as personalizadas muda a situação (passo 2.7); para Concluídas registra a
+     conclusão; de Concluídas para a inicial desfaz (ver "arrastar", mais abaixo) */
   /* colunas no próprio quadro (23/10/2026, pedido do responsável): criar, renomear e retirar ali mesmo */
   /** criando: false, true (no fim, antes de Concluídas) ou {depois: id}; menu: id da coluna com o "⋯" aberto */
   const coluna = { editando: null, retirando: null, criando: false, menu: null };
@@ -1265,13 +1262,18 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (l.situacao === "liberada") return coluna !== "naoLiberada";
     return l.situacao === "concluida" && coluna === "inicial";
   };
-  /* ---------- prioridade da equipe (passo 2.10a; seção 5.8): arrastar pelo puxador, com o mouse, o dedo ou as setas ---------- */
-  /** Puxadores à vista: ordenação "Prioridade da equipe", campo ligado, na lista e com permissão de gravar. */
-  const puxadores = () => ui.ordem === "prioridade" && usaPrioridade(espaco) && ["lista", "quadro"].includes(ui.modo) && store.podeGravar !== false && perm.priorizar;
+  /* ---------- prioridade da equipe (passo 2.10a; seção 5.8): arrastar, como no Trello (revisão de 29/10/2026) ----------
+   * Na lista, arrasta-se pelo puxador (seis pontos). No quadro não há puxador: o cartão inteiro se arrasta, com o
+   * mouse (ao mexer o ponteiro) ou com o dedo (depois de segurar um instante). O cartão sobe, inclina e acompanha o
+   * ponteiro; no lugar dele fica uma vaga, e os outros deslizam para abrir espaço; ao soltar, ele assenta na vaga. */
+  /** Puxadores à vista: só na lista, com a ordenação "Prioridade da equipe", o campo ligado e permissão de gravar. */
+  const puxadores = () => ui.ordem === "prioridade" && usaPrioridade(espaco) && ui.modo === "lista" && store.podeGravar !== false && perm.priorizar;
+  /** No quadro, a posição na coluna só muda com a ordenação "Prioridade da equipe". */
+  const podeOrdenarQuadro = () => ui.modo === "quadro" && ui.ordem === "prioridade" && usaPrioridade(espaco) && store.podeGravar !== false && perm.priorizar;
+  /** O cartão do quadro pode ser pego: para mudar de coluna, ou para mudar de posição na coluna. */
+  const podeArrastarCartao = (l) => store.podeGravar !== false && ((perm.atualizar(l.acao) && l.situacao !== "naoLiberada") || podeOrdenarQuadro());
   /** Ações irmãs do item (a mesma etapa, ou a lista inteira sem fases), na ordem da tela. */
   const irmaosDe = (item) => [...item.parentElement.querySelectorAll(":scope > .item")];
-  let puxando = null;
-  const limparAlvos = () => lista.querySelectorAll(".solta-antes, .solta-depois").forEach((x) => x.classList.remove("solta-antes", "solta-depois"));
   /** Move a ação para entre as vizinhas e devolve o foco ao puxador dela depois do redesenho. */
   async function priorizar(numero, depoisDe, antesDe) {
     try {
@@ -1281,77 +1283,209 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       avisar(falha.message);
     }
   }
-  function ligarPrioridade() {
-    lista.addEventListener("pointerdown", (e) => {
-      const puxador = e.target.closest?.("[data-puxar]");
-      if (!puxador || e.button > 0) return;
-      e.preventDefault();
-      const item = puxador.closest(".item");
-      puxador.setPointerCapture(e.pointerId);
-      const numero = Number(item.dataset.numero);
-      /* no quadro (29/10/2026), o cartão também se arrasta entre colunas: guarda a coluna de origem e a de destino */
-      const quadro = Boolean(item.closest(".quadro"));
-      puxando = { numero, item, irmaos: irmaosDe(item).filter((x) => x !== item), indice: null, quadro, colunaOrigem: quadro ? linhaDe(numero)?.fluxo ?? null : null, destino: null };
-      puxando.destino = puxando.colunaOrigem;
-      item.classList.add("puxando");
-    });
-    lista.addEventListener("pointermove", (e) => {
-      if (!puxando) return;
-      let i;
-      if (puxando.quadro) {
-        const col = document.elementFromPoint(e.clientX, e.clientY)?.closest(".coluna[data-coluna]");
+  /** Gesto de arrastar em andamento (ou null). Enquanto existe, o banco não redesenha a tela (ver o acompanhamento). */
+  let arr = null;
+  const SEM_ARRASTE = "button, a, input, textarea, select, [data-editando]";
+  function ligarArrasteDeCartoes() {
+    const vizinho = (ph, item, dir) => {
+      let n = dir < 0 ? ph.previousElementSibling : ph.nextElementSibling;
+      while (n && (n === item || !n.classList.contains("item"))) n = dir < 0 ? n.previousElementSibling : n.nextElementSibling;
+      return n ? Number(n.dataset.numero) : null;
+    };
+    const itensDe = (cont) => [...cont.querySelectorAll(":scope > .item")].filter((x) => x !== arr?.item);
+    /** Move a vaga, e os outros cartões deslizam do lugar em que estavam para o novo (técnica FLIP). */
+    function moverVaga(cont, antesDe) {
+      const { ph } = arr;
+      const afetados = [...new Set([...itensDe(ph.parentElement), ...itensDe(cont)])];
+      const antes = new Map(afetados.map((x) => [x, x.getBoundingClientRect().top]));
+      for (const x of afetados) x.getAnimations().forEach((a) => a.cancel());
+      if (antesDe) cont.insertBefore(ph, antesDe);
+      else { const ultimo = itensDe(cont).at(-1); if (ultimo) ultimo.after(ph); else cont.prepend(ph); }
+      if (reduzirMovimento()) return;
+      for (const x of afetados) {
+        const dy = antes.get(x) - x.getBoundingClientRect().top;
+        if (Math.abs(dy) > 1) x.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.7,.2,1)" });
+      }
+    }
+    /** Cartão logo abaixo da posição do ponteiro (null: no fim), pelas medidas sem as animações em curso. */
+    function cartaoAbaixo(cont) {
+      const { ph } = arr;
+      const topo = ph.getBoundingClientRect().top;
+      const base = ph.offsetTop;
+      for (const x of itensDe(cont)) if (arr.py < topo + (x.offsetTop - base) + x.offsetHeight / 2) return x;
+      return null;
+    }
+    const proximoItem = (ph) => { let n = ph.nextElementSibling; while (n && (n === arr.item || !n.classList.contains("item"))) n = n.nextElementSibling; return n; };
+    function posicionarCartao() {
+      const { item } = arr;
+      item.style.left = `${arr.px - arr.dentroX - arr.dx}px`;
+      item.style.top = `${arr.py - arr.dentroY - arr.dy}px`;
+    }
+    /** A cada quadro de animação: rola perto das bordas e acha a vaga do cartão. */
+    function passo() {
+      if (!arr?.ativo) return;
+      const { px, py } = arr;
+      let cont = arr.pai;
+      let chave = arr.colunaOrigem;
+      if (arr.modo === "quadro") {
+        const col = document.elementFromPoint(px, py)?.closest(".coluna[data-coluna]");
         if (col) {
           const destino = col.dataset.coluna;
-          const valido = destino === puxando.colunaOrigem || destinoValido(destino, puxando.numero);
-          puxando.destino = valido ? destino : null;
-          lista.querySelectorAll(".coluna.alvo").forEach((c) => c.classList.remove("alvo"));
-          if (valido && destino !== puxando.colunaOrigem) col.classList.add("alvo");
-          puxando.irmaos = valido ? [...col.querySelectorAll(":scope > .coluna-cartoes > .item")].filter((x) => x !== puxando.item) : [];
-          /* a coluna do destino rola por dentro, perto da borda de cima ou de baixo dela */
-          const cartoes = col.querySelector(".coluna-cartoes");
-          const rc = cartoes?.getBoundingClientRect();
-          if (rc && e.clientY < rc.top + 40) cartoes.scrollTop -= 10; else if (rc && e.clientY > rc.bottom - 40) cartoes.scrollTop += 10;
-        }
-        /* perto da borda do quadro, ele rola para o lado */
-        const q = puxando.item.closest(".quadro");
-        const r = q?.getBoundingClientRect();
-        if (r && e.clientX > r.right - 60) q.scrollLeft += 12; else if (r && e.clientX < r.left + 60) q.scrollLeft -= 12;
+          const serve = destino === arr.colunaOrigem || destinoValido(destino, arr.numero);
+          cont = serve ? col.querySelector(".coluna-cartoes") : null;
+          chave = destino;
+        } else cont = null;
+        /* rolagem do quadro para o lado e da coluna por dentro */
+        const q = arr.item.closest(".quadro") ?? lista.querySelector(".quadro");
+        const rq = q?.getBoundingClientRect();
+        if (rq && px > rq.right - 70) q.scrollLeft += Math.min(18, (px - (rq.right - 70)) / 3 + 4); else if (rq && px < rq.left + 70) q.scrollLeft -= Math.min(18, (rq.left + 70 - px) / 3 + 4);
+        const rolavel = (cont ?? arr.ph.parentElement);
+        const rc = rolavel.getBoundingClientRect();
+        if (py < rc.top + 50) rolavel.scrollTop -= 10; else if (py > rc.bottom - 50) rolavel.scrollTop += 10;
       }
-      const { irmaos } = puxando;
-      i = irmaos.findIndex((x) => { const r = x.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
-      if (i < 0) i = irmaos.length;
-      puxando.indice = puxando.destino == null ? null : i;
-      limparAlvos();
-      if (puxando.indice == null) return;
-      if (i < irmaos.length) irmaos[i].classList.add("solta-antes"); else irmaos.at(-1)?.classList.add("solta-depois");
-      /* perto da borda da tela, rola a página */
-      if (e.clientY < 70) window.scrollBy(0, -14); else if (e.clientY > innerHeight - 70) window.scrollBy(0, 14);
+      if (py < 70) window.scrollBy(0, -12); else if (py > innerHeight - 70) window.scrollBy(0, 12);
+      if (cont) {
+        const ordena = arr.modo === "lista" || podeOrdenarQuadro();
+        const mudaDeColuna = arr.modo === "quadro" && chave !== arr.colunaOrigem;
+        if (cont !== arr.ph.parentElement) {
+          /* entrou noutra coluna: a vaga vai para o lugar certo (com a ordem por prioridade) ou para o fim */
+          moverVaga(cont, null);
+          arr.chave = chave;
+        } else if (ordena || mudaDeColuna) {
+          arr.chave = chave;
+        }
+        if (cont === arr.ph.parentElement && (ordena || (mudaDeColuna && false))) {
+          const antesDe = cartaoAbaixo(cont);
+          if (proximoItem(arr.ph) !== antesDe) moverVaga(cont, antesDe);
+        }
+      }
+      posicionarCartao();
+      arr.quadro = requestAnimationFrame(passo);
+    }
+    function levantar() {
+      const { item } = arr;
+      const r = item.getBoundingClientRect();
+      const cs = getComputedStyle(item);
+      const ph = document.createElement("div");
+      ph.className = "espaco-solto";
+      ph.style.height = `${r.height}px`;
+      ph.style.margin = cs.margin;
+      arr.pai = item.parentElement;
+      arr.proximo = item.nextElementSibling;
+      arr.cimaOrig = vizinho(item, item, -1);
+      arr.baixoOrig = vizinho(item, item, 1);
+      arr.colunaOrigem = item.closest(".coluna")?.dataset.coluna ?? null;
+      arr.chave = arr.colunaOrigem;
+      arr.dentroX = arr.px - r.left;
+      arr.dentroY = arr.py - r.top;
+      item.before(ph);
+      arr.ph = ph;
+      Object.assign(item.style, { width: `${r.width}px`, height: `${r.height}px`, left: "0px", top: "0px" });
+      item.classList.add("levantado");
+      /* mede de onde partem as posições fixas (um ancestral com transformação muda a origem) */
+      const o = item.getBoundingClientRect();
+      arr.dx = o.left;
+      arr.dy = o.top;
+      posicionarCartao();
+      requestAnimationFrame(() => item.classList.add("inclinado"));
+      document.body.classList.add("arrastando-cartao-corpo");
+      try { lista.setPointerCapture(arr.id); } catch { /* ponteiro já solto */ }
+      getSelection()?.removeAllRanges();
+      arr.ativo = true;
+      arr.quadro = requestAnimationFrame(passo);
+    }
+    /** Termina o gesto: o cartão assenta na vaga e só então se grava. `menu`: o dedo soltou sem mexer, abre o menu do cartão. */
+    async function soltar(cancelar, { menu = false } = {}) {
+      const a = arr;
+      if (!a) return;
+      clearTimeout(a.relogio);
+      if (!a.ativo) { arr = null; return; }
+      cancelAnimationFrame(a.quadro);
+      a.ativo = false;
+      document.body.classList.remove("arrastando-cartao-corpo");
+      try { lista.releasePointerCapture(a.id); } catch { /* sem captura */ }
+      const engolir = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+      lista.addEventListener("click", engolir, { capture: true, once: true });
+      setTimeout(() => lista.removeEventListener("click", engolir, { capture: true }), 350);
+      const voltar = cancelar || menu;
+      const { item, ph } = a;
+      if (voltar && (ph.parentElement !== a.pai || vizinho(ph, item, 1) !== a.baixoOrig)) { arr = a; moverVaga(a.pai, a.proximo?.parentElement === a.pai ? a.proximo : null); }
+      const destino = ph.getBoundingClientRect();
+      const cont = ph.parentElement;
+      const chave = a.modo === "quadro" ? cont.closest(".coluna")?.dataset.coluna ?? a.colunaOrigem : null;
+      const [cima, baixo] = [vizinho(ph, item, -1), vizinho(ph, item, 1)];
+      /* assenta: o cartão desce, endireita e a sombra some, até o lugar da vaga */
+      item.classList.remove("inclinado");
+      item.classList.add("assentando");
+      item.style.left = `${destino.left - a.dx}px`;
+      item.style.top = `${destino.top - a.dy}px`;
+      await new Promise((r) => setTimeout(r, reduzirMovimento() ? 0 : 200));
+      ph.replaceWith(item);
+      item.classList.remove("levantado", "assentando");
+      for (const n of ["width", "height", "left", "top"]) item.style[n] = "";
+      const depois = async () => { arr = null; if (redesenharDepois) { redesenharDepois = false; desenhar(); } };
+      if (voltar) { if (menu) abrirMenuDoCartao(a.numero); return depois(); }
+      const igual = cima === a.cimaOrig && baixo === a.baixoOrig;
+      if (a.modo === "lista") {
+        if (!igual) await priorizar(a.numero, cima, baixo);
+      } else if (chave !== a.colunaOrigem) {
+        if (chave === "concluida" && !ehQuadro()) { await moverPara(a.numero, chave); desenharLista(); return depois(); } // abre o registro da conclusão: o cartão volta
+        await moverPara(a.numero, chave);
+        if (podeOrdenarQuadro()) await priorizar(a.numero, cima, baixo);
+      } else if (podeOrdenarQuadro() && !igual) {
+        await priorizar(a.numero, cima, baixo);
+      }
+      await depois();
+      /* se a gravação falhou, o banco não avisa a tela: desenha de novo, para o cartão voltar ao lugar certo */
+      setTimeout(() => { if (!arr) desenharLista(); }, 700);
+    }
+    lista.addEventListener("pointerdown", (e) => {
+      if (arr?.ativo || e.button > 0) return;
+      if (arr) { clearTimeout(arr.relogio); arr = null; } // gesto que não chegou a começar
+      const puxador = e.target.closest?.("[data-puxar]");
+      let item;
+      let modo;
+      if (puxador) { item = puxador.closest(".item"); modo = "lista"; e.preventDefault(); }
+      else if (ui.modo === "quadro") {
+        item = e.target.closest?.(".cartao-quadro");
+        if (!item || e.target.closest(SEM_ARRASTE)) return;
+        modo = "quadro";
+      } else return;
+      const numero = Number(item.dataset.numero);
+      const l = linhaDe(numero);
+      if (!l || (modo === "quadro" && !podeArrastarCartao(l))) return;
+      const toque = e.pointerType === "touch";
+      arr = { numero, item, modo, x0: e.clientX, y0: e.clientY, px: e.clientX, py: e.clientY, id: e.pointerId, toque, ativo: false, moveu: false, relogio: null };
+      /* no quadro, o dedo precisa segurar um instante: antes disso, o gesto é rolar o quadro */
+      if (toque && modo === "quadro") {
+        arr.relogio = setTimeout(() => { arr.relogio = null; navigator.vibrate?.(10); levantar(); }, 380);
+      }
     });
-    const soltar = async (cancelar) => {
-      if (!puxando) return;
-      const { numero, item, irmaos, indice, quadro, colunaOrigem, destino } = puxando;
-      puxando = null;
-      item.classList.remove("puxando");
-      limparAlvos();
-      lista.querySelectorAll(".coluna.alvo").forEach((c) => c.classList.remove("alvo"));
-      if (cancelar || indice == null) return;
-      const depoisDe = irmaos[indice - 1] ? Number(irmaos[indice - 1].dataset.numero) : null;
-      const antesDe = irmaos[indice] ? Number(irmaos[indice].dataset.numero) : null;
-      /* outra coluna do quadro: muda a situação e a posição de uma vez (Concluídas abre o registro da conclusão, sem posição) */
-      if (quadro && destino && destino !== colunaOrigem) {
-        await moverPara(numero, destino);
-        if (destino !== "concluida") priorizar(numero, depoisDe, antesDe);
+    lista.addEventListener("pointermove", (e) => {
+      if (!arr || e.pointerId !== arr.id) return;
+      arr.px = e.clientX;
+      arr.py = e.clientY;
+      const longe = Math.hypot(arr.px - arr.x0, arr.py - arr.y0);
+      if (!arr.ativo) {
+        if (arr.toque && arr.modo === "quadro") { if (longe > 10) { clearTimeout(arr.relogio); arr = null; } return; } // era rolagem
+        if (longe > 4) levantar();
         return;
       }
-      const todos = irmaosDe(item);
-      const pos = todos.indexOf(item);
-      const [cima, baixo] = [todos[pos - 1], todos[pos + 1]].map((x) => (x ? Number(x.dataset.numero) : null));
-      if (cima === depoisDe && baixo === antesDe) return; // soltou onde estava
-      priorizar(numero, depoisDe, antesDe);
-    };
-    lista.addEventListener("pointerup", () => soltar(false));
-    lista.addEventListener("pointercancel", () => soltar(true));
-    /* setas no puxador: sobe ou desce uma posição entre as irmãs */
+      if (longe > 8) arr.moveu = true;
+      posicionarCartao();
+    });
+    lista.addEventListener("pointerup", (e) => {
+      if (!arr || e.pointerId !== arr.id) return;
+      if (arr.ativo && arr.toque && !arr.moveu) return soltar(false, { menu: true }); // segurou e soltou: menu do cartão
+      soltar(false);
+    });
+    lista.addEventListener("pointercancel", (e) => { if (arr && e.pointerId === arr.id) soltar(true); });
+    /* depois de segurar, o dedo arrasta o cartão em vez de rolar a página */
+    lista.addEventListener("touchmove", (e) => { if (arr?.ativo) e.preventDefault(); }, { passive: false });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && arr?.ativo) { e.stopPropagation(); soltar(true); } }, true);
+  }
+  /** Setas no puxador da lista: sobem ou descem a ação uma posição entre as irmãs. */
+  function ligarTecladoDaPrioridade() {
     lista.addEventListener("keydown", (e) => {
       const puxador = e.target.closest?.("[data-puxar]");
       if (!puxador || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
@@ -1467,39 +1601,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
   function ligarArraste() {
     ligarArrasteDeColunas();
-    lista.addEventListener("dragstart", (e) => {
-      const cartao = e.target.closest?.(".cartao-quadro");
-      if (!cartao) return;
-      if (puxando) { e.preventDefault(); return; } // o puxador da prioridade tem o seu próprio arrastar
-      arrastada = Number(cartao.dataset.numero);
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", String(arrastada));
-      cartao.classList.add("arrastando");
-    });
-    lista.addEventListener("dragend", (e) => {
-      e.target.closest?.(".cartao-quadro")?.classList.remove("arrastando");
-      for (const c of lista.querySelectorAll(".coluna.alvo")) c.classList.remove("alvo");
-      arrastada = null;
-    });
-    lista.addEventListener("dragover", (e) => {
-      const coluna = e.target.closest?.(".coluna");
-      if (!coluna || arrastada == null || !destinoValido(coluna.dataset.coluna, arrastada)) return;
-      e.preventDefault();
-      coluna.classList.add("alvo");
-    });
-    lista.addEventListener("dragleave", (e) => {
-      const coluna = e.target.closest?.(".coluna");
-      if (coluna && !coluna.contains(e.relatedTarget)) coluna.classList.remove("alvo");
-    });
-    lista.addEventListener("drop", async (e) => {
-      const coluna = e.target.closest?.(".coluna");
-      if (!coluna || arrastada == null) return;
-      e.preventDefault();
-      const numero = arrastada;
-      coluna.classList.remove("alvo");
-      if (!destinoValido(coluna.dataset.coluna, numero)) return;
-      moverPara(numero, coluna.dataset.coluna);
-    });
+    ligarArrasteDeCartoes();
   }
   /** Leva a ação para a coluna (arrastar, no computador; menu do cartão, no celular). Concluídas abre o registro da conclusão. */
   async function moverPara(numero, destino) {
@@ -1643,7 +1745,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     let engolirClique = false;
     const parar = () => { clearTimeout(relogio); relogio = null; };
     lista.addEventListener("pointerdown", (e) => {
-      if (e.pointerType !== "touch" || !["lista", "quadro"].includes(ui.modo)) return;
+      if (e.pointerType !== "touch" || ui.modo !== "lista") return; // no quadro, segurar levanta o cartão (ligarArrasteDeCartoes)
       const cartao = e.target.closest(".linha[data-abrir-acao]");
       if (!cartao || e.target.closest("[data-puxar], [data-editando], [data-marcar]")) return;
       inicio = { x: e.clientX, y: e.clientY };
@@ -1937,8 +2039,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         aoMudar: (id, ligado) => (ligado ? store.acrescentarResponsavelNaAcao(espacoId, numero, id) : store.retirarResponsavelDaAcao(espacoId, numero, id)),
       });
     }
-    const arrastavel = no.getAttribute("draggable") === "true";
-    if (arrastavel) no.setAttribute("draggable", "false"); // no quadro, arrastar não pode roubar a seleção do texto
     editando = true;
     editarTexto(campo, {
       valor: tipo === "rotulo" ? acao.rotulo : acao.descricao ?? "",
@@ -1948,7 +2048,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         return store.alterarAcao(espacoId, numero, { [tipo]: novo });
       },
       aoTerminar: () => {
-        if (arrastavel) no.setAttribute("draggable", "true");
         editando = false;
         if (redesenharDepois) { redesenharDepois = false; desenhar(); }
       },
@@ -1970,7 +2069,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const parar = store.acompanharEspaco(espacoId, (dados) => {
     fila = fila.then(async () => {
       derivar(dados, dados.responsaveis, await store.lerCalendarioGeral());
-      if (editando) redesenharDepois = true; else desenhar();
+      if (editando || arr) redesenharDepois = true; else desenhar(); // durante um arrastar, a tela só é refeita ao soltar
       if (ui.entregas === null && ehPlano()) carregarEntregas(); // passo 2.6: o aviso "sem entregas" precisa delas
       janela?.atualizar(dadosDaJanela());
       novaJanela?.atualizar(dadosDaJanela());
