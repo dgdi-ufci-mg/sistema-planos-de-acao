@@ -4,8 +4,9 @@
  * - No computador, com a barra recolhida: o botão de painel no canto esquerdo da barra do topo abre a barra
  *   (revisto em 26/10/2026, decisão do responsável: o puxador na borda esquerda, de 23/10, saiu), e Ctrl+B (⌘B)
  *   abre e recolhe.
- * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar"; no meio, os espaços,
- *   cada um com a engrenagem de "Configurar este espaço", e "Novo espaço"; no pé (24/10/2026, avaliação de
+ * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar", "Buscar" e, logo abaixo, "Novo espaço"
+ *   (29/10/2026, decisão do responsável: sempre à vista, sem depender do tamanho da lista); no meio, os espaços,
+ *   cada um com a engrenagem de "Configurar este espaço"; no pé (24/10/2026, avaliação de
  *   usabilidade), à vista "Ajuda e manual" e "Configurar o sistema"; recolhidos em "Mais", a Lixeira, a "Extração de dados"
  *   (passo 2.10), "Gestão da estratégia" (link para o módulo Superior, passo 2.5) e "Instalar como aplicativo".
  *   A Legenda passou para o menu "Exibir" do espaço.
@@ -176,6 +177,7 @@ export function mostrarNavegacao(opcoes) {
   document.querySelector(".lateral").innerHTML = `
     <div class="lateral-conta">${contaHtml}</div>
     ${opcoes.aoBuscar ? `<button type="button" class="lateral-acao lateral-buscar" data-item="buscar" aria-keyshortcuts="Control+K Meta+K">${ICONES.buscar}Buscar<kbd>${atalhoDaBusca()}</kbd></button>` : ""}
+    ${podeCriar ? `<button type="button" class="lateral-acao lateral-novo" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}
     <nav class="lateral-espacos" aria-label="Espaços">
       ${grupos.map((g) => `<section class="lateral-grupo"><h2 class="lateral-rotulo lateral-titulo-grupo">${g.tipo ? `<span class="lateral-icone-grupo" aria-hidden="true">${ICONES[ICONE_DO_TIPO[g.tipo]] ?? ""}</span>` : ""}${g.titulo}</h2>
       <ul>${g.espacos.map(itemHtml).join("")}</ul></section>`).join("")}
@@ -183,7 +185,6 @@ export function mostrarNavegacao(opcoes) {
       ${encerrados.length ? `<details class="lateral-encerrados"${encerrados.some((e) => e.id === abertoId) ? " open" : ""}>
         <summary class="lateral-rotulo">Encerrados <span class="n">${encerrados.length}</span></summary>
         <ul>${encerrados.map(itemHtml).join("")}</ul></details>` : ""}
-      ${podeCriar ? `<button type="button" class="lateral-acao" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}
     </nav>
     <div class="lateral-pe">
       <details class="lateral-mais" data-lateral-mais${lerMais() ? " open" : ""}>

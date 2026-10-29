@@ -1,5 +1,6 @@
 /**
- * Barra lateral (documentação técnica, seção 8.0): a lista de espaços tem só os espaços e "Novo espaço";
+ * Barra lateral (documentação técnica, seção 8.0): "Novo espaço" fica logo abaixo de "Buscar", fora da lista
+ * (decisão do responsável, 29/10/2026); a lista de espaços tem só os espaços;
  * "Espaços abertos à consulta" fica no grupo "Mais" (decisão do responsável, 27/10/2026).
  */
 import { test, describe, before, after } from "node:test";
@@ -23,6 +24,22 @@ describe("Barra lateral", { skip: pular }, () => {
       await p.locator(".lateral-mais [data-item=consulta]").click();
       await assentar(p);
       assert.equal(await p.locator('.camada.aberta [aria-label="Espaços abertos à consulta"]').count(), 1);
+      assert.deepEqual(p.erros, []);
+    });
+
+    test(`${largura} px: "Novo espaço" vem logo abaixo de "Buscar", fora da lista de espaços`, async () => {
+      const p = await sessao.abrir({ largura });
+      if (largura <= 640) { await p.click('[data-inferior="espacos"]'); await assentar(p); }
+      assert.equal(await p.locator(".lateral-espacos [data-item=novo]").count(), 0);
+      assert.equal(await p.locator(".lateral-buscar + [data-item=novo]").count(), 1);
+      const buscar = await p.locator(".lateral-buscar").boundingBox();
+      const novo = await p.locator(".lateral [data-item=novo]").boundingBox();
+      const lista = await p.locator(".lateral-espacos").boundingBox();
+      assert.ok(novo.y > buscar.y && novo.y + novo.height <= lista.y + 1, "entre Buscar e a lista");
+      if (largura > 640) {
+        await p.locator(".lateral [data-item=novo]").click();
+        await p.getByRole("heading", { name: "Novo espaço de planejamento" }).waitFor({ state: "visible", timeout: 3000 });
+      }
       assert.deepEqual(p.erros, []);
     });
   }

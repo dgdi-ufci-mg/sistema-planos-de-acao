@@ -1786,6 +1786,9 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 
 /* busca e paleta de comandos (Ctrl+K, 24/10/2026; item 7 da avaliação de usabilidade) */
 .lateral-buscar { margin-bottom: 6px; }
+/* "Novo espaço" logo abaixo de "Buscar" (29/10/2026): os dois juntos, e o respiro antes da lista */
+.lateral-buscar + .lateral-novo { margin-top: -4px; }
+.lateral-novo { margin-bottom: 6px; }
 .lateral-buscar kbd, .busca kbd {
   font: 600 .7rem/1 var(--f-dados); color: var(--muted); border: 1px solid var(--line); border-bottom-width: 2px;
   border-radius: 4px; padding: 2px 5px; background: var(--bg);
@@ -2068,7 +2071,6 @@ button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: 
 .lateral-icone-grupo { display: inline-flex; color: var(--accent); }
 .lateral-icone-grupo .icone { width: 15px; height: 15px; }
 .lateral-grupo .espaco-item { margin-left: 4px; }
-.lateral-espacos > [data-item="novo"] { margin-top: 10px; }
 /* zoom do cronograma (27/10/2026): − nome +, como no MS Project */
 .crono-zoom { display: inline-flex; align-items: center; gap: 6px; }
 .crono-zoom .botao { width: 32px; height: 32px; padding: 0; justify-content: center; }
