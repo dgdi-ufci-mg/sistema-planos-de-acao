@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 29/10/2026 (versão 229 da página)
+**Última atualização deste documento:** 29/10/2026 (versão 230 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2189,3 +2189,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 227 | Correção: no Quadro, no computador, a página podia passar a rolar quando algo acima dele mudava de altura depois da última medida (por exemplo, a simulação terminando num aparelho lento); era a causa do teste da tela larga que falhava às vezes. A altura do quadro passa a ser medida pelo início dele na página e se refaz quando muda o que está acima (seção 8.4, "Quadro na janela inteira"). Teste novo e determinístico. Sem mudança nos dados |
 | 228 | Strata, Mapa (item 11 do lote 6): ordem pessoal, arrastar pontos com o mouse no computador, guardada por pessoa em `usuarios/{e-mail}/preferencias/mapa`, e "Voltar ao automático". **Muda o banco e o `firestore.rules`: publicar as regras no console do Firebase.** Dicionário 4.11.5 (seção 8, "Mapa") |
 | 229 | Correção da animação de arrastar cartões entre colunas do quadro: com uma ordem que não é "Prioridade da equipe", a vaga ia para o fim da coluna e o cartão saltava para o lugar certo depois de gravar (também ao voltar à coluna de origem); agora a vaga vai direto para o lugar definitivo. Novo teste de navegador. Sem mudança no banco (seção 8, "Prioridade da equipe") |
+| 230 | Strata, Mapa: a ordem pessoal passa a valer na hora (gravação em segundo plano, com volta atrás se falhar) e, ao soltar o ponto, o mapa refeito aparece sem deslizar. Não muda o banco |
