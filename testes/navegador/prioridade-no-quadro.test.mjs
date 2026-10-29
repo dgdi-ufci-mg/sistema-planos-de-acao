@@ -128,6 +128,44 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("ao trocar de coluna, as colunas mudam de altura aos poucos e nenhum cartão fica cortado (correção de 29/10/2026)", async () => {
+    const p = await abrirQuadro(sessao, { largura: 1366, altura: 768 });
+    const a = await centro(cartaoDe(p, 0, 0).locator(".rotulo"));
+    const b = await coluna(p, 1).boundingBox();
+    await p.mouse.move(a.x, a.y);
+    await p.mouse.down();
+    await p.mouse.move(a.x + 4, a.y + 4, { steps: 2 });
+    await assentar(p, 300);
+    /* a cada quadro de animação: altura de cada coluna e cartões além da borda de baixo da sua coluna */
+    await p.evaluate(() => {
+      window.__medidas = [];
+      const fim = performance.now() + 600;
+      const medir = () => {
+        const colunas = [...document.querySelectorAll(".quadro-tarefas .coluna-cartoes")].map((c) => {
+          const r = c.getBoundingClientRect();
+          const cortados = [...c.querySelectorAll(":scope > .item:not(.levantado)")].filter((x) => x.getBoundingClientRect().bottom > r.bottom + 1).length;
+          return { altura: r.height, cortados };
+        });
+        window.__medidas.push(colunas);
+        if (performance.now() < fim) requestAnimationFrame(medir);
+      };
+      medir();
+    });
+    await p.mouse.move(b.x + b.width / 2, b.y + 90, { steps: 4 });
+    await assentar(p, 700);
+    const medidas = await p.evaluate(() => window.__medidas);
+    await p.mouse.up();
+    await assentar(p, 700);
+    assert.ok(medidas.length > 10);
+    for (const [i, quadro] of medidas.entries()) {
+      for (const [k, c] of quadro.entries()) {
+        assert.equal(c.cortados, 0, `cartão cortado na coluna ${k}, quadro ${i}`);
+        if (i) assert.ok(Math.abs(c.altura - medidas[i - 1][k].altura) < 60, `a coluna ${k} mudou de altura de uma vez (quadro ${i})`);
+      }
+    }
+    assert.deepEqual(p.erros, []);
+  });
+
   test("clicar no cartão do quadro, sem arrastar, continua abrindo a ação", async () => {
     const p = await abrirQuadro(sessao, { largura: 1280 });
     await cartaoDe(p, 0, 0).locator(".rotulo").click();
