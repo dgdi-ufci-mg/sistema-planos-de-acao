@@ -2,7 +2,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { simboloSvg, logotipoSvg } from "../js/marca.js";
+import { simboloSvg, logotipoSvg, strataLogotipoSvg } from "../js/marca.js";
 import { NOME } from "../js/identidade.js";
 
 describe("marca do sistema", () => {
@@ -26,5 +26,15 @@ describe("marca do sistema", () => {
       assert.ok(svgs.includes(`class="${classe}"`), `desenho sem ${classe}`);
       assert.match(css, new RegExp(`\\.${classe}\\b[^{]*\\{[^}]*var\\(--(accent|warn)\\)|\\.${classe}\\b[^{]*\\{[^}]*opacity`), `estilo sem ${classe}`);
     }
+  });
+
+  it("o logotipo do Strata diz o nome do módulo ao leitor de tela, guarda a proporção e usa as cores do tema (29/10/2026)", () => {
+    const svg = strataLogotipoSvg(24);
+    const app = readFileSync(new URL("../js/superior/app.js", import.meta.url), "utf8");
+    const nome = app.match(/NOME_DO_MODULO = "([^"]+)"/)[1];
+    assert.match(svg, new RegExp(`aria-label="${nome}"`), "o desenho do nome precisa ser refeito se o nome mudar");
+    assert.match(svg, /width="104" height="24"/);
+    assert.doesNotMatch(svg, /#[0-9a-f]{3,6}\b/i);
+    for (const classe of ["strata-camada", "strata-sol", "marca-nome", "marca-nome-traco"]) assert.ok(svg.includes(`class="${classe}"`), `desenho sem ${classe}`);
   });
 });

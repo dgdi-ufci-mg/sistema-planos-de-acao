@@ -57,3 +57,26 @@ export const DESENHO_DO_STRATA = `
 export function strataSvg(tamanho = 26) {
   return `<svg class="marca marca-strata" viewBox="18 32 220 220" width="${tamanho}" height="${tamanho}" aria-hidden="true" focusable="false">${DESENHO_DO_STRATA}</svg>`;
 }
+
+/**
+ * Logotipo do Strata (29/10/2026): o símbolo à esquerda e o nome em caixa alta, desenhado no mesmo traço do nome do
+ * Sextante (altura das letras 80, espessura 10,5): o S e o T são os mesmos; os A, sem travessão, também; o R é
+ * novo, com a barra do meio na altura da do E. Cores do tema da página do Strata: nome e camadas em `--accent`
+ * (anil), camada de cima em `--strata-sol` (âmbar). O nome é desenhado, e não escrito com fonte; se o nome do
+ * Strata mudar (`NOME_DO_MODULO`, em `js/superior/app.js`), o desenho precisa ser refeito.
+ */
+export function strataLogotipoSvg(altura = 24) {
+  const largura = Math.round((altura * 682.38) / 158);
+  return `<svg class="marca marca-strata-logotipo" viewBox="6 46 682.38 158" width="${largura}" height="${altura}" role="img" aria-label="Strata" focusable="false">
+  <g transform="translate(8 34) scale(0.66)">${DESENHO_DO_STRATA}</g>
+  <g transform="translate(-61 -5)">
+    <path class="marca-nome-traco" d="M317.25 106.75C311.75 97.75 301.24 95.25 293 95.25C277.55 95.25 268.8 101.25 268.8 112.25C268.8 125.25 279.61 126.8 293 130C308.45 133.6 318.75 141 318.75 147.25C318.75 159.75 308.45 164.75 293 164.75C282.7 164.75 270.34 162.25 266.25 152.25" fill="none" stroke-width="10.5"/>
+    <path class="marca-nome-traco" d="M423.25 95.25H447C460 95.25 467 102.5 467 112.75C467 123 460 130 447 130H423.25" fill="none" stroke-width="10.5"/>
+    <path class="marca-nome" d="M334 90H402V100.5H373.25V170H362.75V100.5H334Z
+      M418 90H428.5V170H418Z M442 130H454L478.5 170H466Z
+      M490 170L536.19 90L582.38 170H570.25L536.19 111L502.12 170Z
+      M570 90H638V100.5H609.25V170H598.75V100.5H570Z
+      M639 170L685.19 90L731.38 170H719.25L685.19 111L651.12 170Z"/>
+  </g>
+</svg>`;
+}

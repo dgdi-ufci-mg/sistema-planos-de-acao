@@ -30,6 +30,16 @@ describe("Mapa do Strata", { skip: pular }, () => {
         assert.deepEqual(p.erros, []);
       });
 
+      test("a barra do topo mostra o logotipo do Strata, inteiro e sem cortar (29/10/2026)", async () => {
+        const p = await sessao.abrir({ ...o, ...ABRIR });
+        const logo = p.locator(".superior-marca .marca-strata-logotipo");
+        assert.equal(await logo.count(), 1);
+        const c = await logo.boundingBox();
+        assert.ok(c.width > 90 && c.height === 24, `tamanho ${c.width}×${c.height}`);
+        assert.ok(c.x >= 0 && c.x + c.width <= o.largura, "o logotipo cabe na largura");
+        assert.ok(await sem(p), "a página não rola para o lado");
+      });
+
       test("nenhum ponto fica fora da sua faixa", async () => {
         const p = await sessao.abrir({ ...o, ...ABRIR });
         const fora = await p.evaluate(() => {
