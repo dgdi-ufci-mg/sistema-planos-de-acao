@@ -14,7 +14,7 @@
  * - os nomes das camadas ficam presos à borda esquerda, em tamanho fixo, e não encolhem com o zoom.
  */
 import {
-  calcularMapa, caminhoDaFaixa, caminhoDaLigacao, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
+  calcularMapa, caminhoAlem, caminhoDaFaixa, caminhoDaLigacao, estrelasDoCeu, linhaDoSolo, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
 } from "../mapa.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -25,7 +25,10 @@ const ESCALA_DOS_NOMES = 0.65;
 const TAMANHO_DO_NOME = 13;
 const TAMANHO_MAXIMO_DO_CODIGO = 20;
 const TAMANHO_APARENTE_DO_CODIGO = 9;
+/** Quanto as faixas, o céu e o solo continuam para os lados e para baixo, em larguras do mapa (só desenho). */
+const ALEM = 3;
 
+let contador = 0; // identificadores únicos dos gradientes, se houver mais de um mapa na página
 const criar = (nome, atributos = {}) => {
   const e = document.createElementNS(NS, nome);
   for (const [k, v] of Object.entries(atributos)) e.setAttribute(k, v);
@@ -38,9 +41,10 @@ const criar = (nome, atributos = {}) => {
  *   ordemPessoal?: Record<string, string[]>, podeOrdenar?: boolean, aoReordenar?: (camada: string, chaves: string[]) => Promise<void>}} contexto
  *   `ordemPessoal`: a ordem da pessoa, camada → chaves; `podeOrdenar`: ela pode arrastar pontos (só com o mouse, no computador); `aoReordenar` recebe a nova ordem de uma camada
  *   `estado` guarda a vista e o ponto selecionado entre um desenho e outro da tela; `aoAbrir` recebe o ponto do cartão
+ *   `folga`: pixels reservados no alto e no pé da área, que ficam sob o título e o menu da tela cheia (o conteúdo não vai para baixo deles)
  * @returns {{destruir: () => void}}
  */
-export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {}, ordemPessoal = {}, podeOrdenar = false, aoReordenar = async () => {} }) {
+export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {}, ordemPessoal = {}, podeOrdenar = false, aoReordenar = async () => {}, folga = () => ({ topo: 0, base: 0 }) }) {
   area.innerHTML = `
     <svg class="mapa-svg" role="group" aria-label="Mapa do desdobramento: do alto, o que vem primeiro; embaixo, os Planos de Ação" focusable="false">
       <g data-mapa-mundo></g>
@@ -66,7 +70,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   let quadro = 0;
 
   const conteudo = () => ({ w: mapa.largura, h: mapa.altura });
-  const limites = () => ({ conteudo: conteudo(), vista, escalaMaxima: ESCALA_MAXIMA });
+  const limites = () => ({ conteudo: conteudo(), vista, escalaMaxima: ESCALA_MAXIMA, folga: folga() });
 
   /* ---------- desenho ---------- */
   function desenhar() {
@@ -76,16 +80,35 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     elementos.clear();
     ligacoesVivas.length = 0;
     mundo.replaceChildren();
+    const grupoCeu = criar("g", { "aria-hidden": "true" }); // céu e solo da tela cheia: as faixas continuam para os lados, só como desenho
     const grupoFaixas = criar("g");
     const grupoEstrelas = criar("g", { class: "mapa-estrelas", "aria-hidden": "true" });
     const grupoLigacoes = criar("g");
     const grupoNos = criar("g");
-    mundo.append(grupoFaixas, grupoEstrelas, grupoLigacoes, grupoNos);
+    mundo.append(grupoCeu, grupoFaixas, grupoEstrelas, grupoLigacoes, grupoNos);
 
     const quantas = mapa.faixas.length;
+    const alem = ALEM * mapa.largura;
+    const posicao = (i) => `${quantas > 1 ? Math.round(100 * (1 - i / (quantas - 1))) : 0}%`; // 0 no chão (claro de dia) até 100 no alto (anil de dia, preto de noite)
+    for (const e of estrelasDoCeu(mapa, { alem, altura: 1.5 * mapa.largura })) grupoCeu.append(criar("circle", { class: "mapa-estrela", cx: e.x, cy: e.y, r: e.r, "fill-opacity": e.o }));
+    mapa.faixas.forEach((f, i) => {
+      const fora = criar("path", { class: "mapa-faixa-alem", d: caminhoAlem(f, mapa, alem) });
+      fora.style.setProperty("--pos", posicao(i));
+      grupoCeu.append(fora);
+    });
+    const base = mapa.faixas[quantas - 1].base;
+    const gradiente = criar("linearGradient", { id: `mapa-solo-${++contador}`, gradientUnits: "userSpaceOnUse", x1: 0, x2: 0, y1: base, y2: base + mapa.largura });
+    gradiente.append(criar("stop", { offset: 0, class: "mapa-solo-cima" }), criar("stop", { offset: 1, class: "mapa-solo-baixo" }));
+    grupoCeu.append(criar("defs"));
+    grupoCeu.lastChild.append(gradiente);
+    grupoCeu.append(
+      criar("path", { class: "mapa-solo", fill: `url(#${gradiente.id})`, d: caminhoAlem({ topo: base, base: base + alem }, mapa, alem) }),
+      criar("path", { class: "mapa-solo-brilho", d: linhaDoSolo(mapa, alem) }),
+      criar("path", { class: "mapa-solo-linha", d: linhaDoSolo(mapa, alem) }),
+    );
     mapa.faixas.forEach((f, i) => {
       const p = criar("path", { class: "mapa-faixa", "data-camada": f.id, d: caminhoDaFaixa(f, mapa) });
-      p.style.setProperty("--pos", `${quantas > 1 ? Math.round(100 * (1 - i / (quantas - 1))) : 0}%`); // 0 no chão (claro de dia) até 100 no alto (anil de dia, preto de noite)
+      p.style.setProperty("--pos", posicao(i));
       grupoFaixas.append(p);
     });
     for (const e of estrelasDoMapa(mapa)) grupoEstrelas.append(criar("circle", { class: "mapa-estrela", cx: e.x, cy: e.y, r: e.r, "fill-opacity": e.o })); // só aparecem no tema noite
@@ -288,7 +311,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const alt = cartao.offsetHeight;
     const esquerda = Math.max(8, Math.min(vista.w - larg - 8, px - larg / 2));
     const abaixo = py + 14 + alt <= vista.h - 8;
-    const topo = abaixo ? py + 14 : Math.max(8, py - 14 - alt);
+    const topo = abaixo ? py + 14 : Math.max(8 + folga().topo, py - 14 - alt); // não sobe para baixo do título e do menu
     cartao.style.transform = `translate(${esquerda.toFixed(1)}px, ${topo.toFixed(1)}px)`;
   }
 
@@ -319,12 +342,13 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const xMundo = Math.min(mapa.largura, Math.max(0, (12 - t.x) / t.k));
     const curva = deslocamentoCurvo(xMundo, mapa.centro, mapa.raio);
     const fonte = `${Math.max(8, Math.min(11, 11 * t.k)).toFixed(1)}px`; // menor quando o mapa inteiro é reduzido, para não cobrir os pontos
+    const livre = folga().topo; // o nome da camada não entra sob o título e o menu da tela cheia
     for (const s of rotulos.children) {
       s.style.fontSize = fonte;
       const f = mapa.faixas.find((x) => x.id === s.dataset.camada);
       const topo = t.y + t.k * (f.topo + curva);
       const base = t.y + t.k * (f.base + curva);
-      const de = Math.max(topo, 0);
+      const de = Math.max(topo, livre);
       const ate = Math.min(base, vista.h);
       const cabe = ate - de >= 16;
       s.hidden = !cabe;
