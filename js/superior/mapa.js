@@ -463,7 +463,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     svg.dataset.niveis = niveis.join(" ");
     const foco = estado.selecionado ?? previa;
     /*
-     * Rótulo ponto a ponto (30/10/2026, variação em branch): cada ponto mostra o que cabe no espaço livre dele, na tela
+     * Rótulo ponto a ponto (30/10/2026, versão 249): cada ponto mostra o que cabe no espaço livre dele, na tela
      * e na escala de agora, sem esperar a faixa inteira. O espaço vai até o primeiro ponto da mesma faixa, à direita,
      * que fique perto o bastante na altura para o texto encostar nele (a altura da letra mais 4 px), ou até a ponta
      * do mapa. Com espaço para o nome (72 px), o nome, cortado com reticências se preciso; senão, o código, se couber;

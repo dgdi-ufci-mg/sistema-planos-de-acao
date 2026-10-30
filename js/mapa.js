@@ -127,7 +127,7 @@ export function calcularMapa({
   const subir = () => { for (let i = lista.length - 2; i >= 0; i--) reordenar(lista[i], (n) => subordinados.get(n.chave) ?? []); };
   descer(); subir(); descer(); subir(); descer();
   /*
-   * Agrupamento (30/10/2026, variação em branch): da segunda faixa para baixo, os filhos de um mesmo pai ficam juntos,
+   * Agrupamento (30/10/2026, versão 249): da segunda faixa para baixo, os filhos de um mesmo pai ficam juntos,
    * num bloco, na ordem dos pais (o pai de cada ponto, para isso, é o superior mais à esquerda). Dentro do bloco vale
    * a ordem do baricentro. Os pontos sem superior mostrado vão ao fim. A ordem pessoal, quando há, vem depois e vale
    * sobre o agrupamento. Entre um bloco e outro fica uma folga a mais (`folgaEntreBlocos`). As linhas continuam retas.
@@ -179,7 +179,7 @@ export function calcularMapa({
     for (let i = l.length - 2; i >= 0; i--) l[i].x = Math.min(l[i].x, l[i + 1].x - passo(i + 1));
   };
   /*
-   * Pais sobre os blocos (30/10/2026, variação em branch; como nos desenhos de árvore): cada bloco de filhos se
+   * Pais sobre os blocos (30/10/2026, versão 249; como nos desenhos de árvore): cada bloco de filhos se
    * desloca inteiro para ficar sob o pai, e depois cada pai se centraliza sobre o seu bloco (a média dos filhos do
    * bloco), de baixo para cima; duas rodadas, sempre sem passar do vizinho. A última palavra é dos pais, então as
    * linhas de cada pai descem curtas e quase verticais até o seu bloco.
