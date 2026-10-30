@@ -6,6 +6,8 @@
  *   30/10/2026; antes, "Só o que vale hoje") e o **menu**;
  * - o menu leva às **folhas**, que abrem por cima do mapa:
  *   - Ver como lista (o Desdobramento): a árvore do catálogo, com os Planos de Ação e as entregas (passo 2.6);
+ *   - Ver como planilha (30/10/2026): o catálogo em linhas e colunas, para alterar muitos itens de uma vez
+ *     (js/superior/planilha.js), numa janela grande por cima do mapa escurecido;
  *   - Instrumentos: PEI, PDI, políticas…, com vigência e prorrogações;
  *   - Camadas: o modelo do desdobramento;
  *   - Importar: a carga por planilha;
@@ -28,6 +30,7 @@ import { esqueletoHtml } from "../telas/esqueleto.js";
 import { criarVistaMapa } from "./mapa.js";
 import { FAIXA_PLANOS } from "../mapa.js";
 import { FILTRO_PADRAO, VIGENCIAS, filtrarParaOMapa, mudancasDoFiltro, normalizarFiltro } from "../filtro-do-mapa.js";
+import { abrirPlanilha } from "./planilha.js";
 import {
   avisoDaMissao, camadasAcima, instrumentoVigente, itemVigente, rotuloDoItem, caminhoAteOTopo, subordinadosDe, itensPorCamada, planejarCatalogo,
 } from "../estrategia.js";
@@ -66,6 +69,8 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
   /** rascunho das camadas, editado até "Salvar camadas" */
   let rascunho = null;
   let planoImportacao = null;
+  /** Planilha aberta por cima do mapa (js/superior/planilha.js), ou null */
+  let planilha = null;
 
   /* a tela: o mapa embaixo de tudo, a mensagem de vazio sobre o céu e a folha por cima */
   alvo.innerHTML = `
@@ -92,6 +97,7 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     })));
     rascunho = structuredClone(cat.camadas);
     desenhar();
+    planilha?.atualizar(); // uma alteração feita no painel do item aparece também na planilha aberta
   }
 
   const camadaDe = (id) => cat.camadas.find((c) => c.id === id);
@@ -155,6 +161,7 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
         <p class="tec strata-menu-nota">${gestor ? "Você é Gestor da Estratégia: pode alterar o catálogo." : "Só o Gestor da Estratégia altera o catálogo; aqui você consulta."}</p>
         <div class="strata-menu-grupo">
           ${item('data-abrir-folha="arvore"', "Ver como lista")}
+          ${item("data-ver-planilha", "Ver como planilha")}
           ${gestor ? item("data-novo-item", "Novo item") : ""}
           ${item('data-abrir-folha="instrumentos"', "Instrumentos")}
           ${item('data-abrir-folha="camadas"', "Camadas")}
@@ -267,6 +274,23 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     } else folha.classList.add("aberta");
     const busca = folha.querySelector("[data-busca-arvore]");
     if (busca && ui.busca) { busca.focus(); busca.setSelectionRange(ui.busca.length, ui.busca.length); }
+  }
+
+  /**
+   * "Ver como planilha" (30/10/2026): a Planilha abre por cima do mapa, que fica escurecido ao fundo; a linha escolhida
+   * acende o ponto dela no mapa; no celular, tocar numa linha abre o painel do item, por cima da planilha.
+   */
+  function verComoPlanilha() {
+    if (planilha?.aberta) return;
+    fecharFolha();
+    planilha = abrirPlanilha({
+      store, hoje,
+      ler: () => ({ cat, planos, gestor }),
+      aoGravar: recarregar,
+      aoSelecionar: (id) => { ui.mapa.selecionado = id; vistaMapa?.destacar(id); },
+      aoAbrirItem: (id) => abrirItem(id),
+      aoFechar: () => { planilha = null; comandos?.querySelector("[data-alternar-menu]")?.focus({ preventScroll: true }); },
+    });
   }
 
   /** "Como usar o mapa": o texto de ajuda que ficava sob o mapa. */
@@ -630,6 +654,7 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
   async function comandoComum(t) {
     if (t.dataset.abrirFolha) { if (t.dataset.abrirFolha === "arvore") verComoLista(); else abrirFolha(t.dataset.abrirFolha); return true; }
     if (t.matches("[data-novo-item]")) { alternarMenu(false); abrirNovoItem(); return true; }
+    if (t.matches("[data-ver-planilha]")) { alternarMenu(false); verComoPlanilha(); return true; }
     if (t.matches("[data-voltar-automatico]")) {
       alternarMenu(false);
       const antes = ui.ordemDoMapa;

@@ -664,5 +664,20 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   const escuroDoSistema = matchMedia("(prefers-color-scheme: dark)");
   escuroDoSistema.addEventListener?.("change", mudouTema);
 
-  return { destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); cancelAnimationFrame(molaId); cancelAnimationFrame(planar); } };
+  return {
+    /**
+     * Acende o ponto vindo de fora (a linha escolhida na Planilha, 30/10/2026): fica selecionado, com o caminho aceso, e
+     * dá um pulso curto (sem pulso com "Reduzir movimento"). Ponto fora do mapa (filtro): nada acontece.
+     */
+    destacar(chave) {
+      if (!noDe(chave)) return;
+      selecionar(chave);
+      const g = mundo.querySelector(`.mapa-no[data-no="${CSS.escape(chave)}"]`);
+      if (!g) return;
+      g.classList.remove("pulso");
+      void g.getBoundingClientRect(); // reinicia a animação
+      g.classList.add("pulso");
+      setTimeout(() => g.classList.remove("pulso"), 1400);
+    },
+    destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); cancelAnimationFrame(molaId); cancelAnimationFrame(planar); } };
 }

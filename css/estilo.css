@@ -2300,3 +2300,107 @@ body.strata-cheia { margin: 0; padding: 0; height: 100dvh; overflow: hidden; ove
 .mapa-solo-brilho { fill: none; stroke: var(--mapa-solo); stroke-width: 12; stroke-opacity: .18; }
 .mapa-solo-linha { fill: none; stroke: var(--mapa-solo); stroke-width: 1.4; stroke-opacity: .9; }
 
+
+/* ---------- Strata: Planilha (30/10/2026, pedido do responsável; js/superior/planilha.js) ----------
+   janela grande que sobe do pé da tela, com o Mapa escurecido ao fundo e uma margem em volta; no celular, a tela toda.
+   Fica abaixo dos painéis (z-index 50), para o painel do item abrir por cima dela. */
+.camada.strata-grade-camada { z-index: 45; }
+.strata-grade { position: absolute; inset: 40px 28px 0; display: flex; flex-direction: column; min-height: 0; background: var(--bg);
+  border: 1px solid var(--line); border-bottom: 0; border-radius: 14px 14px 0 0; box-shadow: var(--sombra);
+  transform: translateY(104%); transition: transform var(--mov) var(--mov-curva); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.strata-grade-camada.aberta .strata-grade { transform: none; }
+@media (max-width: 640px) {
+  .strata-grade { inset: 0; border: 0; border-radius: 0; padding-top: env(safe-area-inset-top, 0px); }
+}
+@media (prefers-reduced-motion: reduce) { .strata-grade { transition: none; } }
+.strata-grade-cabeca { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 12px 16px 8px; }
+.strata-grade-cabeca h2 { font-size: 1.2rem; margin: 0; display: flex; align-items: baseline; gap: 8px; }
+.strata-grade-cabeca h2 .tec { font: 400 .85rem var(--f-texto); color: var(--muted); }
+.grade-acoes, .grade-confirmar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.grade-confirmar > span { font-weight: 600; margin-right: 4px; }
+.grade-fechar { display: inline-flex; align-items: center; gap: 4px; }
+.grade-fechar svg { width: 16px; height: 16px; }
+.strata-grade-barra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 16px 10px; border-bottom: 1px solid var(--line); }
+.strata-grade-barra select { min-height: 34px; max-width: 220px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); color: var(--ink); font: 400 .9rem var(--f-texto); padding: 0 6px; }
+.grade-busca { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); color: var(--muted); }
+.grade-busca svg { width: 15px; height: 15px; flex: none; }
+.grade-busca input { border: 0; outline: none; background: none; color: var(--ink); font: 400 .9rem var(--f-texto); width: 160px; }
+.grade-busca:focus-within { border-color: var(--accent); }
+.grade-chave { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); font: 600 .84rem var(--f-texto); cursor: pointer; }
+.grade-chave[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+.grade-botao-colunas { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.grade-botao-colunas svg { width: 16px; height: 16px; }
+@media (max-width: 640px) {
+  .strata-grade-barra { gap: 6px; }
+  .grade-busca { flex: 1 1 100%; } .grade-busca input { width: 100%; }
+  .strata-grade-barra select { flex: 1 1 40%; max-width: none; }
+  .grade-botao-colunas { margin-left: 0; }
+}
+.strata-grade-rolagem { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; background: var(--surface); }
+.grade-vazio { padding: 24px 16px; text-align: center; }
+.strata-grade-pe { padding: 6px 16px; border-top: 1px solid var(--line); font-size: .8rem; color: var(--muted); }
+
+/* a tabela: cabeçalho e primeira coluna presos; linhas agrupadas por camada */
+.grade-estrategia { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font: 400 .92rem var(--f-texto); color: var(--ink); }
+.grade-estrategia th, .grade-estrategia td { border-bottom: 1px solid var(--grid); border-right: 1px solid var(--grid); text-align: left; vertical-align: top; }
+.grade-estrategia thead th { position: sticky; top: 0; z-index: 3; background: var(--sunk); border-bottom: 1px solid var(--line); padding: 0; white-space: nowrap; }
+.grade-ordenar { display: flex; align-items: center; gap: 4px; width: 100%; min-height: 36px; padding: 6px 10px; border: 0; background: none; color: var(--muted); font: 600 .82rem var(--f-texto); text-align: left; cursor: pointer; }
+.grade-ordenar:hover, .grade-ordenar:focus-visible { color: var(--ink); background: var(--grid); outline: none; }
+.grade-seta { font-size: .65rem; color: var(--accent); min-width: 8px; }
+.grade-estrategia .fixa { position: sticky; left: 0; z-index: 2; background: var(--surface); box-shadow: 1px 0 0 var(--line); }
+.grade-estrategia thead .fixa { z-index: 4; background: var(--sunk); }
+.grade-estrategia td { padding: 7px 10px; min-height: 36px; cursor: default; outline: none; position: relative; }
+.grade-estrategia .col-codigo { min-width: 96px; font-family: var(--f-dados); font-size: .84rem; white-space: nowrap; }
+.grade-estrategia .col-nome { min-width: 280px; max-width: 420px; }
+.grade-estrategia .col-camada { min-width: 150px; color: var(--muted); white-space: nowrap; }
+.grade-estrategia .col-instrumento { min-width: 170px; }
+.grade-estrategia .col-vigencia { min-width: 88px; }
+.grade-estrategia .col-superiores { min-width: 240px; max-width: 380px; }
+.grade-estrategia .col-subordinados, .grade-estrategia .col-planos { min-width: 104px; text-align: right; font-family: var(--f-dados); font-size: .84rem; }
+.grade-estrategia tbody td.editavel { cursor: cell; }
+.grade-linha:hover td { background: var(--sunk); }
+.grade-linha.ativa td { background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface)); }
+.grade-estrategia td.celula-ativa { box-shadow: inset 0 0 0 2px var(--accent); }
+/* alterada e ainda não salva: faixa do destaque à esquerda e fundo suave */
+.grade-estrategia td.alterada { background: var(--accent-soft); }
+.grade-estrategia td.alterada::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--accent); }
+/* problema: canto vermelho (impede salvar) ou dourado (só aviso) */
+.grade-estrategia td.com-erro::after, .grade-estrategia td.com-aviso::after { content: ""; position: absolute; top: 0; right: 0; border-style: solid; border-width: 0 9px 9px 0; }
+.grade-estrategia td.com-erro::after { border-color: transparent var(--crit) transparent transparent; }
+.grade-estrategia td.com-aviso::after { border-color: transparent var(--warn) transparent transparent; }
+.grade-estrategia td.com-erro { box-shadow: inset 0 0 0 1px var(--crit); }
+.grade-estrategia td.com-erro.celula-ativa { box-shadow: inset 0 0 0 2px var(--crit); }
+.grade-ficha { display: inline-block; margin: 1px 4px 1px 0; padding: 1px 7px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--line); font-size: .82rem; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.grade-selo { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.grade-selo.sim { background: var(--accent-soft); color: var(--accent-ink); }
+.grade-selo.nao { background: var(--sunk); color: var(--muted); border: 1px solid var(--line); }
+.grade-grupo th { position: sticky; left: 0; padding: 0; background: var(--bg); border-right: 0; }
+.grade-grupo-botao { position: sticky; left: 0; display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 6px 12px; border: 0; background: none; color: var(--ink); font: 700 .88rem var(--f-titulo); cursor: pointer; }
+.grade-grupo-botao .tec { font: 400 .8rem var(--f-texto); color: var(--muted); }
+.grade-grupo-seta { width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg) translate(-2px, -2px); transition: transform var(--mov-rapido); }
+.grade-grupo-botao[aria-expanded="false"] .grade-grupo-seta { transform: rotate(-45deg); }
+.grade-grupo-alerta { padding: 1px 8px; border-radius: 999px; background: var(--crit-soft); color: var(--crit-ink); font: 600 .76rem var(--f-texto); }
+.grade-editor { width: 100%; min-width: 0; margin: -4px -6px; padding: 3px 6px; border: 0; border-radius: 4px; outline: 2px solid var(--accent); background: var(--surface); color: var(--ink); font: inherit; }
+select.grade-editor { margin: -4px -6px; }
+
+/* listas que abrem junto da célula ou do botão: os superiores ("Vem de") e as colunas */
+.grade-escolha { position: absolute; z-index: 10; max-height: min(420px, 70%); display: flex; flex-direction: column; gap: 8px; padding: 12px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--sombra); }
+.grade-escolha-titulo { margin: 0; font-weight: 600; font-size: .9rem; }
+.grade-escolha-busca { min-height: 34px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--bg); color: var(--ink); font: 400 .9rem var(--f-texto); }
+.grade-escolha-lista { overflow-y: auto; min-height: 0; display: flex; flex-direction: column; gap: 2px; }
+.grade-escolha-opcao { display: flex; align-items: flex-start; gap: 8px; padding: 6px 4px; border-radius: 6px; cursor: pointer; font-size: .9rem; }
+.grade-escolha-opcao:hover { background: var(--sunk); }
+.grade-escolha-opcao[hidden] { display: none; }
+.grade-escolha .botoes { display: flex; gap: 6px; justify-content: flex-end; }
+.grade-colunas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.grade-colunas li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; }
+.grade-colunas label { display: flex; align-items: center; gap: 8px; font-size: .9rem; }
+.grade-colunas-mover { display: flex; gap: 2px; }
+.grade-colunas-mover .botao-icone { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); cursor: pointer; }
+.grade-colunas-mover .botao-icone:disabled { opacity: .35; cursor: default; }
+
+/* Mapa: o ponto escolhido na Planilha dá um pulso curto */
+.mapa-no.pulso .mapa-bolinha { transform-box: fill-box; transform-origin: center; animation: mapa-pulso 1.3s var(--mov-curva); }
+@keyframes mapa-pulso { 0%, 100% { transform: none; } 25% { transform: scale(1.9); } 50% { transform: scale(1); } 70% { transform: scale(1.5); } }
+@media (prefers-reduced-motion: reduce) { .mapa-no.pulso .mapa-bolinha { animation: none; } }
