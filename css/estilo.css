@@ -1601,6 +1601,12 @@ button.item-estrategia:hover, a.item-estrategia:hover { background: var(--surfac
 .item-estrategia-nome { font-weight: 600; }
 .item-estrategia .tec { font-style: normal; }
 .item-estrategia.plano .item-estrategia-nome { color: var(--accent-ink); }
+/* vigência da lista (30/10/2026): a mesma dos Filtros do Mapa; fora da vigência com algo vigente abaixo, apagado e com o sinal */
+.vigencia-lista { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.vigencia-lista legend { float: left; margin-right: 4px; padding: 0; font-size: .78rem; }
+.item-estrategia.esmaecido .item-estrategia-nome, .item-estrategia.esmaecido > .tec { color: color-mix(in srgb, var(--ink) 55%, transparent); }
+.sinal-atencao { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-right: 6px; border-radius: 50%; background: var(--warn); color: var(--mapa-tinta-escura); border: 1px solid var(--mapa-tinta-escura); font-size: 11px; font-weight: 700; vertical-align: 1px; }
+.item-alerta { margin-top: 3px; padding: 2px 8px; border-left: 3px solid var(--warn); border-radius: 4px; background: var(--warn-soft); color: var(--ink); font-size: .78rem; }
 span.item-estrategia.plano { cursor: default; }
 span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .caminho-estrategia { display: block; margin: 0 0 4px 36px; }
@@ -2158,8 +2164,8 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
 .mapa-no.esmaecido .mapa-bolinha, .mapa-no.esmaecido .mapa-nome { opacity: .55; }
 .mapa-no.esmaecido.no-caminho .mapa-bolinha, .mapa-no.esmaecido.no-caminho .mapa-nome, .mapa-no.esmaecido.foco .mapa-nome { opacity: 1; }
 .mapa-sinal { pointer-events: none; }
-.mapa-sinal circle { fill: var(--warn); stroke: var(--warn-ink); stroke-width: 1.2; }
-.mapa-sinal text { fill: var(--warn-ink); font: 700 8px/1 var(--f-texto, sans-serif); }
+.mapa-sinal circle { fill: var(--warn); stroke: var(--mapa-tinta-escura); stroke-width: 1.2; }
+.mapa-sinal text { fill: var(--mapa-tinta-escura); font: 700 8px/1 var(--f-texto, sans-serif); }
 .mapa-cartao-alerta { margin: 2px 0 0; padding: 4px 8px; border-left: 3px solid var(--warn); border-radius: 4px; background: var(--warn-soft); color: var(--ink); font-size: 12px; }
 .mapa-cartao-via { max-width: 100%; }
 .mapa-saindo { pointer-events: none; }

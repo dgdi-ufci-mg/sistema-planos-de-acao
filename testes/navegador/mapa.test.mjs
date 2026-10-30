@@ -333,6 +333,52 @@ describe("Mapa do Strata", { skip: pular }, () => {
       assert.deepEqual(p.erros, []);
     });
 
+    test("Filtros: a lista (Desdobramento) segue a mesma vigência do Mapa, nos dois sentidos, e não os níveis", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      await p.click("[data-alternar-filtros]");
+      await p.uncheck('[data-filtro-camada="politica"]');
+      await p.keyboard.press("Escape");
+      await p.click("[data-alternar-menu]");
+      await p.click('[data-abrir-folha="arvore"]');
+      await p.waitForSelector(".strata-folha.aberta");
+      assert.equal(await p.locator("[data-so-vigentes]").count(), 0, "a caixa própria da lista saiu");
+      assert.ok(await p.locator('[data-vigencia-lista="vigentes"]').isChecked());
+      assert.ok(await p.locator(".item-estrategia", { hasText: "POL1" }).count() > 0, "os níveis escondidos no Mapa continuam na lista");
+      await p.check('[data-vigencia-lista="encerrados"]');
+      assert.ok(await p.locator('[data-filtro-vigencia="encerrados"]').isChecked(), "a lista muda o filtro do Mapa");
+      await p.uncheck('[data-vigencia-lista="vigentes"]');
+      await p.waitForSelector(".strata-folha .vazio");
+      assert.match(await p.locator(".strata-folha .vazio").innerText(), /Nada a mostrar com esta vigência/);
+      assert.equal(await p.locator('.mapa-no[data-no]').count(), 0, "o Mapa, por baixo, também");
+      assert.deepEqual(p.erros, []);
+    });
+
+    test("Filtros: na lista, o item fora da vigência com algo vigente abaixo aparece apagado, com o sinal e a frase", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const r = await p.evaluate(async () => {
+        const { mostrarSuperior } = await import("../js/superior/telas.js");
+        const { criarStore } = await import("../js/dados.js");
+        const { criarBancoLocal } = await import("../js/banco/local.js");
+        const store = criarStore(criarBancoLocal());
+        const velho = await store.criarInstrumento({ nome: "PDI antigo", inicio: "2019-01-01", fim: "2023-12-31" });
+        const od = await store.criarItemEstrategico({ camada: "objetivoDesenvolvimento", codigo: "OD9", nome: "Antigo", instrumento: velho, superiores: [] });
+        await store.criarItemEstrategico({ camada: "politica", codigo: "POL9", nome: "Vigente", instrumento: null, superiores: [od] });
+        const alvo = document.createElement("div");
+        document.body.append(alvo);
+        const comandos = document.createElement("div");
+        document.body.append(comandos);
+        const tela = mostrarSuperior(alvo, { store, hoje: "2026-10-30", comandos });
+        await tela.recarregar();
+        comandos.querySelector('[data-alternar-menu]').click();
+        comandos.querySelector('[data-abrir-folha="arvore"]').click();
+        const item = alvo.querySelector('.item-estrategia[data-item="' + od + '"]');
+        return { apagado: item?.classList.contains("esmaecido"), sinal: item?.querySelectorAll(".sinal-atencao").length, frase: item?.querySelector(".item-alerta")?.textContent };
+      });
+      assert.equal(r.apagado, true);
+      assert.equal(r.sinal, 1);
+      assert.match(r.frase, /Encerrado em 31\/12\/2023, mas ainda tem 1 item vigente ligado a ele\./);
+    });
+
     test("Filtros: esconder todos os níveis menos os Planos de Ação deixa a mensagem; esconder a vigência que há também", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
       await p.click("[data-alternar-filtros]");
