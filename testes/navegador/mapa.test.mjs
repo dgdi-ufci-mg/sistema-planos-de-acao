@@ -443,6 +443,96 @@ describe("Mapa do Strata", { skip: pular }, () => {
     });
   });
 
+  describe("física: vizinhos que reagem e inércia (lote 5 da tarde de 29/10/2026)", () => {
+    /** um mapa próprio, por cima da página, em que a pessoa não pode gravar a ordem: puxar não muda nada guardado */
+    const montar = (p, podeOrdenar = false) => p.evaluate(async (pode) => {
+      const { criarVistaMapa } = await import("../js/superior/mapa.js");
+      const area = document.createElement("div");
+      area.className = "mapa-area teste-fisica";
+      area.style.cssText = "position:fixed;inset:0;z-index:100;width:1000px;height:640px;background:#000";
+      document.body.append(area);
+      const camadas = [{ id: "a", nome: "Objetivo", plural: "Objetivos" }, { id: "b", nome: "Programa", plural: "Programas" }];
+      const itens = [
+        { id: "o1", camada: "a", nome: "Um", codigo: "O1", superiores: [] }, { id: "o2", camada: "a", nome: "Dois", codigo: "O2", superiores: [] },
+        { id: "p1", camada: "b", nome: "P um", codigo: "P1", superiores: ["o1"] }, { id: "p2", camada: "b", nome: "P dois", codigo: "P2", superiores: ["o1", "o2"] },
+        { id: "p3", camada: "b", nome: "P três", codigo: "P3", superiores: ["o2"] },
+      ];
+      window.__reordenou = 0;
+      criarVistaMapa(area, { camadas, itens, planos: [], estado: {}, podeOrdenar: pode, aoReordenar: async () => { window.__reordenou++; } });
+    }, podeOrdenar);
+    const posicoes = (p) => p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".teste-fisica .mapa-no")].map((g) => {
+      const c = g.querySelector(".mapa-bolinha");
+      return [g.dataset.no, [Number(c.getAttribute("cx")), Number(c.getAttribute("cy"))]];
+    })));
+    const naTela = (p, chave) => p.locator(`.teste-fisica .mapa-no[data-no="${chave}"] .mapa-bolinha`).boundingBox().then((b) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 }));
+    const parados = (p) => p.waitForFunction(() => !document.querySelector(".teste-fisica .mapa-svg")?.dataset.movendo, null, { timeout: 5000 });
+
+    test("puxar um ponto com o mouse: os ligados acompanham, os vizinhos abrem espaço; ao soltar, tudo volta exatamente ao lugar", async () => {
+      const p = await sessao.abrir({ largura: 1000, altura: 640, ...ABRIR });
+      await montar(p);
+      await parados(p);
+      const antes = await posicoes(p);
+      const c = await naTela(p, "p2");
+      const vizinho = await naTela(p, "p3");
+      const ate = vizinho.x - 30; // perto do vizinho da mesma faixa, sem passar dele
+      await p.mouse.move(c.x, c.y);
+      await p.mouse.down();
+      await p.mouse.move(ate, c.y + 30, { steps: 8 });
+      await p.waitForTimeout(400);
+      const durante = await posicoes(p);
+      assert.ok(durante.p2[0] > antes.p2[0] + 30, "o ponto acompanha o mouse");
+      assert.ok(durante.p2[1] > antes.p2[1] && durante.p2[1] - antes.p2[1] < 30, "cede um pouco na altura, sem sair da faixa");
+      assert.ok(durante.o1[0] > antes.o1[0] + 3 && durante.o2[0] > antes.o2[0] + 3, "os dois superiores acompanham");
+      assert.ok(durante.p3[0] > antes.p3[0] + 5, "o vizinho da mesma faixa abre espaço, para o lado dele");
+      await p.waitForTimeout(150); // parado antes de soltar: sem impulso
+      await p.mouse.up();
+      await parados(p);
+      assert.deepEqual(await posicoes(p), antes, "tudo de volta ao destino das regras");
+      assert.equal(await p.evaluate(() => window.__reordenou), 0, "quem não pode gravar puxa, mas a ordem não muda");
+    });
+
+    test("solto em movimento, o ponto passa um pouco do lugar e a mola o traz de volta", async () => {
+      const p = await sessao.abrir({ largura: 1000, altura: 640, ...ABRIR });
+      await montar(p);
+      await parados(p);
+      const antes = await posicoes(p);
+      const c = await naTela(p, "p1");
+      await p.mouse.move(c.x, c.y);
+      await p.mouse.down();
+      await p.mouse.move(c.x + 60, c.y, { steps: 4 });
+      await p.waitForTimeout(150);
+      await p.mouse.move(c.x + 5, c.y, { steps: 2 }); // ainda indo para a esquerda, depressa, ao soltar
+      await p.mouse.up();
+      let minimo = Infinity;
+      for (let i = 0; i < 20; i++) { minimo = Math.min(minimo, (await posicoes(p)).p1[0]); await p.waitForTimeout(25); }
+      assert.ok(minimo < antes.p1[0] - 0.3, "a inércia o leva além do lugar");
+      await parados(p);
+      assert.deepEqual((await posicoes(p)).p1, antes.p1);
+    });
+
+    test("o mapa solto em movimento continua deslizando e para aos poucos; com \"Reduzir movimento\", para na hora", async () => {
+      for (const reduzir of [false, true]) {
+        const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+        if (reduzir) await p.emulateMedia({ reducedMotion: "reduce" });
+        await p.click("[data-mapa-mais]"); await p.click("[data-mapa-mais]");
+        await p.waitForTimeout(400);
+        await p.mouse.move(700, 700);
+        await p.mouse.down();
+        for (let i = 1; i <= 6; i++) { await p.mouse.move(700 - i * 25, 700); await p.waitForTimeout(8); }
+        await p.mouse.up();
+        const solto = await vista(p);
+        await p.waitForTimeout(400);
+        const depois = await vista(p);
+        if (reduzir) assert.equal(depois.x, solto.x, "sem inércia em Reduzir movimento");
+        else assert.ok(depois.x < solto.x - 5, `continuou deslizando para o mesmo lado (${solto.x} → ${depois.x})`);
+        await p.waitForTimeout(1200);
+        const fim = await vista(p);
+        await p.waitForTimeout(200);
+        assert.equal((await vista(p)).x, fim.x, "e parou");
+      }
+    });
+  });
+
   describe("física: mola até o destino (lote 5)", () => {
     /* o texto fica 9 px (na tela) à direita do ponto: 9 ÷ escala no mundo (lote 4) */
     const coerente = (p) => p.evaluate(() => {

@@ -14,7 +14,7 @@
  * - os nomes das camadas ficam presos à borda esquerda, em tamanho fixo, e não encolhem com o zoom.
  */
 import {
-  calcularMapa, caminhoAlem, caminhoDaFaixa, caminhoDaLigacao, estrelasDoCeu, linhaDoSolo, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
+  alturaPuxada, calcularMapa, caminhoAlem, passoDaInercia, puxaoDosVizinhos, velocidadeDeSaida, caminhoDaFaixa, caminhoDaLigacao, estrelasDoCeu, linhaDoSolo, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
 } from "../mapa.js";
 
 const NS = "http://www.w3.org/2000/svg";
@@ -159,7 +159,20 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   const atual = new Map(); // chave → {x, y, vx, vy}: onde cada ponto está agora
   let molaId = 0;
   let ultimoQuadro = 0;
-  const alvoDe = (chave) => noDe(chave);
+  /** Deslocamento passageiro de cada ponto enquanto outro é puxado (vizinhos que reagem); vazio fora do arrasto. */
+  let puxao = new Map();
+  const alvoDe = (chave) => {
+    const n = noDe(chave);
+    const d = puxao.get(chave);
+    return d ? { x: n.x + d.dx, yCurvo: n.yCurvo + d.dy } : n;
+  };
+  /** Liga a mola, se estiver parada (durante um arrasto, ela roda o tempo todo). */
+  function garantirMola() {
+    if (svg.dataset.movendo) return;
+    svg.dataset.movendo = "1";
+    ultimoQuadro = performance.now();
+    molaId = requestAnimationFrame(passoDaMolaNaTela);
+  }
 
   /** Põe cada ponto, e as linhas e nomes dele, na posição de agora. */
   function pintar() {
@@ -196,26 +209,54 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     ultimoQuadro = performance.now();
     molaId = requestAnimationFrame(passoDaMolaNaTela);
   }
-  /* ---------- ordem pessoal: arrastar um ponto para os lados, só com o mouse (lote 6) ---------- */
+  /*
+   * ---------- puxar um ponto, só com o mouse (ordem pessoal, lote 6; física, lote 5 da tarde de 29/10/2026) ----------
+   * O ponto acompanha o mouse na horizontal e cede um pouco na vertical, dentro da faixa; os vizinhos reagem
+   * (`puxaoDosVizinhos`). Ao soltar, ele leva a velocidade do mouse (inércia) e a mola o traz ao destino, com os vizinhos.
+   */
   let segurado = null; // chave do ponto que está na mão da pessoa: a mola não o puxa
+  let rastro = null; // {x, y, tempo, vx, vy} do ponto puxado, para a velocidade ao soltar
   function arrastarNo(chave, e) {
     const a = atual.get(chave);
-    if (!a) return;
-    const x = (pontoNaArea(e).x - t.x) / t.k;
+    const n = noDe(chave);
+    if (!a || !n) return;
+    const p = pontoNaArea(e);
+    const x = Math.min(mapa.largura - 14, Math.max(14, (p.x - t.x) / t.k));
+    const y = n.yCurvo + (reduzirMovimento() ? 0 : alturaPuxada(n, mapa.faixas[n.faixa], (p.y - t.y) / t.k));
+    const agora = performance.now();
+    if (rastro && agora > rastro.tempo) {
+      const dt = (agora - rastro.tempo) / 1000;
+      rastro.vx = 0.6 * ((x - rastro.x) / dt) + 0.4 * rastro.vx; // média suave da velocidade
+      rastro.vy = 0.6 * ((y - rastro.y) / dt) + 0.4 * rastro.vy;
+    }
+    rastro = { x, y, tempo: agora, vx: rastro?.vx ?? 0, vy: rastro?.vy ?? 0 };
     segurado = chave;
-    a.x = Math.min(mapa.largura - 14, Math.max(14, x));
-    a.vx = 0;
+    [a.x, a.y, a.vx, a.vy] = [x, y, 0, 0];
+    puxao = reduzirMovimento() ? new Map() : puxaoDosVizinhos(mapa, chave, x - n.x, y - n.yCurvo);
     pintar();
     guardarPosicoes();
     posicionarCartao();
+    if (!reduzirMovimento()) garantirMola();
   }
-  /** Solta o ponto: a nova ordem da camada é a dos pontos da esquerda para a direita; se não mudou, ele volta ao lugar. */
+  /**
+   * Solta o ponto. Quem pode gravar a ordem: a nova ordem da camada é a dos pontos da esquerda para a direita (pelo
+   * destino, sem o puxão); se não mudou, ou se a pessoa não pode gravar, o ponto volta ao lugar com a inércia e a mola.
+   */
   async function soltarNo(chave, valeu) {
     segurado = null;
-    const f = mapa.faixas[noDe(chave)?.faixa];
+    puxao = new Map();
+    const n = noDe(chave);
+    const f = mapa.faixas[n?.faixa];
     if (!f) return;
-    const nova = [...f.nos].sort((a, b) => atual.get(a).x - atual.get(b).x || f.nos.indexOf(a) - f.nos.indexOf(b));
-    if (!valeu || nova.every((k, i) => k === f.nos[i])) { iniciarMola(); return; }
+    const a = atual.get(chave);
+    const velho = rastro && performance.now() - rastro.tempo < 80 ? rastro : null; // parado antes de soltar: sem impulso
+    rastro = null;
+    const nova = [...f.nos].sort((x, y) => (x === chave ? a.x : noDe(x).x) - (y === chave ? a.x : noDe(y).x) || f.nos.indexOf(x) - f.nos.indexOf(y));
+    if (!podeOrdenar || !valeu || nova.every((k, i) => k === f.nos[i])) {
+      if (velho && !reduzirMovimento()) { a.vx = Math.max(-1500, Math.min(1500, velho.vx)); a.vy = Math.max(-600, Math.min(600, velho.vy)); }
+      if (reduzirMovimento()) iniciarMola(); else garantirMola();
+      return;
+    }
     estado.posicoes = null; // sem deslizar: o mapa refeito já nasce com todos os pontos no lugar novo
     try { await aoReordenar(f.id, nova); } catch { iniciarMola(); }
   }
@@ -418,6 +459,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
 
   function animarPara(alvo) {
     cancelAnimationFrame(quadro);
+    cancelAnimationFrame(planar);
     const fim = limitarTransformacao(alvo, limites());
     if (reduzirMovimento()) { aplicar(fim); return; }
     const de = { ...t };
@@ -443,7 +485,9 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   svg.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     cancelAnimationFrame(quadro);
-    const noChave = podeOrdenar && e.pointerType === "mouse" ? e.target.closest?.("[data-no]")?.dataset.no ?? null : null; // o mouse pode arrastar um ponto; o dedo só move o mapa
+    cancelAnimationFrame(planar); // um novo toque para a inércia do mapa
+    /* o mouse puxa um ponto (todos sentem a física; só quem pode gravar muda a ordem); o dedo só move o mapa */
+    const noChave = e.pointerType === "mouse" ? e.target.closest?.("[data-no]")?.dataset.no ?? null : null;
     ponteiros.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, movido: false, noChave, arrastaNo: false });
     if (ponteiros.size === 2) pinca = medidaDaPinca();
   });
@@ -467,6 +511,13 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     }
     if (p.arrastaNo) { arrastarNo(p.noChave, e); return; }
     aplicar({ ...t, x: t.x + (e.clientX - p.x), y: t.y + (e.clientY - p.y) });
+    const agora = performance.now();
+    const dt = (agora - (p.tempo ?? agora)) / 1000;
+    if (dt > 0) { // velocidade do arrasto do mapa, em px/s, com média suave, para a inércia ao soltar
+      p.vx = 0.6 * ((e.clientX - p.x) / dt) + 0.4 * (p.vx ?? 0);
+      p.vy = 0.6 * ((e.clientY - p.y) / dt) + 0.4 * (p.vy ?? 0);
+    }
+    p.tempo = agora;
     p.x = e.clientX; p.y = e.clientY;
   });
   const soltar = (e) => {
@@ -478,10 +529,30 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       const chave = document.elementFromPoint(e.clientX, e.clientY)?.closest?.("[data-no]")?.dataset.no ?? null;
       if (chave) selecionar(chave); else if (!e.target.closest?.("[data-mapa-cartao]")) selecionar(null);
     }
+    const semPinca = !pinca;
     pinca = null;
-    for (const p of ponteiros.values()) { p.movido = true; } // o dedo que sobra continua movendo o mapa
-    if (!ponteiros.size) svg.classList.remove("arrastando");
+    for (const p of ponteiros.values()) { p.movido = true; p.tempo = undefined; p.vx = 0; p.vy = 0; } // o dedo que sobra continua movendo o mapa
+    if (!ponteiros.size) {
+      svg.classList.remove("arrastando");
+      /* inércia: o mapa solto em movimento continua deslizando e para aos poucos (não depois de pinça nem parado antes de soltar) */
+      if (e.type === "pointerup" && p?.movido && semPinca && p.tempo && performance.now() - p.tempo < 80) planarMapa(p);
+    }
   };
+  let planar = 0;
+  function planarMapa({ vx = 0, vy = 0 }) {
+    const v = reduzirMovimento() ? null : velocidadeDeSaida({ vx, vy });
+    if (!v) return;
+    let ultimo = performance.now();
+    const passo = (agora) => {
+      const r = passoDaInercia(v, Math.min(0.05, (agora - ultimo) / 1000));
+      ultimo = agora;
+      const antes = t;
+      aplicar({ ...t, x: t.x + r.dx, y: t.y + r.dy });
+      [v.vx, v.vy] = [t.x === antes.x ? 0 : r.vx, t.y === antes.y ? 0 : r.vy]; // na borda do conteúdo, aquele sentido para
+      if (!r.parou && (v.vx || v.vy)) planar = requestAnimationFrame(passo);
+    };
+    planar = requestAnimationFrame(passo);
+  }
   svg.addEventListener("pointerup", soltar);
   svg.addEventListener("pointercancel", soltar);
   svg.addEventListener("lostpointercapture", soltar);
@@ -490,6 +561,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   svg.addEventListener("wheel", (e) => {
     e.preventDefault();
     cancelAnimationFrame(quadro);
+    cancelAnimationFrame(planar);
     const passo = e.deltaMode === 1 ? 16 : 1;
     if (e.ctrlKey) aplicar(zoomEm(pontoNaArea(e), Math.exp(-e.deltaY * passo * 0.0022)));
     else aplicar({ ...t, x: t.x - e.deltaX * passo, y: t.y - e.deltaY * passo });
@@ -546,5 +618,5 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   const escuroDoSistema = matchMedia("(prefers-color-scheme: dark)");
   escuroDoSistema.addEventListener?.("change", mudouTema);
 
-  return { destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); cancelAnimationFrame(molaId); } };
+  return { destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); cancelAnimationFrame(molaId); cancelAnimationFrame(planar); } };
 }

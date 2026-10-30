@@ -442,3 +442,66 @@ export function passoDaMola({ x, v }, alvo, dt, { rigidez, amortecimento } = MOL
 
 /** A coordenada está em repouso: perto do alvo e quase parada. */
 export const emRepouso = ({ x, v }, alvo) => Math.abs(alvo - x) < MOLA.repouso && Math.abs(v) < MOLA.repouso;
+
+/* ---------- física, parte 2 (lote 5 da passagem da tarde de 29/10/2026): vizinhos que reagem e inércia ---------- */
+
+/** Constantes do puxão: quanto os vizinhos acompanham o ponto puxado e o espaço que os da mesma faixa abrem. */
+export const PUXAO = Object.freeze({ ligados: 0.22, ligadosNaAltura: 0.12, raio: 64, abrir: 0.55, folgaNaAltura: 0.35 });
+
+/**
+ * Deslocamento dos vizinhos enquanto um ponto é puxado (regra pura): o ponto saiu `dx`, `dy` do seu destino.
+ * - os pontos ligados a ele por "vem de" (os superiores e os que vêm dele, um passo só) acompanham uma fração do puxão
+ *   (22% na horizontal, 12% na vertical), como presos por um elástico;
+ * - os outros pontos da mesma faixa a menos de `raio` unidades da posição de agora abrem espaço, para os lados, tanto
+ *   mais quanto mais perto (55% do que falta para o raio).
+ * Ao soltar, os deslocamentos voltam a zero, e a mola leva cada ponto de volta ao destino das regras.
+ * @returns {Map<string, {dx: number, dy: number}>}  só os pontos que se mexem (o próprio ponto puxado não entra)
+ */
+export function puxaoDosVizinhos(mapa, chave, dx, dy, c = PUXAO) {
+  const saida = new Map();
+  const no = mapa.nos.find((n) => n.chave === chave);
+  if (!no) return saida;
+  const ligados = new Set(mapa.ligacoes.flatMap((l) => (l.de === chave ? [l.para] : l.para === chave ? [l.de] : [])));
+  const x = no.x + dx;
+  for (const n of mapa.nos) {
+    if (n.chave === chave) continue;
+    if (ligados.has(n.chave)) { saida.set(n.chave, { dx: dx * c.ligados, dy: dy * c.ligadosNaAltura }); continue; }
+    if (n.faixa !== no.faixa) continue;
+    const distancia = n.x - x;
+    if (Math.abs(distancia) >= c.raio) continue;
+    const lado = distancia === 0 ? (n.x >= no.x ? 1 : -1) : Math.sign(distancia);
+    saida.set(n.chave, { dx: lado * (c.raio - Math.abs(distancia)) * c.abrir, dy: 0 });
+  }
+  return saida;
+}
+
+/** Altura que o ponto puxado pode ceder dentro da faixa: 35% do puxão, sem sair da faixa (8 unidades de margem). */
+export function alturaPuxada(no, faixa, yDoMouse, c = PUXAO) {
+  const folga = Math.max(0, faixa.altura / 2 - 8);
+  return Math.max(-folga, Math.min(folga, (yDoMouse - no.yCurvo) * c.folgaNaAltura));
+}
+
+/** Inércia do mapa ao soltar um arrasto: a velocidade cai pela metade a cada ~0,22 s (tempo característico de 0,32 s). */
+export const INERCIA = Object.freeze({ tempo: 0.32, minima: 25, maxima: 4000, partida: 120 });
+
+/**
+ * Um passo da inércia (regra pura): a velocidade (px/s) decai exponencialmente; devolve o deslocamento do passo e a
+ * velocidade nova. Para abaixo de `INERCIA.minima`.
+ * @returns {{dx: number, dy: number, vx: number, vy: number, parou: boolean}}
+ */
+export function passoDaInercia({ vx, vy }, dt, c = INERCIA) {
+  const fator = Math.exp(-dt / c.tempo);
+  const [nx, ny] = [vx * fator, vy * fator];
+  const dx = (vx - nx) * c.tempo; // integral exata da velocidade no passo
+  const dy = (vy - ny) * c.tempo;
+  return { dx, dy, vx: nx, vy: ny, parou: Math.hypot(nx, ny) < c.minima };
+}
+
+/** Velocidade de partida da inércia, limitada; abaixo de `INERCIA.partida`, não há inércia (o arrasto parou antes de soltar). */
+export function velocidadeDeSaida({ vx, vy }, c = INERCIA) {
+  const v = Math.hypot(vx, vy);
+  if (!(v >= c.partida)) return null;
+  const f = Math.min(1, c.maxima / v);
+  return { vx: vx * f, vy: vy * f };
+}
+
