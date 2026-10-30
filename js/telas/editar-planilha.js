@@ -10,10 +10,17 @@
  * - Classificar e filtrar em cada coluna, pelo botão do título, como no Excel (27/10/2026, pedido do responsável).
  * - Responsáveis e "Depende de" têm uma lista de várias escolhas, como no Google Planilhas (27/10/2026); digitar
  *   continua valendo.
+ * - No modelo da planilha do Strata (30/10/2026, pedido do responsável): barra no alto com busca, "Agrupar por etapa",
+ *   Desfazer, Refazer e Colunas (mostrar, esconder e mudar a ordem); linhas agrupadas por fase e etapa, recolhíveis;
+ *   a célula que não pôde ser gravada fica marcada em vermelho, com o motivo, até ser gravada; a gravação continua
+ *   na hora (decisão do responsável), e Desfazer regrava o valor anterior.
  */
 import { esc, dataBr } from "../formato.js";
 import { estimativaLivre, normalizarCodigo } from "../acao.js";
-import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData } from "../planilha.js";
+import {
+  lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData,
+  agruparPorFaseEEtapa, ordenarColunas, moverColuna, passaNaBusca, criarDesfazer,
+} from "../planilha.js";
 import { avisar } from "./painel.js";
 import { usaEstimativas, usaDependencias, usaSimulacao } from "../modelos.js";
 import { termos } from "../vocabulario.js";
@@ -85,6 +92,17 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   let ordenacao = null; // {chave, sentido: 1 (crescente) | -1 (decrescente)}
   const filtros = new Map(); // chave da coluna → valores (texto da célula) que ficam à vista
   let linhasAtuais = []; // as ações à vista, na ordem da grade
+  /* barra no alto, grupos, desfazer e marcas de erro (30/10/2026, no modelo da planilha do Strata) */
+  let busca = "";
+  let agrupar = true; // por fase e etapa, quando o espaço usa fases e etapas
+  const recolhidos = new Set(); // "f:<id da fase>" e "e:<id da etapa>"
+  const historico = criarDesfazer();
+  const erros = new Map(); // "<número>|<chave>" (ou "nova|rotulo") → motivo de a célula não ter sido gravada
+  const CHAVE_ORDEM = "sextante.ordemPlanilha";
+  let ordemColunas = (() => { try { return JSON.parse(localStorage.getItem(CHAVE_ORDEM) || "[]"); } catch { return []; } })();
+  const lembrarOrdem = () => { try { localStorage.setItem(CHAVE_ORDEM, JSON.stringify(ordemColunas)); } catch { /* sem armazenamento */ } };
+  /** As colunas escondidas são as mesmas de "Exibir" (o mesmo conjunto e a mesma chave no navegador). */
+  const lembrarOcultas = () => { try { localStorage.setItem("sextante.colunasPlanilha", JSON.stringify([...(d.ocultas ?? [])])); } catch { /* sem armazenamento */ } };
 
   /** Colunas visíveis, na ordem da grade (as escondidas em "Exibir" ficam de fora). */
   /* largura de cada coluna escolhida arrastando a borda do título (24/10/2026), lembrada neste aparelho */
@@ -93,7 +111,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   const lembrarLarguras = () => { try { localStorage.setItem(CHAVE_LARGURAS, JSON.stringify(larguras)); } catch { /* sem armazenamento */ } };
   function colunas() {
     const ocultas = d.ocultas ?? new Set();
-    return colunasDaPlanilha(d).filter((c) => c.obrigatoria || !ocultas.has(c.chave))
+    return ordenarColunas(colunasDaPlanilha(d), ordemColunas).filter((c) => c.obrigatoria || !ocultas.has(c.chave))
       .map((c) => ({ ...c, padrao: c.largura, largura: larguras[c.chave] ?? c.largura }));
   }
 
@@ -175,21 +193,22 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   function celulaHtml(acao, coluna, linha, indice, esquerda) {
     const motivo = acao ? bloqueio(acao, coluna.chave) : coluna.chave === "rotulo" ? "" : coluna.calculada ? "Calculado pelo sistema." : "Escreva o nome da ação para criar a linha.";
     const v = acao ? valor(acao, coluna.chave) : "";
-    const classes = [coluna.calculada && "calculada", coluna.inicioCalculados && "inicio-calculados", esquerda != null && "fixa", coluna.ultimaFixa && "ultima-fixa"].filter(Boolean);
+    const erro = erros.get(`${acao ? acao.numero : "nova"}|${coluna.chave}`);
+    const classes = [coluna.calculada && "calculada", coluna.inicioCalculados && "inicio-calculados", esquerda != null && "fixa", coluna.ultimaFixa && "ultima-fixa", !motivo && erro && "com-erro"].filter(Boolean);
     const estilo = esquerda != null ? ` style="--esq:${esquerda}"` : "";
     const comum = `data-linha="${linha}" data-col="${indice}" data-chave="${coluna.chave}" aria-label="${esc(coluna.titulo)}"`;
     if (motivo) {
       const dica = coluna.calculada ? (v ? `${v}` : "") : motivo;
       return `<td class="${["bloqueada", ...classes].join(" ")}"${estilo}${dica ? ` title="${esc(dica)}"` : ""}><span ${comum} role="textbox" aria-readonly="true" tabindex="-1">${esc(v)}</span></td>`;
     }
-    const td = `<td${classes.length ? ` class="${classes.join(" ")}"` : ""}${estilo}>`;
+    const td = `<td${classes.length ? ` class="${classes.join(" ")}"` : ""}${estilo}${erro ? ` title="${esc(erro)}"` : ""}>`;
     if (coluna.chave === "etapa") {
-      return `${td}<select ${comum}><option value=""></option>${etapas().map((e) =>
+      return `${td}<select ${comum} data-original="${esc(v)}"><option value=""></option>${etapas().map((e) =>
         `<option value="${esc(e.id)}"${e.id === v ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</select></td>`;
     }
     const tipo = ["naoAntesDe", "dataLimite", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
     const dica = !acao && coluna.chave === "rotulo" ? ` placeholder="Nova ${termos(d.espaco).acao}: escreva o nome"` : "";
-    const inteiro = v && !tipo && v.length > 12 ? ` title="${esc(v)}"` : "";
+    const inteiro = v && !tipo && v.length > 12 && !erro ? ` title="${esc(v)}"` : "";
     /* Responsáveis e "Depende de": lista de várias escolhas (27/10/2026), além de digitar */
     if (acao && ["responsaveis", "dependeDe"].includes(coluna.chave)) {
       return `${td.replace("<td", '<td data-com-escolha')}<span class="celula-escolha"><input ${comum} value="${esc(v)}" data-original="${esc(v)}"${inteiro}>
@@ -229,7 +248,9 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   };
   /** Ações à vista: as que passam por todos os filtros, na ordem escolhida (ou na do espaço). */
   function linhasVisiveis() {
-    const ls = d.acoes.filter((a) => [...filtros].every(([chave, valores]) => itensDe(a, chave).some((v) => valores.has(v))));
+    const cols = colunas();
+    const ls = d.acoes.filter((a) => [...filtros].every(([chave, valores]) => itensDe(a, chave).some((v) => valores.has(v)))
+      && passaNaBusca(cols.map((c) => valor(a, c.chave)), busca));
     if (!ordenacao || !colunasDaPlanilha(d).some((c) => c.chave === ordenacao.chave)) return ls;
     return ls.map((a, i) => ({ a, i, v: valor(a, ordenacao.chave) }))
       .sort((p, q) => {
@@ -241,7 +262,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
 
   /** Caixinha flutuante sob um elemento (filtro da coluna, escolha múltipla); fecha ao clicar fora ou com Esc. */
   let caixaAberta = null;
-  function fecharCaixa() { caixaAberta?.remove(); caixaAberta = null; }
+  function fecharCaixa() { caixaAberta?.soltar?.(); caixaAberta?.remove(); caixaAberta = null; }
   function abrirCaixa(ancora, html, largura = 280) {
     fecharCaixa();
     const caixa = document.createElement("div");
@@ -254,8 +275,10 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const abaixo = r.bottom + 4;
     caixa.style.top = `${abaixo + caixa.offsetHeight > innerHeight - 8 ? Math.max(8, r.top - caixa.offsetHeight - 4) : abaixo}px`;
     caixaAberta = caixa;
-    const fora = (e) => { if (!caixa.contains(e.target) && !ancora.contains(e.target)) { fecharCaixa(); document.removeEventListener("pointerdown", fora, true); } };
+    const fora = (e) => { if (!caixa.contains(e.target) && !ancora.contains(e.target)) fecharCaixa(); };
     document.addEventListener("pointerdown", fora, true);
+    /* fechar por qualquer caminho tira o ouvinte (30/10/2026): reabrir a caixa, como em Colunas, não a fecha no clique seguinte */
+    caixa.soltar = () => document.removeEventListener("pointerdown", fora, true);
     caixa.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); fecharCaixa(); ancora.focus?.(); } });
     return caixa;
   }
@@ -331,8 +354,12 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       const texto = responsaveis ? escreverResponsaveis(escolhidos, d.responsaveis) : escreverReferencias(escolhidos.map(Number), d.acoes, d.usaCodigos);
       const marca = e.target;
       ocupado = ocupado.then(async () => {
+        const antes = valor(atual(), chave);
         try {
           await gravar(atual(), chave, texto);
+          historico.registrar({ numero, chave, antes, depois: texto });
+          erros.delete(`${numero}|${chave}`);
+          atualizarBarra();
         } catch (falha) {
           marca.checked = !marca.checked; // não gravou: a marca volta
           avisar(falha.message);
@@ -348,16 +375,44 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     return `<button type="button" class="filtro-coluna${ativo ? " ativo" : ""}" data-filtro-col="${j}" aria-haspopup="dialog" aria-label="Classificar e filtrar: ${esc(c.titulo)}${filtros.has(c.chave) ? " (filtrada)" : ""}" title="Classificar e filtrar">${filtros.has(c.chave) ? ICONES.funil : icone ? `<b>${icone}</b>` : ICONES.abrir}</button>`;
   }
 
+  /** Agrupa por fase e etapa? Só quando o espaço usa fases e etapas e a pessoa não desligou "Agrupar por etapa". */
+  const agrupando = () => agrupar && d.usaFases && (d.espaco.estrutura ?? []).length > 0;
+
+  /** Barra no alto (30/10/2026): busca, agrupar, desfazer, refazer e colunas. */
+  function barraHtml() {
+    return `<div class="planilha-barra so-computador" data-barra-planilha>
+      <label class="grade-busca">${ICONES.buscar}<input type="search" data-busca-planilha placeholder="Buscar" aria-label="Buscar na planilha" value="${esc(busca)}"></label>
+      ${d.usaFases && (d.espaco.estrutura ?? []).length ? `<button type="button" class="grade-chave" data-agrupar-planilha aria-pressed="${agrupar}">Agrupar por etapa</button>` : ""}
+      <span class="planilha-barra-direita">
+        <button type="button" class="botao" data-desfazer-planilha${historico.podeDesfazer ? "" : " disabled"} title="Desfazer a última alteração (Ctrl+Z)">Desfazer</button>
+        <button type="button" class="botao" data-refazer-planilha${historico.podeRefazer ? "" : " disabled"} title="Refazer (Ctrl+Y)">Refazer</button>
+        <button type="button" class="botao grade-botao-colunas" data-colunas-planilha aria-haspopup="dialog">${ICONES.colunas}Colunas</button>
+      </span></div>`;
+  }
+  /** Só os botões de Desfazer e Refazer, sem redesenhar a grade (depois de uma gravação). */
+  function atualizarBarra() {
+    const des = alvo?.querySelector("[data-desfazer-planilha]");
+    const ref = alvo?.querySelector("[data-refazer-planilha]");
+    if (des) des.disabled = !historico.podeDesfazer;
+    if (ref) ref.disabled = !historico.podeRefazer;
+  }
+
   function desenhar(novoAlvo, dados) {
     d = dados;
     const trocouAlvo = alvo !== novoAlvo;
     alvo = novoAlvo;
     const foco = guardarFoco();
+    const buscaComFoco = document.activeElement?.matches?.("[data-busca-planilha]") && alvo.contains(document.activeElement) ? document.activeElement.selectionStart : null;
     const rolagemAntes = alvo.querySelector(".planilha-rolagem");
     const posicao = rolagemAntes ? [rolagemAntes.scrollLeft, rolagemAntes.scrollTop] : null; // a gravação redesenha a grade sem mudar a rolagem
     const cols = colunas();
-    linhasAtuais = linhasVisiveis();
-    const ocultas = d.acoes.length - linhasAtuais.length;
+    const filtradas = linhasVisiveis();
+    const ocultas = d.acoes.length - filtradas.length;
+    /* grupos por fase e etapa (30/10/2026): as linhas recolhidas saem da grade, e a ordem da grade é a dos grupos */
+    const grupos = agrupando() ? agruparPorFaseEEtapa(filtradas, d.espaco.estrutura) : null;
+    linhasAtuais = grupos
+      ? grupos.flatMap((g) => (recolhidos.has(`f:${g.fase.id}`) ? [] : g.etapas.flatMap((e) => (recolhidos.has(`e:${g.fase.id}:${e.etapa.id}`) ? [] : e.acoes))))
+      : filtradas;
     /* largura de cada coluna em em (corrigido em 23/10/2026: antes, a tabela era espremida até caber na tela) */
     const total = cols.reduce((t, c) => t + c.largura, 0);
     const fixas = cols.filter((c) => c.fixa);
@@ -367,37 +422,125 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     cols.forEach((c) => { c.ultimaFixa = c === fixas.at(-1); c.inicioCalculados = c === cols.find((x) => x.calculada); });
     const cabecalho = (c, j) => `<th scope="col" class="${[c.calculada && "calculada", c.inicioCalculados && "inicio-calculados", c.fixa && "fixa", c.ultimaFixa && "ultima-fixa"].filter(Boolean).join(" ")}"
       ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}><span class="titulo-coluna-planilha">${c.titulo}</span>${botaoFiltro(c, j)}<span class="redimensionar" data-redimensionar="${j}" title="Arraste para alargar ou estreitar; clique duas vezes para voltar ao tamanho original" aria-hidden="true"></span></th>`;
+    let i = 0;
+    const linhaHtml = (a) => { const n = i++; return `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, n, j, esquerdas[j])).join("")}</tr>`; };
+    const cabecaDeGrupo = (chave, nivel, nome, quantos) => `<tr class="planilha-grupo ${nivel}"><th colspan="${cols.length}" scope="rowgroup">
+      <button type="button" class="grade-grupo-botao" data-recolher-grupo="${esc(chave)}" aria-expanded="${!recolhidos.has(chave)}"><span class="grade-grupo-seta" aria-hidden="true"></span>${esc(nome)} <span class="tec">${quantos}</span></button></th></tr>`;
+    const corpo = grupos
+      ? grupos.map((g) => {
+        const fChave = `f:${g.fase.id}`;
+        const n = g.etapas.reduce((t, e) => t + e.acoes.length, 0);
+        if (!g.fase.id) return cabecaDeGrupo(fChave, "nivel-fase", "Sem etapa", n) + (recolhidos.has(fChave) ? "" : g.etapas[0].acoes.map(linhaHtml).join(""));
+        return cabecaDeGrupo(fChave, "nivel-fase", g.fase.nome, n) + (recolhidos.has(fChave) ? "" : g.etapas.map((e) => {
+          const eChave = `e:${g.fase.id}:${e.etapa.id}`;
+          return cabecaDeGrupo(eChave, "nivel-etapa", e.etapa.nome, e.acoes.length) + (recolhidos.has(eChave) ? "" : e.acoes.map(linhaHtml).join(""));
+        }).join(""));
+      }).join("")
+      : linhasAtuais.map(linhaHtml).join("");
     alvo.innerHTML = `
-      <details class="tec planilha-dicas so-computador"${dicasAbertas ? " open" : ""}><summary>Cada célula é gravada ao sair dela. Cinza: não se edita aqui (passe o mouse para ver o motivo). Títulos em itálico: calculados. <span class="mais">Mais dicas</span></summary>
-        <p>Setas, Enter e Shift+Enter andam entre as células; Esc desfaz o que foi digitado. Cole um bloco do Google Planilhas ou do Excel a partir da célula selecionada.
-        Em "Depende de", use os ${d.usaCodigos ? "números ou códigos" : "números"} das ações, separados por ponto e vírgula; em "Responsáveis", as siglas ou os nomes.
-        Escolha as colunas em "Exibir".</p></details>
-      ${ocultas || ordenacao ? `<p class="planilha-filtrada so-computador">${ocultas ? `${ocultas} de ${d.acoes.length} ${d.acoes.length === 1 ? termos(d.espaco).acao : termos(d.espaco).acoes} ${ocultas === 1 ? "escondida" : "escondidas"} pelos filtros.` : ""}${ordenacao ? ` Classificada por “${esc(colunasDaPlanilha(d).find((c) => c.chave === ordenacao.chave)?.titulo ?? "")}”.` : ""}
+      ${barraHtml()}
+      ${ocultas || ordenacao ? `<p class="planilha-filtrada so-computador">${ocultas ? `${ocultas} de ${d.acoes.length} ${d.acoes.length === 1 ? termos(d.espaco).acao : termos(d.espaco).acoes} ${ocultas === 1 ? "escondida" : "escondidas"} pelos filtros${busca.trim() ? " e pela busca" : ""}.` : ""}${ordenacao ? ` Classificada por “${esc(colunasDaPlanilha(d).find((c) => c.chave === ordenacao.chave)?.titulo ?? "")}”.` : ""}
         <button type="button" class="botao discreto" data-limpar-tudo>Limpar filtros e classificação</button></p>` : ""}
       <div class="planilha-rolagem so-computador" style="scroll-padding-left:calc(${soma} * .88rem)">
         <table class="planilha" style="width:${total}em">
           <colgroup>${cols.map((c) => `<col style="width:${c.largura}em">`).join("")}</colgroup>
           <thead><tr>${cols.map(cabecalho).join("")}</tr></thead>
           <tbody>
-            ${linhasAtuais.map((a, i) => `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, i, j, esquerdas[j])).join("")}</tr>`).join("")}
+            ${corpo}
             ${d.perm && !d.perm.criarAcao ? "" : `<tr class="linha-nova">${cols.map((c, j) => celulaHtml(null, c, linhasAtuais.length, j, esquerdas[j])).join("")}</tr>`}
           </tbody>
         </table>
       </div>
+      <p class="planilha-pe tec so-computador">Cada célula é gravada ao sair dela. Cinza: não se edita aqui (passe o mouse para ver o motivo); títulos em itálico: calculados.
+        Setas e Enter: andar · Esc: desfaz a digitação · Ctrl+Z: desfazer a última alteração · Cole um bloco do Excel ou do Google Planilhas a partir da célula escolhida ·
+        Em “Depende de”, ${d.usaCodigos ? "números ou códigos" : "números"} separados por “;”; em “Responsáveis”, siglas ou nomes (Alt+↓ abre a lista).</p>
       <p class="so-celular cartao">A edição em planilha está disponível no computador.</p>`;
     const rolagem = alvo.querySelector(".planilha-rolagem");
     if (posicao) [rolagem.scrollLeft, rolagem.scrollTop] = posicao;
     ajustarAltura();
     restaurarFoco(foco);
+    if (buscaComFoco != null) { const b = alvo.querySelector("[data-busca-planilha]"); b.focus(); b.setSelectionRange(buscaComFoco, buscaComFoco); }
     if (trocouAlvo) ligar();
   }
 
-  /* a planilha vai até o fim da tela (23/10/2026), como a rede */
-  let dicasAbertas = false;
+  /** Colunas (30/10/2026): mostrar, esconder e mudar a ordem; as escondidas são as mesmas de "Exibir". */
+  function abrirColunas(botao, focar = null) {
+    const todas = ordenarColunas(colunasDaPlanilha(d), ordemColunas);
+    const ocultas = d.ocultas ?? new Set();
+    const moveis = todas.filter((c) => !c.fixa);
+    const caixa = abrirCaixa(botao, `<div role="dialog" aria-label="Colunas">
+      <h4>Colunas</h4>
+      <ul class="grade-colunas">${todas.map((c) => {
+        const k = moveis.indexOf(c);
+        return `<li><label><input type="checkbox" data-coluna-visivel="${c.chave}"${c.obrigatoria || !ocultas.has(c.chave) ? " checked" : ""}${c.obrigatoria ? " disabled" : ""}> ${esc(c.titulo)}${c.fixa ? ' <small class="tec">parada à esquerda</small>' : ""}</label>
+        ${c.fixa ? "" : `<span class="grade-colunas-mover"><button type="button" class="botao-icone" data-mover-coluna="${c.chave}" data-sentido="-1" aria-label="Mover ${esc(c.titulo)} para a esquerda"${k === 0 ? " disabled" : ""}>↑</button>
+          <button type="button" class="botao-icone" data-mover-coluna="${c.chave}" data-sentido="1" aria-label="Mover ${esc(c.titulo)} para a direita"${k === moveis.length - 1 ? " disabled" : ""}>↓</button></span>`}</li>`;
+      }).join("")}</ul>
+      <div class="botoes"><button type="button" class="botao" data-colunas-padrao>Voltar ao padrão</button></div></div>`, 320);
+    caixa.dataset.de = "colunas";
+    caixa.addEventListener("change", (e) => {
+      const chave = e.target.dataset.colunaVisivel;
+      if (!chave || !d.ocultas) return;
+      if (e.target.checked) d.ocultas.delete(chave); else d.ocultas.add(chave);
+      lembrarOcultas();
+      desenhar(alvo, d);
+      abrirColunas(alvo.querySelector("[data-colunas-planilha]"), `[data-coluna-visivel="${chave}"]`);
+    });
+    caixa.addEventListener("click", (e) => {
+      const mover = e.target.closest("[data-mover-coluna]");
+      if (mover) {
+        ordemColunas = moverColuna(colunasDaPlanilha(d), ordemColunas, mover.dataset.moverColuna, Number(mover.dataset.sentido));
+        lembrarOrdem();
+        desenhar(alvo, d);
+        const sel = `[data-mover-coluna="${mover.dataset.moverColuna}"][data-sentido="${mover.dataset.sentido}"]`;
+        return abrirColunas(alvo.querySelector("[data-colunas-planilha]"), sel);
+      }
+      if (e.target.closest("[data-colunas-padrao]")) {
+        ordemColunas = [];
+        lembrarOrdem();
+        d.ocultas?.clear();
+        lembrarOcultas();
+        desenhar(alvo, d);
+        abrirColunas(alvo.querySelector("[data-colunas-planilha]"), "[data-colunas-padrao]");
+      }
+    });
+    const alvoDoFoco = (focar && caixa.querySelector(`${focar}:not([disabled])`)) || caixa.querySelector("input:not([disabled]), button:not([disabled])");
+    alvoDoFoco?.focus();
+  }
+
+  /** Desfazer (ou refazer) o último passo: regrava, na ordem, o valor de antes (ou o de depois) de cada célula. */
+  function desfazerOuRefazer(refazendo) {
+    const passo = refazendo ? historico.refazer() : historico.desfazer();
+    if (!passo) return;
+    atualizarBarra();
+    ocupado = ocupado.then(async () => {
+      const celulas = refazendo ? passo : [...passo].reverse();
+      try {
+        for (const c of celulas) {
+          const atual = (await store.listarAcoes(espacoId)).find((a) => a.numero === c.numero);
+          if (!atual) throw new Error(`A ${termos(d.espaco).acao} ${c.numero} não existe mais.`);
+          await gravar(atual, c.chave, refazendo ? c.depois : c.antes);
+          erros.delete(`${c.numero}|${c.chave}`);
+        }
+        avisar(refazendo ? "Alteração refeita." : "Alteração desfeita.");
+      } catch (falha) {
+        historico.devolver(passo, refazendo);
+        avisar(`Não foi possível ${refazendo ? "refazer" : "desfazer"}: ${falha.message}`);
+      }
+      atualizarBarra();
+      const c = passo[0];
+      const linha = linhasAtuais.findIndex((a) => a.numero === c.numero);
+      const coluna = colunas().findIndex((x) => x.chave === c.chave);
+      alvo.querySelector(`[data-linha="${linha}"][data-col="${coluna}"]`)?.focus({ preventScroll: false });
+    });
+  }
+
+  /* a planilha vai até o fim da tela (23/10/2026), como a rede; a linha de dicas fica no pé (30/10/2026) */
   function ajustarAltura() {
     const rolagem = alvo?.querySelector(".planilha-rolagem");
     if (!rolagem?.isConnected || !rolagem.offsetParent) return;
-    rolagem.style.height = `${Math.max(240, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 16))}px`;
+    const pe = alvo.querySelector(".planilha-pe")?.offsetHeight ?? 0;
+    rolagem.style.height = `${Math.max(240, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 16 - pe))}px`;
   }
 
   /* ---------- foco: mantido quando a grade é redesenhada por uma gravação ---------- */
@@ -491,14 +634,22 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const texto = el.value;
     if (texto === el.dataset.original && el.tagName !== "SELECT") return;
     const acao = acaoDaLinha(el.dataset.linha);
+    const antes = el.dataset.original ?? "";
+    const chaveDoErro = `${acao ? acao.numero : "nova"}|${chave}`;
+    const td = el.closest("td");
     ocupado = ocupado.then(async () => {
       try {
         if (acao) await gravar(acao, chave, texto);
         else if (chave === "rotulo" && texto.trim()) await criarDaLinha({ rotulo: texto });
-        el.classList.remove("com-erro");
+        if (acao) historico.registrar({ numero: acao.numero, chave, antes, depois: texto }); // criar uma ação não entra no Desfazer
+        erros.delete(chaveDoErro);
+        td?.classList.remove("com-erro");
+        atualizarBarra();
       } catch (e) {
-        el.classList.add("com-erro");
-        el.title = e.message;
+        /* a célula fica marcada, com o motivo, até ser gravada (30/10/2026); a marca sobrevive aos redesenhos */
+        erros.set(chaveDoErro, e.message);
+        td?.classList.add("com-erro");
+        if (td) td.title = e.message;
         avisar(e.message);
       }
     });
@@ -512,8 +663,9 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const linha0 = Number(el.dataset.linha);
     const coluna0 = Number(el.dataset.col);
     ocupado = ocupado.then(async () => {
-      let erros = 0;
+      let falhas = 0;
       let criadas = 0;
+      const passo = []; // as células gravadas, para Desfazer desfazer a colagem inteira de uma vez
       for (const [i, celulas] of blocos.entries()) {
         const acao = acaoDaLinha(linha0 + i);
         const valores = {};
@@ -523,14 +675,18 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
           for (const [chave, texto] of Object.entries(valores)) {
             if (bloqueio(acao, chave)) continue;
             const atual = (await store.listarAcoes(espacoId)).find((a) => a.numero === acao.numero);
+            const antes = valor(atual, chave);
             await gravar(atual, chave, texto);
+            passo.push({ numero: acao.numero, chave, antes, depois: texto });
           }
         } catch (e) {
-          erros++;
+          falhas++;
           avisar(`Linha ${linha0 + i + 1}: ${e.message}`);
         }
       }
-      if (!erros) avisar(`Colagem gravada${criadas ? `, com ${criadas} ${criadas === 1 ? "ação nova" : "ações novas"}` : ""}.`);
+      historico.registrar(passo);
+      atualizarBarra();
+      if (!falhas) avisar(`Colagem gravada${criadas ? `, com ${criadas} ${criadas === 1 ? "ação nova" : "ações novas"}` : ""}.`);
     });
     return true;
   }
@@ -587,14 +743,34 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       if (filtro) { e.preventDefault(); return caixaAberta && caixaAberta.dataset.de === filtro.dataset.filtroCol ? fecharCaixa() : (abrirFiltro(filtro), caixaAberta.dataset.de = filtro.dataset.filtroCol); }
       const escolher = e.target.closest?.("[data-escolher]");
       if (escolher) return abrirEscolha(escolher.parentElement.querySelector("input"));
-      if (e.target.closest?.("[data-limpar-tudo]")) { filtros.clear(); ordenacao = null; desenhar(alvo, d); }
+      if (e.target.closest?.("[data-limpar-tudo]")) { filtros.clear(); ordenacao = null; busca = ""; desenhar(alvo, d); return; }
+      /* barra no alto e grupos (30/10/2026) */
+      const grupo = e.target.closest?.("[data-recolher-grupo]");
+      if (grupo) {
+        const k = grupo.dataset.recolherGrupo;
+        if (recolhidos.has(k)) recolhidos.delete(k); else recolhidos.add(k);
+        desenhar(alvo, d);
+        return alvo.querySelector(`[data-recolher-grupo="${CSS.escape(k)}"]`)?.focus();
+      }
+      if (e.target.closest?.("[data-agrupar-planilha]")) { agrupar = !agrupar; desenhar(alvo, d); return alvo.querySelector("[data-agrupar-planilha]")?.focus(); }
+      if (e.target.closest?.("[data-desfazer-planilha]")) return desfazerOuRefazer(false);
+      if (e.target.closest?.("[data-refazer-planilha]")) return desfazerOuRefazer(true);
+      const colunasBotao = e.target.closest?.("[data-colunas-planilha]");
+      if (colunasBotao) return caixaAberta?.dataset.de === "colunas" ? fecharCaixa() : abrirColunas(colunasBotao);
     });
-    alvo.addEventListener("input", (e) => { if (e.target.type === "date") e.target.toggleAttribute("data-vazia", !e.target.value); });
-    alvo.addEventListener("toggle", (e) => { if (e.target.matches?.(".planilha-dicas")) { dicasAbertas = e.target.open; ajustarAltura(); } }, true);
+    alvo.addEventListener("input", (e) => {
+      if (e.target.matches?.("[data-busca-planilha]")) { busca = e.target.value; desenhar(alvo, d); return; }
+      if (e.target.type === "date") e.target.toggleAttribute("data-vazia", !e.target.value);
+    });
     addEventListener("resize", () => { if (alvo.isConnected) ajustarAltura(); });
     alvo.addEventListener("keydown", (e) => {
       const el = e.target;
       if (!el.dataset?.chave) return;
+      /* Ctrl+Z desfaz a última alteração gravada; com texto digitado e ainda não gravado, vale o desfazer do próprio campo */
+      const ctrl = (e.ctrlKey || e.metaKey) && !e.altKey;
+      const limpa = !("value" in el) || el.tagName === "SELECT" || el.value === (el.dataset.original ?? el.value);
+      if (ctrl && limpa && (e.key === "z" || e.key === "Z")) { e.preventDefault(); return desfazerOuRefazer(e.shiftKey); }
+      if (ctrl && limpa && (e.key === "y" || e.key === "Y")) { e.preventDefault(); return desfazerOuRefazer(true); }
       /* setas, Enter e Shift+Enter andam entre as células (23/10/2026); a saída da célula dispara a gravação (evento change).
          Num texto, ← e → só saem da célula com o cursor na ponta; Alt+↓ continua abrindo a lista da etapa */
       const ir = (dl, dc) => {

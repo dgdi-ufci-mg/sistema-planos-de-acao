@@ -816,13 +816,6 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .planilha input[type="date"][data-vazia]:not(:focus) { color: transparent; }
 .planilha input[type="date"][data-vazia]:not(:focus)::-webkit-calendar-picker-indicator { opacity: 0; }
 .planilha td:hover input[type="date"][data-vazia]::-webkit-calendar-picker-indicator { opacity: .6; }
-.planilha-dicas { margin: 0 0 8px; font-size: .78rem; line-height: 1.35; }
-.planilha-dicas summary { cursor: pointer; list-style: none; }
-.planilha-dicas summary::-webkit-details-marker { display: none; }
-.planilha-dicas .mais { color: var(--accent); text-decoration: underline; white-space: nowrap; }
-.planilha-dicas[open] .mais { display: none; }
-.planilha-dicas p { margin: 4px 0 0; }
-.planilha .com-erro { outline: 2px solid var(--crit) !important; outline-offset: -2px; background: var(--crit-soft) !important; }
 .planilha td { background: var(--surface); }
 .planilha tr:hover td:not(.bloqueada) { background: color-mix(in srgb, var(--sunk) 60%, var(--surface)); }
 /* colunas calculadas (23/10/2026): só leitura, separadas dos dados por uma linha mais forte */
@@ -2449,3 +2442,29 @@ select.grade-editor { margin: -4px -6px; }
 .mapa-no.pulso .mapa-bolinha { transform-box: fill-box; transform-origin: center; animation: mapa-pulso 1.3s var(--mov-curva); }
 @keyframes mapa-pulso { 0%, 100% { transform: none; } 25% { transform: scale(1.9); } 50% { transform: scale(1); } 70% { transform: scale(1.5); } }
 @media (prefers-reduced-motion: reduce) { .mapa-no.pulso .mapa-bolinha { animation: none; } }
+
+/* ---------- Sextante: planilha no modelo da do Strata (30/10/2026, pedido do responsável; seção 8.3) ----------
+   barra no alto (busca, agrupar, desfazer, refazer, colunas), grupos por fase e etapa, marca de erro e aparência atual.
+   Reaproveita as peças da Planilha do Strata (.grade-busca, .grade-chave, .grade-grupo-botao, .grade-colunas). */
+.planilha-barra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.planilha-barra-direita { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.planilha-barra .grade-botao-colunas { margin-left: 0; }
+.planilha-pe { margin: 6px 2px 0; font-size: .78rem; line-height: 1.4; color: var(--muted); }
+.planilha-rolagem { border-radius: 12px; }
+.planilha th { font: 600 .78rem var(--f-texto); color: var(--muted); padding: 8px 10px; background: var(--sunk); }
+.planilha td input, .planilha td select, .planilha td > span { padding: 7px 10px; min-height: 34px; }
+.planilha td input:focus, .planilha td select:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--surface); }
+.planilha tr:focus-within td:not(.bloqueada) { background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface)); }
+.planilha td.bloqueada:not(.calculada) { background: var(--sunk); }
+.planilha td.bloqueada:not(.calculada) > span { color: var(--faint); }
+/* célula que não pôde ser gravada: canto e contorno vermelhos, como na Planilha do Strata; o motivo ao passar o mouse */
+.planilha td { position: relative; }
+.planilha td.fixa { position: sticky; }
+.planilha td.com-erro { box-shadow: inset 0 0 0 2px var(--crit); background: var(--crit-soft); }
+.planilha td.com-erro::after { content: ""; position: absolute; top: 0; right: 0; border-style: solid; border-width: 0 9px 9px 0; border-color: transparent var(--crit) transparent transparent; pointer-events: none; }
+/* grupos por fase e etapa: o título fica parado à esquerda ao rolar para o lado */
+.planilha .planilha-grupo th { position: static; padding: 0; background: var(--bg); border-right: 0; text-align: left; font-style: normal; }
+.planilha .planilha-grupo.nivel-etapa th { background: color-mix(in srgb, var(--bg) 50%, var(--surface)); }
+.planilha .planilha-grupo .grade-grupo-botao { position: sticky; left: 0; }
+.planilha .planilha-grupo.nivel-etapa .grade-grupo-botao { padding-left: 30px; font: 600 .84rem var(--f-texto); }
+.caixa-planilha .grade-colunas { overflow-y: auto; min-height: 0; flex: 1; padding-right: 4px; }

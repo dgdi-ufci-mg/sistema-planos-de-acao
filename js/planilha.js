@@ -96,3 +96,83 @@ export function lerData(texto) {
   if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
   return undefined;
 }
+
+/* ---------- planilha do Sextante no modelo da do Strata (30/10/2026, pedido do responsável; seção 8.3) ---------- */
+
+/**
+ * Grupos da planilha por fase e etapa, na ordem da estrutura do espaço. Cada fase traz as suas etapas, e cada etapa as
+ * suas ações, na ordem recebida (já filtrada e classificada). Ação sem etapa, ou com etapa que não existe mais, vai para
+ * "Sem etapa", no fim. Fases e etapas sem ações ficam de fora.
+ * @param {object[]} acoes as ações à vista, na ordem da grade
+ * @param {{id: string, nome: string, etapas: {id: string, nome: string}[]}[]} estrutura
+ * @returns {{fase: {id: string, nome: string}, etapas: {etapa: {id: string, nome: string}, acoes: object[]}[]}[]}
+ */
+export function agruparPorFaseEEtapa(acoes, estrutura = []) {
+  const conhecidas = new Set(estrutura.flatMap((f) => f.etapas.map((e) => e.id)));
+  const grupos = estrutura.map((f) => ({
+    fase: { id: f.id, nome: f.nome },
+    etapas: f.etapas.map((e) => ({ etapa: { id: e.id, nome: e.nome }, acoes: acoes.filter((a) => a.etapa === e.id) })).filter((g) => g.acoes.length),
+  })).filter((g) => g.etapas.length);
+  const soltas = acoes.filter((a) => !conhecidas.has(a.etapa));
+  if (soltas.length) grupos.push({ fase: { id: "", nome: "Sem etapa" }, etapas: [{ etapa: { id: "", nome: "Sem etapa" }, acoes: soltas }] });
+  return grupos;
+}
+
+/**
+ * Colunas na ordem escolhida pela pessoa: as fixas (número, código e ação) ficam sempre na frente, na ordem delas; as
+ * demais seguem `ordem` (chaves); coluna que a ordem não conhece vai para o fim, na ordem de partida; chave que não
+ * existe mais é ignorada.
+ */
+export function ordenarColunas(colunas, ordem = []) {
+  const fixas = colunas.filter((c) => c.fixa);
+  const resto = colunas.filter((c) => !c.fixa);
+  const pos = new Map(ordem.map((k, i) => [k, i]));
+  const conhecidas = resto.filter((c) => pos.has(c.chave)).sort((a, b) => pos.get(a.chave) - pos.get(b.chave));
+  return [...fixas, ...conhecidas, ...resto.filter((c) => !pos.has(c.chave))];
+}
+
+/** Move a coluna `chave` uma posição (`sentido` −1 ou 1) entre as não fixas; devolve a nova ordem (chaves). */
+export function moverColuna(colunas, ordem, chave, sentido) {
+  const lista = ordenarColunas(colunas, ordem).filter((c) => !c.fixa).map((c) => c.chave);
+  const i = lista.indexOf(chave);
+  const j = i + sentido;
+  if (i < 0 || j < 0 || j >= lista.length) return lista;
+  [lista[i], lista[j]] = [lista[j], lista[i]];
+  return lista;
+}
+
+/** Sem acentos e em minúsculas, para a busca. */
+const semAcentos = (t) => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/** A linha passa pela busca? `textos`: os textos das células da linha; busca vazia aceita tudo. */
+export function passaNaBusca(textos, busca) {
+  const termo = semAcentos(busca).trim();
+  return !termo || textos.some((t) => semAcentos(t).includes(termo));
+}
+
+/**
+ * Desfazer e refazer de uma planilha que grava na hora. Cada passo é uma lista de células (uma, ao sair de uma célula;
+ * várias, ao colar um bloco): {numero, chave, antes, depois}, com os valores como texto. Desfazer grava `antes`;
+ * refazer grava `depois`. Um passo novo apaga o que havia para refazer. No máximo `limite` passos.
+ */
+export function criarDesfazer(limite = 100) {
+  let feitos = [];
+  let desfeitos = [];
+  return {
+    registrar(celulas) {
+      const uteis = (Array.isArray(celulas) ? celulas : [celulas]).filter((c) => String(c.antes ?? "") !== String(c.depois ?? ""));
+      if (!uteis.length) return;
+      feitos.push(uteis);
+      if (feitos.length > limite) feitos.shift();
+      desfeitos = [];
+    },
+    /** @returns {object[]|null} as células a regravar com `antes` */
+    desfazer() { const p = feitos.pop(); if (p) desfeitos.push(p); return p ?? null; },
+    /** @returns {object[]|null} as células a regravar com `depois` */
+    refazer() { const p = desfeitos.pop(); if (p) feitos.push(p); return p ?? null; },
+    /** Um passo que não pôde ser regravado volta para onde estava. */
+    devolver(passo, refazendo) { if (refazendo) { feitos.pop(); desfeitos.push(passo); } else { desfeitos.pop(); feitos.push(passo); } },
+    get podeDesfazer() { return feitos.length > 0; },
+    get podeRefazer() { return desfeitos.length > 0; },
+  };
+}
