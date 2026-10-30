@@ -130,6 +130,45 @@
 .strata-camada { stroke: var(--accent); }
 .strata-sol { stroke: var(--strata-sol); }
 
+/* ---------- Strata: caixas de vidro fosco (30/10/2026, pedido do responsável) ----------
+   As caixas que ficam por cima do Mapa deixam o céu aparecer por trás, desfocado, para manter a sensação de continuar
+   "no céu". Todas usam o mesmo vidro, mas a opacidade cresce com a quantidade de texto e o tempo de uso:
+   - leve: botões do alto, botões +, − e Centralizar, cartão do ponto e avisos (pouco texto, uso rápido);
+   - médio: menu, filtros, mensagem de vazio, folhas, painel do item e diálogos (leitura);
+   - denso: a Planilha, que é densa e de uso prolongado (só a moldura; a tabela fica opaca, porque a primeira coluna
+     e o cabeçalho presos precisam cobrir as linhas que rolam por baixo).
+   No tema claro o vidro é um pouco mais opaco que no escuro, como os estratos de mais e menos luz do sol.
+   Sem suporte ao desfoque (backdrop-filter) ou com "Reduzir transparência" ligado no aparelho, tudo volta a ser
+   sólido: os níveis viram 100% e o desfoque é desligado. */
+:root.strata { --vidro-leve: 72%; --vidro-medio: 84%; --vidro-denso: 94%; --vidro-filtro: blur(16px) saturate(140%); }
+@media (prefers-color-scheme: dark) {
+  :root.strata:not([data-theme="light"]) { --vidro-leve: 62%; --vidro-medio: 76%; --vidro-denso: 90%; }
+}
+:root.strata[data-theme="dark"] { --vidro-leve: 62%; --vidro-medio: 76%; --vidro-denso: 90%; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root.strata { --vidro-leve: 100% !important; --vidro-medio: 100% !important; --vidro-denso: 100% !important; --vidro-filtro: none !important; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root.strata { --vidro-leve: 100% !important; --vidro-medio: 100% !important; --vidro-denso: 100% !important; --vidro-filtro: none !important; }
+}
+/* leve */
+:root.strata .strata-filtro, :root.strata .strata-menu-botao, :root.strata .strata-mapa .mapa-controles .botao, :root.strata .mapa-cartao {
+  background: color-mix(in srgb, var(--surface) var(--vidro-leve), transparent); }
+:root.strata .strata-avisos .aviso-conexao, :root.strata .strata-avisos .superior-aviso-exemplo { background: color-mix(in srgb, var(--warn-soft) var(--vidro-leve), transparent); }
+:root.strata .strata-avisos .aviso-papel { background: color-mix(in srgb, var(--accent-soft) var(--vidro-leve), transparent); }
+/* médio */
+:root.strata .strata-menu, :root.strata .strata-filtros, :root.strata .strata-vazio, :root.strata .dialogo {
+  background: color-mix(in srgb, var(--surface) var(--vidro-medio), transparent); }
+:root.strata .strata-folha, :root.strata .painel { background: color-mix(in srgb, var(--bg) var(--vidro-medio), transparent); }
+/* denso */
+:root.strata .strata-grade { background: color-mix(in srgb, var(--bg) var(--vidro-denso), transparent); }
+/* o desfoque, comum a todas */
+:root.strata .strata-filtro, :root.strata .strata-menu-botao, :root.strata .strata-mapa .mapa-controles .botao, :root.strata .mapa-cartao,
+:root.strata .strata-avisos .aviso-conexao, :root.strata .strata-avisos .superior-aviso-exemplo, :root.strata .strata-avisos .aviso-papel,
+:root.strata .strata-menu, :root.strata .strata-filtros, :root.strata .strata-vazio, :root.strata .dialogo,
+:root.strata .strata-folha, :root.strata .painel, :root.strata .strata-grade {
+  -webkit-backdrop-filter: var(--vidro-filtro); backdrop-filter: var(--vidro-filtro); }
+
 /* ---------- base ---------- */
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
