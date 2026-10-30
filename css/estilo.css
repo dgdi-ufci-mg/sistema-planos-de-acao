@@ -1633,7 +1633,7 @@ span.item-estrategia.plano .item-estrategia-nome { color: var(--muted); }
 .mapa-area { position: relative; height: clamp(380px, calc(100dvh - 320px), 880px); border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); overflow: hidden; }
 .mapa-svg { display: block; width: 100%; height: 100%; touch-action: none; user-select: none; -webkit-user-select: none; cursor: grab; }
 .mapa-svg.arrastando { cursor: grabbing; }
-@media (pointer: fine) { .mapa-svg.ordenavel .mapa-no { cursor: grab; } }
+@media (pointer: fine) { .mapa-svg .mapa-no { cursor: grab; } } /* no computador, todo ponto pode ser puxado (física, lote 5); a ordem só se grava com .ordenavel */
 .mapa-svg.arrastando-ponto, .mapa-svg.arrastando-ponto .mapa-no { cursor: grabbing; }
 .mapa-faixa { fill: color-mix(in srgb, var(--mapa-topo) var(--pos, 0%), var(--mapa-chao)); stroke: var(--mapa-contorno); stroke-width: 1; }
 .mapa-ligacao { fill: none; stroke: var(--mapa-linha); stroke-opacity: .9; stroke-width: 1.3; }

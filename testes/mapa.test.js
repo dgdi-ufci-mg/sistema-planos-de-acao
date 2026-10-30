@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import {
   FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
-  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, caminhoAlem, linhaDoSolo, estrelasDoCeu, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
+  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, caminhoAlem, linhaDoSolo, estrelasDoCeu, puxaoDosVizinhos, alturaPuxada, passoDaInercia, velocidadeDeSaida, PUXAO, INERCIA, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
 } from "../js/mapa.js";
 
 const item = (id, camada, nome, superiores = [], codigo = "") => ({ id, camada, nome, codigo, superiores });
@@ -386,3 +386,57 @@ describe("Mapa: céu e solo da tela cheia", () => {
     }
   });
 });
+
+describe("Mapa: física, vizinhos que reagem e inércia (lote 5)", () => {
+  const mapa = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), vista: { w: 1000, h: 600 } });
+  const prg = mapa.nos.find((n) => n.tipo === "item" && n.superiores.length === 2) ?? mapa.nos.find((n) => n.superiores.length);
+
+  it("os ligados por 'vem de' acompanham uma fração do puxão; o próprio ponto não entra", () => {
+    const p = puxaoDosVizinhos(mapa, prg.chave, 100, 20);
+    assert.ok(!p.has(prg.chave));
+    for (const sup of prg.superiores) assert.deepEqual(p.get(sup), { dx: 100 * PUXAO.ligados, dy: 20 * PUXAO.ligadosNaAltura });
+  });
+
+  it("os da mesma faixa perto da posição de agora abrem espaço, para o lado de onde estão, mais quanto mais perto", () => {
+    const faixa = mapa.faixas[prg.faixa];
+    const outro = mapa.nos.find((n) => n.faixa === prg.faixa && n.chave !== prg.chave && !prg.superiores.includes(n.chave));
+    const dx = outro.x - prg.x - 10; // passa a 10 do outro, pela esquerda dele
+    const p = puxaoDosVizinhos(mapa, prg.chave, dx, 0);
+    assert.ok(faixa.nos.includes(outro.chave));
+    assert.ok(Math.abs(p.get(outro.chave).dx - (PUXAO.raio - 10) * PUXAO.abrir) < 1e-9);
+    assert.ok(p.get(outro.chave).dx > 0, "abre para a direita, o lado em que está");
+    const longe = puxaoDosVizinhos(mapa, prg.chave, outro.x - prg.x - 200, 0);
+    assert.ok(!longe.has(outro.chave), "a mais de um raio, não se mexe");
+  });
+
+  it("sem puxão, ninguém se mexe; um ponto que não existe, nada", () => {
+    for (const d of puxaoDosVizinhos(mapa, prg.chave, 0, 0).values()) assert.equal(d.dx, 0);
+    assert.equal(puxaoDosVizinhos(mapa, "nao-existe", 50, 0).size, 0);
+  });
+
+  it("o ponto puxado cede na altura só uma fração e não sai da faixa", () => {
+    const f = mapa.faixas[prg.faixa];
+    assert.ok(Math.abs(alturaPuxada(prg, f, prg.yCurvo + 20) - 20 * PUXAO.folgaNaAltura) < 1e-9);
+    assert.equal(alturaPuxada(prg, f, prg.yCurvo + 5000), f.altura / 2 - 8);
+    assert.equal(alturaPuxada(prg, f, prg.yCurvo - 5000), -(f.altura / 2 - 8));
+  });
+
+  it("inércia: a velocidade decai exponencialmente, o deslocamento é a integral exata, e para abaixo do mínimo", () => {
+    let v = { vx: 1000, vy: 0 };
+    let total = 0;
+    for (let i = 0; i < 200; i++) { const r = passoDaInercia(v, 1 / 60); total += r.dx; v = r; if (r.parou) break; }
+    assert.ok(Math.abs(total - (1000 - v.vx) * INERCIA.tempo) < 1e-6, "soma dos passos = v0 × tempo, menos o que sobrou");
+    assert.ok(Math.hypot(v.vx, v.vy) < INERCIA.minima);
+    const meio = passoDaInercia({ vx: 1000, vy: 0 }, INERCIA.tempo * Math.LN2);
+    assert.ok(Math.abs(meio.vx - 500) < 1e-9, "meia-vida de tempo × ln 2");
+  });
+
+  it("velocidade de saída: abaixo da partida, sem inércia; acima do máximo, limitada", () => {
+    assert.equal(velocidadeDeSaida({ vx: 50, vy: 50 }), null);
+    assert.equal(velocidadeDeSaida({ vx: NaN, vy: 0 }), null);
+    const r = velocidadeDeSaida({ vx: 30000, vy: 40000 });
+    assert.ok(Math.abs(Math.hypot(r.vx, r.vy) - INERCIA.maxima) < 1e-6);
+    assert.deepEqual(velocidadeDeSaida({ vx: 300, vy: 0 }), { vx: 300, vy: 0 });
+  });
+});
+
