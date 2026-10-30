@@ -2150,6 +2150,24 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
 .mapa-cartao[hidden] { display: none; }
 .mapa-cartao .botao { min-height: 32px; padding: 3px 14px; }
 .mapa-cartao small { font-size: 11px; }
+/* filtros do Mapa (30/10/2026): linha que passa por itens escondidos, tracejada; ponto fora da vigência com algo
+   vigente abaixo, apagado e com o sinal de atenção; o que entra e sai do mapa se acende e se apaga aos poucos */
+.mapa-ligacao.indireta { stroke-dasharray: 5 4; }
+.mapa-ligacao-borda.indireta { stroke-dasharray: 5 4; pointer-events: stroke; } /* a borda, mais grossa, recebe o mouse e mostra a dica */
+.mapa-no.esmaecido .mapa-bolinha { fill: var(--sunk); stroke-dasharray: 2.5 2; }
+.mapa-no.esmaecido .mapa-bolinha, .mapa-no.esmaecido .mapa-nome { opacity: .55; }
+.mapa-no.esmaecido.no-caminho .mapa-bolinha, .mapa-no.esmaecido.no-caminho .mapa-nome, .mapa-no.esmaecido.foco .mapa-nome { opacity: 1; }
+.mapa-sinal { pointer-events: none; }
+.mapa-sinal circle { fill: var(--warn); stroke: var(--warn-ink); stroke-width: 1.2; }
+.mapa-sinal text { fill: var(--warn-ink); font: 700 8px/1 var(--f-texto, sans-serif); }
+.mapa-cartao-alerta { margin: 2px 0 0; padding: 4px 8px; border-left: 3px solid var(--warn); border-radius: 4px; background: var(--warn-soft); color: var(--ink); font-size: 12px; }
+.mapa-cartao-via { max-width: 100%; }
+.mapa-saindo { pointer-events: none; }
+.mapa-saindo > * { animation: mapa-sair var(--mov) var(--mov-curva) forwards; }
+.mapa-no.entrando, .mapa-ligacao.entrando, .mapa-ligacao-borda.entrando { animation: mapa-entrar var(--mov) var(--mov-curva); }
+@keyframes mapa-sair { to { opacity: 0; } }
+@keyframes mapa-entrar { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mapa-saindo > *, .mapa-no.entrando, .mapa-ligacao.entrando, .mapa-ligacao-borda.entrando { animation: none; } }
 .item-estrategia.selecionado { background: var(--warn-soft); border-color: var(--warn); }
 .mapa-alvo { fill: transparent; }
 
@@ -2212,26 +2230,28 @@ body.strata-cheia { margin: 0; padding: 0; height: 100dvh; overflow: hidden; ove
 .strata-filtro, .strata-menu-botao { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
   background: color-mix(in srgb, var(--surface) 90%, transparent); color: var(--ink); font: 600 .88rem var(--f-texto); cursor: pointer; white-space: nowrap;
   box-shadow: 0 1px 6px color-mix(in srgb, var(--ink) 16%, transparent); transition: background-color var(--mov-rapido), border-color var(--mov-rapido); }
-.strata-menu-botao .icone, .strata-menu-botao svg { width: 18px; height: 18px; }
-.strata-filtro-chave { position: relative; width: 28px; height: 16px; border-radius: 999px; background: var(--line); flex: none; transition: background-color var(--mov-rapido); }
-.strata-filtro-chave::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 30%, transparent); transition: transform var(--mov-rapido) var(--mov-curva); }
-.strata-filtro[aria-pressed="true"] .strata-filtro-chave { background: var(--accent); }
-.strata-filtro[aria-pressed="true"] .strata-filtro-chave::after { transform: translateX(12px); }
+.strata-menu-botao .icone, .strata-menu-botao svg, .strata-filtro .icone, .strata-filtro svg { width: 18px; height: 18px; }
+/* filtros do Mapa (30/10/2026): o botão mostra quantas escolhas diferem do padrão; o painel usa o desenho do menu */
+.strata-filtro[aria-expanded="true"], .strata-menu-botao[aria-expanded="true"] { border-color: var(--accent); }
+.strata-filtro-conta { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: var(--accent); color: var(--texto-sobre-destaque); font-size: .75rem; animation: surgir-conta var(--mov-rapido) var(--mov-curva); }
+.strata-filtro-linha { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 10px; border-radius: 8px; cursor: pointer; color: var(--ink); }
+.strata-filtro-linha:hover { background: var(--sunk); }
+.strata-filtro-linha input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); flex: none; }
+.strata-menu-item:disabled { color: var(--muted); cursor: default; background: none; }
 .strata-filtro:focus-visible, .strata-menu-botao:focus-visible { outline: 2px solid var(--warn); outline-offset: 2px; }
 
 /* o menu: abre por cima do mapa, sob o botão, com os nomes escritos */
-.strata-menu { position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; width: 270px; max-width: calc(100vw - 28px); max-height: calc(100dvh - 90px); overflow-y: auto;
+.strata-menu, .strata-filtros { position: absolute; z-index: 40; top: calc(100% + 8px); right: 0; width: 270px; max-width: calc(100vw - 28px); max-height: calc(100dvh - 90px); overflow-y: auto;
   display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--sombra);
   opacity: 0; visibility: hidden; transform: translateY(-6px) scale(.98); transform-origin: top right;
   transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva), visibility 0s var(--mov-rapido); }
-.strata-menu.aberto { opacity: 1; visibility: visible; transform: none; transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva), visibility 0s; }
+.strata-menu.aberto, .strata-filtros.aberto { opacity: 1; visibility: visible; transform: none; transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva), visibility 0s; }
 .strata-menu-nota { margin: 2px 6px 4px; font-size: .78rem; }
 .strata-menu-grupo { display: flex; flex-direction: column; gap: 1px; padding-top: 4px; border-top: 1px solid var(--line); }
 .strata-menu-grupo:first-of-type { border-top: 0; padding-top: 0; }
 .strata-menu-item { display: flex; align-items: center; min-height: 40px; padding: 6px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink);
   font: 400 .95rem var(--f-texto); text-align: left; text-decoration: none; cursor: pointer; transition: background-color var(--mov-rapido); }
-.strata-menu-item:hover, .strata-menu-item:focus-visible { background: var(--sunk); outline: none; }
+.strata-menu-item:not(:disabled):hover, .strata-menu-item:focus-visible { background: var(--sunk); outline: none; }
 .strata-menu-rotulo { padding: 4px 10px 2px; font-size: .78rem; font-weight: 600; color: var(--muted); }
 .strata-menu-email { padding: 4px 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .strata-temas { display: flex; gap: 4px; padding: 2px 6px 6px; }
@@ -2266,7 +2286,7 @@ body.strata-cheia { margin: 0; padding: 0; height: 100dvh; overflow: hidden; ove
   .strata-folha { width: 100%; transform: translateY(102%); }
   .strata-folha.aberta { transform: none; }
 }
-@media (prefers-reduced-motion: reduce) { .strata-folha, .strata-menu, .strata-menu.aberto { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .strata-folha, .strata-menu, .strata-menu.aberto, .strata-filtros, .strata-filtros.aberto { transition: none; } .strata-filtro-conta { animation: none; } }
 .strata-ajuda { display: flex; flex-direction: column; gap: 10px; }
 
 /* céu e solo da tela cheia (29/10/2026, tarde; referência: o esboço): as faixas continuam para os lados, só como desenho,

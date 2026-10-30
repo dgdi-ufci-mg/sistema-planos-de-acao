@@ -37,10 +37,10 @@ describe("Strata: Mapa em tela cheia como porta de entrada", { skip: pular }, ()
         assert.equal(instituicao.trim(), o.largura > 640 ? "Universidade Federal de Ciência e Inovação de Minas Gerais" : "UFCI-MG");
         const marca = await p.locator(".strata-cima .superior-marca").boundingBox();
         const menu = await p.locator("[data-alternar-menu]").boundingBox();
-        const filtro = await p.locator("[data-alternar-vigentes]").boundingBox();
+        const filtro = await p.locator("[data-alternar-filtros]").boundingBox();
         assert.ok(marca.x < 40 && marca.y < 40, "título no alto, à esquerda");
         assert.ok(menu.x + menu.width > o.largura - 40 && menu.y < 40, "menu no alto, à direita");
-        assert.ok(filtro.x + filtro.width > o.largura * 0.75 && filtro.y < 120, "filtro no alto, à direita, sempre à vista");
+        assert.ok(filtro.x + filtro.width > o.largura * 0.6 && filtro.y < 120, "filtros no alto, à direita, sempre à vista");
         const cobertos = await p.evaluate(() => {
           const caixas = [".strata-cima", ".strata-avisos", ".mapa-controles"].map((s) => document.querySelector(s).getBoundingClientRect());
           const [cima, avisos, botoes] = caixas;

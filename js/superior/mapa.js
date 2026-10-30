@@ -13,6 +13,7 @@
  * - o movimento e a aproximação ficam limitados ao conteúdo, nos dois sentidos (`limitarTransformacao`);
  * - os nomes das camadas ficam presos à borda esquerda, em tamanho fixo, e não encolhem com o zoom.
  */
+import { plural } from "../formato.js";
 import {
   alturaPuxada, calcularMapa, caminhoAlem, passoDaInercia, puxaoDosVizinhos, velocidadeDeSaida, caminhoDaFaixa, caminhoDaLigacao, estrelasDoCeu, linhaDoSolo, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
 } from "../mapa.js";
@@ -47,9 +48,12 @@ const criar = (nome, atributos = {}) => {
  *   `ordemPessoal`: a ordem da pessoa, camada → chaves; `podeOrdenar`: ela pode arrastar pontos (só com o mouse, no computador); `aoReordenar` recebe a nova ordem de uma camada
  *   `estado` guarda a vista e o ponto selecionado entre um desenho e outro da tela; `aoAbrir` recebe o ponto do cartão
  *   `folga`: pixels reservados no alto e no pé da área, que ficam sob o título e o menu da tela cheia (o conteúdo não vai para baixo deles)
+ *   `semPlanos`: sem a faixa dos Planos de Ação (filtro). Itens e planos podem vir de `filtrarParaOMapa` (js/filtro-do-mapa.js),
+ *   com `via`, `esmaecido` e `alerta`: a linha que passa por itens escondidos é tracejada; o ponto fora da vigência com
+ *   algo vigente abaixo fica apagado e com um sinal de atenção, e o cartão diz por quê
  * @returns {{destruir: () => void}}
  */
-export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {}, ordemPessoal = {}, podeOrdenar = false, aoReordenar = async () => {}, folga = () => ({ topo: 0, base: 0 }) }) {
+export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir = () => {}, ordemPessoal = {}, podeOrdenar = false, aoReordenar = async () => {}, folga = () => ({ topo: 0, base: 0 }), semPlanos = false }) {
   area.innerHTML = `
     <svg class="mapa-svg" role="group" aria-label="Mapa do desdobramento: do alto, o que vem primeiro; embaixo, os Planos de Ação" focusable="false">
       <g data-mapa-mundo></g>
@@ -80,8 +84,15 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   /* ---------- desenho ---------- */
   function desenhar() {
     const medir = (texto) => { medidor.textContent = texto; return medidor.getComputedTextLength(); };
-    mapa = calcularMapa({ camadas, itens, planos, medir, vista, ordemPessoal });
+    mapa = calcularMapa({ camadas, itens, planos, medir, vista, ordemPessoal, semPlanos });
     cancelAnimationFrame(molaId);
+    /* o que sai do mapa (filtro, exclusão) se apaga aos poucos no lugar em que estava, em vez de sumir de repente */
+    const ficam = new Set(mapa.nos.map((n) => n.chave));
+    const ficamLinhas = new Set(mapa.ligacoes.map((l) => `${l.de}|${l.para}`));
+    const saindo = reduzirMovimento() ? [] : [...mundo.querySelectorAll(":scope > g > .mapa-no, :scope > g > .mapa-ligacao, :scope > g > .mapa-ligacao-borda")]
+      .filter((e) => (e.classList.contains("mapa-no") ? !ficam.has(e.dataset.no) : !ficamLinhas.has(`${e.dataset.de}|${e.dataset.para}`)));
+    const jaHavia = new Set([...mundo.querySelectorAll(":scope > g > .mapa-no")].map((g) => g.dataset.no));
+    const primeiraVez = !mundo.childElementCount;
     elementos.clear();
     ligacoesVivas.length = 0;
     mundo.replaceChildren();
@@ -90,7 +101,13 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const grupoEstrelas = criar("g", { class: "mapa-estrelas", "aria-hidden": "true" });
     const grupoLigacoes = criar("g");
     const grupoNos = criar("g");
-    mundo.append(grupoCeu, grupoFaixas, grupoEstrelas, grupoLigacoes, grupoNos);
+    const grupoSaindo = criar("g", { class: "mapa-saindo", "aria-hidden": "true" });
+    mundo.append(grupoCeu, grupoFaixas, grupoEstrelas, grupoLigacoes, grupoNos, grupoSaindo);
+    if (saindo.length) {
+      for (const e of saindo) { e.removeAttribute("tabindex"); e.removeAttribute("data-no"); e.removeAttribute("data-de"); e.removeAttribute("data-para"); }
+      grupoSaindo.append(...saindo);
+      setTimeout(() => grupoSaindo.remove(), 320); // depois da transição (--mov)
+    }
 
     const quantas = mapa.faixas.length;
     const alem = ALEM * mapa.largura;
@@ -120,22 +137,37 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const porChave = new Map(mapa.nos.map((n) => [n.chave, n]));
     for (const l of mapa.ligacoes) { // cada linha tem uma borda de cor oposta, para aparecer sobre o claro e sobre o escuro
       const d = caminhoDaLigacao(porChave.get(l.de), porChave.get(l.para));
-      const borda = criar("path", { class: "mapa-ligacao-borda", "data-de": l.de, "data-para": l.para, d });
-      const linha = criar("path", { class: "mapa-ligacao", "data-de": l.de, "data-para": l.para, d });
+      const extra = l.indireta ? " indireta" : "";
+      const novaLinha = !primeiraVez && !(jaHavia.has(l.de) && jaHavia.has(l.para)) ? " entrando" : "";
+      const borda = criar("path", { class: `mapa-ligacao-borda${extra}${novaLinha}`, "data-de": l.de, "data-para": l.para, d });
+      const linha = criar("path", { class: `mapa-ligacao${extra}${novaLinha}`, "data-de": l.de, "data-para": l.para, d });
+      if (l.indireta) { // tracejada: passa por itens escondidos pelo filtro; a dica diz quais
+        const dica = criar("title");
+        dica.textContent = `Passa por ${plural(l.via.length, "item escondido", "itens escondidos")}: ${l.via.join("; ")}`;
+        borda.append(dica);
+      }
       grupoLigacoes.append(borda, linha);
       ligacoesVivas.push({ de: l.de, para: l.para, borda, linha });
     }
     for (const n of mapa.nos) {
-      const g = criar("g", { class: `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}`, "data-no": n.chave, "data-tipo": n.tipo, "data-faixa": n.faixa, tabindex: 0, role: "button" });
-      g.setAttribute("aria-label", n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`);
+      const classes = `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}${n.esmaecido ? " esmaecido" : ""}${n.alerta ? " com-alerta" : ""}${!primeiraVez && !jaHavia.has(n.chave) ? " entrando" : ""}`;
+      const g = criar("g", { class: classes, "data-no": n.chave, "data-tipo": n.tipo, "data-faixa": n.faixa, tabindex: 0, role: "button" });
+      const texto = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
+      g.setAttribute("aria-label", n.alerta ? `${texto}. Atenção: ${n.alerta}` : texto);
       const titulo = criar("title");
-      titulo.textContent = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
+      titulo.textContent = n.alerta ? `${texto}\n${n.alerta}` : texto;
       const alvo = criar("circle", { class: "mapa-alvo", cx: n.x, cy: n.yCurvo, r: 11 }); // área de toque maior que o ponto
       const ponto = criar("circle", { class: "mapa-bolinha", cx: n.x, cy: n.yCurvo, r: 6 });
       g.append(titulo, alvo, ponto);
+      let sinal = null;
+      if (n.alerta) { // sinal de atenção, no alto à direita do ponto: fora da vigência, mas com algo vigente abaixo
+        sinal = criar("g", { class: "mapa-sinal", transform: `translate(${n.x} ${n.yCurvo})`, "aria-hidden": "true" });
+        sinal.append(criar("circle", { cx: 6.5, cy: -6.5, r: 5 }), Object.assign(criar("text", { x: 6.5, y: -3.6, "text-anchor": "middle" }), { textContent: "!" }));
+        g.append(sinal);
+      }
       const nome = criar("text", { class: "mapa-nome", x: n.x + mapa.recuo, y: n.yCurvo + 4 }); // o texto muda com o zoom e o caminho
       g.append(nome);
-      elementos.set(n.chave, { alvo, ponto, nome });
+      elementos.set(n.chave, { alvo, ponto, nome, sinal });
       grupoNos.append(g);
     }
 
@@ -180,6 +212,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       const a = atual.get(chave);
       p.alvo.setAttribute("cx", a.x); p.alvo.setAttribute("cy", a.y);
       p.ponto.setAttribute("cx", a.x); p.ponto.setAttribute("cy", a.y);
+      p.sinal?.setAttribute("transform", `translate(${a.x.toFixed(2)} ${a.y.toFixed(2)})`);
       const k = t?.k ?? 1;
       p.nome.setAttribute("x", (a.x + RECUO_NA_TELA / k).toFixed(2)); p.nome.setAttribute("y", (a.y + 4 / k).toFixed(2));
     }
@@ -343,8 +376,21 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     nome.textContent = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
     const tipo = document.createElement("small");
     tipo.className = "tec";
-    tipo.textContent = n.restrito ? "Só quem participa dele vê o nome." : faixa.nome;
+    tipo.textContent = n.restrito ? "Só quem participa dele vê o nome." : `${faixa.nome}${n.esmaecido ? " · fora da vigência" : ""}`;
     cartao.replaceChildren(nome, tipo);
+    if (n.alerta) { // por que o ponto está apagado ou tem o sinal
+      const alerta = document.createElement("p");
+      alerta.className = "mapa-cartao-alerta";
+      alerta.textContent = n.alerta;
+      cartao.append(alerta);
+    }
+    const escondidos = [...new Set(mapa.ligacoes.filter((l) => l.de === n.chave && l.indireta).flatMap((l) => l.via))];
+    if (escondidos.length) { // a linha tracejada: os itens que o filtro esconde entre este ponto e os de cima
+      const via = document.createElement("small");
+      via.className = "tec mapa-cartao-via";
+      via.textContent = `Ligado acima por ${plural(escondidos.length, "um item escondido", "itens escondidos")}: ${escondidos.join("; ")}`;
+      cartao.append(via);
+    }
     if (!n.restrito) {
       const abrir = document.createElement("button");
       abrir.type = "button";

@@ -42,13 +42,14 @@ export const deslocamentoCurvo = (x, centro, raio) => ((x - centro) * (x - centr
  * Faixas do mapa: as camadas do catálogo na ordem dele, menos as opcionais sem itens, e a dos Planos de Ação.
  * @param {object[]} camadas
  * @param {object[]} itens  itens ativos que vão aparecer
+ * @param {{semPlanos?: boolean}} [opcoes]  `semPlanos`: a faixa dos Planos de Ação foi escondida pelo filtro (seção 8, "Filtros")
  * @returns {{id: string, nome: string, plural: string, opcional: boolean}[]}
  */
-export function faixasDoMapa(camadas, itens) {
+export function faixasDoMapa(camadas, itens, { semPlanos = false } = {}) {
   const faixas = camadas
     .filter((c) => !c.opcional || itens.some((x) => x.camada === c.id))
     .map((c) => ({ id: c.id, nome: c.nome, plural: c.plural, opcional: Boolean(c.opcional) }));
-  faixas.push({ id: FAIXA_PLANOS, nome: "Plano de Ação", plural: "Planos de Ação", opcional: false });
+  if (!semPlanos) faixas.push({ id: FAIXA_PLANOS, nome: "Plano de Ação", plural: "Planos de Ação", opcional: false });
   return faixas;
 }
 
@@ -67,13 +68,18 @@ export function faixasDoMapa(camadas, itens) {
  * @param {number} [p.fileirasMaximas]  fileiras de uma faixa cheia demais para uma só (lote 4: a faixa cresce para baixo, e não para os lados)
  * @param {number} [p.raioPorLargura]  raio da curva, em larguras do mapa
  * @param {Record<string, string[]>} [p.ordemPessoal]  ordem escolhida pela pessoa (lote 6): para cada camada, as chaves dos pontos, da esquerda para a direita
+ * @param {boolean} [p.semPlanos]  sem a faixa dos Planos de Ação (filtro, `js/filtro-do-mapa.js`)
+ *
+ * Itens e planos vindos de `filtrarParaOMapa` trazem também `via` (superior → nomes dos itens escondidos no caminho),
+ * `esmaecido` e `alerta`; o plano com `manter` aparece mesmo sem nenhum superior visível. A ligação ganha `via` (lista,
+ * vazia na direta) e `indireta` (via não vazia); o ponto ganha `esmaecido` e `alerta`.
  */
 export function calcularMapa({
   camadas, itens, planos = [], medir = (t) => t.length * 7, vista = { w: 960, h: 560 },
-  margem = 28, espacoMinimo = 26, passoNivel = 19, niveisMaximos = 4, fileirasMaximas = 8, raioPorLargura = 4, ordemPessoal = {},
+  margem = 28, espacoMinimo = 26, passoNivel = 19, niveisMaximos = 4, fileirasMaximas = 8, raioPorLargura = 4, ordemPessoal = {}, semPlanos = false,
 }) {
   const ativos = itens.filter((x) => !x.excluidoEm);
-  const faixas = faixasDoMapa(camadas, ativos);
+  const faixas = faixasDoMapa(camadas, ativos, { semPlanos });
   const indiceDaFaixa = new Map(faixas.map((f, i) => [f.id, i]));
   const idsDosItens = new Set(ativos.map((x) => x.id));
 
@@ -84,18 +90,22 @@ export function calcularMapa({
     if (faixa == null) continue;
     nos.push({
       chave: x.id, id: x.id, tipo: "item", faixa, codigo: x.codigo ?? "", nome: x.nome, restrito: false,
-      superiores: (x.superiores ?? []).filter((s) => idsDosItens.has(s)),
+      superiores: (x.superiores ?? []).filter((s) => idsDosItens.has(s)), via: x.via ?? {}, esmaecido: Boolean(x.esmaecido), alerta: x.alerta ?? null,
     });
   }
-  for (const e of [...planos].sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"))) {
+  for (const e of semPlanos ? [] : [...planos].sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"))) {
     const ligados = (e.superiores ?? []).filter((s) => idsDosItens.has(s));
-    if ((e.superiores ?? []).length && !ligados.length) continue; // só liga a itens que não aparecem: não aparece
+    if (!e.manter && (e.superiores ?? []).length && !ligados.length) continue; // só liga a itens que não aparecem: não aparece (o filtro manda manter)
     nos.push({
       chave: `plano:${e.id}`, id: e.id, tipo: "plano", faixa: faixas.length - 1, codigo: "", nome: e.nome, restrito: Boolean(e.restrito), superiores: ligados,
+      via: e.via ?? {}, esmaecido: Boolean(e.esmaecido), alerta: e.alerta ?? null,
     });
   }
   const porChave = new Map(nos.map((n) => [n.chave, n]));
-  const ligacoes = nos.flatMap((n) => n.superiores.map((s) => ({ de: n.chave, para: s })));
+  const ligacoes = nos.flatMap((n) => n.superiores.map((s) => {
+    const via = n.via[s] ?? [];
+    return { de: n.chave, para: s, via, indireta: via.length > 0 };
+  }));
   const subordinados = new Map();
   for (const l of ligacoes) subordinados.set(l.para, [...(subordinados.get(l.para) ?? []), l.de]);
 

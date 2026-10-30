@@ -301,17 +301,75 @@ describe("Mapa do Strata", { skip: pular }, () => {
       assert.match(await selecionado(p), /^PRG2 /);
     });
 
-    test("\"Só o que vale hoje\" fica sempre à vista sobre o Mapa, como botão de liga e desliga, e muda os pontos mostrados", async () => {
+    test("Filtros (30/10/2026): esconder um nível liga por cima dele, com linha tracejada; o botão conta as mudanças e a escolha fica guardada", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
-      const antes = await p.locator(".mapa-no").count();
-      assert.equal(await p.locator("[data-alternar-vigentes]").getAttribute("aria-pressed"), "true", "ligado ao abrir");
-      await p.click("[data-alternar-vigentes]");
-      await p.waitForSelector(".mapa-no");
-      assert.ok(await p.locator(".mapa-no").count() >= antes, "desligar nunca mostra menos");
-      assert.equal(await p.locator("[data-alternar-vigentes]").getAttribute("aria-pressed"), "false");
-      await p.click("[data-alternar-menu]");
-      await p.click('[data-abrir-folha="arvore"]');
-      assert.equal(await p.locator("[data-so-vigentes]").isChecked(), false, "o filtro do Desdobramento é o mesmo");
+      assert.equal(await p.locator(".mapa-ligacao.indireta").count(), 0, "ao abrir, nenhuma linha tracejada");
+      assert.equal(await p.locator(".strata-filtro-conta").count(), 0, "no padrão, sem número no botão");
+      await p.click("[data-alternar-filtros]");
+      assert.equal(await p.locator("[data-alternar-filtros]").getAttribute("aria-expanded"), "true");
+      assert.ok(await p.locator('[data-filtro-vigencia="vigentes"]').isChecked(), "ao abrir, só o que vale hoje");
+      assert.ok(!(await p.locator('[data-filtro-vigencia="encerrados"]').isChecked()));
+      await p.uncheck('[data-filtro-camada="politica"]');
+      await p.waitForSelector(".mapa-svg:not([data-movendo]) .mapa-ligacao.indireta");
+      assert.equal(await p.locator('.mapa-faixa[data-camada="politica"]').count(), 0, "a faixa some");
+      assert.equal(await p.locator(".strata-filtro-conta").innerText().then((t) => t.trim().split(/\s/)[0]), "1");
+      /* PRG3 vem de POL2, que vem de OD2 e de OD1: com Políticas escondidas, PRG3 liga direto aos dois ODs, tracejado */
+      const prg3 = await p.locator(".mapa-no").filter({ has: p.locator("title", { hasText: /^PRG3 / }) }).getAttribute("data-no");
+      const linhas = await p.locator(`.mapa-ligacao.indireta[data-de="${prg3}"]`).count();
+      assert.equal(linhas, 2);
+      const dica = await p.locator(`.mapa-ligacao-borda.indireta[data-de="${prg3}"] title`).first().textContent();
+      assert.match(dica, /POL2/, "a dica diz por qual item escondido a linha passa");
+      await p.keyboard.press("Escape");
+      assert.equal(await p.locator("[data-alternar-filtros]").getAttribute("aria-expanded"), "false", "Esc fecha o painel");
+      await p.waitForFunction(() => !history.state?.sextanteCamada); // fechar devolve a entrada do Voltar; recarregar antes disso aborta
+      await p.reload();
+      await p.waitForSelector(".mapa-svg:not([data-movendo]) .mapa-no");
+      assert.equal(await p.locator('.mapa-faixa[data-camada="politica"]').count(), 0, "a escolha fica guardada neste navegador");
+      await p.click("[data-alternar-filtros]");
+      await p.click("[data-filtro-padrao]");
+      await p.waitForSelector('.mapa-faixa[data-camada="politica"]');
+      assert.equal(await p.locator(".mapa-ligacao.indireta[data-de]").count(), 0, "Voltar ao padrão desfaz (as que saem se apagam aos poucos, já sem data-de)");
+      assert.equal(await p.locator(".strata-filtro-conta").count(), 0);
+      assert.deepEqual(p.erros, []);
+    });
+
+    test("Filtros: esconder todos os níveis menos os Planos de Ação deixa a mensagem; esconder a vigência que há também", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      await p.click("[data-alternar-filtros]");
+      await p.uncheck('[data-filtro-vigencia="vigentes"]');
+      await p.waitForSelector("[data-vazio]:not([hidden])");
+      assert.match(await p.locator("[data-vazio]").innerText(), /Nada a mostrar com estes filtros/);
+      assert.equal(await p.locator(".mapa-no").count(), 0);
+    });
+
+    test("Filtros: fora da vigência com algo vigente abaixo, o ponto fica apagado, com o sinal, e o cartão explica", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      const r = await p.evaluate(async () => {
+        const { criarVistaMapa } = await import("../js/superior/mapa.js");
+        const { filtrarParaOMapa } = await import("../js/filtro-do-mapa.js");
+        const area = document.createElement("div");
+        area.className = "mapa-area";
+        area.style.cssText = "position:fixed;inset:0;height:600px";
+        document.body.append(area);
+        const camadas = [{ id: "a", nome: "Objetivo", plural: "Objetivos" }, { id: "b", nome: "Programa", plural: "Programas" }];
+        const instrumentos = [{ id: "velho", nome: "PDI antigo", inicio: "2019-01-01", fim: "2023-12-31" }];
+        const itens = [
+          { id: "i1", camada: "a", nome: "Objetivo antigo", codigo: "O1", instrumento: "velho", superiores: [] },
+          { id: "i2", camada: "b", nome: "Programa", codigo: "P1", superiores: ["i1"] },
+        ];
+        const f = filtrarParaOMapa({ camadas, instrumentos, itens, planos: [{ id: "x", nome: "Plano", superiores: ["i2"] }], hoje: "2026-10-30" });
+        criarVistaMapa(area, { camadas: f.camadas, itens: f.itens, planos: f.planos, estado: { selecionado: "i1" } });
+        const g = area.querySelector('[data-no="i1"]');
+        return {
+          apagado: g.classList.contains("esmaecido"), sinal: g.querySelectorAll(".mapa-sinal").length,
+          rotulo: g.getAttribute("aria-label"), cartao: area.querySelector("[data-mapa-cartao]").innerText,
+        };
+      });
+      assert.ok(r.apagado);
+      assert.equal(r.sinal, 1);
+      assert.match(r.rotulo, /Atenção: Encerrado em 31\/12\/2023, mas ainda tem 1 Plano de Ação e 1 item vigentes ligados a ele\./);
+      assert.match(r.cartao, /fora da vigência/);
+      assert.match(r.cartao, /Encerrado em 31\/12\/2023/);
     });
 
     test("Plano de Ação restrito: o cartão não mostra o nome nem oferece \"Abrir\"", async () => {

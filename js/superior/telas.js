@@ -2,7 +2,8 @@
  * Telas do Strata, antes módulo Superior (passo 2.5; documentação técnica, seções 4.11 e 8): a gestão da estratégia.
  * Desde 29/10/2026, tarde (decisão do responsável), o **Mapa ocupa a tela toda e é a porta de entrada**; nada tira a
  * pessoa do mapa: o resto abre por cima dele e, ao fechar, volta ao mesmo ponto, com o item ainda aceso.
- * - no alto, à esquerda, o título e a universidade (na página); à direita, "Só o que vale hoje" e o **menu**;
+ * - no alto, à esquerda, o título e a universidade (na página); à direita, os **Filtros** (camadas e vigência, desde
+ *   30/10/2026; antes, "Só o que vale hoje") e o **menu**;
  * - o menu leva às **folhas**, que abrem por cima do mapa:
  *   - Ver como lista (o Desdobramento): a árvore do catálogo, com os Planos de Ação e as entregas (passo 2.6);
  *   - Instrumentos: PEI, PDI, políticas…, com vigência e prorrogações;
@@ -25,12 +26,23 @@ import { alcanceAtual, textoDoValor } from "../entregas.js";
 import { seloDaSituacao } from "../telas/entregas.js";
 import { esqueletoHtml } from "../telas/esqueleto.js";
 import { criarVistaMapa } from "./mapa.js";
+import { FAIXA_PLANOS } from "../mapa.js";
+import { FILTRO_PADRAO, VIGENCIAS, filtrarParaOMapa, mudancasDoFiltro, normalizarFiltro } from "../filtro-do-mapa.js";
 import {
   avisoDaMissao, camadasAcima, instrumentoVigente, itemVigente, rotuloDoItem, caminhoAteOTopo, subordinadosDe, itensPorCamada, planejarCatalogo,
 } from "../estrategia.js";
 
 /** Folhas que abrem por cima do mapa: chave → título. */
 const FOLHAS = { arvore: "Desdobramento", instrumentos: "Instrumentos", camadas: "Camadas", importar: "Importar" };
+/** Onde o navegador guarda os filtros do Mapa: preferência desta pessoa neste aparelho (não vai ao banco). */
+const CHAVE_DOS_FILTROS = "strata:filtrosDoMapa";
+function lerFiltrosGuardados() {
+  try { return normalizarFiltro(JSON.parse(localStorage.getItem(CHAVE_DOS_FILTROS) ?? "null")); } catch { return normalizarFiltro(null); }
+}
+function guardarFiltros(filtro) {
+  try { localStorage.setItem(CHAVE_DOS_FILTROS, JSON.stringify(filtro)); } catch { /* navegador sem armazenamento: vale só até recarregar */ }
+}
+
 /** Tema do aparelho, com os nomes do Strata (o céu de dia e de noite); os valores são os do Sextante (js/tema.js). */
 const TEMAS_DO_STRATA = [["automatico", "Automático"], ["claro", "Dia"], ["escuro", "Noite"]];
 
@@ -43,7 +55,7 @@ const TEMAS_DO_STRATA = [["automatico", "Automático"], ["claro", "Dia"], ["escu
  */
 export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = null, avisos = null, cima = null }) {
   /** `folha`: a folha aberta por cima do mapa (chave de FOLHAS), ou null; `menu`: o menu aberto */
-  const ui = { folha: null, menu: false, soVigentes: true, busca: "", recolhidos: new Set(), mapa: {}, ordemDoMapa: null };
+  const ui = { folha: null, menu: false, filtros: false, filtro: lerFiltrosGuardados(), soVigentes: true, busca: "", recolhidos: new Set(), mapa: {}, ordemDoMapa: null };
   /** vista do Mapa montada na tela (para desfazer os ouvintes ao trocar de aba ou desenhar de novo) */
   let vistaMapa = null;
   let cat = { camadas: [], instrumentos: [], itens: [] };
@@ -104,12 +116,14 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     vistaMapa?.destruir();
     vistaMapa = null;
     avisoMissao.innerHTML = avisoMissaoHtml();
-    const mostrados = cat.itens.filter((x) => !x.excluidoEm && vale(x));
+    /* filtros (30/10/2026): camadas e vigência; as linhas passam pelos itens escondidos (js/filtro-do-mapa.js) */
+    const f = filtrarParaOMapa({ camadas: cat.camadas, instrumentos: cat.instrumentos, itens: cat.itens, planos: planosDoMapa(), hoje, filtro: ui.filtro });
     vistaMapa = criarVistaMapa(areaDoMapa, {
-      camadas: cat.camadas, itens: mostrados, planos: planosDoMapa(), estado: ui.mapa, aoAbrir: abrirDoMapa, ordemPessoal: ui.ordemDoMapa ?? {},
+      camadas: f.camadas, itens: f.itens, planos: f.planos, semPlanos: f.semPlanos, estado: ui.mapa, aoAbrir: abrirDoMapa, ordemPessoal: ui.ordemDoMapa ?? {},
       podeOrdenar: store.podeGravar, aoReordenar: reordenarNoMapa, folga: folgaDoMapa,
     });
-    const mensagem = mostrados.length ? "" : cat.itens.length ? "Nada vale hoje. Desligue “Só o que vale hoje”, no alto, para ver tudo."
+    const mostrados = f.itens.length + f.planos.length;
+    const mensagem = mostrados ? "" : cat.itens.some((x) => !x.excluidoEm) ? "Nada a mostrar com estes filtros. Abra “Filtros”, no alto, para ver mais."
       : gestor ? "O catálogo está vazio. Comece por “Novo item” ou por “Importar”." : "O catálogo ainda está vazio.";
     vazio.hidden = !mensagem;
     vazio.innerHTML = mensagem ? `<p>${mensagem}</p>${!cat.itens.length && gestor ? `<div class="botoes">
@@ -134,8 +148,8 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     const item = (atributos, texto) => `<button type="button" class="strata-menu-item" ${atributos}>${texto}</button>`;
     const tema = lerTema();
     comandos.innerHTML = `
-      <button type="button" class="strata-filtro" data-alternar-vigentes aria-pressed="${ui.soVigentes}">
-        <span class="strata-filtro-chave" aria-hidden="true"></span>Só o que vale hoje</button>
+      <button type="button" class="strata-filtro" data-alternar-filtros aria-expanded="${ui.filtros}" aria-controls="strata-filtros">${botaoDeFiltrosHtml()}</button>
+      <div class="strata-filtros${ui.filtros ? " aberto" : ""}" id="strata-filtros" role="group" aria-label="Filtros do mapa" data-painel-filtros${ui.filtros ? "" : " inert"}>${filtrosHtml()}</div>
       <button type="button" class="strata-menu-botao" data-alternar-menu aria-expanded="${ui.menu}" aria-controls="strata-menu">${ICONES.menu}<span>Menu</span></button>
       <div class="strata-menu${ui.menu ? " aberto" : ""}" id="strata-menu" data-menu${ui.menu ? "" : " inert"}>
         <p class="tec strata-menu-nota">${gestor ? "Você é Gestor da Estratégia: pode alterar o catálogo." : "Só o Gestor da Estratégia altera o catálogo; aqui você consulta."}</p>
@@ -159,9 +173,56 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
         </div>
       </div>`;
   }
+  /* ---------- filtros do Mapa (30/10/2026): camadas e vigência, num painel como o do menu ---------- */
+  const camadasDoFiltro = () => [...cat.camadas.map((c) => ({ id: c.id, nome: c.plural || c.nome })), { id: FAIXA_PLANOS, nome: "Planos de Ação" }];
+  const item2 = (atributos, texto, desligado) => `<button type="button" class="strata-menu-item" ${atributos}${desligado ? " disabled" : ""}>${texto}</button>`;
+  function botaoDeFiltrosHtml() {
+    const n = mudancasDoFiltro(ui.filtro, camadasDoFiltro().map((c) => c.id));
+    return `${ICONES.filtros}<span>Filtros</span>${n ? `<span class="strata-filtro-conta" title="${n} ${plural(n, "mudança", "mudanças")} em relação ao padrão">${n}<span class="so-leitor"> ${plural(n, "mudança", "mudanças")}</span></span>` : ""}`;
+  }
+  function filtrosHtml() {
+    const caixa = (atributo, marcado, texto) => `<label class="strata-filtro-linha"><input type="checkbox" ${atributo}${marcado ? " checked" : ""}><span>${esc(texto)}</span></label>`;
+    const ocultas = new Set(ui.filtro.ocultas);
+    return `
+      <div class="strata-menu-grupo"><span class="strata-menu-rotulo">Mostrar os níveis</span>
+        ${camadasDoFiltro().map((c) => caixa(`data-filtro-camada="${esc(c.id)}"`, !ocultas.has(c.id), c.nome)).join("")}
+        <p class="tec strata-menu-nota">Escondido um nível, a linha passa por ele, <b>tracejada</b>, e liga direto ao de cima.</p>
+      </div>
+      <div class="strata-menu-grupo"><span class="strata-menu-rotulo">Vigência</span>
+        ${Object.entries(VIGENCIAS).map(([k, texto]) => caixa(`data-filtro-vigencia="${k}"`, ui.filtro.vigencias[k], texto)).join("")}
+        <p class="tec strata-menu-nota">Fora da vigência, mas com algo vigente ligado abaixo: o item aparece <b>apagado</b>, com um sinal de atenção.</p>
+      </div>
+      <div class="strata-menu-grupo">${item2("data-filtro-padrao", "Voltar ao padrão", !mudancasDoFiltro(ui.filtro, camadasDoFiltro().map((c) => c.id)))}</div>`;
+  }
+  /** Uma escolha mudou: o mapa se refaz na hora (os pontos deslizam, entram e saem aos poucos) e o filtro fica guardado. */
+  function mudarFiltro(novo) {
+    ui.filtro = normalizarFiltro(novo);
+    guardarFiltros(ui.filtro);
+    desenharMapa();
+    const botao = comandos.querySelector("[data-alternar-filtros]");
+    botao.innerHTML = botaoDeFiltrosHtml();
+    const padrao = comandos.querySelector("[data-filtro-padrao]");
+    if (padrao) padrao.disabled = !mudancasDoFiltro(ui.filtro, camadasDoFiltro().map((c) => c.id));
+  }
+  let soltarFiltros = null;
+  function alternarFiltros(aberto = !ui.filtros) {
+    if (aberto === ui.filtros) return;
+    if (aberto) alternarMenu(false);
+    ui.filtros = aberto;
+    const painel = comandos.querySelector("[data-painel-filtros]");
+    painel.classList.toggle("aberto", aberto);
+    painel.inert = !aberto;
+    comandos.querySelector("[data-alternar-filtros]").setAttribute("aria-expanded", String(aberto));
+    if (aberto) {
+      soltarFiltros = abrirCamada(() => alternarFiltros(false)); // Voltar (celular) fecha o painel
+      painel.querySelector("input")?.focus({ preventScroll: true });
+    } else { soltarFiltros?.(); soltarFiltros = null; }
+  }
+
   let soltarMenu = null;
   function alternarMenu(aberto = !ui.menu) {
     if (aberto === ui.menu) return;
+    if (aberto) alternarFiltros(false);
     ui.menu = aberto;
     const menu = comandos.querySelector("[data-menu]");
     menu.classList.toggle("aberto", aberto);
@@ -215,7 +276,8 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
       <p>Cada ponto é um item. As linhas ligam cada item ao que ele <b>vem de</b>, do nível de baixo para o de cima; embaixo ficam os Planos de Ação.</p>
       <p>Toque num ponto para acender o caminho dele e ver o cartão com “Abrir”; toque no fundo para desfazer.</p>
       <p>Arraste para mover o mapa. Para aproximar, use a pinça, Ctrl + rolagem ou os botões + e −; “Centralizar” mostra o mapa inteiro.</p>
-      <p>“Só o que vale hoje”, no alto, mostra só os itens dos instrumentos vigentes.</p>
+      <p>Em “Filtros”, no alto, escolha os níveis e a vigência que aparecem. Ao abrir, só o que vale hoje. Com um nível escondido, a linha passa por ele <b>tracejada</b>; tocando no ponto, o cartão diz por quais itens ela passa.</p>
+      <p>Um item fora da vigência que ainda tem algo vigente ligado abaixo dele aparece <b>apagado</b>, com um sinal de atenção; o cartão explica.</p>
       ${store.podeGravar ? "<p>No computador, arraste um ponto para os lados para mudar a ordem dele no nível; a ordem vale só para você, e “Voltar ao automático”, no menu, a desfaz.</p>" : store.conectado ? "<p>Entre para mudar a ordem dos pontos no computador.</p>" : ""}
     </div>`);
   }
@@ -225,7 +287,7 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
   function planosDoMapa() {
     return planos.map((e) => {
       const visivel = store.podeVerEspaco(e);
-      return { id: e.id, nome: visivel ? e.nome : "Plano de Ação restrito", restrito: !visivel, superiores: e.vinculos };
+      return { id: e.id, nome: visivel ? e.nome : "Plano de Ação restrito", restrito: !visivel, superiores: e.vinculos, encerradoEm: e.encerradoEm ?? null };
     });
   }
   /** "Abrir" do cartão do Mapa: o painel do item, ou o espaço do Plano de Ação (que o restrito nunca oferece). */
@@ -582,7 +644,13 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     const t = e.target.closest("button, a");
     if (!t) return;
     if (t.matches("[data-alternar-menu]")) { alternarMenu(); return; }
-    if (t.matches("[data-alternar-vigentes]")) { ui.soVigentes = !ui.soVigentes; desenhar(); return; }
+    if (t.matches("[data-alternar-filtros]")) { alternarFiltros(); return; }
+    if (t.matches("[data-filtro-padrao]")) {
+      mudarFiltro(FILTRO_PADRAO);
+      comandos.querySelector("[data-painel-filtros]").innerHTML = filtrosHtml();
+      comandos.querySelector("[data-painel-filtros] input")?.focus({ preventScroll: true });
+      return;
+    }
     if (t.dataset.tema) {
       const escolhido = escolherTema(t.dataset.tema); // troca na hora, sem fechar o menu
       for (const b of comandos.querySelectorAll("[data-tema]")) b.setAttribute("aria-pressed", String(b.dataset.tema === escolhido));
@@ -598,13 +666,25 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     }
     await comandoComum(t);
   });
-  /* o menu fecha com Esc e com um toque fora dele */
+  comandos?.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.dataset.filtroCamada) {
+      const ocultas = new Set(ui.filtro.ocultas);
+      if (t.checked) ocultas.delete(t.dataset.filtroCamada); else ocultas.add(t.dataset.filtroCamada);
+      mudarFiltro({ ...ui.filtro, ocultas: [...ocultas] });
+    } else if (t.dataset.filtroVigencia) mudarFiltro({ ...ui.filtro, vigencias: { ...ui.filtro.vigencias, [t.dataset.filtroVigencia]: t.checked } });
+  });
+  /* o menu e os filtros fecham com Esc e com um toque fora deles */
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape" || e.defaultPrevented) return;
     if (ui.menu) { e.preventDefault(); alternarMenu(false); comandos.querySelector("[data-alternar-menu]")?.focus(); return; }
+    if (ui.filtros) { e.preventDefault(); alternarFiltros(false); comandos.querySelector("[data-alternar-filtros]")?.focus(); return; }
     if (ui.folha && !document.querySelector(".camada")) { e.preventDefault(); fecharFolha(); }
   });
-  document.addEventListener("pointerdown", (e) => { if (ui.menu && !e.target.closest?.("[data-menu], [data-alternar-menu]")) alternarMenu(false); }, true);
+  document.addEventListener("pointerdown", (e) => {
+    if (ui.menu && !e.target.closest?.("[data-menu], [data-alternar-menu]")) alternarMenu(false);
+    if (ui.filtros && !e.target.closest?.("[data-painel-filtros], [data-alternar-filtros]")) alternarFiltros(false);
+  }, true);
 
   alvo.addEventListener("click", async (e) => {
     const t = e.target.closest("button");
