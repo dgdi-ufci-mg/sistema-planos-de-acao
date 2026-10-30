@@ -55,7 +55,7 @@ const TEMAS_DO_STRATA = [["automatico", "Automático"], ["claro", "Dia"], ["escu
  */
 export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = null, avisos = null, cima = null }) {
   /** `folha`: a folha aberta por cima do mapa (chave de FOLHAS), ou null; `menu`: o menu aberto */
-  const ui = { folha: null, menu: false, filtros: false, filtro: lerFiltrosGuardados(), soVigentes: true, busca: "", recolhidos: new Set(), mapa: {}, ordemDoMapa: null };
+  const ui = { folha: null, menu: false, filtros: false, filtro: lerFiltrosGuardados(), busca: "", recolhidos: new Set(), mapa: {}, ordemDoMapa: null };
   /** vista do Mapa montada na tela (para desfazer os ouvintes ao trocar de aba ou desenhar de novo) */
   let vistaMapa = null;
   let cat = { camadas: [], instrumentos: [], itens: [] };
@@ -97,7 +97,17 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
   const camadaDe = (id) => cat.camadas.find((c) => c.id === id);
   const instrumentoDe = (id) => cat.instrumentos.find((x) => x.id === id);
   const itemDe = (id) => cat.itens.find((x) => x.id === id);
-  const vale = (item) => !ui.soVigentes || itemVigente(item, cat.instrumentos, hoje);
+  /*
+   * Vigência da lista (30/10/2026, decisão do responsável): a mesma escolha dos Filtros do Mapa (vigentes, encerrados,
+   * ainda não começaram), sem os níveis. Recalculada a cada desenho da árvore: id do item ou "plano:id" → o que
+   * `filtrarParaOMapa` devolve (com `esmaecido` e `alerta`).
+   */
+  let naLista = new Map();
+  function calcularLista() {
+    const f = filtrarParaOMapa({ camadas: cat.camadas, instrumentos: cat.instrumentos, itens: cat.itens, planos: planosDoMapa(), hoje, filtro: { ocultas: [], vigencias: ui.filtro.vigencias } });
+    naLista = new Map([...f.itens.map((x) => [x.id, x]), ...f.planos.map((e) => [`plano:${e.id}`, e])]);
+  }
+  const vale = (item) => naLista.has(item.id);
   const planosDe = (id) => planos.filter((e) => e.vinculos.includes(id));
   const recebePlanos = (item) => camadasAcima(cat.camadas, null).includes(item.camada);
   const posicaoDaCamada = (id) => cat.camadas.findIndex((c) => c.id === id);
@@ -199,8 +209,11 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     ui.filtro = normalizarFiltro(novo);
     guardarFiltros(ui.filtro);
     desenharMapa();
+    if (ui.folha === "arvore") desenharFolha(); // a lista segue a mesma vigência
+    if (!comandos) return;
     const botao = comandos.querySelector("[data-alternar-filtros]");
     botao.innerHTML = botaoDeFiltrosHtml();
+    for (const c of comandos.querySelectorAll("[data-filtro-vigencia]")) c.checked = ui.filtro.vigencias[c.dataset.filtroVigencia]; // a lista também muda a vigência
     const padrao = comandos.querySelector("[data-filtro-padrao]");
     if (padrao) padrao.disabled = !mudancasDoFiltro(ui.filtro, camadasDoFiltro().map((c) => c.id));
   }
@@ -339,14 +352,16 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     const instr = instrumentoDe(item.instrumento);
     const fora = !itemVigente(item, cat.instrumentos, hoje);
     const n = recebePlanos(item) ? planosDe(item.id).length : 0;
-    return `<button type="button" class="item-estrategia${ui.mapa.selecionado === item.id ? " selecionado" : ""}" data-item="${esc(item.id)}">
-      <span class="item-estrategia-nome">${item.codigo ? `<b class="mono">${esc(item.codigo)}</b> ` : ""}${esc(item.nome)}</span>
+    const info = naLista.get(item.id); // apagado e alerta, como no Mapa
+    return `<button type="button" class="item-estrategia${ui.mapa.selecionado === item.id ? " selecionado" : ""}${info?.esmaecido ? " esmaecido" : ""}" data-item="${esc(item.id)}">
+      <span class="item-estrategia-nome">${info?.alerta ? '<span class="sinal-atencao" aria-hidden="true">!</span>' : ""}${item.codigo ? `<b class="mono">${esc(item.codigo)}</b> ` : ""}${esc(item.nome)}</span>
       <small class="tec">${esc(camadaDe(item.camada)?.nome ?? "")}${instr ? ` · ${esc(instr.nome)}` : ""}${fora ? " · fora da vigência" : ""}${n ? ` · ${n} ${plural(n, "Plano de Ação", "Planos de Ação")}` : ""}</small>
+      ${info?.alerta ? `<small class="item-alerta"><span class="so-leitor">Atenção: </span>${esc(info.alerta)}</small>` : ""}
     </button>`;
   }
   function noHtml(item, caminho) {
     const filhos = subordinadosDe(item.id, cat.itens).filter(vale).filter((x) => !caminho.has(x.id)).sort(ordem);
-    const ligados = recebePlanos(item) ? planosDe(item.id) : [];
+    const ligados = recebePlanos(item) ? planosDe(item.id).filter((e) => naLista.has(`plano:${e.id}`)) : [];
     const temFilhos = filhos.length || ligados.length;
     const chave = [...caminho, item.id].join("/");
     const fechado = ui.recolhidos.has(chave);
@@ -377,22 +392,26 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
       ${visivel ? entregasDoPlanoHtml(e) : ""}</li>`;
   }
   function arvoreHtml() {
+    calcularLista();
     const ativos = cat.itens.filter(vale);
-    /* raízes: os itens sem superior ativo (os da camada mais alta e os que ainda não foram ligados) */
-    const raizes = ativos.filter((x) => !(x.superiores ?? []).some((s) => itemDe(s))).sort(ordem);
+    /* raízes: os itens sem superior na lista (os da camada mais alta, os que ainda não foram ligados e, com a vigência
+       escolhida, os que têm todos os superiores fora dela) */
+    const raizes = ativos.filter((x) => !(x.superiores ?? []).some((s) => naLista.has(s))).sort(ordem);
     const termo = normalizar(ui.busca).trim();
     const achados = termo ? ativos.filter((x) => normalizar(`${x.codigo ?? ""} ${x.nome}`).includes(termo)).sort(ordem) : [];
     return `${avisoMissaoHtml()}
       <div class="superior-ferramentas">
         <input type="search" data-busca-arvore placeholder="Buscar pelo código ou pelo nome" aria-label="Buscar no catálogo" value="${esc(ui.busca)}">
-        <label class="alternar"><input type="checkbox" data-so-vigentes${ui.soVigentes ? " checked" : ""}> Só o que vale hoje</label>
+        <fieldset class="vigencia-lista"><legend class="tec">Vigência, a mesma dos Filtros do Mapa</legend>
+          ${Object.entries(VIGENCIAS).map(([k, texto]) => `<label class="alternar"><input type="checkbox" data-vigencia-lista="${k}"${ui.filtro.vigencias[k] ? " checked" : ""}> ${esc(texto)}</label>`).join("")}
+        </fieldset>
         ${termo ? "" : `<button type="button" class="botao discreto" data-recolher-tudo>${ui.recolhidos.size ? "Abrir tudo" : "Recolher tudo"}</button>`}
         ${gestor ? `<button type="button" class="botao principal" data-novo-item>${ICONES.mais}Novo item</button>` : ""}
       </div>
       ${termo ? `<ul class="arvore-estrategia busca">${achados.map((x) => `<li class="no-estrategia"><div class="no-linha"><span class="no-seta vazia"></span>${itemHtml(x)}</div>
           <small class="tec caminho-estrategia">${caminhoAteOTopo(x, cat.itens).slice(0, -1).map((c) => esc(rotuloDoItem(c))).join(" › ")}</small></li>`).join("") || '<li class="vazio">Nada encontrado.</li>'}</ul>`
         : raizes.length ? `<ul class="arvore-estrategia">${raizes.map((r) => noHtml(r, new Set())).join("")}</ul>`
-        : `<p class="vazio">${cat.itens.length ? "Nada vale hoje. Desmarque “Só o que vale hoje” para ver tudo." : gestor ? "O catálogo está vazio. Comece por “Novo item” ou por “Importar”, no menu." : "O catálogo ainda está vazio."}</p>`}
+        : `<p class="vazio">${cat.itens.some((x) => !x.excluidoEm) ? "Nada a mostrar com esta vigência. Marque outra opção acima." : gestor ? "O catálogo está vazio. Comece por “Novo item” ou por “Importar”, no menu." : "O catálogo ainda está vazio."}</p>`}
       <p class="tec">${cat.camadas.map((c) => esc(c.plural) + (c.opcional ? " (opcional)" : "")).join(" › ")} › Planos de Ação. Um item pode estar sob mais de um superior; nesse caso, aparece sob cada um.</p>`;
   }
 
@@ -744,7 +763,11 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
     if (i != null && e.target.type !== "checkbox") rascunho[Number(i)][e.target.dataset.campo] = e.target.value;
   });
   alvo.addEventListener("change", (e) => {
-    if (e.target.matches("[data-so-vigentes]")) { ui.soVigentes = e.target.checked; desenhar(); return; }
+    if (e.target.dataset.vigenciaLista) { // a mesma escolha dos Filtros do Mapa: muda o mapa por baixo e a lista
+      mudarFiltro({ ...ui.filtro, vigencias: { ...ui.filtro.vigencias, [e.target.dataset.vigenciaLista]: e.target.checked } });
+      folha.querySelector(`[data-vigencia-lista="${e.target.dataset.vigenciaLista}"]`)?.focus({ preventScroll: true });
+      return;
+    }
     const i = e.target.dataset.camada;
     if (i != null && e.target.type === "checkbox") rascunho[Number(i)].opcional = e.target.checked;
   });
