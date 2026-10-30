@@ -60,7 +60,7 @@ describe("Strata: Mapa em tela cheia como porta de entrada", { skip: pular }, ()
         await abrirMenu(p);
         assert.equal(await p.locator("[data-alternar-menu]").getAttribute("aria-expanded"), "true");
         const textos = (await p.locator(".strata-menu .strata-menu-item, .strata-menu .strata-tema").allInnerTexts()).map((t) => t.trim());
-        for (const t of ["Ver como lista", "Novo item", "Instrumentos", "Camadas", "Importar", "Como usar o mapa", "Automático", "Dia", "Noite", "Sextante: planos"]) {
+        for (const t of ["Ver como lista", "Ver como planilha", "Novo item", "Instrumentos", "Camadas", "Importar", "Como usar o mapa", "Automático", "Dia", "Noite", "Sextante: planos"]) {
           assert.ok(textos.includes(t), `"${t}" no menu`);
         }
         assert.equal(await p.locator('.strata-menu a[href="../sextante/"]').count(), 1, "volta ao Sextante");
