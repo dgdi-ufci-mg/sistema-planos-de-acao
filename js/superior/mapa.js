@@ -136,7 +136,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     for (const e of estrelasDoMapa(mapa)) grupoEstrelas.append(criar("circle", { class: "mapa-estrela", cx: e.x, cy: e.y, r: e.r, "fill-opacity": e.o })); // só aparecem no tema noite
     const porChave = new Map(mapa.nos.map((n) => [n.chave, n]));
     for (const l of mapa.ligacoes) { // cada linha tem uma borda de cor oposta, para aparecer sobre o claro e sobre o escuro
-      const d = caminhoDaLigacao(porChave.get(l.de), porChave.get(l.para));
+      const d = caminhoDaLigacao(porChave.get(l.de), porChave.get(l.para), l.rota, mapa);
       const extra = l.indireta ? " indireta" : "";
       const novaLinha = !primeiraVez && !(jaHavia.has(l.de) && jaHavia.has(l.para)) ? " entrando" : "";
       const borda = criar("path", { class: `mapa-ligacao-borda${extra}${novaLinha}`, "data-de": l.de, "data-para": l.para, d });
@@ -147,7 +147,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
         borda.append(dica);
       }
       grupoLigacoes.append(borda, linha);
-      ligacoesVivas.push({ de: l.de, para: l.para, borda, linha });
+      ligacoesVivas.push({ de: l.de, para: l.para, rota: l.rota, borda, linha });
     }
     for (const n of mapa.nos) {
       const classes = `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}${n.esmaecido ? " esmaecido" : ""}${n.alerta ? " com-alerta" : ""}${!primeiraVez && !jaHavia.has(n.chave) ? " entrando" : ""}`;
@@ -218,7 +218,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     }
     for (const l of ligacoesVivas) {
       const [f, u] = [atual.get(l.de), atual.get(l.para)];
-      const d = `M${f.x.toFixed(1)} ${f.y.toFixed(1)} L${u.x.toFixed(1)} ${u.y.toFixed(1)}`;
+      const d = caminhoDaLigacao({ x: +f.x.toFixed(1), yCurvo: +f.y.toFixed(1) }, { x: +u.x.toFixed(1), yCurvo: +u.y.toFixed(1) }, l.rota, mapa);
       l.borda.setAttribute("d", d); l.linha.setAttribute("d", d);
     }
   }

@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import {
-  FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
+  BARRAMENTO, FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
   escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, caminhoAlem, linhaDoSolo, estrelasDoCeu, puxaoDosVizinhos, alturaPuxada, passoDaInercia, velocidadeDeSaida, PUXAO, INERCIA, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
 } from "../js/mapa.js";
 
@@ -114,19 +114,33 @@ describe("Mapa: ordem, posição e curva", () => {
     }
   });
 
-  it("faixa cheia demais cresce para baixo, em fileiras, e não para os lados (lote 4)", () => {
-    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(80), vista: { w: 400, h: 600 } });
-    assert.equal(m.largura, 400, "a largura continua a da área");
+  it("faixa cheia demais vira pente: filhos do mesmo pai juntos, em colunas de até 8, e a faixa cresce para baixo (30/10/2026)", () => {
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(80), vista: { w: 1200, h: 600 } });
     const pa = m.faixas.at(-1);
-    const nos = m.nos.filter((n) => n.faixa === m.faixas.length - 1).sort((a, b) => a.x - b.x);
-    assert.ok(pa.niveis >= 8, `${pa.niveis} fileiras`);
-    assert.ok(pa.altura >= 40 + 8 * 19, "a faixa fica mais alta");
-    const porFileira = new Map();
-    for (const n of nos) porFileira.set(n.nivel, [...(porFileira.get(n.nivel) ?? []), n]);
-    for (const fila of porFileira.values()) for (let i = 1; i < fila.length; i++) assert.ok(fila[i].x - fila[i - 1].x >= 26 - 1e-6, "26 entre vizinhos da mesma fileira");
+    assert.equal(pa.modo, "pente");
+    assert.equal(pa.niveis, 8, "8 linhas por coluna");
+    assert.ok(pa.altura >= BARRAMENTO.viaTopo + 7 * BARRAMENTO.passo, "a faixa fica mais alta");
+    const nos = m.nos.filter((n) => n.faixa === m.faixas.length - 1);
     for (const n of nos) assert.ok(n.y > pa.topo && n.y < pa.base, "cada ponto dentro da faixa");
+    const xsDe = (pai) => nos.filter((n) => n.superiores[0] === pai).map((n) => n.x);
+    assert.ok(Math.max(...xsDe("prg1")) < Math.min(...xsDe("prg2")) || Math.max(...xsDe("prg2")) < Math.min(...xsDe("prg1")), "os blocos dos dois pais não se misturam");
+    for (const pai of ["prg1", "prg2"]) assert.equal(new Set(xsDe(pai)).size, 5, "40 filhos em 5 colunas");
     const outras = m.faixas.slice(0, -1).filter((f) => f.nos.length <= 3);
     assert.ok(outras.every((f) => f.altura < pa.altura), "as faixas com poucos itens ficam baixas, com a altura mínima");
+  });
+
+  it("barramento: a ligação desce do pai à via, corre por ela e desce ao filho; as vias ficam no alto da faixa do filho", () => {
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(30), vista: { w: 1200, h: 600 } });
+    const porChave = new Map(m.nos.map((n) => [n.chave, n]));
+    for (const l of m.ligacoes) {
+      assert.ok(l.rota, `${l.de} tem rota`);
+      const f = m.faixas[porChave.get(l.de).faixa];
+      assert.ok(l.rota.y > f.topo && l.rota.y < porChave.get(l.de).y, "a via fica acima do filho, dentro da faixa dele");
+      const d = caminhoDaLigacao(porChave.get(l.de), porChave.get(l.para), l.rota, m);
+      assert.match(d, /^M[\d.]+ [\d.]+( H[\d.]+)? V[\d.]+ Q[-\d.]+ [-\d.]+ [\d.]+ [\d.]+ V[\d.]+$/);
+    }
+    const pa = m.ligacoes.filter((l) => l.de.startsWith("plano:"));
+    assert.ok(pa.every((l) => l.rota.espinha === BARRAMENTO.indente), "no pente, o filho sai para a espinha");
   });
 
   it("só passa da largura da área quando nem 8 fileiras bastam", () => {

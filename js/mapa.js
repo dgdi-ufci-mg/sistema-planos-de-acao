@@ -23,6 +23,13 @@
  *   Sem coordenadas polares.
  */
 
+/**
+ * Medidas do barramento (30/10/2026, prévia), em unidades do mapa: `linhas` por coluna do pente; `passo` entre linhas;
+ * `indente` da espinha ao ponto; largura da coluna entre `colunaMinima` (o nome aparece com o zoom máximo) e
+ * `colunaMaxima`; `folga` entre blocos; `via` entre duas vias e `viaTopo` do alto da faixa à primeira.
+ */
+export const BARRAMENTO = Object.freeze({ linhas: 8, passo: 22, indente: 14, colunaMinima: 56, colunaMaxima: 240, folga: 10, via: 6, viaTopo: 10 });
+
 /** Identificador da faixa dos Planos de Ação (a última). */
 export const FAIXA_PLANOS = "planosDeAcao";
 
@@ -139,8 +146,24 @@ export function calcularMapa({
      distância, cresce para baixo, em fileiras (lote 4, 29/10/2026, tarde): até 8; a largura só cresce se nem 8 bastarem */
   const RECUO = 9; // do ponto até o começo do nome
   const reservaFinal = 60; // espaço para o nome do último ponto
+  for (const n of nos) n.completo = n.tipo === "plano" || !n.codigo ? String(n.nome) : `${n.codigo} · ${n.nome}`;
+  const larguraDoNome = (n) => Math.max(espacoMinimo, medir(n.completo) + RECUO + 10);
+  /* barramento (30/10/2026): a faixa agrupada precisa de lugar para os blocos lado a lado, em linha (os nomes
+     inteiros) ou em pente (uma coluna por até 8 filhos do mesmo pai); vale o menor dos dois */
+  let larguraDosBlocos = 0;
+  lista.forEach((l, i) => {
+    if (i === 0 || !l.some((n) => n.superiores.length)) return;
+    const porPai = new Map();
+    let soltos = 0;
+    for (const n of l) if (n.superiores.length) porPai.set(n.superiores[0], (porPai.get(n.superiores[0]) ?? 0) + 1); else soltos++;
+    const folgas = BARRAMENTO.folga * (porPai.size + (soltos ? 1 : 0) - 1);
+    const emLinha = l.reduce((s, n) => s + larguraDoNome(n), 0) + folgas;
+    const colunas = [...porPai.values()].reduce((s, q) => s + Math.ceil(q / BARRAMENTO.linhas), 0);
+    const emPente = colunas * BARRAMENTO.colunaMinima + soltos * espacoMinimo + folgas;
+    larguraDosBlocos = Math.max(larguraDosBlocos, 2 * margem + Math.min(emLinha, emPente));
+  });
   const maisCheia = Math.max(1, ...lista.map((l) => l.length));
-  const largura = Math.ceil(Math.max(vista.w, 2 * margem + reservaFinal + ((maisCheia - 1) * espacoMinimo) / fileirasMaximas));
+  const largura = Math.ceil(Math.max(vista.w, 2 * margem + reservaFinal + ((maisCheia - 1) * espacoMinimo) / fileirasMaximas, larguraDosBlocos));
   const xMin = margem;
   const xMax = largura - margem - reservaFinal;
   /* fileiras de cada faixa pelos pontos: a menor quantidade que deixa 26 entre vizinhos da mesma fileira */
@@ -176,7 +199,6 @@ export function calcularMapa({
   };
   const limiteDireito = largura - margem / 2;
   const espaco = (l, i, niveis) => (i + niveis < l.length ? l[i + niveis].x - l[i].x - RECUO - 6 : limiteDireito - l[i].x - RECUO);
-  for (const n of nos) n.completo = n.tipo === "plano" || !n.codigo ? String(n.nome) : `${n.codigo} · ${n.nome}`;
   for (const l of lista) {
     const maximo = Math.max(l.fileiras, niveisMaximos);
     let niveis = maximo;
@@ -192,22 +214,135 @@ export function calcularMapa({
     });
   }
 
+  /*
+   * Barramento (30/10/2026, prévia): da segunda faixa para baixo, os filhos de um mesmo pai ficam juntos, num bloco, e
+   * os blocos seguem a ordem dos pais. A ligação deixa de ser uma reta: desce do pai até uma via no alto da faixa do
+   * filho, corre pela via e desce até o filho (organograma). Se os nomes inteiros cabem lado a lado, a faixa fica em
+   * linha; senão, em pente: os filhos de cada pai empilham-se em colunas de até 8, com o tronco à esquerda e o nome
+   * com a largura inteira da coluna. O pai fica no alto da espinha, para o tronco descer reto. Vias que se
+   * sobreporiam vão para alturas diferentes. Uma faixa sem nenhum ponto ligado acima segue as regras anteriores.
+   */
+  const ligacaoDe = new Map(ligacoes.map((l) => [`${l.de}|${l.para}`, l]));
+  const temFilhos = (n) => (subordinados.get(n.chave) ?? []).length > 0;
+  const { folga: FOLGA, indente: INDENTE } = BARRAMENTO;
+  for (let i = 1; i < lista.length; i++) {
+    const l = lista[i];
+    if (!l.some((n) => n.superiores.length)) continue;
+    const xDe = (k) => porChave.get(k).x;
+    const lugar = new Map((ordemPessoal?.[faixas[i].id] ?? []).map((k, j) => [k, j]));
+    /* no bloco: a ordem pessoal, se houver; depois, quem tem mais de um superior no alto da coluna e quem tem filhos
+       no pé (as linhas dele saem livres) */
+    const peso = (n) => (temFilhos(n) ? 2 : n.superiores.length > 1 ? 0 : 1);
+    const porPai = new Map();
+    for (const n of l) {
+      n.pai = n.superiores.length ? [...n.superiores].sort((a, b) => xDe(a) - xDe(b) || (a < b ? -1 : 1))[0] : null;
+      porPai.set(n.pai, [...(porPai.get(n.pai) ?? []), n]);
+    }
+    const grupos = [...porPai].map(([pai, membros]) => ({
+      pai, membros: membros.sort((a, b) => (lugar.get(a.chave) ?? Infinity) - (lugar.get(b.chave) ?? Infinity) || peso(a) - peso(b) || porCodigoENome(a, b)),
+    }));
+    grupos.sort((a, b) => (a.pai == null) - (b.pai == null) || (a.pai == null ? 0 : xDe(a.pai) - xDe(b.pai)));
+
+    const util = largura - 2 * margem;
+    const folgas = FOLGA * (grupos.length - 1);
+    const emLinha = l.reduce((s, n) => s + larguraDoNome(n), 0) + folgas <= util;
+    for (const g of grupos) {
+      g.pente = !emLinha && g.pai != null && g.membros.filter(temFilhos).length <= 1;
+      g.colunas = g.pente ? Math.ceil(g.membros.length / BARRAMENTO.linhas) : 0;
+    }
+    const totalDeColunas = grupos.reduce((s, g) => s + g.colunas, 0);
+    const foraDoPente = grupos.filter((g) => !g.pente).reduce((s, g) => s + g.membros.length, 0);
+    const coluna = totalDeColunas
+      ? Math.min(BARRAMENTO.colunaMaxima, Math.max(BARRAMENTO.colunaMinima, (util - folgas - foraDoPente * espacoMinimo) / totalDeColunas))
+      : 0;
+    for (const g of grupos) {
+      g.passos = g.pente ? [] : g.membros.map((n) => (emLinha ? larguraDoNome(n) : espacoMinimo));
+      g.largura = g.pente ? g.colunas * coluna : g.passos.reduce((s, v) => s + v, 0);
+      /* onde o bloco quer ficar: espinha (ou primeiro ponto) sob o pai; os sem pai, no fim */
+      g.esquerda = g.pai == null ? Infinity : xDe(g.pai) - (g.pente ? 4 : emLinha ? 6 : g.largura / 2);
+    }
+    /* os blocos não se sobrepõem nem saem das pontas, na ordem */
+    const xIni = margem; const xFim = largura - margem;
+    const empurrar = () => grupos.forEach((g, j) => { g.esquerda = Math.max(g.esquerda, j ? grupos[j - 1].esquerda + grupos[j - 1].largura + FOLGA : xIni); });
+    empurrar();
+    for (let j = grupos.length - 1; j >= 0; j--) grupos[j].esquerda = Math.min(grupos[j].esquerda, (j < grupos.length - 1 ? grupos[j + 1].esquerda - FOLGA : xFim) - grupos[j].largura);
+    empurrar();
+
+    let linhas = 1;
+    for (const g of grupos) {
+      g.encaixes = [];
+      if (g.pente) {
+        const porColuna = Math.ceil(g.membros.length / g.colunas);
+        g.membros.forEach((n, j) => {
+          const espinha = g.esquerda + Math.floor(j / porColuna) * coluna + 4;
+          n.x = espinha + INDENTE; n.linha = j % porColuna; n.espinha = INDENTE;
+          n.espacoDoNome = Math.max(0, coluna - 4 - INDENTE - RECUO - 4);
+          if (!g.encaixes.includes(espinha)) g.encaixes.push(espinha);
+        });
+        linhas = Math.max(linhas, porColuna);
+      } else {
+        let cursor = g.esquerda;
+        g.membros.forEach((n, j) => {
+          n.x = cursor + 6; n.linha = 0; n.espinha = 0;
+          n.espacoDoNome = Math.max(0, g.passos[j] - 6 - RECUO - 4);
+          g.encaixes.push(n.x);
+          cursor += g.passos[j];
+        });
+      }
+    }
+    for (const n of l) {
+      n.x = Math.round(n.x * 10) / 10;
+      n.nivel = n.linha;
+      n.rotulo = ajustar(n.completo, n.espacoDoNome);
+      n.largura = n.rotulo ? medir(n.rotulo) : 0;
+    }
+
+    /* vias: cada bloco usa um trecho da via (do pai às espinhas); trechos que se encostariam vão para outra altura */
+    const trechos = [];
+    for (const g of grupos) {
+      if (g.pai == null) continue;
+      const px = xDe(g.pai);
+      trechos.push({ a: Math.min(px, ...g.encaixes), b: Math.max(px, ...g.encaixes), ligacoes: g.membros.map((n) => [ligacaoDe.get(`${n.chave}|${g.pai}`), n.espinha]) });
+    }
+    for (const n of l) for (const s of n.superiores) if (s !== n.pai) trechos.push({ a: Math.min(n.x, xDe(s)), b: Math.max(n.x, xDe(s)), ligacoes: [[ligacaoDe.get(`${n.chave}|${s}`), 0]] });
+    trechos.sort((p, q) => p.a - q.a || p.b - q.b);
+    const fins = [];
+    for (const t of trechos) {
+      let via = fins.findIndex((fim) => fim + 4 < t.a);
+      if (via < 0) { via = fins.length; fins.push(0); }
+      fins[via] = t.b;
+      for (const [lg, espinha] of t.ligacoes) lg.rota = { via, espinha };
+    }
+    Object.assign(l, { agrupada: true, modo: emLinha ? "linha" : "pente", linhas, vias: fins.length });
+  }
+
   /* altura e curvatura: cada faixa tem a altura dos seus níveis */
   const centro = largura / 2;
   const raio = raioPorLargura * largura;
   const alturaMinima = Math.min(72, Math.max(52, (vista.h - 60) / faixas.length)); // área baixa (celular): faixas mais baixas
   let topo = 0;
   faixas.forEach((f, i) => {
-    f.niveis = lista[i].niveis ?? 1;
-    f.altura = Math.max(alturaMinima, 40 + f.niveis * passoNivel);
+    const l = lista[i];
+    if (l.agrupada) {
+      /* faixa agrupada: as vias no alto, depois as linhas do pente (ou a linha única, no meio da faixa) */
+      f.modo = l.modo;
+      f.niveis = l.linhas;
+      f.cabeca = BARRAMENTO.viaTopo + l.vias * BARRAMENTO.via + 12;
+      f.altura = Math.max(alturaMinima, f.cabeca + (l.linhas - 1) * BARRAMENTO.passo + 22);
+    } else {
+      f.niveis = l.niveis ?? 1;
+      f.altura = Math.max(alturaMinima, 40 + f.niveis * passoNivel);
+    }
     f.topo = topo; f.base = topo + f.altura; topo = f.base;
-    f.nos = lista[i].map((n) => n.chave);
+    f.nos = l.map((n) => n.chave);
   });
   for (const n of nos) {
     const f = faixas[n.faixa];
-    n.y = f.topo + f.altura / 2 + (n.nivel - (f.niveis - 1) / 2) * passoNivel;
+    if (f.modo) n.y = f.topo + (f.niveis > 1 ? f.cabeca + n.linha * BARRAMENTO.passo : Math.max(f.cabeca, f.altura / 2));
+    else n.y = f.topo + f.altura / 2 + (n.nivel - (f.niveis - 1) / 2) * passoNivel;
     n.yCurvo = Math.round((n.y + deslocamentoCurvo(n.x, centro, raio)) * 10) / 10;
   }
+  for (const l of ligacoes) if (l.rota) l.rota.y = faixas[porChave.get(l.de).faixa].topo + BARRAMENTO.viaTopo + l.rota.via * BARRAMENTO.via;
   const altura = Math.ceil(topo + deslocamentoCurvo(0, centro, raio));
   return { faixas, nos, ligacoes, largura, altura, centro, raio, recuo: RECUO, passoNivel };
 }
@@ -278,8 +413,28 @@ export function estrelasDoCeu(mapa, { alem = mapa.largura, altura = mapa.largura
   return estrelas;
 }
 
-/** Linha entre um ponto e o que ele "vem de": reta (duas linhas do mesmo ponto nunca se sobrepõem, só se separam). */
-export const caminhoDaLigacao = (filho, superior) => `M${filho.x} ${filho.yCurvo} L${superior.x} ${superior.yCurvo}`;
+/**
+ * Cantos da linha entre um ponto e o que ele "vem de". Com rota (barramento): do ponto até a espinha (pente), sobe
+ * até a via, corre pela via até a vertical do superior e sobe até ele. Sem rota: reta.
+ */
+export function pontosDaLigacao(filho, superior, rota, curva) {
+  if (!rota || !curva) return [[filho.x, filho.yCurvo], [superior.x, superior.yCurvo]];
+  const via = (x) => rota.y + deslocamentoCurvo(x, curva.centro, curva.raio);
+  const sx = filho.x - rota.espinha;
+  return [[filho.x, filho.yCurvo], ...(rota.espinha ? [[sx, filho.yCurvo]] : []), [sx, via(sx)], [superior.x, via(superior.x)], [superior.x, superior.yCurvo]];
+}
+
+/**
+ * Desenho da ligação. A via segue a curva das faixas (trecho de parábola em Bézier quadrática exata), então trechos de
+ * irmãos na mesma via coincidem.
+ */
+export function caminhoDaLigacao(filho, superior, rota, curva) {
+  if (!rota || !curva) return `M${filho.x} ${filho.yCurvo} L${superior.x} ${superior.yCurvo}`;
+  const p = pontosDaLigacao(filho, superior, rota, curva);
+  const [sx, sy] = p.at(-3); const [px, py] = p.at(-2);
+  const controle = sy + ((px - sx) / 2) * ((sx - curva.centro) / curva.raio);
+  return `M${n1(p[0][0])} ${n1(p[0][1])}${rota.espinha ? ` H${n1(sx)}` : ""} V${n1(sy)} Q${n1((sx + px) / 2)} ${n1(controle)} ${n1(px)} ${n1(py)} V${n1(superior.yCurvo)}`;
+}
 
 const distanciaAoSegmento = (p, a, b) => {
   const dx = b.x - a.x; const dy = b.y - a.y;
@@ -298,9 +453,10 @@ export function problemasDasLigacoes(mapa, folga = 6) {
   const problemas = [];
   for (const l of mapa.ligacoes) {
     const a = porChave.get(l.de); const b = porChave.get(l.para);
+    const cantos = pontosDaLigacao(a, b, l.rota, mapa.centro == null ? null : mapa).map(([x, y]) => ({ x, y }));
     for (const n of mapa.nos) {
       if (n === a || n === b) continue;
-      if (distanciaAoSegmento(P(n), P(a), P(b)) < folga) problemas.push({ tipo: "ponto", ligacao: l, outro: n });
+      if (cantos.slice(1).some((c, i) => distanciaAoSegmento(P(n), cantos[i], c) < folga)) problemas.push({ tipo: "ponto", ligacao: l, outro: n });
     }
   }
   const angulo = (de, para) => Math.atan2(para.yCurvo - de.yCurvo, para.x - de.x);
@@ -309,6 +465,7 @@ export function problemasDasLigacoes(mapa, folga = 6) {
   for (const [chave, ls] of porPonto) {
     const de = porChave.get(chave);
     for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
+      if (ls[i].rota && ls[j].rota) continue; // no barramento, irmãos dividem o tronco e a via de propósito
       const outroDe = (l) => porChave.get(l.de === chave ? l.para : l.de);
       let d = Math.abs(angulo(de, outroDe(ls[i])) - angulo(de, outroDe(ls[j])));
       d = Math.min(d, 2 * Math.PI - d);
