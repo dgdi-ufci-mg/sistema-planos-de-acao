@@ -250,51 +250,60 @@ export function calcularMapa({
       g.pente = !emLinha && g.pai != null && g.membros.filter(temFilhos).length <= 1;
       g.colunas = g.pente ? Math.ceil(g.membros.length / BARRAMENTO.linhas) : 0;
     }
-    const totalDeColunas = grupos.reduce((s, g) => s + g.colunas, 0);
-    const foraDoPente = grupos.filter((g) => !g.pente).reduce((s, g) => s + g.membros.length, 0);
-    const coluna = totalDeColunas
-      ? Math.min(BARRAMENTO.colunaMaxima, Math.max(BARRAMENTO.colunaMinima, (util - folgas - foraDoPente * espacoMinimo) / totalDeColunas))
-      : 0;
-    for (const g of grupos) {
-      g.passos = g.pente ? [] : g.membros.map((n) => (emLinha ? larguraDoNome(n) : espacoMinimo));
-      g.largura = g.pente ? g.colunas * coluna : g.passos.reduce((s, v) => s + v, 0);
-      /* onde o bloco quer ficar: espinha (ou primeiro ponto) sob o pai; os sem pai, no fim */
-      g.esquerda = g.pai == null ? Infinity : xDe(g.pai) - (g.pente ? 4 : emLinha ? 6 : g.largura / 2);
-    }
-    /* os blocos não se sobrepõem nem saem das pontas, na ordem */
-    const xIni = margem; const xFim = largura - margem;
-    const empurrar = () => grupos.forEach((g, j) => { g.esquerda = Math.max(g.esquerda, j ? grupos[j - 1].esquerda + grupos[j - 1].largura + FOLGA : xIni); });
-    empurrar();
-    for (let j = grupos.length - 1; j >= 0; j--) grupos[j].esquerda = Math.min(grupos[j].esquerda, (j < grupos.length - 1 ? grupos[j + 1].esquerda - FOLGA : xFim) - grupos[j].largura);
-    empurrar();
-
+    /* nenhum bloco cabe em pente (todos com dois ou mais pontos que têm filhos, como os Objetivos Estratégicos sob a
+       Missão): a faixa fica com a posição e os degraus das regras anteriores, e só as ligações passam pela via */
+    const emDegraus = !emLinha && !grupos.some((g) => g.pente);
     let linhas = 1;
-    for (const g of grupos) {
-      g.encaixes = [];
-      if (g.pente) {
-        const porColuna = Math.ceil(g.membros.length / g.colunas);
-        g.membros.forEach((n, j) => {
-          const espinha = g.esquerda + Math.floor(j / porColuna) * coluna + 4;
-          n.x = espinha + INDENTE; n.linha = j % porColuna; n.espinha = INDENTE;
-          n.espacoDoNome = Math.max(0, coluna - 4 - INDENTE - RECUO - 4);
-          if (!g.encaixes.includes(espinha)) g.encaixes.push(espinha);
-        });
-        linhas = Math.max(linhas, porColuna);
-      } else {
-        let cursor = g.esquerda;
-        g.membros.forEach((n, j) => {
-          n.x = cursor + 6; n.linha = 0; n.espinha = 0;
-          n.espacoDoNome = Math.max(0, g.passos[j] - 6 - RECUO - 4);
-          g.encaixes.push(n.x);
-          cursor += g.passos[j];
-        });
+    if (emDegraus) {
+      for (const n of l) n.espinha = 0;
+      for (const g of grupos) g.encaixes = g.membros.map((n) => n.x);
+      linhas = l.niveis;
+    } else {
+      const totalDeColunas = grupos.reduce((s, g) => s + g.colunas, 0);
+      const foraDoPente = grupos.filter((g) => !g.pente).reduce((s, g) => s + g.membros.length, 0);
+      const coluna = totalDeColunas
+        ? Math.min(BARRAMENTO.colunaMaxima, Math.max(BARRAMENTO.colunaMinima, (util - folgas - foraDoPente * espacoMinimo) / totalDeColunas))
+        : 0;
+      for (const g of grupos) {
+        g.passos = g.pente ? [] : g.membros.map((n) => (emLinha ? larguraDoNome(n) : espacoMinimo));
+        g.largura = g.pente ? g.colunas * coluna : g.passos.reduce((s, v) => s + v, 0);
+        /* onde o bloco quer ficar: espinha (ou primeiro ponto) sob o pai; os sem pai, no fim */
+        g.esquerda = g.pai == null ? Infinity : xDe(g.pai) - (g.pente ? 4 : emLinha ? 6 : g.largura / 2);
       }
-    }
-    for (const n of l) {
-      n.x = Math.round(n.x * 10) / 10;
-      n.nivel = n.linha;
-      n.rotulo = ajustar(n.completo, n.espacoDoNome);
-      n.largura = n.rotulo ? medir(n.rotulo) : 0;
+      /* os blocos não se sobrepõem nem saem das pontas, na ordem */
+      const xIni = margem; const xFim = largura - margem;
+      const empurrar = () => grupos.forEach((g, j) => { g.esquerda = Math.max(g.esquerda, j ? grupos[j - 1].esquerda + grupos[j - 1].largura + FOLGA : xIni); });
+      empurrar();
+      for (let j = grupos.length - 1; j >= 0; j--) grupos[j].esquerda = Math.min(grupos[j].esquerda, (j < grupos.length - 1 ? grupos[j + 1].esquerda - FOLGA : xFim) - grupos[j].largura);
+      empurrar();
+
+      for (const g of grupos) {
+        g.encaixes = [];
+        if (g.pente) {
+          const porColuna = Math.ceil(g.membros.length / g.colunas);
+          g.membros.forEach((n, j) => {
+            const espinha = g.esquerda + Math.floor(j / porColuna) * coluna + 4;
+            n.x = espinha + INDENTE; n.linha = j % porColuna; n.espinha = INDENTE;
+            n.espacoDoNome = Math.max(0, coluna - 4 - INDENTE - RECUO - 4);
+            if (!g.encaixes.includes(espinha)) g.encaixes.push(espinha);
+          });
+          linhas = Math.max(linhas, porColuna);
+        } else {
+          let cursor = g.esquerda;
+          g.membros.forEach((n, j) => {
+            n.x = cursor + 6; n.linha = 0; n.espinha = 0;
+            n.espacoDoNome = Math.max(0, g.passos[j] - 6 - RECUO - 4);
+            g.encaixes.push(n.x);
+            cursor += g.passos[j];
+          });
+        }
+      }
+      for (const n of l) {
+        n.x = Math.round(n.x * 10) / 10;
+        n.nivel = n.linha;
+        n.rotulo = ajustar(n.completo, n.espacoDoNome);
+        n.largura = n.rotulo ? medir(n.rotulo) : 0;
+      }
     }
 
     /* vias: cada bloco usa um trecho da via (do pai às espinhas); trechos que se encostariam vão para outra altura */
@@ -313,7 +322,7 @@ export function calcularMapa({
       fins[via] = t.b;
       for (const [lg, espinha] of t.ligacoes) lg.rota = { via, espinha };
     }
-    Object.assign(l, { agrupada: true, modo: emLinha ? "linha" : "pente", linhas, vias: fins.length });
+    Object.assign(l, { agrupada: true, modo: emLinha ? "linha" : emDegraus ? "degraus" : "pente", linhas, vias: fins.length });
   }
 
   /* altura e curvatura: cada faixa tem a altura dos seus níveis */
@@ -328,7 +337,8 @@ export function calcularMapa({
       f.modo = l.modo;
       f.niveis = l.linhas;
       f.cabeca = BARRAMENTO.viaTopo + l.vias * BARRAMENTO.via + 12;
-      f.altura = Math.max(alturaMinima, f.cabeca + (l.linhas - 1) * BARRAMENTO.passo + 22);
+      f.passo = l.modo === "degraus" ? passoNivel : BARRAMENTO.passo;
+      f.altura = Math.max(alturaMinima, f.cabeca + (l.linhas - 1) * f.passo + 22);
     } else {
       f.niveis = l.niveis ?? 1;
       f.altura = Math.max(alturaMinima, 40 + f.niveis * passoNivel);
@@ -338,7 +348,7 @@ export function calcularMapa({
   });
   for (const n of nos) {
     const f = faixas[n.faixa];
-    if (f.modo) n.y = f.topo + (f.niveis > 1 ? f.cabeca + n.linha * BARRAMENTO.passo : Math.max(f.cabeca, f.altura / 2));
+    if (f.modo) n.y = f.topo + (f.niveis > 1 ? f.cabeca + n.nivel * f.passo : Math.max(f.cabeca, f.altura / 2));
     else n.y = f.topo + f.altura / 2 + (n.nivel - (f.niveis - 1) / 2) * passoNivel;
     n.yCurvo = Math.round((n.y + deslocamentoCurvo(n.x, centro, raio)) * 10) / 10;
   }

@@ -456,7 +456,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       const nos = mapa.nos.filter((n) => n.faixa === i);
       if (!nos.length) return "pontos";
       /* com degraus, o texto de uma fileira não pode encostar no da fileira de baixo: o degrau, na tela, tem de ter a altura do texto */
-      const cabeEmPe = (tamanho) => f.niveis <= 1 || mapa.passoNivel * k >= tamanho + 5; // a caixa do texto, com o contorno, passa um pouco do tamanho da letra
+      const cabeEmPe = (tamanho) => f.niveis <= 1 || (f.passo ?? mapa.passoNivel) * k >= tamanho + 5; // a caixa do texto, com o contorno, passa um pouco do tamanho da letra
       if (cabeEmPe(TAMANHO_DO_NOME) && nos.every((n) => n.espacoDoNome * k >= ESPACO_PARA_NOMES)) return "nomes";
       return cabeEmPe(TAMANHO_DO_CODIGO) && nos.every((n) => !n.codigo || larguraDoCodigo(n.codigo) + 4 <= n.espacoDoNome * k) ? "codigos" : "pontos";
     });
