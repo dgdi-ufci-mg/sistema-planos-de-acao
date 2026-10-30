@@ -462,6 +462,26 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     });
     svg.dataset.niveis = niveis.join(" ");
     const foco = estado.selecionado ?? previa;
+    /*
+     * Rótulo ponto a ponto (30/10/2026, variação em branch): cada ponto mostra o que cabe no espaço livre dele, na tela
+     * e na escala de agora, sem esperar a faixa inteira. O espaço vai até o primeiro ponto da mesma faixa, à direita,
+     * que fique perto o bastante na altura para o texto encostar nele (a altura da letra mais 4 px), ou até a ponta
+     * do mapa. Com espaço para o nome (72 px), o nome, cortado com reticências se preciso; senão, o código, se couber;
+     * senão, nada.
+     */
+    const porFaixa = new Map();
+    for (const n of mapa.nos) porFaixa.set(n.faixa, [...(porFaixa.get(n.faixa) ?? []), n]);
+    for (const l of porFaixa.values()) l.sort((a, b) => a.x - b.x);
+    const livreNaTela = (n, tamanho) => {
+      let livre = (mapa.largura - n.x) * k - RECUO_NA_TELA - 4;
+      for (const m of porFaixa.get(n.faixa)) {
+        if (m.x <= n.x || m === n) continue;
+        const dx = (m.x - n.x) * k - RECUO_NA_TELA - 6;
+        if (dx >= livre) break;
+        if (Math.abs(m.yCurvo - n.yCurvo) * k < tamanho + 4) livre = dx;
+      }
+      return Math.max(0, livre);
+    };
     for (const n of mapa.nos) {
       const p = elementos.get(n.chave);
       let texto = "";
@@ -469,8 +489,11 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       let codigo = false;
       if (caminhoAceso) {
         if (caminhoAceso.nos.has(n.chave)) { texto = n.completo; if (n.chave === foco) tamanho = TAMANHO_DO_FOCO; }
-      } else if (niveis[n.faixa] === "nomes") texto = caber(n.completo, n.espacoDoNome * k - 2);
-      else if (niveis[n.faixa] === "codigos" && n.codigo) { texto = n.codigo; tamanho = TAMANHO_DO_CODIGO; codigo = true; }
+      } else {
+        const livre = livreNaTela(n, TAMANHO_DO_NOME);
+        if (livre >= ESPACO_PARA_NOMES) texto = caber(n.completo, livre - 2);
+        else if (n.codigo && larguraDoCodigo(n.codigo) + 4 <= livreNaTela(n, TAMANHO_DO_CODIGO)) { texto = n.codigo; tamanho = TAMANHO_DO_CODIGO; codigo = true; }
+      }
       if (p.nome.textContent !== texto) p.nome.textContent = texto;
       p.nome.classList.toggle("e-codigo", codigo);
       p.nome.style.fontSize = `${(tamanho / k).toFixed(3)}px`;
