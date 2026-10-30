@@ -178,12 +178,39 @@ export function calcularMapa({
     l[l.length - 1].x = Math.min(l[l.length - 1].x, xMax);
     for (let i = l.length - 2; i >= 0; i--) l[i].x = Math.min(l[i].x, l[i + 1].x - passo(i + 1));
   };
-  /* só um puxão suave (30%): puxar tudo para a média juntaria os pontos no meio da faixa */
-  const media = (chaves, atual) => (chaves.length ? 0.7 * atual + 0.3 * (chaves.reduce((s2, k) => s2 + porChave.get(k).x, 0) / chaves.length) : atual);
-  const paraBaixo = () => { for (let i = 1; i < lista.length; i++) { lista[i].forEach((n) => { n.x = media(n.superiores, n.x); }); afastar(lista[i]); } };
-  const paraCima = () => { for (let i = lista.length - 2; i >= 0; i--) { lista[i].forEach((n) => { n.x = media(subordinados.get(n.chave) ?? [], n.x); }); afastar(lista[i]); } };
+  /*
+   * Pais sobre os blocos (30/10/2026, variação em branch; como nos desenhos de árvore): cada bloco de filhos se
+   * desloca inteiro para ficar sob o pai, e depois cada pai se centraliza sobre o seu bloco (a média dos filhos do
+   * bloco), de baixo para cima; duas rodadas, sempre sem passar do vizinho. A última palavra é dos pais, então as
+   * linhas de cada pai descem curtas e quase verticais até o seu bloco.
+   */
+  const media = (ns) => ns.reduce((s2, n) => s2 + n.x, 0) / ns.length;
+  const blocos = (l) => {
+    const r = [];
+    for (const n of l) { if (r.length && r.at(-1)[0].grupo === n.grupo) r.at(-1).push(n); else r.push([n]); }
+    return r;
+  };
+  const alinharBlocos = () => {
+    for (let i = 1; i < lista.length; i++) {
+      for (const b of blocos(lista[i])) {
+        if (b[0].grupo == null) continue;
+        const d = porChave.get(b[0].grupo).x - media(b);
+        for (const n of b) n.x += d;
+      }
+      afastar(lista[i]);
+    }
+  };
+  const centrarPais = () => {
+    for (let i = lista.length - 2; i >= 0; i--) {
+      for (const n of lista[i]) {
+        const bloco = (subordinados.get(n.chave) ?? []).map((k) => porChave.get(k)).filter((c) => c.grupo === n.chave);
+        if (bloco.length) n.x = media(bloco);
+      }
+      afastar(lista[i]);
+    }
+  };
   lista.forEach(afastar);
-  paraBaixo(); paraCima(); paraBaixo();
+  alinharBlocos(); centrarPais(); alinharBlocos(); centrarPais();
   for (const n of nos) n.x = Math.round(n.x * 10) / 10;
 
   /* nomes: à direita do ponto; quando não cabem lado a lado, os pontos da faixa se alternam em até 4 níveis
@@ -195,7 +222,18 @@ export function calcularMapa({
     return ate > 1 && medir(`${texto.slice(0, ate).trimEnd()}…`) <= disponivel ? `${texto.slice(0, ate).trimEnd()}…` : "";
   };
   const limiteDireito = largura - margem / 2;
-  const espaco = (l, i, niveis) => (i + niveis < l.length ? l[i + niveis].x - l[i].x - RECUO - 6 : limiteDireito - l[i].x - RECUO);
+  /* espaço à direita de um ponto: até o próximo ponto que fique quase na mesma altura (a mesma fileira ou, com a
+     curva, uma vizinha a menos de 15 unidades), ou até a ponta do mapa */
+  const centro = largura / 2;
+  const raio = raioPorLargura * largura;
+  const espaco = (l, i, niveis) => {
+    const altura = (j) => (j % niveis) * passoNivel + deslocamentoCurvo(l[j].x, centro, raio);
+    let livre = limiteDireito - l[i].x - RECUO;
+    for (let j = i + 1; j < l.length && l[j].x - l[i].x - RECUO - 6 < livre; j++) {
+      if (Math.abs(altura(j) - altura(i)) < 15) livre = Math.min(livre, l[j].x - l[i].x - RECUO - 6);
+    }
+    return livre;
+  };
   for (const n of nos) n.completo = n.tipo === "plano" || !n.codigo ? String(n.nome) : `${n.codigo} · ${n.nome}`;
   for (const l of lista) {
     const maximo = Math.max(l.fileiras, niveisMaximos);
@@ -213,8 +251,6 @@ export function calcularMapa({
   }
 
   /* altura e curvatura: cada faixa tem a altura dos seus níveis */
-  const centro = largura / 2;
-  const raio = raioPorLargura * largura;
   const alturaMinima = Math.min(72, Math.max(52, (vista.h - 60) / faixas.length)); // área baixa (celular): faixas mais baixas
   let topo = 0;
   faixas.forEach((f, i) => {
