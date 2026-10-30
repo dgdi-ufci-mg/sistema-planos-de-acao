@@ -63,6 +63,7 @@ export function faixasDoMapa(camadas, itens, { semPlanos = false } = {}) {
  * @param {{w: number, h: number}} [p.vista]  tamanho da área do mapa: a largura do mapa acompanha a da área
  * @param {number} [p.margem]  espaço nas pontas de cada faixa
  * @param {number} [p.espacoMinimo]  menor distância entre dois pontos da mesma faixa
+ * @param {number} [p.folgaEntreBlocos]  distância a mais entre dois blocos de filhos de pais diferentes (agrupamento)
  * @param {number} [p.passoNivel]  degrau vertical entre pontos vizinhos de uma faixa que precisa de mais de um nível
  * @param {number} [p.niveisMaximos]  degraus para os nomes caberem lado a lado
  * @param {number} [p.fileirasMaximas]  fileiras de uma faixa cheia demais para uma só (lote 4: a faixa cresce para baixo, e não para os lados)
@@ -76,7 +77,7 @@ export function faixasDoMapa(camadas, itens, { semPlanos = false } = {}) {
  */
 export function calcularMapa({
   camadas, itens, planos = [], medir = (t) => t.length * 7, vista = { w: 960, h: 560 },
-  margem = 28, espacoMinimo = 26, passoNivel = 19, niveisMaximos = 4, fileirasMaximas = 8, raioPorLargura = 4, ordemPessoal = {}, semPlanos = false,
+  margem = 28, espacoMinimo = 26, folgaEntreBlocos = 13, passoNivel = 19, niveisMaximos = 4, fileirasMaximas = 8, raioPorLargura = 4, ordemPessoal = {}, semPlanos = false,
 }) {
   const ativos = itens.filter((x) => !x.excluidoEm);
   const faixas = faixasDoMapa(camadas, ativos, { semPlanos });
@@ -125,6 +126,22 @@ export function calcularMapa({
   const descer = () => { for (let i = 1; i < lista.length; i++) reordenar(lista[i], (n) => n.superiores); };
   const subir = () => { for (let i = lista.length - 2; i >= 0; i--) reordenar(lista[i], (n) => subordinados.get(n.chave) ?? []); };
   descer(); subir(); descer(); subir(); descer();
+  /*
+   * Agrupamento (30/10/2026, variação em branch): da segunda faixa para baixo, os filhos de um mesmo pai ficam juntos,
+   * num bloco, na ordem dos pais (o pai de cada ponto, para isso, é o superior mais à esquerda). Dentro do bloco vale
+   * a ordem do baricentro. Os pontos sem superior mostrado vão ao fim. A ordem pessoal, quando há, vem depois e vale
+   * sobre o agrupamento. Entre um bloco e outro fica uma folga a mais (`folgaEntreBlocos`). As linhas continuam retas.
+   */
+  for (let i = 1; i < lista.length; i++) {
+    const l = lista[i];
+    if (!l.some((n) => n.superiores.length)) continue;
+    const posicaoDe = (k) => porChave.get(k).posicao;
+    for (const n of l) n.grupo = n.superiores.length ? [...n.superiores].sort((a, b) => posicaoDe(a) - posicaoDe(b) || (a < b ? -1 : 1))[0] : null;
+    const antes = new Map(l.map((n, j) => [n.chave, j]));
+    const ordemDoGrupo = (n) => (n.grupo == null ? Infinity : posicaoDe(n.grupo));
+    l.sort((a, b) => ordemDoGrupo(a) - ordemDoGrupo(b) || (a.grupo ?? "").localeCompare(b.grupo ?? "") || antes.get(a.chave) - antes.get(b.chave));
+    numerar(l);
+  }
   /* ordem pessoal (lote 6): vale depois das passadas; os pontos que ela não conhece (itens novos) vão ao fim, na ordem automática */
   faixas.forEach((f, i) => {
     const salva = ordemPessoal?.[f.id];
@@ -134,17 +151,19 @@ export function calcularMapa({
     lista[i].sort((a, b) => (lugar.get(a.chave) ?? Infinity) - (lugar.get(b.chave) ?? Infinity) || antes.get(a.chave) - antes.get(b.chave));
     numerar(lista[i]);
   });
+  /* quantas trocas de bloco cada faixa tem (cada uma ganha a folga) */
+  const trocas = (l) => l.reduce((t, n, j) => t + (j && n.grupo !== l[j - 1].grupo ? 1 : 0), 0);
 
   /* largura: a da área (para tudo caber numa tela). A faixa cheia demais para uma fileira, com os pontos a 26 de
      distância, cresce para baixo, em fileiras (lote 4, 29/10/2026, tarde): até 8; a largura só cresce se nem 8 bastarem */
   const RECUO = 9; // do ponto até o começo do nome
   const reservaFinal = 60; // espaço para o nome do último ponto
-  const maisCheia = Math.max(1, ...lista.map((l) => l.length));
-  const largura = Math.ceil(Math.max(vista.w, 2 * margem + reservaFinal + ((maisCheia - 1) * espacoMinimo) / fileirasMaximas));
+  const necessaria = (l) => ((Math.max(1, l.length) - 1) * espacoMinimo) / fileirasMaximas + trocas(l) * folgaEntreBlocos;
+  const largura = Math.ceil(Math.max(vista.w, 2 * margem + reservaFinal + Math.max(0, ...lista.map(necessaria))));
   const xMin = margem;
   const xMax = largura - margem - reservaFinal;
   /* fileiras de cada faixa pelos pontos: a menor quantidade que deixa 26 entre vizinhos da mesma fileira */
-  for (const l of lista) l.fileiras = l.length > 1 ? Math.min(fileirasMaximas, Math.max(1, Math.ceil(((l.length - 1) * espacoMinimo) / Math.max(1, xMax - xMin) - 1e-9))) : 1;
+  for (const l of lista) l.fileiras = l.length > 1 ? Math.min(fileirasMaximas, Math.max(1, Math.ceil(((l.length - 1) * espacoMinimo) / Math.max(1, xMax - xMin - trocas(l) * folgaEntreBlocos) - 1e-9))) : 1;
 
   /* posição: começa pela ordem; depois, para baixo e para cima, cada ponto tenta ficar sob (ou sobre) a média dos
      pontos a que se liga, sem passar do vizinho (as linhas ficam quase na vertical e se cruzam menos) */
@@ -152,11 +171,12 @@ export function calcularMapa({
   /* vizinhos seguidos ficam em fileiras diferentes: a distância mínima entre eles é 26 ÷ fileiras */
   const afastar = (l) => {
     if (!l.length) return;
-    const passo = espacoMinimo / l.fileiras;
+    /* entre blocos (agrupamento), a folga a mais */
+    const passo = (i) => espacoMinimo / l.fileiras + (l[i].grupo !== l[i - 1].grupo ? folgaEntreBlocos : 0);
     l.forEach((n) => { n.x = Math.min(xMax, Math.max(xMin, n.x)); });
-    for (let i = 1; i < l.length; i++) l[i].x = Math.max(l[i].x, l[i - 1].x + passo);
+    for (let i = 1; i < l.length; i++) l[i].x = Math.max(l[i].x, l[i - 1].x + passo(i));
     l[l.length - 1].x = Math.min(l[l.length - 1].x, xMax);
-    for (let i = l.length - 2; i >= 0; i--) l[i].x = Math.min(l[i].x, l[i + 1].x - passo);
+    for (let i = l.length - 2; i >= 0; i--) l[i].x = Math.min(l[i].x, l[i + 1].x - passo(i + 1));
   };
   /* só um puxão suave (30%): puxar tudo para a média juntaria os pontos no meio da faixa */
   const media = (chaves, atual) => (chaves.length ? 0.7 * atual + 0.3 * (chaves.reduce((s2, k) => s2 + porChave.get(k).x, 0) / chaves.length) : atual);

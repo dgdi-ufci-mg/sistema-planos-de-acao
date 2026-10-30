@@ -87,6 +87,20 @@ describe("Mapa: ordem, posição e curva", () => {
     assert.ok(x("y") < x("x"), "Y vem de A, que está à esquerda: fica à esquerda de X");
   });
 
+  it("agrupamento: filhos do mesmo pai ficam juntos, na ordem dos pais, com folga a mais entre os blocos (30/10/2026)", () => {
+    const planos = Array.from({ length: 12 }, (_, i) => ({ id: `pa${i}`, nome: `Plano ${i}`, superiores: [i % 2 ? "prg2" : "prg1"] }));
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos, vista: { w: 1000, h: 600 } });
+    const fila = m.nos.filter((n) => n.tipo === "plano").sort((a, b) => a.x - b.x);
+    const pais = fila.map((n) => n.superiores[0]);
+    const trocas = pais.filter((p, i) => i && p !== pais[i - 1]).length;
+    assert.equal(trocas, 1, "um bloco por pai, sem se misturarem");
+    const x = (id) => m.nos.find((n) => n.id === id).x;
+    assert.equal(pais[0], x("prg1") < x("prg2") ? "prg1" : "prg2", "os blocos seguem a ordem dos pais");
+    const j = pais.findIndex((p, i) => i && p !== pais[i - 1]);
+    const passo = fila[2].x - fila[1].x;
+    assert.ok(fila[j].x - fila[j - 1].x >= passo + 13 - 1e-6, "a troca de bloco ganha a folga");
+  });
+
   it("é determinística: a mesma entrada dá o mesmo mapa", () => {
     const um = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo() });
     const outro = calcularMapa({ camadas: CAMADAS_PADRAO, itens: [...catalogo()].reverse() });
