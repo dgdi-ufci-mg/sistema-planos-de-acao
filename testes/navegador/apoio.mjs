@@ -69,13 +69,21 @@ export async function iniciar() {
   /**
    * Abre uma página nova, já com o exemplo aberto.
    * Com `caminho` (por exemplo, "strata/"), abre essa página e espera o seletor `aguardar`, sem clicar em "Ver um exemplo".
-   * @param {{largura?: number, altura?: number, toque?: boolean, tema?: "light"|"dark", exemplo?: boolean, caminho?: string, aguardar?: string}} [o]
+   * `tema` é o tema do sistema do aparelho. Com `temaGuardado` (padrão "automatico"), a página começa com essa escolha
+   * guardada nos dois aplicativos, se ainda não houver outra; assim os testes seguem o tema do sistema. Com `null`, nada
+   * é guardado e valem os padrões de cada aplicativo (Sextante claro, Strata escuro; 30/10/2026).
+   * @param {{largura?: number, altura?: number, toque?: boolean, tema?: "light"|"dark", temaGuardado?: string|null, exemplo?: boolean, caminho?: string, aguardar?: string}} [o]
    */
-  async function abrir({ largura = 390, altura = 800, toque = largura <= 640, tema = "light", exemplo = true, caminho = "sextante/", aguardar = null } = {}) {
+  async function abrir({ largura = 390, altura = 800, toque = largura <= 640, tema = "light", temaGuardado = "automatico", exemplo = true, caminho = "sextante/", aguardar = null } = {}) {
     const contexto = await navegador.newContext({
       viewport: { width: largura, height: altura }, hasTouch: toque, isMobile: toque, locale: "pt-BR", colorScheme: tema,
     });
     contextos.push(contexto);
+    if (temaGuardado) {
+      await contexto.addInitScript((v) => {
+        try { for (const k of ["sextante.tema", "strata.tema"]) if (localStorage.getItem(k) === null) localStorage.setItem(k, v); } catch { /* sem armazenamento */ }
+      }, temaGuardado);
+    }
     await contexto.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: "export const FIREBASE_CONFIG = null;" }));
     /* nada sai para a internet: fontes e CDN ficam de fora (o sistema usa as fontes de reserva) */
     await contexto.route((url) => !url.href.startsWith(endereco), (r) => r.abort());
