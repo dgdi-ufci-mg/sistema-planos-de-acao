@@ -13,11 +13,13 @@
  * - **Ordem na faixa** por regras, e não por posições escritas à mão: começa pela ordem de código e nome e faz
  *   poucas passadas de baricentro (a posição de cada ponto é a média das posições dos pontos a que ele se liga,
  *   primeiro para baixo, depois para cima), para reduzir os cruzamentos de linhas.
- * - **Posição horizontal**: a largura do mapa é a da área (tudo cabe numa tela) e só cresce se a faixa mais cheia
- *   não couber com os pontos a 26 unidades de distância. Cada ponto procura ficar sob a média dos pontos a que se
- *   liga (as linhas ficam quase na vertical). O nome fica à direita do ponto; faixa cheia alterna os pontos em até 4
- *   níveis (degrau vertical) e corta com reticências o nome que ainda assim não couber.
- * - **Ligações**: retas. Duas linhas do mesmo ponto nunca saem na mesma direção, e nenhuma passa rente a outro ponto.
+ * - **Posição horizontal**: a largura do mapa é a da área (tudo cabe numa tela) e só cresce se nem 8 fileiras
+ *   bastarem. Filhos do mesmo pai em blocos, na ordem do caminho desde o alto; pais sobre os blocos.
+ * - **Altura dentro da faixa** (03/11/2026): sem degraus por regra; decidida pela acomodação (`acomodar`), com paredes
+ *   macias e elásticas, antes de o mapa aparecer, sempre igual.
+ * - **Rótulos**: no mapa, só o código, e só o que fica livre (`codigosVisiveis`); o nome completo no caminho aceso.
+ * - **Ligações**: retas. Duas linhas do mesmo ponto nunca saem na mesma direção, nenhuma passa rente a outro ponto e
+ *   a física não cria cruzamentos.
  * - **Curvatura**: a faixa e os pontos seguem uma curva suave por uma correção simples de altura,
  *   `deslocamento = (x − centro)² ÷ (2 × R)`, com R grande e a mesma correção no desenho das faixas e dos pontos.
  *   Sem coordenadas polares.
@@ -33,6 +35,24 @@ const porCodigoENome = (a, b) =>
 export function rotuloDoPonto(codigo, nome, max = 34) {
   const texto = codigo ? `${codigo} · ${nome}` : String(nome);
   return texto.length > max ? `${texto.slice(0, max - 1).trimEnd()}…` : texto;
+}
+
+/**
+ * Nome do caminho aceso em linhas curtas (03/11/2026): quebra nas palavras, em até `maxLinhas` linhas de até `max`
+ * letras; o que sobrar vai para a última linha, cortado com reticências. Uma palavra maior que `max` fica inteira.
+ * @returns {string[]}
+ */
+export function quebrarEmLinhas(texto, max = 26, maxLinhas = 3) {
+  const palavras = String(texto ?? "").trim().split(/\s+/).filter(Boolean);
+  const linhas = [];
+  for (const p of palavras) {
+    const atual = linhas.at(-1);
+    if (atual != null && `${atual} ${p}`.length <= max) linhas[linhas.length - 1] = `${atual} ${p}`;
+    else linhas.push(p);
+  }
+  if (linhas.length <= maxLinhas) return linhas;
+  const resto = linhas.slice(maxLinhas - 1).join(" ");
+  return [...linhas.slice(0, maxLinhas - 1), resto.length > max ? `${resto.slice(0, max - 1).trimEnd()}…` : resto];
 }
 
 /** Deslocamento para baixo, na posição x, da curva de raio `raio` com o ponto mais alto em `centro`. */
@@ -132,15 +152,30 @@ export function calcularMapa({
    * a ordem do baricentro. Os pontos sem superior mostrado vão ao fim. A ordem pessoal, quando há, vem depois e vale
    * sobre o agrupamento. Entre um bloco e outro fica uma folga a mais (`folgaEntreBlocos`). As linhas continuam retas.
    */
+  /*
+   * Ordem dos blocos pelo caminho desde o alto (03/11/2026): cada ponto tem um endereço, a lista das posições no
+   * caminho do alto até ele (o do pai, mais a posição dele no bloco). Os blocos seguem a ordem dos endereços dos pais,
+   * comparados elemento a elemento, e não a posição do pai na faixa dele. Assim, um ponto ligado a um pai dois níveis
+   * acima (um Programa ligado direto a uma Política, sem Portfólio) fica entre os blocos certos, e a linha dele não
+   * cruza as dos vizinhos (é a ordem de uma árvore percorrida da esquerda para a direita).
+   */
+  const endereco = new Map();
+  const compararEnderecos = (a, b) => {
+    for (let j = 0; j < Math.min(a.length, b.length); j++) if (a[j] !== b[j]) return a[j] - b[j];
+    return a.length - b.length;
+  };
+  lista[0]?.forEach((n, j) => endereco.set(n.chave, [j]));
   for (let i = 1; i < lista.length; i++) {
     const l = lista[i];
-    if (!l.some((n) => n.superiores.length)) continue;
-    const posicaoDe = (k) => porChave.get(k).posicao;
-    for (const n of l) n.grupo = n.superiores.length ? [...n.superiores].sort((a, b) => posicaoDe(a) - posicaoDe(b) || (a < b ? -1 : 1))[0] : null;
+    if (!l.some((n) => n.superiores.length)) { l.forEach((n, j) => endereco.set(n.chave, [lista.length + i, j])); continue; }
+    const enderecoDe = (k) => endereco.get(k) ?? [Infinity];
+    for (const n of l) n.grupo = n.superiores.length ? [...n.superiores].sort((a, b) => compararEnderecos(enderecoDe(a), enderecoDe(b)) || (a < b ? -1 : 1))[0] : null;
     const antes = new Map(l.map((n, j) => [n.chave, j]));
-    const ordemDoGrupo = (n) => (n.grupo == null ? Infinity : posicaoDe(n.grupo));
-    l.sort((a, b) => ordemDoGrupo(a) - ordemDoGrupo(b) || (a.grupo ?? "").localeCompare(b.grupo ?? "") || antes.get(a.chave) - antes.get(b.chave));
+    const semGrupo = [lista.length + i];
+    l.sort((a, b) => compararEnderecos(a.grupo == null ? semGrupo : enderecoDe(a.grupo), b.grupo == null ? semGrupo : enderecoDe(b.grupo))
+      || (a.grupo ?? "").localeCompare(b.grupo ?? "") || antes.get(a.chave) - antes.get(b.chave));
     numerar(l);
+    l.forEach((n, j) => endereco.set(n.chave, [...(n.grupo == null ? semGrupo : enderecoDe(n.grupo)), j]));
   }
   /* ordem pessoal (lote 6): vale depois das passadas; os pontos que ela não conhece (itens novos) vão ao fim, na ordem automática */
   faixas.forEach((f, i) => {
@@ -213,59 +248,327 @@ export function calcularMapa({
   alinharBlocos(); centrarPais(); alinharBlocos(); centrarPais();
   for (const n of nos) n.x = Math.round(n.x * 10) / 10;
 
-  /* nomes: à direita do ponto; quando não cabem lado a lado, os pontos da faixa se alternam em até 4 níveis
-     (um pequeno degrau vertical); o que ainda não couber é cortado com reticências */
-  const ajustar = (texto, disponivel) => {
-    if (medir(texto) <= disponivel) return texto;
-    let ate = texto.length - 1;
-    while (ate > 1 && medir(`${texto.slice(0, ate).trimEnd()}…`) > disponivel) ate--;
-    return ate > 1 && medir(`${texto.slice(0, ate).trimEnd()}…`) <= disponivel ? `${texto.slice(0, ate).trimEnd()}…` : "";
-  };
-  const limiteDireito = largura - margem / 2;
-  /* espaço à direita de um ponto: até o próximo ponto que fique quase na mesma altura (a mesma fileira ou, com a
-     curva, uma vizinha a menos de 15 unidades), ou até a ponta do mapa */
-  const centro = largura / 2;
-  const raio = raioPorLargura * largura;
-  const espaco = (l, i, niveis) => {
-    const altura = (j) => (j % niveis) * passoNivel + deslocamentoCurvo(l[j].x, centro, raio);
-    let livre = limiteDireito - l[i].x - RECUO;
-    for (let j = i + 1; j < l.length && l[j].x - l[i].x - RECUO - 6 < livre; j++) {
-      if (Math.abs(altura(j) - altura(i)) < 15) livre = Math.min(livre, l[j].x - l[i].x - RECUO - 6);
-    }
-    return livre;
-  };
-  for (const n of nos) n.completo = n.tipo === "plano" || !n.codigo ? String(n.nome) : `${n.codigo} · ${n.nome}`;
-  for (const l of lista) {
-    const maximo = Math.max(l.fileiras, niveisMaximos);
-    let niveis = maximo;
-    for (let k = l.fileiras; k <= maximo; k++) {
-      if (l.every((n, i) => medir(n.completo) <= espaco(l, i, k))) { niveis = k; break; }
-    }
-    l.niveis = niveis;
-    l.forEach((n, i) => {
-      n.nivel = i % niveis;
-      n.espacoDoNome = Math.max(0, espaco(l, i, niveis)); // unidades livres à direita do ponto (os rótulos da tela usam)
-      n.rotulo = ajustar(n.completo, n.espacoDoNome);
-      n.largura = n.rotulo ? medir(n.rotulo) : 0;
-    });
+  /*
+   * Rótulos (03/11/2026, decisão do responsável): no mapa, sempre o **código**, e não o nome ("pense num mapa:
+   * ninguém deixa frases completas"); o nome completo aparece no caminho aceso. Sem código (Planos de Ação, item sem
+   * código), nenhum rótulo. A largura do código é a do texto em 11 px e seminegrito (a medida recebe 13 px).
+   */
+  for (const n of nos) {
+    n.completo = n.tipo === "plano" || !n.codigo ? String(n.nome) : `${n.codigo} · ${n.nome}`;
+    n.rotulo = n.tipo === "plano" ? "" : String(n.codigo ?? "");
+    n.largura = n.rotulo ? Math.round(((medir(n.rotulo) * TAMANHO_DO_CODIGO) / 13) * 1.06 * 10) / 10 : 0;
+    n.nivel = 0;
   }
 
-  /* altura e curvatura: cada faixa tem a altura dos seus níveis */
+  /* faixas com a altura mínima; a física faz crescer as que têm pressão (paredes elásticas) */
   const alturaMinima = Math.min(72, Math.max(52, (vista.h - 60) / faixas.length)); // área baixa (celular): faixas mais baixas
-  let topo = 0;
-  faixas.forEach((f, i) => {
-    f.niveis = lista[i].niveis ?? 1;
-    f.altura = Math.max(alturaMinima, 40 + f.niveis * passoNivel);
-    f.topo = topo; f.base = topo + f.altura; topo = f.base;
-    f.nos = lista[i].map((n) => n.chave);
-  });
-  for (const n of nos) {
-    const f = faixas[n.faixa];
-    n.y = f.topo + f.altura / 2 + (n.nivel - (f.niveis - 1) / 2) * passoNivel;
-    n.yCurvo = Math.round((n.y + deslocamentoCurvo(n.x, centro, raio)) * 10) / 10;
+  faixas.forEach((f, i) => { f.niveis = 1; f.altura = alturaMinima; f.nos = lista[i].map((n) => n.chave); });
+  const centro = largura / 2;
+  const raio = raioPorLargura * largura;
+  /* faixa cheia demais para uma fileira (3 ou mais, pela regra da largura): o lugar das regras, na altura, é uma das
+     fileiras (o ponto i na fileira i mod fileiras); a mola da altura puxa para lá e a física acomoda o resto */
+  for (const l of lista) l.forEach((n, i) => { n.alvoNaAltura = l.fileiras >= 3 ? ((i % l.fileiras) - (l.fileiras - 1) / 2) * (2 * FISICA.raioDoPonto + 1) : 0; });
+  const mapa = { faixas, nos, ligacoes, largura, centro, raio, recuo: RECUO, passoNivel, alturaMinima, ordem: lista.map((l) => l.map((n) => n.chave)) };
+  acomodar(mapa, { margem });
+  mapa.altura = Math.ceil(faixas.at(-1).base + deslocamentoCurvo(0, centro, raio));
+  return mapa;
+}
+
+/** Tamanho do código no mapa, em px na tela (o mesmo de `js/superior/mapa.js`). */
+const TAMANHO_DO_CODIGO = 11;
+
+/**
+ * Constantes da acomodação (física, 03/11/2026). Distâncias em unidades do mapa (1 unidade = 1 px na escala 1).
+ * - `rigidezX`, `rigidezY`: mola leve de cada ponto até o lugar das regras (a horizontal, mais firme; a altura, solta);
+ * - `raioDoPonto`: metade da menor distância entre dois pontos da mesma faixa;
+ * - `meiaAlturaDoNome`: metade da altura da caixa do código; `folgaDoNome`: espaço entre duas caixas;
+ * - `folgaDireita`: espaço a mais depois do código, até o ponto seguinte;
+ * - `folgaDaLinha`: menor distância entre uma linha e um ponto que não é dela;
+ * - `margemDaParede`: espaço entre o conteúdo e a borda da faixa; `forca*`: frações da invasão corrigidas por passo;
+ * - `anguloMinimo`: menor ângulo, em graus, entre duas linhas do mesmo ponto;
+ * - `crescer`, `encolher`: quanto a parede cede à pressão e volta quando sobra espaço;
+ * - `passoMaximo`: maior movimento de um ponto num passo; `passos`: limite de passos; `repouso`: movimento abaixo do
+ *   qual a acomodação para.
+ */
+export const FISICA = Object.freeze({
+  rigidezX: 0.15, rigidezY: 0.06, raioDoPonto: 8.5, meiaAlturaDoNome: 8, folgaDoNome: 2, folgaDireita: 4, folgaDaLinha: 9, margemDaParede: 5,
+  forcaDosPontos: 0.5, forcaDosNomes: 0.12, forcaDaLinha: 0.5, forcaDoNomeSobLinha: 0.25, forcaDaParede: 0.6, anguloMinimo: 6, forcaDoAngulo: 0.15,
+  crescer: 0.5, encolher: 0.06, passoMaximo: 3, passos: 160, repouso: 0.02,
+});
+
+/** Caixa de um ponto com o seu código à direita (`[x0, x1, y0, y1]`), na posição (x, y) dada. */
+const caixaDoPonto = (n, x, y, recuo, c = FISICA) => [x - c.raioDoPonto + 2, n.largura ? x + recuo + n.largura : x + c.raioDoPonto - 2, y - c.meiaAlturaDoNome, y + c.meiaAlturaDoNome];
+
+/** Caixa do código sozinho (sem o ponto), ou null. */
+export const caixaDoNome = (n, x, y, recuo, c = FISICA) => (n.largura ? [x + recuo - 1, x + recuo + n.largura, y - c.meiaAlturaDoNome + 1, y + c.meiaAlturaDoNome - 1] : null);
+
+/** Os segmentos AB e CD se cruzam (cruzamento próprio, sem contar pontas que se tocam). */
+export function segmentosSeCruzam(a, b, c, d) {
+  const o = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const [d1, d2, d3, d4] = [o(a, b, c), o(a, b, d), o(c, d, a), o(c, d, b)];
+  return ((d1 > 1e-9 && d2 < -1e-9) || (d1 < -1e-9 && d2 > 1e-9)) && ((d3 > 1e-9 && d4 < -1e-9) || (d3 < -1e-9 && d4 > 1e-9));
+}
+
+/** O segmento AB passa pela caixa `[x0, x1, y0, y1]`. */
+export const segmentoNaCaixa = (a, b, [x0, x1, y0, y1]) => segmentoNaCaixaXY(a.x, a.y, b.x, b.y, x0, x1, y0, y1);
+
+/** O mesmo, com números soltos (recorte de Liang–Barsky). */
+function segmentoNaCaixaXY(ax, ay, bx, by, x0, x1, y0, y1) {
+  let t0 = 0; let t1 = 1;
+  const dx = bx - ax; const dy = by - ay;
+  const corta = (p, q) => {
+    if (p === 0) return q >= 0;
+    const r = q / p;
+    if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; }
+    return true;
+  };
+  return corta(-dx, ax - x0) && corta(dx, x1 - ax) && corta(-dy, ay - y0) && corta(dy, y1 - ay) && t0 <= t1;
+}
+
+/**
+ * Acomodação (física, 03/11/2026; decisões do responsável no mesmo dia): parte do lugar das regras (a ordem e a
+ * posição horizontal acima, todos os pontos no meio da faixa) e move os pontos e as paredes das faixas, passo a passo,
+ * até parar. Roda inteira antes de o mapa aparecer, então o desenho é o mesmo a cada abertura (sem acaso). Mexe em
+ * `x`, `y`, `yCurvo` de cada ponto e em `altura`, `topo` e `base` de cada faixa.
+ *
+ * Em cada passo, sobre cada ponto agem:
+ * - **mola leve** até o lugar das regras (a horizontal, mais firme; a altura, solta: a altura dentro da faixa não tem
+ *   significado);
+ * - **paredes**: as bordas da faixa (com a curva) empurram o ponto e o código que se aproximam delas (parede macia: a
+ *   força cresce com a invasão);
+ * - **outros pontos e códigos da mesma faixa**: duas caixas (ponto mais código à direita) que se encostam se afastam,
+ *   na direção em que a invasão é menor (para os lados ou na altura);
+ * - **linhas alheias**: a linha que passa perto de um ponto que não é dela, ou sobre o código dele, empurra o ponto
+ *   para longe, na perpendicular da linha;
+ * - **linhas do mesmo ponto** que saem quase na mesma direção (menos de `anguloMinimo`) afastam as outras pontas.
+ *
+ * O movimento só vale se **preservar a ordem** de cada faixa e **não criar cruzamento novo** de linhas (o ponto tenta
+ * mover nos dois sentidos, depois só na altura, depois só na horizontal; se nada servir, fica). Assim a física nunca
+ * troca a ordem das regras nem cruza linhas que as regras deixaram sem cruzar.
+ *
+ * **Paredes elásticas**: a pressão do conteúdo sobre as bordas de uma faixa a faz crescer; quando sobra espaço, ela
+ * encolhe devagar, até o que o conteúdo pede, sem passar abaixo da altura mínima (a faixa com poucos itens continua
+ * parecendo céu). Sem altura máxima. As faixas de baixo descem junto.
+ */
+export function acomodar(mapa, { margem = 28 } = {}, c = FISICA) {
+  const { faixas, nos, ligacoes, largura, centro, raio, recuo, alturaMinima } = mapa;
+  const N = nos.length;
+  const d = (x) => deslocamentoCurvo(x, centro, raio);
+  const indice = new Map(nos.map((n, i) => [n.chave, i]));
+  const ordem = mapa.ordem.map((l) => l.map((k) => indice.get(k)));
+  const faixa = Int32Array.from(nos, (n) => n.faixa);
+  const larg = Float64Array.from(nos, (n) => n.largura || 0);
+  const xr = Float64Array.from(nos, (n) => n.x);
+  const x = Float64Array.from(xr);
+  const oy = new Float64Array(N);
+  const alvoY = Float64Array.from(nos, (n) => n.alvoNaAltura ?? 0);
+  const fx = new Float64Array(N); const fy = new Float64Array(N);
+  const px = new Float64Array(N); const py = new Float64Array(N);
+  for (const f of faixas) f.altura = Math.max(f.altura, alturaMinima);
+  const meio = new Float64Array(faixas.length);
+  const montarFaixas = () => { let topo = 0; faixas.forEach((f, i) => { f.topo = topo; f.base = topo + f.altura; meio[i] = topo + f.altura / 2; topo = f.base; }); };
+  const Y = (i, xi = x[i], oyi = oy[i]) => meio[faixa[i]] + oyi + d(xi);
+  const atualizar = (i) => { px[i] = x[i]; py[i] = Y(i); };
+
+  /* linhas: pontas, as que incidem em cada ponto e as candidatas a cruzar com cada uma (fixo) */
+  const S = ligacoes.length;
+  const sa = Int32Array.from(ligacoes, (l) => indice.get(l.de)); const sb = Int32Array.from(ligacoes, (l) => indice.get(l.para));
+  const incidentes = nos.map(() => []);
+  for (let s = 0; s < S; s++) { incidentes[sa[s]].push(s); incidentes[sb[s]].push(s); }
+  const faixasDa = (s) => [Math.min(faixa[sa[s]], faixa[sb[s]]), Math.max(faixa[sa[s]], faixa[sb[s]])];
+  const candidatos = [];
+  for (let s = 0; s < S; s++) {
+    const [f0, f1] = faixasDa(s);
+    const lista = [];
+    for (let t = 0; t < S; t++) {
+      if (t === s || sa[t] === sa[s] || sa[t] === sb[s] || sb[t] === sa[s] || sb[t] === sb[s]) continue;
+      const [g0, g1] = faixasDa(t);
+      if (g0 <= f1 && f0 <= g1) lista.push(t);
+    }
+    candidatos.push(Int32Array.from(lista));
   }
-  const altura = Math.ceil(topo + deslocamentoCurvo(0, centro, raio));
-  return { faixas, nos, ligacoes, largura, altura, centro, raio, recuo: RECUO, passoNivel };
+  const lado3 = (ax, ay, bx, by, cx, cy) => (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+  const opostos = (u, v) => (u > 1e-9 && v < -1e-9) || (u < -1e-9 && v > 1e-9);
+  /** Cruzamentos das linhas do ponto `k` se ele estivesse em (xk, yk): os pares de linhas (s × S + t). */
+  const cruzamentosDe = (k, xk, yk) => {
+    const pares = [];
+    for (const s of incidentes[k]) {
+      const ax = sa[s] === k ? xk : px[sa[s]]; const ay = sa[s] === k ? yk : py[sa[s]];
+      const bx = sb[s] === k ? xk : px[sb[s]]; const by = sb[s] === k ? yk : py[sb[s]];
+      const x0 = Math.min(ax, bx); const x1 = Math.max(ax, bx);
+      for (const t of candidatos[s]) {
+        const p = sa[t]; const q = sb[t];
+        if ((px[p] < x0 && px[q] < x0) || (px[p] > x1 && px[q] > x1)) continue;
+        if (opostos(lado3(ax, ay, bx, by, px[p], py[p]), lado3(ax, ay, bx, by, px[q], py[q]))
+          && opostos(lado3(px[p], py[p], px[q], py[q], ax, ay), lado3(px[p], py[p], px[q], py[q], bx, by))) pares.push(Math.min(s, t) * S + Math.max(s, t));
+      }
+    }
+    return pares;
+  };
+  /** Nenhum par de `depois` é novo (todos já estavam em `antes`). */
+  const semNovos = (antes, depois) => { if (!depois.length) return true; const ja = new Set(antes); return depois.every((p) => ja.has(p)); };
+  /** Todos os pares de linhas que se cruzam, com as posições de agora. */
+  const cruzamentosTotais = () => { const t = []; for (let i = 0; i < N; i++) t.push(...cruzamentosDe(i, px[i], py[i])); return t; };
+  const xMinimo = margem / 2 + c.raioDoPonto;
+  const xMaximo = (i) => largura - margem / 2 - (larg[i] ? recuo + larg[i] + 2 : c.raioDoPonto);
+  const R = c.raioDoPonto; const H = c.meiaAlturaDoNome; const G = c.folgaDoNome;
+  const dir = (i) => (larg[i] ? x[i] + recuo + larg[i] + c.folgaDireita : x[i] + R - 2); // borda direita da caixa (ponto mais código)
+  const minimo = (c.anguloMinimo * Math.PI) / 180;
+  const pressao = new Float64Array(faixas.length);
+  /* faixa folgada: cabe um ponto a cada diâmetro mínimo (2 × raio + 1), em média; numa faixa mais cheia que isso, a
+     saída na altura (abaixo) vira uma escada pela faixa toda e não resolve, então não vale */
+  const folgada = ordem.map((l) => l.length < 2 || (largura - margem) / (l.length - 1) >= 2 * R + 1);
+
+  for (let passo = 0; passo < c.passos; passo++) {
+    montarFaixas();
+    for (let i = 0; i < N; i++) { atualizar(i); fx[i] = c.rigidezX * (xr[i] - x[i]); fy[i] = c.rigidezY * (alvoY[i] - oy[i]); }
+    pressao.fill(0);
+    /* paredes */
+    for (let i = 0; i < N; i++) {
+      const livre = Math.max(0, faixas[faixa[i]].altura / 2 - c.margemDaParede - H);
+      const invasao = Math.abs(oy[i]) - livre;
+      if (invasao > 0) { fy[i] -= Math.sign(oy[i]) * invasao * c.forcaDaParede; pressao[faixa[i]] += invasao; }
+    }
+    /*
+     * mesma faixa: dois pontos perto demais se afastam, em qualquer direção (o da direita sobe, se estiverem na mesma
+     * altura); um código que encosta no ponto ou no código vizinho os afasta só para os lados, quando há espaço (a
+     * tela mostra só os códigos que ficam livres, `codigosVisiveis`)
+     */
+    for (const l of ordem) {
+      for (let a = 0; a < l.length; a++) {
+        const i = l[a];
+        const direitaI = dir(i);
+        for (let b = a + 1; b < l.length; b++) {
+          const j = l[b];
+          const dxp = x[j] - x[i]; const dyp = oy[j] - oy[i];
+          if (dxp > direitaI - x[i] + 2 * R + 300) break;
+          const dist = Math.hypot(dxp, dyp);
+          if (dist < 2 * R + 1) {
+            const e = (2 * R + 1 - dist) / 2 * c.forcaDosPontos;
+            const [ux, uy] = Math.abs(dyp) > 1e-6 ? [dxp / dist, dyp / dist] : [0, b % 2 ? -1 : 1]; // na mesma altura: alterna, em zigue-zague
+            fx[i] -= ux * e; fy[i] -= uy * e; fx[j] += ux * e; fy[j] += uy * e;
+          }
+          const ix = direitaI + G - (x[j] - R + 2);
+          const iy = 2 * H + G - Math.abs(dyp);
+          if (ix > 0 && iy > 0) { fx[i] -= (ix / 2) * c.forcaDosNomes; fx[j] += (ix / 2) * c.forcaDosNomes; }
+        }
+      }
+    }
+    /*
+     * linhas alheias: a linha que passa rente a um ponto, ou sobre o código dele, empurra o ponto para o lado em que ele
+     * já está, na perpendicular da linha, até ficar livre (sobre o código, mais fraco: a tela esconde o código que uma
+     * linha cobre). A ponta da linha que está na mesma faixa do ponto cede um pouco para o outro lado.
+     */
+    for (let s = 0; s < S; s++) {
+      const A = sa[s]; const B = sb[s];
+      const ax = px[A]; const ay = py[A]; const bx = px[B]; const by = py[B];
+      const dx = bx - ax; const dy = by - ay; const comp = Math.hypot(dx, dy) || 1;
+      const nx = -dy / comp; const ny = dx / comp;
+      const x0 = Math.min(ax, bx) - 80; const x1 = Math.max(ax, bx) + R + 2;
+      const y0 = Math.min(ay, by) - 2 * H; const y1 = Math.max(ay, by) + 2 * H;
+      for (let i = 0; i < N; i++) {
+        if (i === A || i === B || x[i] < x0 || x[i] > x1 || py[i] < y0 || py[i] > y1) continue;
+        const u = Math.max(0, Math.min(1, ((px[i] - ax) * dx + (py[i] - ay) * dy) / (comp * comp)));
+        const perto = Math.hypot(px[i] - ax - u * dx, py[i] - ay - u * dy) < c.folgaDaLinha;
+        const cx0 = x[i] + recuo - 3; const cx1 = x[i] + recuo + larg[i] + 2;
+        const sobreNome = larg[i] > 0 && segmentoNaCaixaXY(ax, ay, bx, by, cx0, cx1, py[i] - H - 1, py[i] + H + 1);
+        if (!perto && !sobreNome) continue;
+        const sc = (px[i] - ax) * nx + (py[i] - ay) * ny;
+        const sinal = Math.sign(sc) || 1;
+        let e = perto ? c.folgaDaLinha - Math.abs(sc) : 0;
+        if (sobreNome) {
+          const cx = (cx0 + cx1) / 2;
+          const scc = (cx - ax) * nx + (py[i] - ay) * ny;
+          const meia = (Math.abs(nx) * (cx1 - cx0)) / 2 + Math.abs(ny) * (H + 1);
+          e = Math.max(e, (meia - sinal * scc + 2) * c.forcaDoNomeSobLinha);
+        }
+        let mx = sinal * nx * Math.max(0, e); let my = sinal * ny * Math.max(0, e);
+        /* ponto rente a uma linha íngreme que sai de um vizinho da mesma faixa: para os lados, a ordem não deixa;
+           a saída é na altura, para o lado em que a linha não existe (abaixo da ponta, se ela sobe; acima, se desce),
+           só em faixa folgada e só em desvio curto */
+        const ponta = faixa[A] === faixa[i] ? A : faixa[B] === faixa[i] ? B : -1;
+        if (perto && ponta >= 0 && folgada[faixa[i]] && Math.abs(nx) > 0.7) {
+          const outra = ponta === A ? B : A;
+          const sobe = py[outra] < py[ponta];
+          const falta = sobe ? py[ponta] + c.folgaDaLinha - py[i] : py[i] - (py[ponta] - c.folgaDaLinha);
+          if (falta > 0 && falta <= 4 * c.folgaDaLinha) { mx = 0; my = sobe ? falta : -falta; } // só desvios curtos: longos viram uma escada
+        }
+        if (!mx && !my) continue;
+        fx[i] += mx * c.forcaDaLinha; fy[i] += my * c.forcaDaLinha;
+        for (const p of [A, B]) if (faixa[p] === faixa[i]) fy[p] -= my * c.forcaDaLinha * 0.5;
+      }
+    }
+    /* linhas do mesmo ponto se abrem */
+    for (let i = 0; i < N; i++) {
+      if (incidentes[i].length < 2) continue;
+      const ls = incidentes[i].map((s) => { const o = sa[s] === i ? sb[s] : sa[s]; return { o, ang: Math.atan2(py[o] - py[i], px[o] - px[i]) }; }).sort((p, q) => p.ang - q.ang);
+      for (let k = 1; k < ls.length; k++) {
+        const dif = ls[k].ang - ls[k - 1].ang;
+        if (dif >= minimo) continue;
+        for (const [m, sinal] of [[ls[k - 1], -1], [ls[k], 1]]) {
+          const dist = Math.hypot(px[m.o] - px[i], py[m.o] - py[i]);
+          const empurra = ((minimo - dif) * dist * c.forcaDoAngulo) / 2;
+          const ang = m.ang + (sinal * Math.PI) / 2;
+          fx[m.o] += Math.cos(ang) * empurra; fy[m.o] += Math.sin(ang) * empurra;
+        }
+      }
+    }
+    /* movimento, com resfriamento (o passo máximo diminui até parar): só o que preserva a ordem e não cria cruzamento */
+    const teto = c.passoMaximo * Math.max(0.05, 1 - passo / c.passos);
+    const lim = (v) => Math.max(-teto, Math.min(teto, v));
+    let maior = 0;
+    for (const l of ordem) {
+      for (let a = 0; a < l.length; a++) {
+        const i = l[a];
+        const mx = lim(fx[i]); const my = lim(fy[i]);
+        if (Math.abs(mx) < 1e-4 && Math.abs(my) < 1e-4) continue;
+        const esquerda = a ? x[l[a - 1]] + 1 : xMinimo;
+        const direita = a < l.length - 1 ? x[l[a + 1]] - 1 : Infinity;
+        const novoX = (v) => Math.max(esquerda, Math.min(direita, xMaximo(i), Math.max(xMinimo, x[i] + v)));
+        const tem = incidentes[i].length > 0;
+        const antes = tem ? cruzamentosDe(i, px[i], py[i]) : [];
+        for (const [vx, vy] of [[mx, my], [0, my], [mx, 0]]) {
+          if (!vx && !vy) continue;
+          const xn = novoX(vx); const oyn = oy[i] + vy;
+          if (tem && !semNovos(antes, cruzamentosDe(i, xn, Y(i, xn, oyn)))) continue;
+          maior = Math.max(maior, Math.abs(xn - x[i]), Math.abs(oyn - oy[i]));
+          x[i] = xn; oy[i] = oyn;
+          atualizar(i);
+          break;
+        }
+      }
+    }
+    /* paredes elásticas: crescem com a pressão; encolhem devagar até o que o conteúdo pede, sem passar da mínima.
+       Como a faixa que muda de altura desloca as de baixo, a mudança só vale se não criar cruzamento */
+    let mexeu = maior;
+    const alturasAntes = faixas.map((f) => f.altura);
+    const cruzamentosAntes = cruzamentosTotais();
+    faixas.forEach((f, k) => {
+      const antes = f.altura;
+      if (pressao[k] > 0) f.altura += c.crescer * pressao[k];
+      else {
+        let meia = 0;
+        for (const i of ordem[k]) meia = Math.max(meia, Math.abs(oy[i]));
+        const pede = Math.max(alturaMinima, 2 * (meia + H + c.margemDaParede));
+        if (f.altura > pede) f.altura -= (f.altura - pede) * c.encolher;
+      }
+      mexeu = Math.max(mexeu, Math.abs(f.altura - antes));
+    });
+    if (faixas.some((f, k) => f.altura !== alturasAntes[k])) {
+      montarFaixas();
+      for (let i = 0; i < N; i++) atualizar(i);
+      if (!semNovos(cruzamentosAntes, cruzamentosTotais())) { faixas.forEach((f, k) => { f.altura = alturasAntes[k]; }); mexeu = maior; }
+    }
+    if (mexeu < c.repouso && passo > 10) break;
+  }
+  /* sem arredondar: duas linhas quase encostadas poderiam passar a se cruzar */
+  montarFaixas();
+  nos.forEach((n, i) => {
+    n.x = x[i];
+    n.y = meio[n.faixa] + oy[i];
+    n.yCurvo = n.y + d(n.x);
+  });
+  return mapa;
 }
 
 const n1 = (v) => Math.round(v * 10) / 10;
@@ -334,6 +637,45 @@ export function estrelasDoCeu(mapa, { alem = mapa.largura, altura = mapa.largura
   return estrelas;
 }
 
+/**
+ * Códigos que aparecem no mapa, na escala `k` (03/11/2026): o código fica à direita do ponto, num tamanho fixo na tela
+ * (`larguraNaTela(codigo)` px de largura, `alturaNaTela` px de altura, a `recuoNaTela` px do ponto), então, no mundo do
+ * mapa, a caixa dele mede isso dividido por `k`. Um código aparece só se a caixa dele, com uma folga de 2 px:
+ * - não passa da ponta direita do mapa;
+ * - não cobre nenhum ponto (`raioNaTela` px de raio);
+ * - não cobre o código de um ponto já escolhido (a escolha vai da esquerda para a direita, faixa a faixa; empate de x,
+ *   o de cima primeiro);
+ * - não tem nenhuma linha passando por cima, a não ser as do próprio ponto.
+ * Mais perto (k maior), as caixas encolhem no mundo e mais códigos aparecem. Os pontos sem código não entram.
+ * @param {{x: number, yCurvo: number}} [posicoes]  posição de agora de cada ponto (durante a mola), por chave; sem ela, a do mapa
+ * @returns {Set<string>}  as chaves dos pontos cujo código aparece
+ */
+export function codigosVisiveis(mapa, k, { larguraNaTela, alturaNaTela = 13, recuoNaTela = 9, raioNaTela = 6, posicoes = null }) {
+  const pos = (n) => posicoes?.get(n.chave) ?? { x: n.x, y: n.yCurvo };
+  const folga = 2 / k;
+  const caixa = (n) => {
+    const p = pos(n);
+    const meia = alturaNaTela / 2 / k;
+    return [p.x + recuoNaTela / k - folga, p.x + (recuoNaTela + larguraNaTela(n.rotulo)) / k + folga, p.y - meia - folga, p.y + meia + folga];
+  };
+  const porChave = new Map(mapa.nos.map((n) => [n.chave, n]));
+  const segmentos = mapa.ligacoes.map((l) => ({ de: l.de, para: l.para, a: pos(porChave.get(l.de)), b: pos(porChave.get(l.para)) }));
+  const candidatos = mapa.nos.filter((n) => n.rotulo).sort((a, b) => a.faixa - b.faixa || pos(a).x - pos(b).x || pos(a).y - pos(b).y);
+  const escolhidas = [];
+  const visiveis = new Set();
+  const r = raioNaTela / k;
+  for (const n of candidatos) {
+    const c = caixa(n);
+    if (c[1] > mapa.largura) continue;
+    if (mapa.nos.some((m) => m !== n && pos(m).x + r > c[0] && pos(m).x - r < c[1] && pos(m).y + r > c[2] && pos(m).y - r < c[3])) continue;
+    if (escolhidas.some((e) => e[0] < c[1] && c[0] < e[1] && e[2] < c[3] && c[2] < e[3])) continue;
+    if (segmentos.some((s) => s.de !== n.chave && s.para !== n.chave && segmentoNaCaixa(s.a, s.b, c))) continue;
+    escolhidas.push(c);
+    visiveis.add(n.chave);
+  }
+  return visiveis;
+}
+
 /** Linha entre um ponto e o que ele "vem de": reta (duas linhas do mesmo ponto nunca se sobrepõem, só se separam). */
 export const caminhoDaLigacao = (filho, superior) => `M${filho.x} ${filho.yCurvo} L${superior.x} ${superior.yCurvo}`;
 
@@ -344,9 +686,12 @@ const distanciaAoSegmento = (p, a, b) => {
 };
 
 /**
- * Confere as linhas do mapa: devolve as que passam rente a um ponto que não é delas (`folga` unidades) e os pares de
- * linhas do mesmo ponto que saem quase na mesma direção (menos de 2°), isto é, que se sobrepõem.
- * @returns {{tipo: "ponto"|"sobreposta", ligacao: object, outro: object}[]}
+ * Confere as linhas do mapa: devolve as que passam rente a um ponto que não é delas (`folga` unidades), os pares de
+ * linhas do mesmo ponto que saem quase na mesma direção (menos de 2°), isto é, que se sobrepõem, e (03/11/2026) os
+ * pares de linhas sem ponta em comum que se cruzam, menos as de itens com mais de um superior (esses cruzamentos a
+ * ordem não tem como evitar sempre). As linhas sobre os códigos ficam com `codigosVisiveis`, que só mostra o código
+ * livre.
+ * @returns {{tipo: "ponto"|"sobreposta"|"cruzamento", ligacao: object, outro: object}[]}
  */
 export function problemasDasLigacoes(mapa, folga = 6) {
   const porChave = new Map(mapa.nos.map((n) => [n.chave, n]));
@@ -369,6 +714,15 @@ export function problemasDasLigacoes(mapa, folga = 6) {
       let d = Math.abs(angulo(de, outroDe(ls[i])) - angulo(de, outroDe(ls[j])));
       d = Math.min(d, 2 * Math.PI - d);
       if (d < (2 * Math.PI) / 180) problemas.push({ tipo: "sobreposta", ligacao: ls[i], outro: ls[j] });
+    }
+  }
+  const variosSuperiores = new Set(mapa.nos.filter((n) => (n.superiores?.length ?? 0) > 1).map((n) => n.chave));
+  const simples = mapa.ligacoes.filter((l) => !variosSuperiores.has(l.de));
+  for (let i = 0; i < simples.length; i++) {
+    for (let j = i + 1; j < simples.length; j++) {
+      const [l, m] = [simples[i], simples[j]];
+      if (l.de === m.de || l.de === m.para || l.para === m.de || l.para === m.para) continue;
+      if (segmentosSeCruzam(P(porChave.get(l.de)), P(porChave.get(l.para)), P(porChave.get(m.de)), P(porChave.get(m.para)))) problemas.push({ tipo: "cruzamento", ligacao: l, outro: m });
     }
   }
   return problemas;

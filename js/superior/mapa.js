@@ -15,22 +15,20 @@
  */
 import { plural } from "../formato.js";
 import {
-  alturaPuxada, calcularMapa, caminhoAlem, passoDaInercia, puxaoDosVizinhos, velocidadeDeSaida, caminhoDaFaixa, caminhoDaLigacao, estrelasDoCeu, linhaDoSolo, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
+  alturaPuxada, calcularMapa, codigosVisiveis, quebrarEmLinhas, caminhoAlem, passoDaInercia, puxaoDosVizinhos, velocidadeDeSaida, caminhoDaFaixa, caminhoDaLigacao, estrelasDoCeu, linhaDoSolo, caminhoDoNo, deslocamentoCurvo, emRepouso, estrelasDoMapa, lerCor, melhorTinta, MOLA, passoDaMola, limitarTransformacao, transformacaoInicial,
 } from "../mapa.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const LIMIAR_DO_TOQUE = 6;
 const ESCALA_MAXIMA = 3;
 /*
- * Rótulos em três níveis de zoom (lote 4, 29/10/2026, tarde), faixa a faixa, sempre do mesmo tamanho na tela:
- * de longe, só os pontos; no meio, só os códigos; de perto, os nomes (cortados com reticências no espaço que houver).
+ * Rótulos (03/11/2026, decisão do responsável): no mapa, sempre o código, no tamanho fixo na tela, quando cabe; o
+ * nome completo só no caminho aceso (ao tocar num ponto ou passar o mouse), em linhas curtas.
  */
-const TAMANHO_DO_NOME = 13; // px na tela
-const TAMANHO_DO_FOCO = 15; // o ponto em foco (selecionado ou sob o mouse), em negrito e âmbar
+const TAMANHO_DO_NOME = 13; // px na tela: os nomes do caminho aceso
+const TAMANHO_DO_FOCO = 15; // o ponto em foco (selecionado ou sob o mouse), em negrito
 const TAMANHO_DO_CODIGO = 11;
 const RECUO_NA_TELA = 9; // do ponto até o começo do texto, px na tela
-/** Uma faixa mostra os nomes quando cada ponto tem pelo menos isto de espaço na tela, à direita. */
-const ESPACO_PARA_NOMES = 72;
 /** Quanto as faixas, o céu e o solo continuam para os lados e para baixo, em larguras do mapa (só desenho). */
 const ALEM = 3;
 
@@ -61,6 +59,10 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     </svg>
     <div class="mapa-rotulos" aria-hidden="true"></div>
     <div class="mapa-cartao" data-mapa-cartao hidden></div>
+    <details class="mapa-legenda" data-mapa-legenda hidden>
+      <summary class="botao">Legenda</summary>
+      <ul class="mapa-legenda-itens"></ul>
+    </details>
     <div class="mapa-controles" role="group" aria-label="Aproximar e afastar o mapa">
       <button type="button" class="botao" data-mapa-mais aria-label="Aproximar">+</button>
       <button type="button" class="botao" data-mapa-menos aria-label="Afastar">−</button>
@@ -71,6 +73,10 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
   const medidor = svg.querySelector(".mapa-medida");
   const rotulos = area.querySelector(".mapa-rotulos");
   const cartao = area.querySelector("[data-mapa-cartao]");
+  const legenda = area.querySelector("[data-mapa-legenda]");
+  /* a legenda fica aberta no computador; no celular, recolhida no botão "Legenda" */
+  const celular = matchMedia("(max-width: 640px)");
+  legenda.open = !celular.matches;
   const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   let mapa = null;
@@ -165,7 +171,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
         sinal.append(criar("circle", { cx: 6.5, cy: -6.5, r: 5 }), Object.assign(criar("text", { x: 6.5, y: -3.6, "text-anchor": "middle" }), { textContent: "!" }));
         g.append(sinal);
       }
-      const nome = criar("text", { class: "mapa-nome", x: n.x + mapa.recuo, y: n.yCurvo + 4 }); // o texto muda com o zoom e o caminho
+      const nome = criar("text", { class: "mapa-nome", transform: `translate(${n.x + mapa.recuo} ${n.yCurvo + 4})` }); // o texto muda com o zoom e o caminho
       g.append(nome);
       elementos.set(n.chave, { alvo, ponto, nome, sinal });
       grupoNos.append(g);
@@ -178,11 +184,61 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       s.textContent = f.plural;
       return s;
     }));
+    montarLegenda();
     escalaDosRotulos = 0;
     larguras.clear(); // as fontes podem ter mudado
     marcarSelecao();
     ajustarTintas();
     iniciarMola();
+    acomodarParedes(primeiraVez);
+  }
+
+  /*
+   * Paredes elásticas na tela (03/11/2026): ao refazer o mapa (filtro, item novo), as faixas não pulam para a altura
+   * nova; as bordas deslizam devagar (0,6 s) da posição anterior até a nova, com as faixas, o céu e o solo. Na abertura
+   * e com "Reduzir movimento", aparecem direto na posição final.
+   */
+  let paredesId = 0;
+  function acomodarParedes(primeiraVez) {
+    cancelAnimationFrame(paredesId);
+    const antes = estado.paredes;
+    estado.paredes = new Map(mapa.faixas.map((f) => [f.id, { topo: f.topo, base: f.base }]));
+    if (primeiraVez || !antes || reduzirMovimento()) return;
+    const finais = mapa.faixas.map((f) => ({ topo: f.topo, base: f.base }));
+    const iniciais = mapa.faixas.map((f) => antes.get(f.id) ?? { topo: f.topo, base: f.base });
+    if (iniciais.every((a, i) => Math.abs(a.topo - finais[i].topo) < 0.5 && Math.abs(a.base - finais[i].base) < 0.5)) return;
+    const caminhos = { faixas: [...mundo.querySelectorAll(".mapa-faixa")], alem: [...mundo.querySelectorAll(".mapa-faixa-alem")], solo: mundo.querySelector(".mapa-solo"), brilho: mundo.querySelector(".mapa-solo-brilho"), linha: mundo.querySelector(".mapa-solo-linha") };
+    const alem = ALEM * mapa.largura;
+    const inicio = performance.now();
+    const passo = (agora) => {
+      const u = Math.min(1, (agora - inicio) / 600);
+      const e = 1 - (1 - u) ** 3;
+      const faixas = finais.map((f, i) => ({ topo: iniciais[i].topo + (f.topo - iniciais[i].topo) * e, base: iniciais[i].base + (f.base - iniciais[i].base) * e }));
+      faixas.forEach((f, i) => { caminhos.faixas[i]?.setAttribute("d", caminhoDaFaixa(f, mapa)); caminhos.alem[i]?.setAttribute("d", caminhoAlem(f, mapa, alem)); });
+      const chao = faixas.at(-1).base;
+      caminhos.solo?.setAttribute("d", caminhoAlem({ topo: chao, base: chao + alem }, mapa, alem));
+      const solo = linhaDoSolo({ ...mapa, faixas: [{ base: chao }] }, alem);
+      caminhos.brilho?.setAttribute("d", solo); caminhos.linha?.setAttribute("d", solo);
+      if (u < 1) paredesId = requestAnimationFrame(passo);
+    };
+    paredesId = requestAnimationFrame(passo);
+  }
+
+  /**
+   * Legenda (03/11/2026, decisão do responsável): presa ao pé da tela, em vidro fosco; só o que aparece no desenho de
+   * agora: a linha tracejada (passa por itens escondidos pelo filtro) e o sinal de atenção (fora da vigência, com algo
+   * vigente abaixo). Sem nada disso, a legenda não aparece. As perspectivas do mapa estratégico entram depois (lote C).
+   */
+  function montarLegenda() {
+    const itensDaLegenda = [];
+    if (mapa.ligacoes.some((l) => l.indireta)) {
+      itensDaLegenda.push(`<li><svg class="mapa-legenda-amostra" viewBox="0 0 28 12" aria-hidden="true"><path class="mapa-ligacao-borda indireta" d="M2 6 H26"/><path class="mapa-ligacao indireta" d="M2 6 H26"/></svg><span>Linha tracejada: passa por itens escondidos pelo filtro</span></li>`);
+    }
+    if (mapa.nos.some((n) => n.alerta)) {
+      itensDaLegenda.push(`<li><svg class="mapa-legenda-amostra" viewBox="0 0 28 12" aria-hidden="true"><g class="mapa-sinal" transform="translate(7.5 12.5)"><circle cx="6.5" cy="-6.5" r="5"/><text x="6.5" y="-3.6" text-anchor="middle">!</text></g></svg><span>Fora da vigência, com algo vigente abaixo</span></li>`);
+    }
+    legenda.querySelector("ul").innerHTML = itensDaLegenda.join("");
+    legenda.hidden = !itensDaLegenda.length;
   }
 
   /* ---------- mola: os pontos deslizam do lugar em que estavam até o destino calculado pelas regras ---------- */
@@ -213,14 +269,18 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       p.alvo.setAttribute("cx", a.x); p.alvo.setAttribute("cy", a.y);
       p.ponto.setAttribute("cx", a.x); p.ponto.setAttribute("cy", a.y);
       p.sinal?.setAttribute("transform", `translate(${a.x.toFixed(2)} ${a.y.toFixed(2)})`);
-      const k = t?.k ?? 1;
-      p.nome.setAttribute("x", (a.x + RECUO_NA_TELA / k).toFixed(2)); p.nome.setAttribute("y", (a.y + 4 / k).toFixed(2));
+      posicionarNome(p.nome, a);
     }
     for (const l of ligacoesVivas) {
       const [f, u] = [atual.get(l.de), atual.get(l.para)];
       const d = `M${f.x.toFixed(1)} ${f.y.toFixed(1)} L${u.x.toFixed(1)} ${u.y.toFixed(1)}`;
       l.borda.setAttribute("d", d); l.linha.setAttribute("d", d);
     }
+  }
+  /** O nome (uma ou mais linhas) fica à direita do ponto, no tamanho fixo na tela. */
+  function posicionarNome(nome, a) {
+    const k = t?.k ?? 1;
+    nome.setAttribute("transform", `translate(${(a.x + RECUO_NA_TELA / k).toFixed(2)} ${(a.y + 4 / k).toFixed(2)})`);
   }
   const guardarPosicoes = () => { estado.posicoes = new Map([...atual].map(([k, a]) => [k, { x: a.x, y: a.y }])); };
 
@@ -310,7 +370,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     guardarPosicoes();
     posicionarCartao();
     if (mexendo) molaId = requestAnimationFrame(passoDaMolaNaTela);
-    else svg.removeAttribute("data-movendo");
+    else { svg.removeAttribute("data-movendo"); if (t) atualizarRotulos(true); } // parado: os códigos que cabem, nas posições finais
   }
 
   /** O texto de cada faixa usa a tinta (clara ou escura) de maior contraste sobre o fundo dela, no tema de agora. */
@@ -346,6 +406,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     for (const g of mundo.querySelectorAll(".mapa-no")) {
       g.classList.toggle("no-caminho", Boolean(caminho?.nos.has(g.dataset.no)));
       g.classList.toggle("foco", g.dataset.no === foco);
+      g.querySelector(".mapa-bolinha")?.setAttribute("r", g.dataset.no === foco ? 8 : 6); // o ponto em foco, maior
       g.classList.toggle("selecionado", g.dataset.no === estado.selecionado);
       g.setAttribute("aria-pressed", String(g.dataset.no === estado.selecionado));
     }
@@ -425,7 +486,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     atualizarRotulos();
   }
 
-  /* ---------- rótulos: três níveis de zoom, faixa a faixa, e os nomes do caminho aceso ---------- */
+  /* ---------- rótulos: códigos no mapa e os nomes do caminho aceso ---------- */
   let escalaDosRotulos = 0;
   let caminhoAceso = null;
   const larguras = new Map(); // texto → largura na tela com 13 px (o medidor tem o estilo do nome)
@@ -433,74 +494,105 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     if (!larguras.has(texto)) { medidor.textContent = texto; larguras.set(texto, medidor.getComputedTextLength()); }
     return larguras.get(texto);
   };
-  /** O texto que cabe em `px` (na tela, com 13 px), cortado com reticências; vazio se nem duas letras couberem. */
-  const caber = (texto, px) => {
-    if (largura13(texto) <= px) return texto;
-    let [baixo, alto] = [1, texto.length - 1];
-    while (baixo < alto) { const meio = Math.ceil((baixo + alto) / 2); if (largura13(`${texto.slice(0, meio).trimEnd()}…`) <= px) baixo = meio; else alto = meio - 1; }
-    return baixo > 1 ? `${texto.slice(0, baixo).trimEnd()}…` : "";
-  };
   const larguraDoCodigo = (codigo) => (largura13(codigo) * TAMANHO_DO_CODIGO) / TAMANHO_DO_NOME * 1.06; // em seminegrito
 
+  /** Posição de agora de cada ponto (durante a mola, a da animação), no formato de `codigosVisiveis`. */
+  const posicoesDeAgora = () => new Map([...atual].map(([chave, a]) => [chave, { x: a.x, y: a.y }]));
+
   /**
-   * Nível de cada faixa pelo espaço que os pontos dela têm na tela, à direita (`espacoDoNome` × escala): com pelo menos
-   * `ESPACO_PARA_NOMES` px em todos, os nomes; se os códigos couberem, os códigos; senão, só os pontos. Com um caminho
-   * aceso, só os nomes do caminho aparecem, inteiros (o ponto em foco maior, em negrito e âmbar); os demais somem,
-   * para não encavalar. Refeito quando a escala muda mais de 3% ou o caminho muda.
+   * Rótulos do caminho aceso (03/11/2026): o nome completo, em até três linhas curtas, à direita do ponto. Para não
+   * encavalar, vão sendo postos do ponto em foco para fora (o foco primeiro, depois os mais próximos dele no caminho,
+   * de cima para baixo e da esquerda para a direita): o nome que encostaria num nome já posto, ou num ponto aceso,
+   * mostra só o código; se nem o código couber, nada.
+   * @returns {Map<string, {linhas: string[], tamanho: number, codigo: boolean}>}
+   */
+  function rotulosDoCaminho(foco, k) {
+    const saida = new Map();
+    const pos = (chave) => atual.get(chave) ?? { x: noDe(chave).x, y: noDe(chave).yCurvo };
+    const distancia = new Map([[foco, 0]]);
+    const fila = [foco];
+    while (fila.length) { // passos pelo caminho aceso, a partir do foco
+      const atualChave = fila.shift();
+      for (const l of mapa.ligacoes) {
+        if (!caminhoAceso.ligacoes.has(`${l.de}|${l.para}`)) continue;
+        const outro = l.de === atualChave ? l.para : l.para === atualChave ? l.de : null;
+        if (outro && !distancia.has(outro)) { distancia.set(outro, distancia.get(atualChave) + 1); fila.push(outro); }
+      }
+    }
+    const ordem = [...caminhoAceso.nos].map(noDe).filter(Boolean)
+      .sort((a, b) => (distancia.get(a.chave) ?? 99) - (distancia.get(b.chave) ?? 99) || a.faixa - b.faixa || pos(a.chave).x - pos(b.chave).x);
+    const r = 8 / k;
+    const caixas = [...caminhoAceso.nos].filter((c) => noDe(c)).map((c) => { const p = pos(c); return { de: c, ponto: true, caixa: [p.x - r, p.x + r, p.y - r, p.y + r] }; });
+    const sobrepoe = (a, b) => a[0] < b[1] && b[0] < a[1] && a[2] < b[3] && b[2] < a[3];
+    /* cabe: não encosta em nome já posto nem em ponto aceso (o próprio ponto não conta) */
+    const cabe = (dono, c) => caixas.every((o) => (o.ponto && o.de === dono) || !sobrepoe(o.caixa, c));
+    for (const n of ordem) {
+      const p = pos(n.chave);
+      const tamanho = n.chave === foco ? TAMANHO_DO_FOCO : TAMANHO_DO_NOME;
+      const peso = n.chave === foco ? 1.08 : 1;
+      const linhas = quebrarEmLinhas(n.completo);
+      const largura = Math.max(...linhas.map((l) => largura13(l))) * (tamanho / TAMANHO_DO_NOME) * peso;
+      const topo = p.y - (tamanho * 0.8) / k;
+      const caixaDoNome = [p.x + RECUO_NA_TELA / k - 2 / k, p.x + (RECUO_NA_TELA + largura + 2) / k, topo, topo + (linhas.length * tamanho * 1.15 + 2) / k];
+      if (cabe(n.chave, caixaDoNome)) { saida.set(n.chave, { linhas, tamanho, codigo: false }); caixas.push({ de: n.chave, caixa: caixaDoNome }); continue; }
+      if (!n.rotulo) continue;
+      const caixaDoCodigo = [p.x + RECUO_NA_TELA / k - 2 / k, p.x + (RECUO_NA_TELA + larguraDoCodigo(n.rotulo) + 2) / k, p.y - (TAMANHO_DO_CODIGO * 0.8) / k, p.y + (TAMANHO_DO_CODIGO * 0.4) / k];
+      if (cabe(n.chave, caixaDoCodigo)) { saida.set(n.chave, { linhas: [n.rotulo], tamanho: TAMANHO_DO_CODIGO, codigo: true }); caixas.push({ de: n.chave, caixa: caixaDoCodigo }); }
+    }
+    return saida;
+  }
+
+  /** Troca o texto do rótulo: uma linha (o código) ou várias (o nome do caminho, em linhas curtas). */
+  function escrever(nome, linhas) {
+    const atual = [...nome.children].map((l) => l.textContent);
+    if (atual.length === linhas.length && atual.every((l, i) => l === linhas[i])) return;
+    nome.replaceChildren(...linhas.map((texto, i) => {
+      const linha = criar("tspan", { x: 0, dy: i ? "1.15em" : 0 });
+      linha.textContent = texto;
+      return linha;
+    }));
+  }
+
+  /**
+   * Códigos (03/11/2026): sem caminho aceso, cada ponto mostra o seu código, no tamanho fixo na tela, quando ele cabe
+   * no espaço livre à direita do ponto, na escala de agora (até o primeiro ponto da mesma faixa, à direita, perto o
+   * bastante na altura para o texto encostar nele, ou até a ponta do mapa); senão, nada. Nunca o nome. Com um caminho
+   * aceso, só os rótulos do caminho aparecem, com o **nome completo** em até três linhas curtas (o ponto em foco maior
+   * e em negrito); os demais somem, para não encavalar. Refeito quando a escala muda mais de 3% ou o caminho muda.
    */
   function atualizarRotulos(forcar = false) {
     const k = t.k;
     if (!forcar && escalaDosRotulos && Math.abs(k - escalaDosRotulos) / escalaDosRotulos < 0.03) return;
     escalaDosRotulos = k;
-    const niveis = mapa.faixas.map((f, i) => {
-      const nos = mapa.nos.filter((n) => n.faixa === i);
-      if (!nos.length) return "pontos";
-      /* com degraus, o texto de uma fileira não pode encostar no da fileira de baixo: o degrau, na tela, tem de ter a altura do texto */
-      const cabeEmPe = (tamanho) => f.niveis <= 1 || mapa.passoNivel * k >= tamanho + 5; // a caixa do texto, com o contorno, passa um pouco do tamanho da letra
-      if (cabeEmPe(TAMANHO_DO_NOME) && nos.every((n) => n.espacoDoNome * k >= ESPACO_PARA_NOMES)) return "nomes";
-      return cabeEmPe(TAMANHO_DO_CODIGO) && nos.every((n) => !n.codigo || larguraDoCodigo(n.codigo) + 4 <= n.espacoDoNome * k) ? "codigos" : "pontos";
-    });
-    svg.dataset.niveis = niveis.join(" ");
     const foco = estado.selecionado ?? previa;
-    /*
-     * Rótulo ponto a ponto (30/10/2026, versão 249): cada ponto mostra o que cabe no espaço livre dele, na tela
-     * e na escala de agora, sem esperar a faixa inteira. O espaço vai até o primeiro ponto da mesma faixa, à direita,
-     * que fique perto o bastante na altura para o texto encostar nele (a altura da letra mais 4 px), ou até a ponta
-     * do mapa. Com espaço para o nome (72 px), o nome, cortado com reticências se preciso; senão, o código, se couber;
-     * senão, nada.
-     */
     const porFaixa = new Map();
     for (const n of mapa.nos) porFaixa.set(n.faixa, [...(porFaixa.get(n.faixa) ?? []), n]);
-    for (const l of porFaixa.values()) l.sort((a, b) => a.x - b.x);
-    const livreNaTela = (n, tamanho) => {
-      let livre = (mapa.largura - n.x) * k - RECUO_NA_TELA - 4;
-      for (const m of porFaixa.get(n.faixa)) {
-        if (m.x <= n.x || m === n) continue;
-        const dx = (m.x - n.x) * k - RECUO_NA_TELA - 6;
-        if (dx >= livre) break;
-        if (Math.abs(m.yCurvo - n.yCurvo) * k < tamanho + 4) livre = dx;
-      }
-      return Math.max(0, livre);
-    };
+    const mostrados = new Map(); // faixa → quantos códigos aparecem
+    const noCaminho = caminhoAceso ? rotulosDoCaminho(foco, k) : null;
+    const visiveis = caminhoAceso ? null : codigosVisiveis(mapa, k, { larguraNaTela: larguraDoCodigo, alturaNaTela: TAMANHO_DO_CODIGO + 2, recuoNaTela: RECUO_NA_TELA, posicoes: posicoesDeAgora() });
     for (const n of mapa.nos) {
       const p = elementos.get(n.chave);
-      let texto = "";
-      let tamanho = TAMANHO_DO_NOME;
+      let linhas = [];
+      let tamanho = TAMANHO_DO_CODIGO;
       let codigo = false;
       if (caminhoAceso) {
-        if (caminhoAceso.nos.has(n.chave)) { texto = n.completo; if (n.chave === foco) tamanho = TAMANHO_DO_FOCO; }
-      } else {
-        const livre = livreNaTela(n, TAMANHO_DO_NOME);
-        if (livre >= ESPACO_PARA_NOMES) texto = caber(n.completo, livre - 2);
-        else if (n.codigo && larguraDoCodigo(n.codigo) + 4 <= livreNaTela(n, TAMANHO_DO_CODIGO)) { texto = n.codigo; tamanho = TAMANHO_DO_CODIGO; codigo = true; }
+        const r = noCaminho.get(n.chave);
+        if (r) { linhas = r.linhas; tamanho = r.tamanho; codigo = r.codigo; }
+      } else if (visiveis.has(n.chave)) {
+        linhas = [n.rotulo]; codigo = true;
+        mostrados.set(n.faixa, (mostrados.get(n.faixa) ?? 0) + 1);
       }
-      if (p.nome.textContent !== texto) p.nome.textContent = texto;
+      escrever(p.nome, linhas);
       p.nome.classList.toggle("e-codigo", codigo);
       p.nome.style.fontSize = `${(tamanho / k).toFixed(3)}px`;
       p.nome.style.strokeWidth = `${(3 / k).toFixed(3)}px`;
-      const a = atual.get(n.chave) ?? { x: n.x, y: n.yCurvo };
-      p.nome.setAttribute("x", (a.x + RECUO_NA_TELA / k).toFixed(2)); p.nome.setAttribute("y", (a.y + 4 / k).toFixed(2));
+      posicionarNome(p.nome, atual.get(n.chave) ?? { x: n.x, y: n.yCurvo });
     }
+    /* resumo por faixa (para os testes): "codigos" quando todos os códigos da faixa aparecem; senão, "pontos" */
+    svg.dataset.niveis = mapa.faixas.map((f, i) => {
+      const comCodigo = (porFaixa.get(i) ?? []).filter((n) => n.rotulo).length;
+      return comCodigo && mostrados.get(i) === comCodigo ? "codigos" : "pontos";
+    }).join(" ");
   }
 
   /** Nome de cada camada, no alto da faixa e preso à borda esquerda, em tamanho fixo; some quando a faixa sai da vista. */
@@ -702,5 +794,5 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       g.classList.add("pulso");
       setTimeout(() => g.classList.remove("pulso"), 1400);
     },
-    destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); cancelAnimationFrame(molaId); cancelAnimationFrame(planar); } };
+    destruir() { observador.disconnect(); sobreTema.disconnect(); escuroDoSistema.removeEventListener?.("change", mudouTema); cancelAnimationFrame(quadro); cancelAnimationFrame(molaId); cancelAnimationFrame(planar); cancelAnimationFrame(paredesId); } };
 }
