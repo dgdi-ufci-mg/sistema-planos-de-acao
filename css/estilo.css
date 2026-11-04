@@ -1571,6 +1571,9 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .lista[data-tarefas] .item:hover { box-shadow: none; transform: none; background: var(--sunk); }
 .lista[data-tarefas] .item.recem-criada { box-shadow: inset 3px 0 0 var(--accent); }
 .lista[data-tarefas] .item.levantado { background: var(--surface); border-radius: 8px; box-shadow: var(--sombra); }
+/* margem de leitura (04/11/2026, pedido do responsável, como no Todoist): na Lista de tarefas, o título e a lista
+   ficam numa coluna de até 800 px, centralizada, para o olho não se perder entre o nome e o fim da linha */
+body[data-tipo-espaco="lista"] .conteudo { max-width: 800px; }
 /* pessoas discretas (04/11/2026, pedido do responsável): à direita da linha, em qualquer largura, pequenas e em tom
    neutro, para não competir com o nome da tarefa; numa lista com um responsável só, nem aparecem (js/telas/espaco.js) */
 .lista[data-tarefas] .linha { grid-template-columns: 18px minmax(0, 1fr) auto; }

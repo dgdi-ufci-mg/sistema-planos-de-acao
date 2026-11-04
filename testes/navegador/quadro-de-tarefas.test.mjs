@@ -277,6 +277,17 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("Lista de tarefas: título e lista numa coluna de até 800 px, centralizada (04/11/2026)", async () => {
+    const p = await abrirLista({ largura: 1600 });
+    const l = await p.locator(".lista[data-tarefas]").boundingBox();
+    const t = await p.locator("#principal .titulo-conteudo").boundingBox();
+    assert.ok(l.width <= 800, `largura ${l.width}`);
+    assert.ok(Math.abs(t.x - l.x) <= 2, "título alinhado à lista");
+    const area = await p.locator("#principal").boundingBox();
+    assert.ok(Math.abs((l.x - area.x) - (area.x + area.width - (l.x + l.width))) < 60, "centralizada na área de trabalho");
+    assert.deepEqual(p.erros, []);
+  });
+
   test("Projeto continua com cartões", async () => {
     const p = await sessao.abrir({ largura: 1280 }); // abre no plano de exemplo
     assert.equal(await p.locator(".lista[data-tarefas]").count(), 0);
