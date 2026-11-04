@@ -145,4 +145,16 @@ describe("Configurar este espaço: como surge", { skip: pular }, () => {
     assert.ok(inicio.y > fim.y, "vem de baixo");
     assert.deepEqual(p.erros, []);
   });
+
+  /* 04/11/2026, como no Todoist: o nome do espaço fica no alto do conteúdo com a barra lateral aberta ou recolhida */
+  test("1280 px: o nome do espaço aparece no alto do conteúdo com a barra lateral aberta e recolhida", async () => {
+    const p = await sessao.abrir({ largura: 1280 });
+    const titulo = p.locator("#principal .titulo-conteudo");
+    assert.equal(await titulo.isVisible(), true, "barra aberta");
+    assert.ok((await titulo.innerText()).trim().length > 0);
+    await p.keyboard.press("Control+b");
+    await assentar(p, 600);
+    assert.equal(await titulo.isVisible(), true, "barra recolhida");
+    assert.deepEqual(p.erros, []);
+  });
 });

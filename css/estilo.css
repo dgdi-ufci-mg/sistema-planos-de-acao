@@ -1312,8 +1312,10 @@ body[data-vista-atual="planilha"] .popover-exibir { width: 380px; }
    do topo e vai para o alto do conteúdo. Revisto em 26/10/2026 (decisão do responsável): o botão de painel volta
    ao canto esquerdo da barra do topo para abrir a barra; o puxador na borda esquerda saiu (era difícil de achar) */
 #principal .titulo-conteudo, .titulo-conteudo { display: none; margin: 0 0 2px; font-size: 1.7rem; font-weight: 700; line-height: 1.2; color: var(--ink); overflow-wrap: anywhere; }
+/* revisto em 04/11/2026 (pedido do responsável, como no Todoist): o nome fica no alto do conteúdo também com a
+   barra lateral aberta, para a tela ser a mesma nas duas situações */
 @media (min-width: 900px) {
-  body.lateral-recolhida #principal .titulo-conteudo { display: block; }
+  #principal .titulo-conteudo { display: block; }
 }
 /* rede e planilha vão até o fim da tela: sem a folga de baixo do corpo, a página não rola e o título não some sob a barra */
 @media (min-width: 641px) { body[data-vista-atual="rede"], body[data-vista-atual="planilha"] { padding-bottom: 0; } }
