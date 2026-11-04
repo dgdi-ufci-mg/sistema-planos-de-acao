@@ -203,4 +203,25 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
       assert.deepEqual(p.erros, []);
     });
   }
+
+  test("Lista de tarefas: linhas planas, nome sem negrito e puxador só ao passar o mouse", async () => {
+    const p = await abrirLista({ largura: 1280 });
+    const linha = item(p, "Agendar a reunião");
+    const estilo = await linha.evaluate((el) => { const s = getComputedStyle(el); return { sombra: s.boxShadow, raio: s.borderTopLeftRadius, topo: s.borderTopWidth, baixo: s.borderBottomWidth }; });
+    assert.deepEqual(estilo, { sombra: "none", raio: "0px", topo: "0px", baixo: "1px" });
+    assert.equal(await p.locator(".lista[data-tarefas]").evaluate((el) => getComputedStyle(el).rowGap), "0px", "sem espaço entre as linhas");
+    assert.equal(await linha.locator(".rotulo").evaluate((el) => getComputedStyle(el).fontWeight), "400");
+    const puxador = linha.locator(".puxador");
+    assert.equal(await puxador.evaluate((el) => getComputedStyle(el).opacity), "0");
+    await linha.hover();
+    await assentar(p, 300);
+    assert.equal(await puxador.evaluate((el) => getComputedStyle(el).opacity), "1");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("Projeto continua com cartões", async () => {
+    const p = await sessao.abrir({ largura: 1280 }); // abre no plano de exemplo
+    assert.equal(await p.locator(".lista[data-tarefas]").count(), 0);
+    assert.notEqual(await p.locator(".item").first().evaluate((el) => getComputedStyle(el).boxShadow), "none");
+  });
 });
