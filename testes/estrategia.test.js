@@ -8,7 +8,21 @@ import { criarStore } from "../js/dados.js";
 import { CAMADAS_PADRAO, avisoDaMissao, camadasAcima, instrumentoVigente, itemVigente, caminhoAteOTopo, problemaDasCamadas, planejarCatalogo, problemaDosVinculos, opcoesDePrograma, programaDoEspaco } from "../js/estrategia.js";
 import { normalizar } from "../js/acao.js";
 import { lerColagem } from "../js/planilha.js";
-import { problemaDoTipo } from "../js/tipos.js";
+import { problemaDoTipo, problemaDoCodigoDoPlano } from "../js/tipos.js";
+
+describe("Código do Plano de Ação (04/11/2026)", () => {
+  const plano = (id, codigo, extra = {}) => ({ id, tipo: "planoDeAcao", codigo, ...extra });
+  it("opcional, até 30 letras, sem repetir entre os Planos de Ação ativos; só o Plano de Ação tem código", () => {
+    const espacos = [plano("a", "PA-01"), plano("b", "PA-02", { excluidoEm: "2026-01-01" }), { id: "c", tipo: "projeto", codigo: "PA-03" }];
+    assert.equal(problemaDoCodigoDoPlano(plano("x", ""), espacos), null, "vazio vale");
+    assert.equal(problemaDoCodigoDoPlano(plano("x", " pa-01 "), espacos)?.codigo, "codigo-ocupado", "sem diferenciar maiúsculas, sem espaços nas pontas");
+    assert.equal(problemaDoCodigoDoPlano(plano("a", "PA-01"), espacos), null, "o próprio plano não conta");
+    assert.equal(problemaDoCodigoDoPlano(plano("x", "PA-02"), espacos), null, "o excluído não ocupa o código");
+    assert.equal(problemaDoCodigoDoPlano(plano("x", "PA-03"), espacos), null, "o código de outro tipo não conta");
+    assert.equal(problemaDoCodigoDoPlano(plano("x", "X".repeat(31)), espacos)?.codigo, "codigo-longo");
+    assert.equal(problemaDoCodigoDoPlano({ id: "x", tipo: "projeto", codigo: "P1" }, espacos)?.codigo, "codigo-so-do-plano");
+  });
+});
 
 describe("Estratégia: regras", () => {
   it("opções de Programa do Plano de Ação: última camada, vigentes, mais as que o plano já tem", () => {
@@ -185,6 +199,24 @@ for (const [nome, criarBanco, definirAdmins] of [
       const id = await gestor.criarEspaco({ ...plano, vinculos: [prg] });
       assert.deepEqual((await gestor.lerEspaco(id)).vinculos, [prg]);
       await assert.rejects(gestor.excluirItemEstrategico(prg), { codigo: "item-com-planos" });
+    });
+
+    it("código do Plano de Ação (04/11/2026): grava limpo, recusa o repetido e sai quando o espaço deixa de ser Plano de Ação", async () => {
+      const { gestor } = await cenario();
+      const prg = await gestor.criarItemEstrategico({ camada: "programa", nome: "Programa" });
+      const plano = { tipo: "planoDeAcao", aprovacao: { identificacao: "Ofício 1" }, vinculos: [prg] };
+      const a = await gestor.criarEspaco({ ...plano, nome: "Plano A", codigo: "  PA-01 " });
+      assert.equal((await gestor.lerEspaco(a)).codigo, "PA-01");
+      const semCodigo = await gestor.criarEspaco({ ...plano, nome: "Plano sem código", codigo: "" });
+      assert.equal("codigo" in (await gestor.lerEspaco(semCodigo)), false, "vazio não é gravado na criação");
+      await assert.rejects(gestor.criarEspaco({ ...plano, nome: "Plano B", codigo: "pa-01" }), { codigo: "codigo-ocupado" });
+      await assert.rejects(gestor.alterarEspaco(semCodigo, { codigo: "PA-01" }), { codigo: "codigo-ocupado" });
+      await gestor.alterarEspaco(semCodigo, { codigo: "PA-02" });
+      assert.equal((await gestor.lerEspaco(semCodigo)).codigo, "PA-02");
+      await gestor.alterarEspaco(a, { codigo: "PA-01" }); // o próprio código não conta
+      await assert.rejects(gestor.criarEspaco({ nome: "Projeto", tipo: "projeto", codigo: "X1" }), { codigo: "codigo-so-do-plano" });
+      await gestor.alterarEspaco(a, { tipo: "projeto", programa: null, vinculos: null, aprovacao: null });
+      assert.equal((await gestor.lerEspaco(a)).codigo, null, "deixou de ser Plano de Ação: o código sai");
     });
 
     it("importa o catálogo por planilha: cria, atualiza e liga, inclusive a linhas da própria planilha", async () => {

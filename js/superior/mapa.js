@@ -158,7 +158,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     for (const n of mapa.nos) {
       const classes = `mapa-no${n.tipo === "plano" ? " plano" : ""}${n.restrito ? " restrito" : ""}${n.esmaecido ? " esmaecido" : ""}${n.alerta ? " com-alerta" : ""}${!primeiraVez && !jaHavia.has(n.chave) ? " entrando" : ""}`;
       const g = criar("g", { class: classes, "data-no": n.chave, "data-tipo": n.tipo, "data-faixa": n.faixa, tabindex: 0, role: "button" });
-      const texto = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
+      const texto = n.completo; // "código · nome"; o Plano de Ação também tem código desde 04/11/2026
       g.setAttribute("aria-label", n.alerta ? `${texto}. Atenção: ${n.alerta}` : texto);
       const titulo = criar("title");
       titulo.textContent = n.alerta ? `${texto}\n${n.alerta}` : texto;
@@ -434,7 +434,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     if (!n) { cartao.replaceChildren(); return; }
     const faixa = mapa.faixas[n.faixa];
     const nome = document.createElement("strong");
-    nome.textContent = n.tipo === "plano" ? n.nome : `${n.codigo ? `${n.codigo} · ` : ""}${n.nome}`;
+    nome.textContent = n.completo;
     const tipo = document.createElement("small");
     tipo.className = "tec";
     tipo.textContent = n.restrito ? "Só quem participa dele vê o nome." : `${faixa.nome}${n.esmaecido ? " · fora da vigência" : ""}`;

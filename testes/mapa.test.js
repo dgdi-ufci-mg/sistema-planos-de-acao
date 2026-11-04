@@ -567,6 +567,27 @@ describe("Mapa: ordem dos blocos pelo caminho desde o alto (03/11/2026)", () => 
   });
 });
 
+describe("Mapa: código do Plano de Ação (04/11/2026)", () => {
+  it("o Plano de Ação mostra o código, como os itens; o restrito, nem nome nem código; os planos seguem a ordem de código e nome", () => {
+    const planos = [
+      { id: "p1", codigo: "PA-02", nome: "Plano B", superiores: ["prg1"] },
+      { id: "p2", codigo: "PA-01", nome: "Plano A", superiores: ["prg1"] },
+      { id: "p3", codigo: "PA-09", nome: "Plano de Ação restrito", superiores: ["prg1"], restrito: true },
+      { id: "p4", nome: "Sem código", superiores: ["prg1"] },
+    ];
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos });
+    const no = (id) => m.nos.find((n) => n.id === id);
+    assert.equal(no("p1").rotulo, "PA-02");
+    assert.equal(no("p1").completo, "PA-02 · Plano B");
+    assert.equal(no("p3").rotulo, "", "restrito: sem código");
+    assert.equal(no("p3").completo, "Plano de Ação restrito");
+    assert.equal(no("p4").rotulo, "");
+    assert.equal(no("p4").completo, "Sem código");
+    const ordemInicial = m.nos.filter((n) => n.tipo === "plano").map((n) => n.id);
+    assert.deepEqual(ordemInicial.slice().sort(), ["p1", "p2", "p3", "p4"]);
+  });
+});
+
 describe("Mapa: nome do caminho aceso em linhas curtas (03/11/2026)", () => {
   it("quebra nas palavras, em até três linhas; o resto vai para a última, com reticências", () => {
     assert.deepEqual(quebrarEmLinhas("OE-5 · Atualizar os currículos"), ["OE-5 · Atualizar os", "currículos"]);

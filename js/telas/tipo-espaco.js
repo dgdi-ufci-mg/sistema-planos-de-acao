@@ -1,6 +1,6 @@
 /**
  * Escolha do tipo do espaço (passo 2.4a), usada na criação e em "Configurar este espaço":
- * Plano de Ação ou Projeto, com a explicação de cada um. No Plano de Ação, aparecem o Programa e o
+ * Plano de Ação ou Projeto, com a explicação de cada um. No Plano de Ação, aparecem o código (opcional; 04/11/2026), o Programa e o
  * documento que o aprovou. O Programa é escolhido no catálogo da estratégia (passo 2.5, parte 3), mantido no
  * módulo Superior; com o catálogo sem Programas vigentes, ou antes de ele carregar, é digitado, como antes.
  */
@@ -30,6 +30,8 @@ export function tipoHtml(espaco = {}) {
         <label class="tipo-opcao"><input type="radio" name="tipo" value="${v}"${v === atual ? " checked" : ""}>
           <span><b>${t.nome}</b><small>${t.explicacao}</small></span></label>`).join("")}</div>
       <div class="tipo-plano" data-tipo-plano${atual === "planoDeAcao" ? "" : " hidden"}>
+        <label class="campo"><span>Código <small>(opcional)</small></span>
+          <input name="codigo" maxlength="30" value="${esc(espaco.codigo ?? "")}" placeholder="Por exemplo, PA-01" autocomplete="off"></label>
         <div data-campo-programa>${programaTextoHtml(espaco)}</div>
         <div class="campos-lado-a-lado">
           <label class="campo"><span>Documento de aprovação</span>
@@ -115,7 +117,7 @@ export function ligarTipo(form, catalogo = {}) {
 export function lerTipo(form) {
   const f = new FormData(form);
   const tipo = String(f.get("tipo") || "projeto");
-  if (tipo !== "planoDeAcao") return { tipo, programa: null, vinculos: null, aprovacao: null };
+  if (tipo !== "planoDeAcao") return { tipo, codigo: null, programa: null, vinculos: null, aprovacao: null };
   const identificacao = String(f.get("aprovacaoIdentificacao") ?? "").trim();
   const link = String(f.get("aprovacaoLink") ?? "").trim();
   /* Programa do catálogo (vinculos) ou digitado (programa); um apaga o outro */
@@ -123,6 +125,7 @@ export function lerTipo(form) {
   const doCatalogo = vinculo && vinculo !== "texto";
   return {
     tipo,
+    codigo: String(f.get("codigo") ?? "").trim() || null, // código do Plano de Ação (04/11/2026), opcional
     programa: doCatalogo ? null : String(f.get("programa") ?? "").trim(),
     vinculos: doCatalogo ? [String(vinculo)] : null,
     aprovacao: identificacao || link ? { identificacao, ...(link ? { link } : {}) } : null,

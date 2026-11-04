@@ -114,11 +114,11 @@ export function calcularMapa({
       superiores: (x.superiores ?? []).filter((s) => idsDosItens.has(s)), via: x.via ?? {}, esmaecido: Boolean(x.esmaecido), alerta: x.alerta ?? null,
     });
   }
-  for (const e of semPlanos ? [] : [...planos].sort((a, b) => String(a.nome).localeCompare(String(b.nome), "pt-BR"))) {
+  for (const e of semPlanos ? [] : [...planos].sort(porCodigoENome)) {
     const ligados = (e.superiores ?? []).filter((s) => idsDosItens.has(s));
     if (!e.manter && (e.superiores ?? []).length && !ligados.length) continue; // só liga a itens que não aparecem: não aparece (o filtro manda manter)
     nos.push({
-      chave: `plano:${e.id}`, id: e.id, tipo: "plano", faixa: faixas.length - 1, codigo: "", nome: e.nome, restrito: Boolean(e.restrito), superiores: ligados,
+      chave: `plano:${e.id}`, id: e.id, tipo: "plano", faixa: faixas.length - 1, codigo: e.restrito ? "" : String(e.codigo ?? ""), nome: e.nome, restrito: Boolean(e.restrito), superiores: ligados,
       via: e.via ?? {}, esmaecido: Boolean(e.esmaecido), alerta: e.alerta ?? null,
     });
   }
@@ -255,8 +255,8 @@ export function calcularMapa({
    * código), nenhum rótulo. A largura do código é a do texto em 11 px e seminegrito (a medida recebe 13 px).
    */
   for (const n of nos) {
-    n.completo = n.tipo === "plano" || !n.codigo ? String(n.nome) : `${n.codigo} · ${n.nome}`;
-    n.rotulo = n.tipo === "plano" ? "" : String(n.codigo ?? "");
+    n.completo = !n.codigo ? String(n.nome) : `${n.codigo} · ${n.nome}`;
+    n.rotulo = String(n.codigo ?? ""); // desde 04/11/2026, também o código do Plano de Ação
     n.largura = n.rotulo ? Math.round(((medir(n.rotulo) * TAMANHO_DO_CODIGO) / 13) * 1.06 * 10) / 10 : 0;
     n.nivel = 0;
   }

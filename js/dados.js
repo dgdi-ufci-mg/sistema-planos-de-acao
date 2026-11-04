@@ -11,7 +11,7 @@ import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
 import { registrosDaMudanca } from "./historico.js";
 import { montarRetrato } from "./retrato.js";
-import { problemaDoTipo, tipoDe, ehDeTarefas, TIPOS, COLUNAS_INICIAIS_DO_QUADRO } from "./tipos.js";
+import { problemaDoTipo, problemaDoCodigoDoPlano, tipoDe, ehDeTarefas, TIPOS, COLUNAS_INICIAIS_DO_QUADRO } from "./tipos.js";
 import { problemaDaEntrega, problemaDoRegistro, problemaDaSituacao, pendenciasParaEncerrar, entregasAtivas, registrosDa, SITUACAO_INICIAL_DA_ENTREGA } from "./entregas.js";
 import { problemaDoModelo, modeloDe, montarModelo } from "./modelos.js";
 import { problemaDasSituacoes, personalizadasDe, ehQuadro } from "./situacoes.js";
@@ -270,6 +270,14 @@ export function criarStore(banco, opcoes = {}) {
     const p = problemaDosVinculos(campos.vinculos, await catalogo());
     if (p) throw new ErroDeDados(p.codigo, p.mensagem);
   }
+  /** Código do Plano de Ação (04/11/2026): sem repetir entre os Planos de Ação ativos; `espaco` já com a mudança. */
+  async function conferirCodigoDoPlano(espaco) {
+    if (!String(espaco.codigo ?? "").trim()) return;
+    const p = problemaDoCodigoDoPlano(espaco, (await banco.listarEspacos()).filter(ativo));
+    if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+  }
+  /** O código gravado: sem espaços nas pontas; vazio vira null. */
+  const codigoLimpo = (codigo) => (String(codigo ?? "").trim() || null);
   /** O Gestor da Estratégia mantém o catálogo; provisoriamente, é o Administrador do Sistema (decisão do responsável, 24/10/2026). */
   /** Dono das preferências pessoais: quem está logado; no exemplo (sem login), uma pessoa de mentira. */
   const donoDasPreferencias = () => (usuario ? emailNormal(usuario) : opcoes.exigirLogin ? null : "exemplo@local");
@@ -416,8 +424,13 @@ export function criarStore(banco, opcoes = {}) {
           camposOpcionais: { ...(dados.camposOpcionais ?? {}), fasesEtapas: false },
         };
       }
+      if ("codigo" in dados) {
+        const { codigo, ...resto } = dados;
+        dados = codigoLimpo(codigo) ? { ...resto, codigo: codigoLimpo(codigo) } : resto;
+      }
       validarEspaco(dados, recusarDesconhecidos);
       await conferirVinculos(dados);
+      await conferirCodigoDoPlano(dados);
       const { nome, semente = SEMENTE_PADRAO, simulacoes = SIMULACOES_PADRAO, ...outros } = dados;
       const id = novoId();
       await banco.criarEspaco(id, {
@@ -448,7 +461,11 @@ export function criarStore(banco, opcoes = {}) {
       if ("tipo" in campos && tipoDe(campos) === "quadro" && tipoAtual === "lista" && !(campos.situacoes ?? antes?.situacoes ?? []).length) {
         campos = { ...campos, situacoes: COLUNAS_INICIAIS_DO_QUADRO.map((nome) => ({ id: novoId(), nome })) };
       }
+      if ("codigo" in campos) campos = { ...campos, codigo: codigoLimpo(campos.codigo) };
+      /* deixou de ser Plano de Ação: o código sai junto (só o Plano de Ação tem código) */
+      if ("tipo" in campos && tipoDe(campos) !== "planoDeAcao" && antes?.codigo && !("codigo" in campos)) campos = { ...campos, codigo: null };
       await conferirVinculos(campos);
+      await conferirCodigoDoPlano({ ...antes, ...campos, id });
       await gravarEspaco(id, campos);
     },
 
