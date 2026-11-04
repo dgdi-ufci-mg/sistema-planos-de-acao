@@ -34,6 +34,32 @@ const CHAVE_MAIS = "sextante.lateralMais";
 const lerMais = () => { try { return localStorage.getItem(CHAVE_MAIS) === "1"; } catch { return false; } };
 const gravarMais = (v) => { try { localStorage.setItem(CHAVE_MAIS, v ? "1" : "0"); } catch { /* sem armazenamento */ } };
 
+/*
+ * Largura da barra lateral (04/11/2026, pedido do responsável, como no Todoist): no computador, arrastar a borda
+ * direita muda a largura, entre a mínima e a máxima; duplo clique volta ao padrão; com o foco na borda, as setas
+ * mudam de 16 em 16 px, e Home e End vão aos limites. A largura é lembrada neste aparelho. No celular, a barra
+ * abre por cima com a largura fixa de sempre.
+ */
+const CHAVE_LARGURA = "sextante.larguraLateral";
+export const LARGURA_LATERAL = { padrao: 264, minima: 200, maxima: 420, passo: 16 };
+const limitar = (px) => Math.round(Math.min(LARGURA_LATERAL.maxima, Math.max(LARGURA_LATERAL.minima, px)));
+const lerLargura = () => {
+  try { const v = Number(localStorage.getItem(CHAVE_LARGURA)); return v > 0 ? limitar(v) : LARGURA_LATERAL.padrao; }
+  catch { return LARGURA_LATERAL.padrao; }
+};
+const gravarLargura = (v) => {
+  try { if (v === LARGURA_LATERAL.padrao) localStorage.removeItem(CHAVE_LARGURA); else localStorage.setItem(CHAVE_LARGURA, String(v)); }
+  catch { /* sem armazenamento */ }
+};
+let largura = LARGURA_LATERAL.padrao;
+function aplicarLargura(px) {
+  largura = limitar(px);
+  document.documentElement.style.setProperty("--largura-lateral", `${largura}px`);
+  const puxador = document.querySelector(".puxador-lateral");
+  puxador?.setAttribute("aria-valuenow", String(largura));
+  puxador?.setAttribute("aria-valuetext", `${largura} pixels`);
+}
+
 let ligado = false;
 let soltarLateral = null;
 let acoes = {};
@@ -70,9 +96,55 @@ function rotularBotao() {
 }
 const fecharNoCelular = () => { if (estreito()) alternar(false); };
 
+/** Liga a borda arrastável da barra lateral (só aparece no computador, com a barra aberta). */
+function ligarPuxador() {
+  const puxador = document.querySelector(".puxador-lateral");
+  if (!puxador) return;
+  puxador.setAttribute("aria-valuemin", String(LARGURA_LATERAL.minima));
+  puxador.setAttribute("aria-valuemax", String(LARGURA_LATERAL.maxima));
+  /* a largura lembrada entra sem transição, para a tela não "andar" ao abrir */
+  document.body.classList.add("arrastando-lateral");
+  aplicarLargura(lerLargura());
+  requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove("arrastando-lateral")));
+  /* rede, planilha e barra do topo refazem as medidas como ao redimensionar a janela, no máximo uma vez por quadro */
+  let quadro = 0;
+  const avisar = () => { if (!quadro) quadro = requestAnimationFrame(() => { quadro = 0; dispatchEvent(new Event("resize")); }); };
+  const mudar = (px) => { aplicarLargura(px); gravarLargura(largura); avisar(); };
+  let inicio = null;
+  puxador.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || estreito()) return;
+    e.preventDefault();
+    puxador.setPointerCapture(e.pointerId);
+    inicio = { x: e.clientX, largura };
+    document.body.classList.add("arrastando-lateral");
+  });
+  puxador.addEventListener("pointermove", (e) => {
+    if (!inicio) return;
+    aplicarLargura(inicio.largura + e.clientX - inicio.x);
+    avisar();
+  });
+  const soltar = () => {
+    if (!inicio) return;
+    inicio = null;
+    document.body.classList.remove("arrastando-lateral");
+    gravarLargura(largura);
+    avisar();
+  };
+  for (const evento of ["pointerup", "pointercancel", "lostpointercapture"]) puxador.addEventListener(evento, soltar);
+  puxador.addEventListener("dblclick", () => mudar(LARGURA_LATERAL.padrao));
+  puxador.addEventListener("keydown", (e) => {
+    const nova = { ArrowLeft: largura - LARGURA_LATERAL.passo, ArrowRight: largura + LARGURA_LATERAL.passo,
+      Home: LARGURA_LATERAL.minima, End: LARGURA_LATERAL.maxima }[e.key];
+    if (nova === undefined) return;
+    e.preventDefault();
+    mudar(nova);
+  });
+}
+
 function ligar() {
   ligado = true;
   document.body.classList.toggle("lateral-recolhida", lerRecolhido());
+  ligarPuxador();
   document.querySelector("[data-alternar-lateral]").addEventListener("click", () => alternar());
   rotularBotao();
   document.querySelector(".fundo-lateral").addEventListener("click", () => alternar(false));

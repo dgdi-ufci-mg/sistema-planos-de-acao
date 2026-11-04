@@ -158,3 +158,68 @@ describe("Configurar este espaço: como surge", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 });
+
+/* largura da barra lateral ajustável pela borda (04/11/2026, pedido do responsável, como no Todoist) */
+describe("Largura da barra lateral", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+  const larguraDaBarra = async (p) => Math.round((await p.locator(".lateral").boundingBox()).width);
+
+  test("1280 px: arrastar a borda muda a largura, respeita os limites, é lembrada e o duplo clique volta ao padrão", async () => {
+    const p = await sessao.abrir({ largura: 1280 });
+    const puxador = p.locator(".puxador-lateral");
+    assert.ok(await puxador.isVisible());
+    assert.equal(await larguraDaBarra(p), 264);
+    /* arrastar 80 px para a direita */
+    const r = await puxador.boundingBox();
+    const x = r.x + r.width / 2, y = r.y + 300;
+    await p.mouse.move(x, y); await p.mouse.down();
+    await p.mouse.move(x + 40, y, { steps: 5 }); await p.mouse.move(x + 80, y, { steps: 5 });
+    await p.mouse.up();
+    await assentar(p);
+    assert.equal(await larguraDaBarra(p), 344);
+    /* o conteúdo acompanha: começa depois da barra */
+    const topo = await p.locator(".topo").boundingBox();
+    assert.ok(topo.x >= 343, `topo em ${topo.x}`);
+    assert.equal(await puxador.getAttribute("aria-valuenow"), "344");
+    /* limites: não passa da máxima nem da mínima */
+    await p.mouse.move(x + 80, y); await p.mouse.down(); await p.mouse.move(x + 600, y, { steps: 5 }); await p.mouse.up();
+    assert.equal(await larguraDaBarra(p), 420);
+    await p.mouse.move(x + 156, y); await p.mouse.down(); await p.mouse.move(x - 400, y, { steps: 5 }); await p.mouse.up();
+    assert.equal(await larguraDaBarra(p), 200);
+    /* teclado: seta para a direita soma 16 px */
+    await puxador.focus(); await p.keyboard.press("ArrowRight");
+    assert.equal(await larguraDaBarra(p), 216);
+    /* lembrada depois de recarregar, sem animação */
+    await p.reload();
+    await p.waitForSelector(".lateral-espacos");
+    await assentar(p);
+    assert.equal(await larguraDaBarra(p), 216);
+    /* duplo clique volta ao padrão e esquece a largura guardada */
+    await p.locator(".puxador-lateral").dblclick();
+    await assentar(p);
+    assert.equal(await larguraDaBarra(p), 264);
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.larguraLateral")), null);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("1280 px: com a barra recolhida, a borda some", async () => {
+    const p = await sessao.abrir({ largura: 1280 });
+    await p.click("[data-alternar-lateral]");
+    await assentar(p);
+    assert.equal(await p.locator(".puxador-lateral").isVisible(), false);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("390 px: no celular não há borda para arrastar, e a largura guardada não muda a gaveta", async () => {
+    const p = await sessao.abrir({ largura: 390 });
+    await p.evaluate(() => localStorage.setItem("sextante.larguraLateral", "400"));
+    await p.reload();
+    await p.waitForSelector(".lateral-espacos", { state: "attached" });
+    await p.click('[data-inferior="espacos"]'); await assentar(p);
+    assert.equal(await p.locator(".puxador-lateral").isVisible(), false);
+    assert.ok(await larguraDaBarra(p) <= 300);
+    assert.deepEqual(p.erros, []);
+  });
+});
