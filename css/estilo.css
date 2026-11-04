@@ -1575,7 +1575,7 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
    ficam numa coluna de até 800 px, centralizada, para o olho não se perder entre o nome e o fim da linha */
 body[data-tipo-espaco="lista"] .conteudo { max-width: 800px; }
 /* concluídas mais à vista (04/11/2026): botão discreto no fim da Lista de tarefas */
-.ver-concluidas { align-self: flex-start; margin: 10px 0 0 6px; padding: 4px 8px; border: 0; border-radius: 6px; background: none;
+.ver-concluidas { align-self: flex-start; margin: 10px 0 0 -4px; padding: 4px 8px; border: 0; border-radius: 6px; background: none;
   color: var(--muted); font: inherit; font-size: .84rem; cursor: pointer; }
 .ver-concluidas:hover { color: var(--ink); background: var(--sunk); }
 .ver-concluidas:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -1602,6 +1602,11 @@ body[data-tipo-espaco="lista"] .conteudo { max-width: 800px; }
 .lista[data-tarefas] .linha { align-items: start; padding-top: 10px; padding-bottom: 10px; }
 .lista[data-tarefas] .acao-nome .rotulo { font-weight: 400; }
 @media (hover: hover) {
+  /* o puxador vai para a margem esquerda, fora da linha, para a caixinha alinhar com o título (04/11/2026) */
+  .lista[data-tarefas] .item:not(.recolhendo) { overflow: visible; }
+  .lista[data-tarefas] .linha, .lista[data-tarefas][data-puxadores] .linha { padding-left: 4px; }
+  .lista[data-tarefas] .linha-rapida { padding-left: 4px; }
+  .lista[data-tarefas] .linha > .puxador { left: -30px; }
   .lista[data-tarefas] .puxador { opacity: 0; transition: opacity .15s; }
   .lista[data-tarefas] .item:hover .puxador, .lista[data-tarefas] .puxador:focus-visible { opacity: 1; }
 }
