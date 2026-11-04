@@ -1,6 +1,6 @@
 /**
  * Janela da tarefa (revisão de 04/11/2026, pedido do responsável, tomando o Todoist como referência; documentação técnica,
- * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas.
+ * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas; descrição com cara de texto, e não de caixa.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -64,6 +64,19 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     await campo.locator('[data-termo="dataLimite"]').click();
     await assentar(p);
     assert.match(await p.locator(".camada.aberta").last().innerText(), /Data-limite/);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("a descrição parece texto: sem borda nem alça, até passar o mouse ou editar", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const caixa = janela(p).locator('[data-campo="descricao"] textarea');
+    const estilo = () => caixa.evaluate((el) => { const c = getComputedStyle(el); return { borda: c.borderTopColor, fundo: c.backgroundColor, alca: c.resize }; });
+    const parada = await estilo();
+    assert.equal(parada.alca, "none");
+    assert.equal(parada.fundo, "rgba(0, 0, 0, 0)");
+    await caixa.click();
+    await assentar(p, 300);
+    assert.notEqual((await estilo()).fundo, "rgba(0, 0, 0, 0)", "ao editar, ganha fundo");
     assert.deepEqual(p.erros, []);
   });
 });

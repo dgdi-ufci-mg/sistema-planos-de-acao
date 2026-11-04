@@ -1474,6 +1474,15 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .janela-campos input[type=date] { max-width: 220px; }
 .janela-campos input.mono { max-width: 160px; }
 .janela-campos textarea { resize: vertical; min-height: 2.6em; overflow: hidden; }
+/* textos que crescem sozinhos (descrição, justificativa): parecem texto comum, como o nome; a borda aparece ao passar o mouse e o fundo ao editar (04/11/2026) */
+.janela-campos textarea.cresce {
+  resize: none; border-color: transparent; background: transparent; padding: 4px 8px; margin: 0 -8px; width: calc(100% + 16px);
+  line-height: 1.5; transition: border-color var(--mov, .2s), background-color var(--mov, .2s);
+}
+.janela-campos textarea.cresce:hover:not(:disabled):not(:focus) { border-color: var(--line); }
+.janela-campos textarea.cresce:focus { background: var(--surface); }
+.janela-campos textarea.cresce:disabled { padding-left: 8px; }
+.janela-campos textarea.cresce::placeholder { color: var(--muted); font-style: italic; }
 .janela-campos :is(input, select, textarea):focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .janela-campos :is(input, select, textarea):disabled { background: transparent; border-color: transparent; padding-left: 0; color: var(--ink); opacity: 1; }
 .janela-campos .com-erro { border-color: var(--crit) !important; background: var(--crit-soft) !important; }
