@@ -80,6 +80,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (usuario) pessoas.add(usuario);
     return pessoas.size >= 2 || Boolean(comentarios?.length);
   }
+  /** A coluna (ou aba) Atividade só existe com comentários ou com o histórico de estimativas (04/11/2026). */
+  const temAtividade = () => comComentarios() || usaEstimativas(d.espaco);
   function comentariosHtml() {
     if (!comComentarios()) return "";
     const lista = comentarios ?? [];
@@ -188,12 +190,18 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const visiveis = (comentarios ?? []).filter((x) => !x.apagadoEm).length;
 
     const valores = guardarValores();
+    /* sem comentários nem estimativas, a atividade é só o histórico recolhido: uma coluna, com ele no fim (04/11/2026) */
+    const umaColuna = !temAtividade();
+    const historicoAlteracoes = `<details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
+            <summary><h3>Histórico de alterações</h3></summary>
+            <div data-registros>${registrosHtml()}</div>
+          </details>`;
     corpo.innerHTML = `
-      <div class="janela-abas" role="tablist" aria-label="Partes da ação">
+      ${umaColuna ? "" : `<div class="janela-abas" role="tablist" aria-label="Partes da ação">
         <button type="button" role="tab" data-aba="detalhes" aria-selected="${aba === "detalhes"}">Detalhes</button>
         <button type="button" role="tab" data-aba="atividade" aria-selected="${aba === "atividade"}">Atividade${visiveis ? ` <span class="n">${visiveis}</span>` : ""}</button>
-      </div>
-      <div class="janela-grade" data-aba-atual="${aba}">
+      </div>`}
+      <div class="janela-grade${umaColuna ? " uma-coluna" : ""}" data-aba-atual="${umaColuna ? "detalhes" : aba}">
         <div class="janela-principal">
           ${alheia ? `<p class="alteracao-alheia" role="status">${esc(alheia)} alterou esta ação agora.</p>` : ""}
           <div class="campo-acao campo-nome-acao" data-campo="rotulo">
@@ -225,17 +233,15 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
           <div class="janela-campos">${camposHtml(acao, l, etapas, etapa)}</div>
           ${maisCamposHtml(acao)}
+          ${umaColuna ? historicoAlteracoes : ""}
           ${store.podeGravar && d.perm.excluirAcao ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ${termos(d.espaco).acao}</button></div>` : ""}
         </div>
 
-        <div class="janela-atividade" aria-label="Atividade">
+        ${umaColuna ? "" : `<div class="janela-atividade" aria-label="Atividade">
           <div data-comentarios>${comentariosHtml()}</div>
           ${comEstimativas ? historicoHtml(acao, resumoEst) : ""}
-          <details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
-            <summary><h3>Histórico de alterações</h3></summary>
-            <div data-registros>${registrosHtml()}</div>
-          </details>
-        </div>
+          ${historicoAlteracoes}
+        </div>`}
       </div>`;
     /* título da janela: onde a ação fica (fase e etapa) e o código, em vez de só "Ação" */
     const titulo = [d.usaCodigos && acao.codigo ? acao.codigo : "", d.usaFases ? (etapa ? `${etapa.fase} · ${etapa.nome}` : "Sem fase nem etapa") : ""]
@@ -1143,7 +1149,13 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }, { aoErro: (e) => avisar(e.message) });
 
   desenhar();
-  pararComentarios = store.acompanharComentarios(espacoId, numero, (lista) => { comentarios = lista; if (!fechada) desenharComentarios(); });
+  pararComentarios = store.acompanharComentarios(espacoId, numero, (lista) => {
+    const antes = temAtividade();
+    comentarios = lista;
+    if (fechada) return;
+    /* a primeira conversa (ou a última apagada de vez) muda a janela entre uma e duas colunas */
+    if (temAtividade() !== antes) desenhar(); else desenharComentarios();
+  });
   return {
     /**
      * Novos dados do banco. Se outra pessoa alterou a ação, avisa por 10 segundos; os campos
