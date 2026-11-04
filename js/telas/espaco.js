@@ -953,6 +953,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     </section>`;
   }
 
+  /**
+   * Concluídas mais à vista (04/11/2026, pedido do responsável): no fim da Lista de tarefas, um botão discreto
+   * "Ver 2 concluídas" (ou "Esconder as concluídas"), que faz o mesmo que o filtro "Mostrar as concluídas".
+   */
+  function verConcluidasHtml() {
+    if (!ehLista()) return "";
+    const n = linhas.filter((l) => l.situacao === "concluida").length;
+    if (!n) return "";
+    return `<button type="button" class="ver-concluidas" data-ver-concluidas aria-pressed="${ui.concluidas}">${ui.concluidas ? "Esconder as concluídas" : `Ver ${n} ${plural(n, "concluída", "concluídas")}`}</button>`;
+  }
   function desenharLista({ animar = false } = {}) {
     const antes = new Map();
     if (animar) for (const el of lista.querySelectorAll(".item")) antes.set(el.dataset.numero, el.getBoundingClientRect());
@@ -1000,7 +1010,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
     } else {
       corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ${termos(espaco).acao}".</p>`)
-        + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "");
+        + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "") + verConcluidasHtml();
     }
     const rolagemDoQuadro = lista.querySelector(".quadro")?.scrollLeft ?? 0; // o redesenho não volta o quadro para a primeira coluna
     /* nem a rolagem de cada coluna (rolagem própria, como no Trello; 27/10/2026) */
@@ -2086,6 +2096,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           : `Coluna retirada. ${n} ${plural(n, "ação voltou", "ações voltaram")} para ${nomeInicial(espaco)}.`))
         .catch((falha) => avisar(falha.message));
     }
+    if (t.closest("[data-ver-concluidas]")) return mudar("concluidas", !ui.concluidas);
     const marcar = t.closest("[data-marcar]");
     if (marcar) return marcarConclusao(Number(marcar.dataset.marcar), marcar.getAttribute("aria-checked") !== "true");
     const item = t.closest("[data-abrir-acao]");

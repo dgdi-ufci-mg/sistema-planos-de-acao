@@ -288,6 +288,24 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("Lista de tarefas: \"Ver 2 concluídas\" no fim da lista mostra e esconde as concluídas (04/11/2026)", async () => {
+    const p = await abrirLista({ largura: 1280 });
+    const botao = p.locator("[data-ver-concluidas]");
+    assert.equal((await botao.innerText()).trim(), "Ver 2 concluídas");
+    await botao.click();
+    await assentar(p);
+    assert.equal(await item(p, "Atualizar o currículo").count(), 1);
+    assert.equal((await botao.innerText()).trim(), "Esconder as concluídas");
+    /* o filtro do menu acompanha */
+    await p.click('.menu-topo[data-pop="classificar"]');
+    assert.equal(await p.locator('[data-ctl="concluidas"]').isChecked(), true);
+    await p.keyboard.press("Escape");
+    await botao.click();
+    await assentar(p);
+    assert.equal(await item(p, "Atualizar o currículo").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("Projeto continua com cartões", async () => {
     const p = await sessao.abrir({ largura: 1280 }); // abre no plano de exemplo
     assert.equal(await p.locator(".lista[data-tarefas]").count(), 0);
