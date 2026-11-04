@@ -41,7 +41,7 @@ const OBJETOS = [
 export function itensDoCatalogoReal() {
   const itens = [];
   const item = (id, camada, codigo, nome, superiores = []) => { itens.push({ id, camada, codigo, nome, superiores }); return id; };
-  const missao = item("missao", "missao", "", "Promover a educação profissional, científica e tecnológica, pública e de qualidade, para o desenvolvimento de Minas Gerais e do país");
+  const missao = item("missao", "missao", "MIS", "Promover a educação profissional, científica e tecnológica, pública e de qualidade, para o desenvolvimento de Minas Gerais e do país");
   const oes = OBJETIVOS.map((nome, i) => item(`oe${i + 1}`, "objetivoEstrategico", `OE-${i + 1}`, nome, [missao]));
   const ods = [];
   let k = 0;

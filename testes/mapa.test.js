@@ -129,12 +129,12 @@ describe("Mapa: ordem, posição e curva", () => {
     }
   });
 
-  it("faixa cheia demais cresce para baixo, e não para os lados: a física afasta os pontos e a parede cede (03/11/2026)", () => {
+  it("faixa cheia demais faz o mapa crescer para os lados, e não espremer os pontos; a física os acomoda (04/11/2026)", () => {
     const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(80), vista: { w: 400, h: 600 } });
-    assert.equal(m.largura, 400, "a largura continua a da área");
+    assert.ok(m.largura > 400, `o mapa fica mais largo que a área (${m.largura})`);
+    assert.ok(m.largura >= 2 * 28 + 60 + (79 * 26) / 2 - 1, "os pontos a 13 unidades (26 ÷ 2)");
     const pa = m.faixas.at(-1);
     const nos = m.nos.filter((n) => n.faixa === m.faixas.length - 1);
-    assert.ok(pa.altura > m.alturaMinima, `a faixa fica mais alta (${pa.altura.toFixed(1)})`);
     for (const n of nos) assert.ok(n.y > pa.topo && n.y < pa.base, "cada ponto dentro da faixa");
     let menor = Infinity;
     for (let i = 0; i < nos.length; i++) for (let j = i + 1; j < nos.length; j++) menor = Math.min(menor, Math.hypot(nos[i].x - nos[j].x, nos[i].y - nos[j].y));
@@ -143,10 +143,13 @@ describe("Mapa: ordem, posição e curva", () => {
     assert.ok(outras.every((f) => f.altura === m.alturaMinima), "as faixas com poucos itens ficam com a altura mínima");
   });
 
-  it("só passa da largura da área quando nem 8 fileiras bastariam", () => {
-    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(200), vista: { w: 400, h: 600 } });
-    assert.ok(m.largura > 400);
-    assert.ok(m.largura >= 2 * 28 + 60 + (199 * 26) / 8 - 1);
+  it("o mesmo desenho no celular e no computador estreito: abaixo da largura necessária, o mapa não muda (04/11/2026)", () => {
+    const real = itensDoCatalogoReal();
+    const [a, b] = [390, 800].map((w) => calcularMapa({ camadas: CAMADAS_PADRAO, itens: real, vista: { w, h: 800 } }));
+    assert.equal(a.largura, b.largura);
+    assert.deepEqual(a.nos.map((n) => [n.chave, n.x, n.yCurvo]), b.nos.map((n) => [n.chave, n.x, n.yCurvo]));
+    const largo = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), vista: { w: 1280, h: 800 } });
+    assert.equal(largo.largura, 1280, "o que cabe continua com a largura da área");
   });
 
   it("sem degraus por regra: o rótulo é o código, o Plano de Ação não tem rótulo e o nome inteiro fica no ponto (03/11/2026)", () => {
@@ -478,8 +481,10 @@ describe("Mapa: física com paredes, no catálogo do tamanho do real", () => {
     }
   });
 
-  it("no computador, nenhuma linha passa rente a um ponto que não é dela nem se sobrepõe a outra do mesmo ponto", () => {
+  it("no computador, nenhuma linha passa rente a um ponto que não é dela nem se sobrepõe a outra do mesmo ponto; no celular, quase nenhuma", () => {
     assert.deepEqual(problemasDasLigacoes(m1280).map((p) => `${p.tipo} ${p.ligacao.de}>${p.ligacao.para} ${p.outro.chave ?? p.outro.de}`), []);
+    const celular = problemasDasLigacoes(calcular(390));
+    assert.ok(celular.length <= 6, `no celular, ${celular.length} (eram cerca de 60 com o mapa espremido)`);
   });
 
   it("nenhum ponto fora da sua faixa, em nenhuma largura", () => {

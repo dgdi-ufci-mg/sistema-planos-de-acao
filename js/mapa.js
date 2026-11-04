@@ -13,8 +13,8 @@
  * - **Ordem na faixa** por regras, e não por posições escritas à mão: começa pela ordem de código e nome e faz
  *   poucas passadas de baricentro (a posição de cada ponto é a média das posições dos pontos a que ele se liga,
  *   primeiro para baixo, depois para cima), para reduzir os cruzamentos de linhas.
- * - **Posição horizontal**: a largura do mapa é a da área (tudo cabe numa tela) e só cresce se nem 8 fileiras
- *   bastarem. Filhos do mesmo pai em blocos, na ordem do caminho desde o alto; pais sobre os blocos.
+ * - **Posição horizontal**: a largura do mapa é a da área e cresce para os lados quando a faixa mais cheia não cabe
+ *   com os pontos a 13 unidades (26 ÷ 2) uns dos outros: o mesmo desenho no celular e no computador. Filhos do mesmo pai em blocos, na ordem do caminho desde o alto; pais sobre os blocos.
  * - **Altura dentro da faixa** (03/11/2026): sem degraus por regra; decidida pela acomodação (`acomodar`), com paredes
  *   macias e elásticas, antes de o mapa aparecer, sempre igual.
  * - **Rótulos**: no mapa, só o código, e só o que fica livre (`codigosVisiveis`); o nome completo no caminho aceso.
@@ -86,7 +86,7 @@ export function faixasDoMapa(camadas, itens, { semPlanos = false } = {}) {
  * @param {number} [p.folgaEntreBlocos]  distância a mais entre dois blocos de filhos de pais diferentes (agrupamento)
  * @param {number} [p.passoNivel]  degrau vertical entre pontos vizinhos de uma faixa que precisa de mais de um nível
  * @param {number} [p.niveisMaximos]  degraus para os nomes caberem lado a lado
- * @param {number} [p.fileirasMaximas]  fileiras de uma faixa cheia demais para uma só (lote 4: a faixa cresce para baixo, e não para os lados)
+ * @param {number} [p.fileirasMaximas]  quantas vezes os pontos de uma faixa podem ficar mais juntos que `espacoMinimo` antes de o mapa crescer para os lados (desde 04/11/2026, 2: o mesmo desenho em qualquer aparelho)
  * @param {number} [p.raioPorLargura]  raio da curva, em larguras do mapa
  * @param {Record<string, string[]>} [p.ordemPessoal]  ordem escolhida pela pessoa (lote 6): para cada camada, as chaves dos pontos, da esquerda para a direita
  * @param {boolean} [p.semPlanos]  sem a faixa dos Planos de Ação (filtro, `js/filtro-do-mapa.js`)
@@ -97,7 +97,7 @@ export function faixasDoMapa(camadas, itens, { semPlanos = false } = {}) {
  */
 export function calcularMapa({
   camadas, itens, planos = [], medir = (t) => t.length * 7, vista = { w: 960, h: 560 },
-  margem = 28, espacoMinimo = 26, folgaEntreBlocos = 13, passoNivel = 19, niveisMaximos = 4, fileirasMaximas = 8, raioPorLargura = 4, ordemPessoal = {}, semPlanos = false,
+  margem = 28, espacoMinimo = 26, folgaEntreBlocos = 13, passoNivel = 19, niveisMaximos = 4, fileirasMaximas = 2, raioPorLargura = 4, ordemPessoal = {}, semPlanos = false,
 }) {
   const ativos = itens.filter((x) => !x.excluidoEm);
   const faixas = faixasDoMapa(camadas, ativos, { semPlanos });
@@ -189,8 +189,9 @@ export function calcularMapa({
   /* quantas trocas de bloco cada faixa tem (cada uma ganha a folga) */
   const trocas = (l) => l.reduce((t, n, j) => t + (j && n.grupo !== l[j - 1].grupo ? 1 : 0), 0);
 
-  /* largura: a da área (para tudo caber numa tela). A faixa cheia demais para uma fileira, com os pontos a 26 de
-     distância, cresce para baixo, em fileiras (lote 4, 29/10/2026, tarde): até 8; a largura só cresce se nem 8 bastarem */
+  /* largura: a da área, se der; senão, cresce para os lados (04/11/2026, decisão do responsável): a faixa mais cheia
+     precisa caber com os pontos a 26 ÷ 2 = 13 unidades uns dos outros, mais a folga entre blocos. Assim o desenho é o
+     mesmo no celular e no computador; a vista de abertura mostra o mapa inteiro, menor, e o zoom o deixa limpo */
   const RECUO = 9; // do ponto até o começo do nome
   const reservaFinal = 60; // espaço para o nome do último ponto
   const necessaria = (l) => ((Math.max(1, l.length) - 1) * espacoMinimo) / fileirasMaximas + trocas(l) * folgaEntreBlocos;
@@ -265,9 +266,6 @@ export function calcularMapa({
   faixas.forEach((f, i) => { f.niveis = 1; f.altura = alturaMinima; f.nos = lista[i].map((n) => n.chave); });
   const centro = largura / 2;
   const raio = raioPorLargura * largura;
-  /* faixa cheia demais para uma fileira (3 ou mais, pela regra da largura): o lugar das regras, na altura, é uma das
-     fileiras (o ponto i na fileira i mod fileiras); a mola da altura puxa para lá e a física acomoda o resto */
-  for (const l of lista) l.forEach((n, i) => { n.alvoNaAltura = l.fileiras >= 3 ? ((i % l.fileiras) - (l.fileiras - 1) / 2) * (2 * FISICA.raioDoPonto + 1) : 0; });
   const mapa = { faixas, nos, ligacoes, largura, centro, raio, recuo: RECUO, passoNivel, alturaMinima, ordem: lista.map((l) => l.map((n) => n.chave)) };
   acomodar(mapa, { margem });
   mapa.altura = Math.ceil(faixas.at(-1).base + deslocamentoCurvo(0, centro, raio));
@@ -361,7 +359,6 @@ export function acomodar(mapa, { margem = 28 } = {}, c = FISICA) {
   const xr = Float64Array.from(nos, (n) => n.x);
   const x = Float64Array.from(xr);
   const oy = new Float64Array(N);
-  const alvoY = Float64Array.from(nos, (n) => n.alvoNaAltura ?? 0);
   const fx = new Float64Array(N); const fy = new Float64Array(N);
   const px = new Float64Array(N); const py = new Float64Array(N);
   for (const f of faixas) f.altura = Math.max(f.altura, alturaMinima);
@@ -421,7 +418,7 @@ export function acomodar(mapa, { margem = 28 } = {}, c = FISICA) {
 
   for (let passo = 0; passo < c.passos; passo++) {
     montarFaixas();
-    for (let i = 0; i < N; i++) { atualizar(i); fx[i] = c.rigidezX * (xr[i] - x[i]); fy[i] = c.rigidezY * (alvoY[i] - oy[i]); }
+    for (let i = 0; i < N; i++) { atualizar(i); fx[i] = c.rigidezX * (xr[i] - x[i]); fy[i] = -c.rigidezY * oy[i]; }
     pressao.fill(0);
     /* paredes */
     for (let i = 0; i < N; i++) {
