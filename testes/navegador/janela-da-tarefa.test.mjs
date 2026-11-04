@@ -1,6 +1,6 @@
 /**
  * Janela da tarefa (revisão de 04/11/2026, pedido do responsável, tomando o Todoist como referência; documentação técnica,
- * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas; descrição com cara de texto, e não de caixa; título com o nome da lista.
+ * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas; descrição com cara de texto, e não de caixa; título com o nome da lista; círculo de concluída antes do nome.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -83,6 +83,20 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
   test("o título da janela é o nome da lista, e não \"Tarefa\"", async () => {
     const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
     assert.equal((await janela(p).locator("header h2").innerText()).trim(), "Exemplo: minhas tarefas");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("o círculo de concluída fica antes do nome, na mesma linha, e o plano continua com Registrar conclusão", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const j = janela(p);
+    const circulo = await j.locator(".caixa-janela").boundingBox();
+    const nome = await j.locator(".janela-nome").boundingBox();
+    assert.ok(circulo.x < nome.x, "círculo à esquerda do nome");
+    assert.ok(circulo.y >= nome.y && circulo.y + circulo.height <= nome.y + nome.height, "na altura do nome");
+    const plano = await sessao.abrir({ largura: 1280 });
+    await plano.locator(".linha[data-abrir-acao]").first().click();
+    await plano.waitForSelector(".camada.aberta .janela-grade");
+    assert.equal(await janela(plano).locator(".caixa-janela").count(), 0);
     assert.deepEqual(p.erros, []);
   });
 });

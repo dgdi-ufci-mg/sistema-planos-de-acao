@@ -192,6 +192,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const valores = guardarValores();
     /* sem comentários nem estimativas, a atividade é só o histórico recolhido: uma coluna, com ele no fim (04/11/2026) */
     const umaColuna = !temAtividade();
+    const caixa = caixaHtml(l);
     const historicoAlteracoes = `<details class="historico alteracoes" data-historico${historicoAberto ? " open" : ""}>
             <summary><h3>Histórico de alterações</h3></summary>
             <div data-registros>${registrosHtml()}</div>
@@ -204,7 +205,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <div class="janela-grade${umaColuna ? " uma-coluna" : ""}" data-aba-atual="${umaColuna ? "detalhes" : aba}">
         <div class="janela-principal">
           ${alheia ? `<p class="alteracao-alheia" role="status">${esc(alheia)} alterou esta ação agora.</p>` : ""}
-          <div class="campo-acao campo-nome-acao" data-campo="rotulo">
+          <div class="campo-acao campo-nome-acao${caixa ? " com-caixa" : ""}" data-campo="rotulo">${caixa}
             <textarea class="janela-nome" rows="1" maxlength="120" name="rotulo" data-auto="rotulo" data-original="${esc(acao.rotulo)}"
               aria-label="Nome da ${termos(d.espaco).acao}"${somenteLeitura() ? " readonly" : ""}>${esc(acao.rotulo)}</textarea>
             ${statusHtml("rotulo")}
@@ -474,15 +475,25 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return `<div><dt>Marcada como concluída</dt><dd>${quando ? `<span class="mono">${quando}</span>` : "Sim"}<small class="tec">Momento da marcação, e não a data em que o trabalho terminou.</small></dd></div>`;
   }
 
+  /**
+   * Quadro e Lista de tarefas: marcar ou desmarcar, sem data (revisão de 27/10/2026; passo 3.4), pelo círculo antes do
+   * nome, como na linha da lista e no Todoist (04/11/2026). Sem permissão, só a marca. Não liberada: sem círculo.
+   */
+  function caixaHtml(l) {
+    if (!ehDeTarefas(d.espaco) || l.situacao === "naoLiberada") return "";
+    const feita = l.situacao === "concluida";
+    const texto = feita ? "Desmarcar a conclusão" : "Marcar como concluída";
+    if (somenteLeitura()) {
+      return `<span class="caixa-concluida caixa-janela${feita ? " marcada" : ""}" role="img" aria-label="${feita ? "Concluída" : "Não concluída"}">${ICONES.marcado}</span>`;
+    }
+    return `<button type="button" class="caixa-concluida caixa-janela${feita ? " marcada" : ""}" role="checkbox" aria-checked="${feita}"
+      aria-label="${texto}" title="${texto}" data-marcar-janela="${!feita}">${ICONES.marcado}</button>`;
+  }
+
   function botoesHtml(l, c) {
     if (somenteLeitura()) return "";
-    /* Quadro e Lista de tarefas: marcar ou desmarcar, sem data (revisão de 27/10/2026; passo 3.4) */
-    if (ehDeTarefas(d.espaco)) {
-      if (l.situacao === "naoLiberada") return "";
-      return l.situacao === "concluida"
-        ? `<div class="botoes"><button class="botao" type="button" data-marcar-janela="false">Desmarcar a conclusão</button></div>`
-        : `<div class="botoes"><button class="botao principal" type="button" data-marcar-janela="true">${ICONES.marcado}Marcar como concluída</button></div>`;
-    }
+    /* Quadro e Lista de tarefas: a conclusão é o círculo antes do nome (caixaHtml) */
+    if (ehDeTarefas(d.espaco)) return "";
     if (l.situacao === "concluida") {
       return `<div class="botoes"><button class="botao" type="button" data-desfazer-conclusao>Desfazer conclusão</button></div>`;
     }

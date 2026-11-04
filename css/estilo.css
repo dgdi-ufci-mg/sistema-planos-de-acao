@@ -2585,3 +2585,9 @@ select.grade-editor { margin: -4px -6px; }
 .planilha .planilha-grupo .grade-grupo-botao { position: sticky; left: 0; }
 .planilha .planilha-grupo.nivel-etapa .grade-grupo-botao { padding-left: 30px; font: 600 .84rem var(--f-texto); }
 .caixa-planilha .grade-colunas { overflow-y: auto; min-height: 0; flex: 1; padding-right: 4px; }
+
+/* janela da tarefa: o círculo de concluída antes do nome, como na linha da lista e no Todoist (04/11/2026) */
+.campo-nome-acao.com-caixa { flex-direction: row; align-items: flex-start; gap: 6px; }
+.campo-nome-acao.com-caixa .janela-nome { flex: 1; width: auto; margin: 0 -8px 0 0; }
+.caixa-concluida.caixa-janela { width: 24px; height: 24px; margin: 7px 0 0; }
+.caixa-concluida.caixa-janela .icone { width: 15px; height: 15px; }

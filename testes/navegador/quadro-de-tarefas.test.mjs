@@ -65,16 +65,23 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.equal(await cartao(p, "Publicar o boletim").count(), 1);
   });
 
-  test("na janela da tarefa: Marcar como concluída, sem data, e o momento da marcação", async () => {
+  test("na janela da tarefa: o círculo antes do nome marca, sem data, e mostra o momento da marcação", async () => {
     const p = await abrirQuadro(sessao, { largura: 1280 });
     await cartao(p, "Marcar reunião").locator(".rotulo").click();
     await assentar(p);
     const janela = p.locator(".camada.aberta");
     assert.equal(await janela.getByRole("button", { name: /Registrar conclusão/ }).count(), 0);
-    await janela.getByRole("button", { name: /Marcar como concluída/ }).click();
+    assert.equal(await janela.getByRole("button", { name: /Marcar como concluída/ }).count(), 0, "sem o botão grande (04/11/2026)");
+    const circulo = janela.getByRole("checkbox", { name: "Marcar como concluída" });
+    await circulo.click();
     await assentar(p);
     assert.match(await janela.innerText(), /Marcada como concluída/);
+    assert.equal(await janela.getByRole("checkbox", { name: "Desmarcar a conclusão" }).getAttribute("aria-checked"), "true");
     assert.equal(await janela.locator('input[type="date"][name="data"]').count(), 0);
+    await janela.getByRole("checkbox", { name: "Desmarcar a conclusão" }).click();
+    await assentar(p);
+    assert.equal(await janela.getByRole("checkbox", { name: "Marcar como concluída" }).getAttribute("aria-checked"), "false");
+    assert.deepEqual(p.erros, []);
   });
 
   test("celular: segurar o cartão abre o menu com marcar e mover para outra coluna", async () => {
