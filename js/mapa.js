@@ -267,6 +267,7 @@ export function calcularMapa({
   const centro = largura / 2;
   const raio = raioPorLargura * largura;
   const mapa = { faixas, nos, ligacoes, largura, centro, raio, recuo: RECUO, passoNivel, alturaMinima, ordem: lista.map((l) => l.map((n) => n.chave)) };
+  for (const n of nos) n.xRegra = n.x; // o lugar das regras, antes da física (para conferir quanto ela moveu)
   acomodar(mapa, { margem });
   mapa.altura = Math.ceil(faixas.at(-1).base + deslocamentoCurvo(0, centro, raio));
   return mapa;
@@ -413,6 +414,22 @@ export function acomodar(mapa, { margem = 28 } = {}, c = FISICA) {
   const dir = (i) => (larg[i] ? x[i] + recuo + larg[i] + c.folgaDireita : x[i] + R - 2); // borda direita da caixa (ponto mais código)
   const minimo = (c.anguloMinimo * Math.PI) / 180;
   const pressao = new Float64Array(faixas.length);
+  /** Linhas de prumo: o filho (`sa`) tem só este superior e o superior (`sb`) só este subordinado. */
+  const prumos = [];
+  for (let s = 0; s < S; s++) {
+    const subordinados = incidentes[sb[s]].filter((t) => sb[t] === sb[s]).length;
+    const superiores = incidentes[sa[s]].filter((t) => sa[t] === sa[s]).length;
+    if (subordinados === 1 && superiores === 1) prumos.push(s);
+  }
+  /** Colunas: os pontos ligados por linhas de prumo, em cadeia (por exemplo, OD-9.1, PGOV e PORTGOV). */
+  const colunas = (() => {
+    const raiz = Array.from({ length: N }, (_, i) => i);
+    const achar = (i) => (raiz[i] === i ? i : (raiz[i] = achar(raiz[i])));
+    for (const s of prumos) raiz[achar(sa[s])] = achar(sb[s]);
+    const grupos = new Map();
+    for (let i = 0; i < N; i++) if (prumos.some((s) => sa[s] === i || sb[s] === i)) grupos.set(achar(i), [...(grupos.get(achar(i)) ?? []), i]);
+    return [...grupos.values()];
+  })();
   /** Faixa (a lista da ordem) e posição de cada ponto nela. */
   const lugarNaOrdem = [];
   for (const l of ordem) l.forEach((i, a) => { lugarNaOrdem[i] = [l, a]; });
@@ -547,6 +564,27 @@ export function acomodar(mapa, { margem = 28 } = {}, c = FISICA) {
           atualizar(i);
           break;
         }
+      }
+    }
+    /*
+     * Colunas em prumo, como regra firme (04/11/2026): os pontos de uma coluna (pai e filho único, em cadeia) vão para
+     * a mesma posição horizontal, a média deles; cada um só vai se isso não trocar a ordem da faixa, não criar
+     * cruzamento nem encostar círculos (se não puder, fica, e a coluna tenta de novo no passo seguinte). Vem antes da
+     * regra da linha, que tem a última palavra.
+     */
+    for (const col of colunas) {
+      const alvo = col.reduce((t, i) => t + x[i], 0) / col.length;
+      for (const i of col) {
+        if (Math.abs(x[i] - alvo) < 0.01) continue;
+        const [l, a] = lugarNaOrdem[i];
+        const esq = a ? x[l[a - 1]] + 1 : xMinimo;
+        const dir = a < l.length - 1 ? x[l[a + 1]] - 1 : xMaximo(i);
+        const xn = Math.max(esq, Math.min(dir, alvo));
+        if (Math.abs(xn - x[i]) < 0.01 || encostaEmVizinho(l, a, xn, oy[i])) continue;
+        if (!semNovos(cruzamentosDe(i, px[i], py[i]), cruzamentosDe(i, xn, Y(i, xn, oy[i])))) continue;
+        maior = Math.max(maior, Math.abs(xn - x[i]));
+        x[i] = xn;
+        atualizar(i);
       }
     }
     /*
