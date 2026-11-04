@@ -205,7 +205,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           <dl class="janela-resumo">
             <div><dt>Situação</dt><dd class="sit">${situacaoHtml(l, sitClasse, sitIcone, sitTexto)}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
             ${ehDeTarefas(d.espaco) && l.situacao === "concluida" ? marcadaHtml(acao)
-            : !comEstimativas && l.situacao !== "concluida" ? `<div><dt>Data-limite</dt><dd class="mono${l.atrasada ? " atrasada" : ""}">${acao.dataLimite ? dataBr(acao.dataLimite) : '<span class="vazio">Sem data-limite</span>'}</dd></div>`
+            /* sem estimativas, a data-limite fica só no campo abaixo, para não aparecer duas vezes (04/11/2026) */
+            : !comEstimativas && l.situacao !== "concluida" ? ""
             : `<div><dt>${l.situacao === "concluida" ? "Concluída em" : "Conclusão prevista"}</dt>${l.semEstimativa ? `<dd><span class="falta-estimar">Falta estimar</span></dd>` : `<dd class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</dd>`}</div>`}
             ${l.situacao === "concluida" || l.execucao == null ? "" : `
               <div><dt>Índice de criticidade <a href="#" class="oque" data-termo="exec" aria-label="O que é o índice de criticidade?" title="O que é?">${ICONES.ajuda}</a></dt><dd>${barra(l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}</dd></div>
@@ -341,7 +342,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
     /* prazo: estimativa (enquanto livre) ou data-limite, conforme o modelo do espaço (passo 2.4b) */
     if (!comEstimativas) {
-      partes.push(`<div class="campo-acao" data-campo="dataLimite">${rotuloHtml("dataLimite", "Data-limite")}
+      partes.push(`<div class="campo-acao${l.atrasada ? " atrasada" : ""}" data-campo="dataLimite">${rotuloHtml("dataLimite", "Data-limite")}
         <input type="date" ${atributos("dataLimite", acao.dataLimite)} value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite">
         <span class="tec">Vencida, a ação ganha o carimbo Atrasada. Vazia, a ação não tem prazo.</span></div>`);
     } else if (livre) {

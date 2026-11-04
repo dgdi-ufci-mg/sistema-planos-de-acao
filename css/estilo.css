@@ -676,6 +676,8 @@ body.sem-criar-acao [data-nova] { display: none !important; } /* só o administr
 .painel-corpo .botoes { margin-top: 0; }
 .janela-campos { display: flex; flex-direction: column; gap: 12px; }
 .campo-acao { display: flex; flex-direction: column; gap: 4px; }
+/* data-limite vencida: a data fica em vermelho no próprio campo, que é o único lugar onde ela aparece (04/11/2026) */
+.campo-acao.atrasada input[type="date"] { color: var(--crit-ink); font-weight: 600; border-color: color-mix(in oklab, var(--crit) 45%, var(--line)); }
 .campo-nome { font-size: .8rem; font-weight: 700; color: var(--muted); }
 .editavel { cursor: pointer; border-radius: var(--raio); padding: 4px 6px; margin: 0 -6px; border: 1px solid transparent; }
 .editavel:hover, .editavel:focus-visible { background: var(--surface); border-color: var(--line); }
