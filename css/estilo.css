@@ -2142,6 +2142,14 @@ button.caixa-concluida.marcada:hover { background: var(--ok-ink); border-color: 
 /* área de toque de 44 px em volta da caixinha, sem mudar o desenho (item 4 da avaliação de celular) */
 @media (pointer: coarse) { .caixa-concluida { position: relative; } .caixa-concluida::after { content: ""; position: absolute; inset: -12px; } }
 @media (prefers-reduced-motion: reduce) { .caixa-concluida { transition: none; } }
+/* concluir na Lista de tarefas (04/11/2026, como no Todoist): a caixinha se preenche com um pulo, o nome fica riscado
+   e cinza, e então a linha se recolhe (js/telas/espaco.js, marcarConclusao) */
+.item.concluindo .caixa-concluida { background: var(--ok); border-color: var(--ok); color: var(--texto-sobre-destaque); animation: pulo-caixa .3s var(--mov-curva, ease); }
+.item.concluindo .rotulo { text-decoration: line-through; color: var(--muted); transition: color .2s; }
+.item.concluindo { pointer-events: none; }
+.item.recolhendo { overflow: hidden; opacity: 0; transition: height .22s var(--mov-curva, ease), opacity .18s ease; }
+@keyframes pulo-caixa { 50% { transform: scale(1.2); } }
+@media (prefers-reduced-motion: reduce) { .item.concluindo .caixa-concluida { animation: none; } .item.recolhendo { transition: none; } }
 /* o nome da tarefa que quebra linha fica alinhado depois da caixinha */
 .quadro-tarefas .nome-linha { display: flex; align-items: flex-start; }
 /* barra do topo apertada (correção de 27/10/2026): sem as setas dos menus do centro, que continuam abrindo igual */

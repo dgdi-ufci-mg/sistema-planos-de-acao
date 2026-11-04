@@ -1090,6 +1090,22 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /** Marca ou desmarca a conclusão, com "Desfazer" no aviso. */
   async function marcarConclusao(numero, marcada) {
     try {
+      /* Lista de tarefas, com as concluídas escondidas (04/11/2026, pedido do responsável, como no Todoist): antes de
+         sumir, a caixinha se preenche e o nome fica riscado; depois, a linha se recolhe. Sem animação com "Reduzir movimento". */
+      const el = ehLista() && marcada && ocultaConcluidas() ? lista?.querySelector(`.item[data-numero="${numero}"]`) : null;
+      if (el) {
+        if (el.classList.contains("concluindo")) return; // segundo toque durante a animação
+        el.classList.add("concluindo");
+        el.querySelector("[data-marcar]")?.setAttribute("aria-checked", "true");
+        if (!reduzirMovimento()) {
+          await new Promise((r) => setTimeout(r, 450));
+          el.style.height = `${el.offsetHeight}px`;
+          el.offsetHeight; // fixa a altura de partida antes de recolher
+          el.classList.add("recolhendo");
+          el.style.height = "0px";
+          await new Promise((r) => setTimeout(r, 220));
+        }
+      }
       await store.marcarConclusao(espacoId, numero, marcada);
       if (marcada) navigator.vibrate?.([12, 60, 18]); // como ao registrar a conclusão (item 20 da avaliação de celular)
       const texto = !marcada ? "Conclusão desmarcada." : ocultaConcluidas() && ehQuadro() ? `${termos(espaco).Acao} concluída e escondida pelo filtro.` : `${termos(espaco).Acao} concluída.`;

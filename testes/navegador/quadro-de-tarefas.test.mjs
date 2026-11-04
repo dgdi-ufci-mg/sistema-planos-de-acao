@@ -104,7 +104,11 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.equal(await p.locator('.menu-topo[data-pop="modo"]').count(), 0);
     assert.equal(await item(p, "Atualizar o currículo").count(), 0, "as concluídas começam escondidas");
     await item(p, "Agendar a reunião").locator("[data-marcar]").click();
-    await assentar(p);
+    /* antes de sumir, a caixinha se preenche e o nome fica riscado (04/11/2026) */
+    await p.waitForTimeout(150);
+    assert.equal(await item(p, "Agendar a reunião").locator(".rotulo").evaluate((el) => getComputedStyle(el).textDecorationLine), "line-through");
+    assert.equal(await item(p, "Agendar a reunião").locator("[data-marcar]").getAttribute("aria-checked"), "true");
+    await assentar(p, 1000);
     assert.equal(await item(p, "Agendar a reunião").count(), 0);
     assert.match(await p.locator(".aviso-curto").innerText(), /concluída/);
     await p.click('.menu-topo[data-pop="classificar"]');
@@ -120,7 +124,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     const { x, y } = await centro(item(p, "Responder a pesquisa").locator(".rotulo"));
     const d = await dedo(p);
     await d.arrastar(x - 60, y, 150, 0);
-    await assentar(p);
+    await assentar(p, 1000); // com a animação de concluir (04/11/2026)
     assert.equal(await item(p, "Responder a pesquisa").count(), 0);
     assert.equal(await p.locator(".camada.aberta").count(), 0, "marca direto, sem abrir janela");
   });
