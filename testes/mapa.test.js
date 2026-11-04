@@ -619,4 +619,12 @@ describe("Mapa: catálogo do site em 04/11/2026 (linha do PGOV rente ao OD-9.2)"
       assert.deepEqual(rentes, [], `largura ${w}`);
     }
   });
+
+  it("pai e filho único em cadeia ficam na mesma vertical: a linha do OD-9.1 ao PGOV e ao PORTGOV desce reta (04/11/2026)", () => {
+    for (const w of [879, 1280, 390]) {
+      const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: itensDoPei(), planos: PLANOS_DO_PEI, vista: { w, h: 907 }, medir: medirComoNoNavegador });
+      const x = (k) => m.nos.find((n) => n.chave === k).x;
+      assert.ok(Math.abs(x("OD-9.1") - x("PGOV")) < 0.5 && Math.abs(x("PGOV") - x("PORTGOV")) < 0.5, `largura ${w}: ${x("OD-9.1").toFixed(1)}, ${x("PGOV").toFixed(1)}, ${x("PORTGOV").toFixed(1)}`);
+    }
+  });
 });
