@@ -106,3 +106,28 @@ describe("Prioridades da ação sem estimativa (passo 1.14a)", () => {
     assert.equal(sem.semEstimativa, true);
   });
 });
+
+describe("Prazo da tarefa como texto (Lista de tarefas, 04/11/2026)", async () => {
+  const { prazoDaTarefa } = await import("../js/lista.js");
+  const hoje = "2026-11-04"; // quarta-feira
+  it("hoje, amanhã e ontem", () => {
+    assert.deepEqual(prazoDaTarefa("2026-11-04", hoje), { texto: "Hoje", tom: "hoje", dias: 0 });
+    assert.deepEqual(prazoDaTarefa("2026-11-05", hoje), { texto: "Amanhã", tom: "breve", dias: 1 });
+    assert.deepEqual(prazoDaTarefa("2026-11-03", hoje), { texto: "Ontem", tom: "vencida", dias: -1 });
+  });
+  it("nos próximos 6 dias, o dia da semana; depois, dia e mês", () => {
+    assert.equal(prazoDaTarefa("2026-11-06", hoje).texto, "sex.");
+    assert.equal(prazoDaTarefa("2026-11-10", hoje).texto, "ter.");
+    assert.deepEqual(prazoDaTarefa("2026-11-11", hoje), { texto: "11 nov.", tom: "depois", dias: 7 });
+    assert.deepEqual(prazoDaTarefa("2026-10-28", hoje), { texto: "28 out.", tom: "vencida", dias: -7 });
+  });
+  it("outro ano leva o ano; virada de mês e de ano contam certo", () => {
+    assert.equal(prazoDaTarefa("2027-01-08", hoje).texto, "8 jan. 2027");
+    assert.equal(prazoDaTarefa("2027-01-01", "2026-12-31").texto, "Amanhã");
+    assert.equal(prazoDaTarefa("2026-12-01", "2026-11-30").texto, "Amanhã");
+  });
+  it("concluída nunca fica vencida; sem data, nada", () => {
+    assert.equal(prazoDaTarefa("2026-11-01", hoje, { concluida: true }).tom, "depois");
+    assert.equal(prazoDaTarefa(null, hoje), null);
+  });
+});

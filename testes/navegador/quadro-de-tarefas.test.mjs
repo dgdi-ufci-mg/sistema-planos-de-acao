@@ -219,6 +219,21 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("Lista de tarefas: prazo como texto sob o nome, sem barra de tempo (04/11/2026)", async () => {
+    const p = await abrirLista({ largura: 1280 });
+    assert.equal(await p.locator(".lista[data-tarefas] .pr").count(), 0, "sem a barra de tempo");
+    const vencida = item(p, "Enviar a frequência").locator(".prazo-tarefa");
+    assert.equal(await vencida.count(), 1);
+    assert.match(await vencida.getAttribute("class"), /vencida/);
+    const nome = await item(p, "Enviar a frequência").locator(".rotulo").boundingBox();
+    assert.ok((await vencida.boundingBox()).y >= nome.y + nome.height - 1, "abaixo do nome");
+    assert.equal(await item(p, "Agendar a reunião").locator(".prazo-tarefa").count(), 0, "sem data, nada");
+    /* a opção "Indicador" sai das colunas da Lista */
+    await p.click('.menu-topo[data-pop="exibir"]');
+    assert.equal(await p.locator('[data-coluna="barras"]').count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("Lista de tarefas: a linha arrastada sobe sem inclinar (04/11/2026)", async () => {
     const p = await abrirLista({ largura: 1280 });
     const linha = item(p, "Agendar a reunião");

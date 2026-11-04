@@ -120,3 +120,32 @@ export function resumir(linhas) {
     termina: linhas.reduce((max, l) => (l.conclusao > max ? l.conclusao : max), ""),
   };
 }
+
+const DIAS_DA_SEMANA = ["dom.", "seg.", "ter.", "qua.", "qui.", "sex.", "sáb."];
+const MESES = ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."];
+/** Dias corridos de `de` até `ate` (datas ISO), sem efeito de fuso nem de horário de verão. */
+const diasEntre = (de, ate) => Math.round((Date.UTC(...ate.split("-").map((n, i) => n - (i === 1))) - Date.UTC(...de.split("-").map((n, i) => n - (i === 1)))) / 86400000);
+
+/**
+ * Prazo da tarefa como texto curto, no lugar da barra de tempo, na Lista de tarefas (04/11/2026, pedido do
+ * responsável, como no Todoist). Conta dias corridos, porque a pessoa pensa em "amanhã", e não em dias úteis.
+ * - hoje: "Hoje"; amanhã: "Amanhã"; ontem: "Ontem";
+ * - nos próximos 6 dias: o dia da semana ("sex.");
+ * - mais longe, para a frente ou para trás: dia e mês ("7 nov."), com o ano se não for o ano de hoje ("7 nov. 2027").
+ * Tom: "vencida" (antes de hoje e não concluída), "hoje", "breve" (amanhã até 6 dias) ou "depois".
+ * @param {string|null} data  data-limite, ISO
+ * @param {string} hoje  data ISO
+ * @param {{concluida?: boolean}} [opcoes]  concluída: nunca vencida (o tom é "depois")
+ * @returns {{texto: string, tom: "vencida"|"hoje"|"breve"|"depois", dias: number}|null}
+ */
+export function prazoDaTarefa(data, hoje, { concluida = false } = {}) {
+  if (!data) return null;
+  const dias = diasEntre(hoje, data);
+  const [ano, mes, dia] = data.split("-").map(Number);
+  const semana = DIAS_DA_SEMANA[new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay()];
+  const texto = dias === 0 ? "Hoje" : dias === 1 ? "Amanhã" : dias === -1 ? "Ontem"
+    : dias > 1 && dias <= 6 ? semana
+    : `${dia} ${MESES[mes - 1]}${ano !== Number(hoje.slice(0, 4)) ? ` ${ano}` : ""}`;
+  const tom = concluida ? "depois" : dias < 0 ? "vencida" : dias === 0 ? "hoje" : dias <= 6 ? "breve" : "depois";
+  return { texto, tom, dias };
+}

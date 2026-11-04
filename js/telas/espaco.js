@@ -15,7 +15,7 @@ import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias,
 import { usaPrioridade } from "../prioridade.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
-import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir } from "../lista.js";
+import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir, prazoDaTarefa } from "../lista.js";
 import { abrirPainel, avisar, fecharPainel } from "./painel.js";
 import { surgir } from "./movimento.js";
 import { donosHtml, ajustarDonos } from "./pessoas.js";
@@ -563,7 +563,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         .map(([v, nome]) => opcao("data-identificador-op", v, nome, identificador() === v)).join("")}</div>`}
       ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
         <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
-        ${OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || (usaDescricao() && !ehLista())).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
+        ${OPCOES_COLUNAS.filter(([v]) => (v !== "descricao" || (usaDescricao() && !ehLista())) && (v !== "barras" || !ehLista())).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
       ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${opcao("data-legenda-op", "1", "Legenda dos símbolos", ui.legenda, ICONES.legenda)}</div>`}`;
   }
 
@@ -881,17 +881,20 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* Lista de tarefas (04/11/2026, pedido do responsável, como no Todoist): a descrição fica numa linha só, cinza,
        sempre sob o nome, em qualquer largura, e só quando existe; não depende da coluna "Descrição", que não aparece em "Exibir" */
     const descSob = ehLista() && usaDescricao() && a.descricao ? `<span class="desc desc-sob" data-editar="descricao">${esc(a.descricao)}</span>` : "";
+    /* prazo como texto, no lugar da barra de tempo (04/11/2026, pedido do responsável, como no Todoist): "Hoje", "Amanhã", o dia da semana ou a data */
+    const prazo = ehLista() ? prazoDaTarefa(a.dataLimite, hoje, { concluida: l.situacao === "concluida" }) : null;
+    const prazoSob = prazo ? `<span class="prazo-tarefa ${prazo.tom}" title="Data-limite: ${dataBr(a.dataLimite)}${prazo.tom === "vencida" ? " (venceu)" : ""}">${ICONES.barraTempo}<span>${prazo.texto}</span></span>` : "";
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>${puxadores() ? `<button type="button" class="puxador" data-puxar="${a.numero}"
         aria-label="Mudar a prioridade de ${esc(a.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a prioridade">${ICONES.puxador}</button>` : ""}
         <div class="sit">${deTarefas() && l.situacao !== "naoLiberada" ? caixaHtml(l) : sit}</div>
-        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${prazoSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
             l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a), etiquetasNota(a)].join("")}</div>
         ${c.descricao && !ehLista() ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
         ${c.participantes ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
-        ${c.barras ? barraHtml(l) : ""}
+        ${c.barras && !ehLista() ? barraHtml(l) : ""}
       </div>
     </div>`;
   }
@@ -1011,7 +1014,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const c = colunas();
     lista.toggleAttribute("data-tarefas", ehLista()); // Lista de tarefas: linhas planas e descrição sob o nome (04/11/2026)
     lista.style.setProperty("--colunas", ["18px", "minmax(0, 2.4fr)", c.descricao && !ehLista() && "minmax(0, 2.4fr)",
-      c.participantes && "minmax(0, 1.5fr)", c.barras && "minmax(0, 1.6fr)"].filter(Boolean).join(" "));
+      c.participantes && "minmax(0, 1.5fr)", c.barras && !ehLista() && "minmax(0, 1.6fr)"].filter(Boolean).join(" "));
     ajustarDonos(lista);
     if (agrupado()) marcarNivel();
     marcarLegenda();

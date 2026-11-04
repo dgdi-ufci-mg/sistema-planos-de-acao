@@ -1571,6 +1571,14 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .lista[data-tarefas] .item:hover { box-shadow: none; transform: none; background: var(--sunk); }
 .lista[data-tarefas] .item.recem-criada { box-shadow: inset 3px 0 0 var(--accent); }
 .lista[data-tarefas] .item.levantado { background: var(--surface); border-radius: 8px; box-shadow: var(--sombra); }
+/* prazo como texto sob o nome (04/11/2026, como no Todoist): vencida em vermelho, hoje em verde-azulado,
+   nos próximos dias na cor do texto, mais longe em cinza */
+.prazo-tarefa { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 3px; font-size: .8rem; color: var(--muted); line-height: 1.3; }
+.prazo-tarefa svg { width: 13px; height: 13px; flex: none; }
+.prazo-tarefa.vencida { color: var(--crit-ink); font-weight: 600; }
+.prazo-tarefa.hoje { color: var(--accent-ink); font-weight: 600; }
+.prazo-tarefa.breve { color: var(--ink); }
+.item.feita .prazo-tarefa { color: var(--muted); font-weight: 400; }
 /* arrastar sem inclinar (04/11/2026, pedido do responsável): numa linha da largura da lista, o giro do cartão do
    quadro vira uma rampa; a linha só sobe, com sombra */
 .lista[data-tarefas] .item.levantado.inclinado { transform: none; box-shadow: 0 10px 24px color-mix(in srgb, var(--ink) 22%, transparent); }
