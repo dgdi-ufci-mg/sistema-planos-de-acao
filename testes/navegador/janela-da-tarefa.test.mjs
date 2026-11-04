@@ -111,4 +111,16 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.ok(await janela(plano).locator(".janela-resumo dd.sit svg").count() >= 1);
     assert.deepEqual(p.erros, []);
   });
+
+  test("em uma coluna, a janela tem a altura do conteúdo e rola quando a tela é baixa", async () => {
+    const alta = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280, altura: 900 });
+    assert.ok((await janela(alta).boundingBox()).height < 900 * 0.85, "não ocupa a altura toda à toa");
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280, altura: 520 });
+    const corpo = janela(p).locator(".painel-corpo");
+    await corpo.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await assentar(p, 200);
+    const excluir = await janela(p).locator("[data-excluir-acao]").boundingBox();
+    assert.ok(excluir.y + excluir.height <= 520, "o fim da janela é alcançável rolando");
+    assert.deepEqual(p.erros, []);
+  });
 });

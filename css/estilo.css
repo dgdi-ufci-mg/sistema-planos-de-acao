@@ -1445,8 +1445,10 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
   .janela-atividade .comentario { background: var(--surface); }
   .janela-atividade .comentario.meu { background: var(--accent-soft); }
   /* sem atividade (nem comentários nem estimativas): uma coluna, mais estreita, com o histórico no fim (04/11/2026) */
-  .camada.janela .painel:has(.janela-grade.uma-coluna) { width: min(760px, calc(100% - 48px)); }
-  .janela-grade.uma-coluna { grid-template-columns: minmax(0, 1fr); }
+  .camada.janela .painel:has(.janela-grade.uma-coluna) { width: min(760px, calc(100% - 48px)); height: auto; max-height: min(90vh, 960px); }
+  .camada.janela .painel:has(.janela-grade.uma-coluna) .painel-corpo { overflow-y: auto; }
+  .janela-grade.uma-coluna { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .janela-grade.uma-coluna .janela-principal { overflow: visible; }
   .janela-grade.uma-coluna .janela-principal { padding: 18px 28px 22px; }
 }
 .janela-grade .janela-resumo { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); }
