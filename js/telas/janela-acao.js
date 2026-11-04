@@ -268,10 +268,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   function situacaoHtml(l, classe, icone, texto) {
     const nome = l.situacao === "liberada" ? nomeDoFluxo(d.espaco, l.fluxo) : texto;
     const ic = l.situacao === "liberada" && l.fluxo !== "inicial" ? "personalizada" : icone;
+    /* nas tarefas, a liberada não leva ícone: o cadeado aberto parecia bloqueio, e a coluna já diz tudo (04/11/2026) */
+    const marca = ehDeTarefas(d.espaco) && l.situacao === "liberada" ? "" : `<span class="${classe}">${ICONES[ic]}</span>`;
     if (l.situacao !== "liberada" || !personalizadasDe(d.espaco).length || somenteLeitura()) {
-      return `<span class="${classe}">${ICONES[ic]}</span>${esc(nome)}`;
+      return `${marca}${esc(nome)}`;
     }
-    return `<span class="${classe}">${ICONES[ic]}</span><select class="escolha-situacao" data-mudar-situacao aria-label="Situação">
+    return `${marca}<select class="escolha-situacao" data-mudar-situacao aria-label="Situação">
       <option value=""${l.fluxo === "inicial" ? " selected" : ""}>${esc(nomeInicial(d.espaco))}</option>
       ${personalizadasDe(d.espaco).map((x) => `<option value="${esc(x.id)}"${l.fluxo === x.id ? " selected" : ""}>${esc(x.nome)}</option>`).join("")}
     </select>`;

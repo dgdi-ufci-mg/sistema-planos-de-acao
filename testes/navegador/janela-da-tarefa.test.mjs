@@ -1,6 +1,6 @@
 /**
  * Janela da tarefa (revisão de 04/11/2026, pedido do responsável, tomando o Todoist como referência; documentação técnica,
- * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas; descrição com cara de texto, e não de caixa; título com o nome da lista; círculo de concluída antes do nome.
+ * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas; descrição com cara de texto, e não de caixa; título com o nome da lista; círculo de concluída antes do nome; situação sem o cadeado.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -97,6 +97,18 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     await plano.locator(".linha[data-abrir-acao]").first().click();
     await plano.waitForSelector(".camada.aberta .janela-grade");
     assert.equal(await janela(plano).locator(".caixa-janela").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("nas tarefas, a situação não tem o ícone de cadeado; no plano, continua", async () => {
+    const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
+    const sit = janela(p).locator(".janela-resumo dd.sit");
+    assert.equal(await sit.locator(".icone-liberada, svg").count(), 0);
+    assert.match(await sit.innerText(), /A fazer/);
+    const plano = await sessao.abrir({ largura: 1280 });
+    await plano.locator(".linha[data-abrir-acao]").first().click();
+    await plano.waitForSelector(".camada.aberta .janela-grade");
+    assert.ok(await janela(plano).locator(".janela-resumo dd.sit svg").count() >= 1);
     assert.deepEqual(p.erros, []);
   });
 });
