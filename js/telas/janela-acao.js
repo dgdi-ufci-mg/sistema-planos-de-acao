@@ -244,8 +244,10 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         </div>`}
       </div>`;
     /* título da janela: onde a ação fica (fase e etapa) e o código, em vez de só "Ação" */
-    const titulo = [d.usaCodigos && acao.codigo ? acao.codigo : "", d.usaFases ? (etapa ? `${etapa.fase} · ${etapa.nome}` : "Sem fase nem etapa") : ""]
-      .filter(Boolean).join(" · ") || termos(d.espaco).Acao;
+    /* no Quadro e na Lista de tarefas, o nome do espaço, como a lista no Todoist (04/11/2026) */
+    const titulo = ehDeTarefas(d.espaco) && d.espaco.nome ? d.espaco.nome
+      : [d.usaCodigos && acao.codigo ? acao.codigo : "", d.usaFases ? (etapa ? `${etapa.fase} · ${etapa.nome}` : "Sem fase nem etapa") : ""]
+        .filter(Boolean).join(" · ") || termos(d.espaco).Acao;
     const cabeca = corpo.closest(".painel").querySelector("header h2");
     cabeca.textContent = titulo;
     cabeca.title = titulo;

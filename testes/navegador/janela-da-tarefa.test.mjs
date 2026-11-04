@@ -1,6 +1,6 @@
 /**
  * Janela da tarefa (revisão de 04/11/2026, pedido do responsável, tomando o Todoist como referência; documentação técnica,
- * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas; descrição com cara de texto, e não de caixa.
+ * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas; descrição com cara de texto, e não de caixa; título com o nome da lista.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -77,6 +77,12 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     await caixa.click();
     await assentar(p, 300);
     assert.notEqual((await estilo()).fundo, "rgba(0, 0, 0, 0)", "ao editar, ganha fundo");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("o título da janela é o nome da lista, e não \"Tarefa\"", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    assert.equal((await janela(p).locator("header h2").innerText()).trim(), "Exemplo: minhas tarefas");
     assert.deepEqual(p.erros, []);
   });
 });
