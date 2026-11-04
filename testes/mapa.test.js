@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
 import { itensDoCatalogoReal } from "./dados/catalogo-real.js";
+import { itensDoPei, PLANOS_DO_PEI, medirComoNoNavegador } from "./dados/catalogo-pei-2026-11-04.js";
 import {
   FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
   escalaMinima, limitarTransformacao, FISICA, codigosVisiveis, quebrarEmLinhas, segmentosSeCruzam, transformacaoInicial, caminhoDoNo, caminhoAlem, linhaDoSolo, estrelasDoCeu, puxaoDosVizinhos, alturaPuxada, passoDaInercia, velocidadeDeSaida, PUXAO, INERCIA, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
@@ -481,10 +482,13 @@ describe("Mapa: física com paredes, no catálogo do tamanho do real", () => {
     }
   });
 
-  it("no computador, nenhuma linha passa rente a um ponto que não é dela nem se sobrepõe a outra do mesmo ponto; no celular, quase nenhuma", () => {
+  it("nenhuma linha passa rente a um ponto que não é dela nem se sobrepõe a outra do mesmo ponto no computador; no celular, no máximo uma, na borda", () => {
     assert.deepEqual(problemasDasLigacoes(m1280).map((p) => `${p.tipo} ${p.ligacao.de}>${p.ligacao.para} ${p.outro.chave ?? p.outro.de}`), []);
+    /* no celular, a faixa dos 60 ODs fica tão cheia que, na borda esquerda, um ponto pode ficar preso entre a parede e a
+       linha do vizinho (eram cerca de 60 com o mapa espremido, 4 antes da regra firme da linha de 04/11/2026) */
     const celular = problemasDasLigacoes(calcular(390));
-    assert.ok(celular.length <= 6, `no celular, ${celular.length} (eram cerca de 60 com o mapa espremido)`);
+    const linhas = new Set(celular.map((p) => `${p.ligacao.de}>${p.ligacao.para}`));
+    assert.ok(linhas.size <= 1, `no celular, ${linhas.size} linhas: ${[...linhas].join("; ")}`);
   });
 
   it("nenhum ponto fora da sua faixa, em nenhuma largura", () => {
@@ -604,5 +608,15 @@ describe("Mapa: nome do caminho aceso em linhas curtas (03/11/2026)", () => {
     assert.ok(segmentosSeCruzam(p(0, 0), p(10, 10), p(0, 10), p(10, 0)));
     assert.ok(!segmentosSeCruzam(p(0, 0), p(10, 10), p(10, 10), p(20, 0)), "só se tocam na ponta");
     assert.ok(!segmentosSeCruzam(p(0, 0), p(10, 0), p(0, 5), p(10, 5)));
+  });
+});
+
+describe("Mapa: catálogo do site em 04/11/2026 (linha do PGOV rente ao OD-9.2)", () => {
+  it("nenhuma linha a menos de 9 unidades de um ponto que não é dela, em várias larguras, e nenhum cruzamento", () => {
+    for (const w of [879, 1280, 960, 390]) {
+      const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: itensDoPei(), planos: PLANOS_DO_PEI, vista: { w, h: 907 }, medir: medirComoNoNavegador });
+      const rentes = problemasDasLigacoes(m, FISICA.folgaDaLinha - 0.01).map((p) => `${p.tipo} ${p.ligacao.de}>${p.ligacao.para} ${p.outro.chave ?? p.outro.de}`);
+      assert.deepEqual(rentes, [], `largura ${w}`);
+    }
   });
 });
