@@ -1571,6 +1571,15 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .lista[data-tarefas] .item:hover { box-shadow: none; transform: none; background: var(--sunk); }
 .lista[data-tarefas] .item.recem-criada { box-shadow: inset 3px 0 0 var(--accent); }
 .lista[data-tarefas] .item.levantado { background: var(--surface); border-radius: 8px; box-shadow: var(--sombra); }
+/* pessoas discretas (04/11/2026, pedido do responsável): à direita da linha, em qualquer largura, pequenas e em tom
+   neutro, para não competir com o nome da tarefa; numa lista com um responsável só, nem aparecem (js/telas/espaco.js) */
+.lista[data-tarefas] .linha { grid-template-columns: 18px minmax(0, 1fr) auto; }
+.lista[data-tarefas] .linha > .sit { grid-column: 1; grid-row: 1; }
+.lista[data-tarefas] .linha > .acao-nome { grid-column: 2; grid-row: 1; }
+.lista[data-tarefas] .linha > .donos { grid-column: 3; grid-row: 1; justify-content: flex-end; min-height: 0; align-self: start; }
+.lista[data-tarefas] .avatar { width: 22px; height: 22px; font-size: .6rem; background: var(--sunk); color: var(--muted); border: 1px solid var(--line); box-shadow: none; }
+.lista[data-tarefas] .avatar.eu { box-shadow: 0 0 0 1px var(--accent); }
+.lista[data-tarefas] .unidade { height: 22px; font-size: .64rem; padding: 0 5px; }
 /* prazo como texto sob o nome (04/11/2026, como no Todoist): vencida em vermelho, hoje em verde-azulado,
    nos próximos dias na cor do texto, mais longe em cinza */
 .prazo-tarefa { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin-top: 3px; font-size: .8rem; color: var(--muted); line-height: 1.3; }

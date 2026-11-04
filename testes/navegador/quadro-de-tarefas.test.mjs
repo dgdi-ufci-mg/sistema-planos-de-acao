@@ -234,6 +234,28 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("Lista de tarefas: com uma pessoa só, as pessoas não aparecem; com várias, ficam pequenas e à direita (04/11/2026)", async () => {
+    const p = await abrirLista({ largura: 1280 });
+    assert.equal(await p.locator(".lista[data-tarefas] .donos").count(), 0, "lista pessoal: sem pessoas");
+    /* o quadro da equipe, trocado para Lista, tem várias pessoas */
+    const q = await abrirQuadro(sessao, { largura: 1280 });
+    await q.locator(".lateral .espaco-item.atual [data-configurar]").click();
+    await assentar(q);
+    await q.locator('.camada.aberta input[name="tipo"][value="lista"]').check();
+    await q.waitForTimeout(1200);
+    await q.keyboard.press("Escape");
+    await q.waitForSelector(".lista[data-tarefas] .donos .avatar");
+    const linha = q.locator(".lista[data-tarefas] .item").filter({ has: q.locator(".avatar") }).first();
+    const avatar = await linha.locator(".avatar").first().boundingBox();
+    const nome = await linha.locator(".rotulo").boundingBox();
+    assert.ok(avatar.width <= 23, "pequena");
+    assert.ok(avatar.x > nome.x + nome.width, "à direita do nome");
+    const caixa = await linha.boundingBox();
+    assert.ok(caixa.x + caixa.width - (avatar.x + avatar.width) < 40, "encostada à direita da linha");
+    assert.deepEqual(p.erros, []);
+    assert.deepEqual(q.erros, []);
+  });
+
   test("Lista de tarefas: a linha arrastada sobe sem inclinar (04/11/2026)", async () => {
     const p = await abrirLista({ largura: 1280 });
     const linha = item(p, "Agendar a reunião");

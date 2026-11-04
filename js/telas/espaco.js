@@ -122,6 +122,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const ehQuadro = () => tipoDe(espaco) === "quadro";
   /** Lista de tarefas (passo 3.4) e os tipos de tarefas, Quadro ou Lista: caixinha de concluída, sem data. */
   const ehLista = () => tipoDe(espaco) === "lista";
+  /** Lista de tarefas com um responsável só no espaço (lista pessoal): as pessoas não aparecem nas linhas (04/11/2026, pedido do responsável) */
+  const semPessoasNaLista = () => ehLista() && (responsaveis?.length ?? 0) <= 1;
   const deTarefas = () => ehQuadro() || ehLista();
   let modoInicial = false;
   let lendoEntregas = null;
@@ -893,7 +895,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
             l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a), etiquetasNota(a)].join("")}</div>
         ${c.descricao && !ehLista() ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
-        ${c.participantes ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
+        ${c.participantes && !semPessoasNaLista() ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras && !ehLista() ? barraHtml(l) : ""}
       </div>
     </div>`;
@@ -1014,7 +1016,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const c = colunas();
     lista.toggleAttribute("data-tarefas", ehLista()); // Lista de tarefas: linhas planas e descrição sob o nome (04/11/2026)
     lista.style.setProperty("--colunas", ["18px", "minmax(0, 2.4fr)", c.descricao && !ehLista() && "minmax(0, 2.4fr)",
-      c.participantes && "minmax(0, 1.5fr)", c.barras && !ehLista() && "minmax(0, 1.6fr)"].filter(Boolean).join(" "));
+      c.participantes && !ehLista() && "minmax(0, 1.5fr)", c.barras && !ehLista() && "minmax(0, 1.6fr)"].filter(Boolean).join(" "));
     ajustarDonos(lista);
     if (agrupado()) marcarNivel();
     marcarLegenda();
