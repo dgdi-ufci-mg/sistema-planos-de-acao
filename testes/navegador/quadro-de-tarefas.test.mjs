@@ -306,6 +306,17 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("Lista de tarefas: com todas concluídas e escondidas, diz \"Nenhuma tarefa pendente\" (04/11/2026)", async () => {
+    const p = await abrirLista({ largura: 1280 });
+    for (const nome of ["Enviar a frequência", "Ler o relatório", "Agendar a reunião", "Responder a pesquisa"]) {
+      await item(p, nome).locator("[data-marcar]").click();
+      await assentar(p, 1000);
+    }
+    assert.equal((await p.locator(".lista-vazia").innerText()).trim(), "Nenhuma tarefa pendente.");
+    assert.equal((await p.locator("[data-ver-concluidas]").innerText()).trim(), "Ver 6 concluídas");
+    assert.deepEqual(p.erros, []);
+  });
+
   test("Projeto continua com cartões", async () => {
     const p = await sessao.abrir({ largura: 1280 }); // abre no plano de exemplo
     assert.equal(await p.locator(".lista[data-tarefas]").count(), 0);

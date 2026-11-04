@@ -1009,7 +1009,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           daEtapa.map(linhaHtml).join("") + (rapida ? rapidaHtml(etapa.id, etapa.id, ` em ${etapa.nome}`) : ""))).join(""))).join("")
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
     } else {
-      corpo = (ls.length ? "" : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ${termos(espaco).acao}".</p>`)
+      /* todas concluídas e escondidas pelo filtro (04/11/2026, pedido do responsável): o espaço tem tarefas, só não há pendentes */
+      corpo = (ls.length ? "" : linhas.length ? `<p class="lista-vazia">Nenhuma ${termos(espaco).acao} pendente.</p>` : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ${termos(espaco).acao}".</p>`)
         + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "") + verConcluidasHtml();
     }
     const rolagemDoQuadro = lista.querySelector(".quadro")?.scrollLeft ?? 0; // o redesenho não volta o quadro para a primeira coluna
