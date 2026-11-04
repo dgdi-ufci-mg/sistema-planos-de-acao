@@ -1571,6 +1571,9 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .lista[data-tarefas] .item:hover { box-shadow: none; transform: none; background: var(--sunk); }
 .lista[data-tarefas] .item.recem-criada { box-shadow: inset 3px 0 0 var(--accent); }
 .lista[data-tarefas] .item.levantado { background: var(--surface); border-radius: 8px; box-shadow: var(--sombra); }
+/* arrastar sem inclinar (04/11/2026, pedido do responsável): numa linha da largura da lista, o giro do cartão do
+   quadro vira uma rampa; a linha só sobe, com sombra */
+.lista[data-tarefas] .item.levantado.inclinado { transform: none; box-shadow: 0 10px 24px color-mix(in srgb, var(--ink) 22%, transparent); }
 .lista[data-tarefas] .linha { align-items: start; padding-top: 10px; padding-bottom: 10px; }
 .lista[data-tarefas] .acao-nome .rotulo { font-weight: 400; }
 @media (hover: hover) {

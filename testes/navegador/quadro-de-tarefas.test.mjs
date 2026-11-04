@@ -219,6 +219,23 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("Lista de tarefas: a linha arrastada sobe sem inclinar (04/11/2026)", async () => {
+    const p = await abrirLista({ largura: 1280 });
+    const linha = item(p, "Agendar a reunião");
+    await linha.hover();
+    const a = await centro(linha.locator(".puxador"));
+    await p.mouse.move(a.x, a.y);
+    await p.mouse.down();
+    await p.mouse.move(a.x + 10, a.y + 50, { steps: 5 });
+    await assentar(p, 300);
+    const levantada = p.locator(".item.levantado.inclinado");
+    assert.equal(await levantada.count(), 1);
+    assert.equal(await levantada.evaluate((el) => getComputedStyle(el).transform), "none");
+    await p.mouse.up();
+    await assentar(p, 600);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("Projeto continua com cartões", async () => {
     const p = await sessao.abrir({ largura: 1280 }); // abre no plano de exemplo
     assert.equal(await p.locator(".lista[data-tarefas]").count(), 0);
