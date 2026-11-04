@@ -182,4 +182,25 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.equal(await p.locator(".camada.aberta, .nome-coluna").count(), 0, "soltar não abre o nome para renomear");
     assert.deepEqual(p.erros, []);
   });
+
+  /* 04/11/2026, como no Todoist: a descrição fica numa linha só, sob o nome, na lista larga e na estreita */
+  for (const largura of [1280, 900, 390]) {
+    test(`Lista de tarefas: descrição numa linha, sob o nome (${largura} px)`, async () => {
+      const p = await abrirLista({ largura });
+      const linha = item(p, "Ler o relatório da CGU");
+      const desc = linha.locator(".desc-sob");
+      assert.equal(await desc.count(), 1);
+      assert.equal(await linha.locator(".linha > .desc").count(), 0, "sem a coluna de descrição ao lado");
+      const nome = await linha.locator(".rotulo").boundingBox();
+      const caixa = await desc.boundingBox();
+      assert.ok(caixa.y >= nome.y + nome.height - 1, "abaixo do nome");
+      assert.ok(Math.abs(caixa.x - nome.x) <= 1, "alinhada com o nome");
+      const alturaDaLinha = parseFloat(await desc.evaluate((el) => getComputedStyle(el).lineHeight));
+      assert.ok(caixa.height <= alturaDaLinha + 1, "uma linha só");
+      assert.equal(await desc.evaluate((el) => el.scrollWidth > el.clientWidth), true, "o texto longo é cortado");
+      /* tarefa sem descrição: nada sob o nome */
+      assert.equal(await item(p, "Agendar a reunião").locator(".desc-sob").count(), 0);
+      assert.deepEqual(p.erros, []);
+    });
+  }
 });

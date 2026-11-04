@@ -1226,6 +1226,10 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .editando-no-lugar { cursor: text; outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; background: var(--surface); color: var(--ink); white-space: pre-wrap; -webkit-line-clamp: unset; }
 .linha .desc { align-self: stretch; display: flex; align-items: center; }
 .linha .desc.editando-no-lugar { display: block; min-height: 2.6em; }
+/* Lista de tarefas (04/11/2026, pedido do responsável, como no Todoist): descrição numa linha só, cinza e menor,
+   sob o nome, cortada com reticências; ao editar no lugar (Alt+clique), aparece inteira */
+.linha .desc-sob:not(.editando-no-lugar) { display: block; margin-top: 2px; font-size: .82rem; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.35; }
 .linha .donos { min-height: 28px; align-self: stretch; }
 .escolher-participantes { position: fixed; right: auto; width: 270px; max-height: min(360px, 70vh); }
 .opcoes-participantes { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; min-height: 0; }

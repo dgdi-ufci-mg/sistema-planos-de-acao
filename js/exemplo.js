@@ -227,14 +227,16 @@ export async function carregarExemploDeLista(store, hoje = new Date()) {
   const carla = await store.criarResponsavel(espacoId, { tipo: "pessoa", sigla: "CAR", nome: "Carla Mendes", usuario: "carla.mendes@ufci.edu.br" });
   const tarefas = [
     { rotulo: "Enviar a frequência do mês", limite: dia(DIAS_ANTES_DE_HOJE - 1) },
-    { rotulo: "Ler o relatório da CGU", limite: dia(DIAS_ANTES_DE_HOJE + 3) },
+    /* com descrição longa (04/11/2026): mostra a descrição numa linha só, sob o nome */
+    { rotulo: "Ler o relatório da CGU", limite: dia(DIAS_ANTES_DE_HOJE + 3),
+      descricao: "Relatório de avaliação dos controles internos da gestão de pessoas. Separar as recomendações que cabem à DGDI, ver os prazos de resposta e preparar um resumo para a reunião de diretoria." },
     { rotulo: "Agendar a reunião de planejamento" },
     { rotulo: "Responder a pesquisa de clima" },
     { rotulo: "Atualizar o currículo Lattes", concluida: true },
     { rotulo: "Pedir o material de escritório", concluida: true },
   ];
   for (const t of tarefas) {
-    const n = await store.criarAcao(espacoId, { rotulo: t.rotulo, responsaveis: [carla], ...(t.limite ? { dataLimite: t.limite } : {}) });
+    const n = await store.criarAcao(espacoId, { rotulo: t.rotulo, responsaveis: [carla], ...(t.limite ? { dataLimite: t.limite } : {}), ...(t.descricao ? { descricao: t.descricao } : {}) });
     if (t.concluida) await store.marcarConclusao(espacoId, n, true);
   }
   return espacoId;
