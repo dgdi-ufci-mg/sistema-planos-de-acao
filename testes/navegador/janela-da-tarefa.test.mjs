@@ -1,6 +1,6 @@
 /**
  * Janela da tarefa (revisão de 04/11/2026, pedido do responsável, tomando o Todoist como referência; documentação técnica,
- * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim.
+ * seção 8, "Ação"): a data-limite aparece uma vez só; sem atividade, uma coluna só, com o histórico no fim; ajuda no "?", e não em frases fixas.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -54,6 +54,16 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     await assentar(p);
     assert.equal(await janela(p).locator(".janela-grade.uma-coluna").count(), 0);
     assert.equal(await janela(p).locator(".janela-atividade [data-historico]").count(), 1);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("a ajuda da data-limite fica no \"?\", que abre o glossário, e não numa frase fixa", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const campo = janela(p).locator('[data-campo="dataLimite"]');
+    assert.equal(await campo.locator(".tec").count(), 0);
+    await campo.locator('[data-termo="dataLimite"]').click();
+    await assentar(p);
+    assert.match(await p.locator(".camada.aberta").last().innerText(), /Data-limite/);
     assert.deepEqual(p.erros, []);
   });
 });

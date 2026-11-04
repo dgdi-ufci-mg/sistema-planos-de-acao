@@ -34,6 +34,8 @@ export const GLOSSARIO = [
       <p>Nos cenários simulados, d<sub>i</sub> é a duração da ação <i>i</i> e T, a duração do espaço inteiro; σ<sub>i</sub> e σ<sub>T</sub> são os desvios-padrão delas. O quadrado da correlação, r<sub>i</sub>², é a parte da variância do prazo explicada pela ação; correlações negativas, que só vêm de ruído, contam como zero. A divisão pela soma das ações não concluídas faz as parcelas somarem 100%.</p>` },
   { chave: "prazo", titulo: "Prazo de uma ação",
     texto: "É contado em dias úteis, da liberação até a conclusão, incluindo o tempo até alguém começar. A data de início real não é registrada." },
+  { chave: "dataLimite", titulo: "Data-limite",
+    texto: "Data até a qual a ação ou tarefa deve estar concluída. Se ela passar sem a conclusão, a ação aparece como Atrasada. Sem data-limite, a ação não tem prazo." },
   { chave: "naoAntesDe", titulo: "Não começa antes de",
     texto: "Data mínima para a ação ser liberada, mesmo que as anteriores já tenham terminado. Serve, por exemplo, para ações que dependem de uma data externa, como o início do semestre." },
   { chave: "reest", titulo: "Reestimativa",

@@ -348,9 +348,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
     /* prazo: estimativa (enquanto livre) ou data-limite, conforme o modelo do espaço (passo 2.4b) */
     if (!comEstimativas) {
-      partes.push(`<div class="campo-acao${l.atrasada ? " atrasada" : ""}" data-campo="dataLimite">${rotuloHtml("dataLimite", "Data-limite")}
-        <input type="date" ${atributos("dataLimite", acao.dataLimite)} value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite">
-        <span class="tec">Vencida, a ação ganha o carimbo Atrasada. Vazia, a ação não tem prazo.</span></div>`);
+      partes.push(`<div class="campo-acao${l.atrasada ? " atrasada" : ""}" data-campo="dataLimite">${rotuloHtml("dataLimite", "Data-limite", "dataLimite")}
+        <input type="date" ${atributos("dataLimite", acao.dataLimite)} value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite"></div>`);
     } else if (livre) {
       const e = acao.estimativas?.at(-1);
       const v = (k) => (e?.[k] ?? "");
@@ -412,8 +411,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
     if (visivel(acao, "naoAntesDe")) {
       partes.push(`<div class="campo-acao" data-campo="naoAntesDe">${rotuloHtml("naoAntesDe", "Não começa antes de", "naoAntesDe")}
-        <input type="date" ${atributos("naoAntesDe", acao.naoAntesDe)} value="${esc(acao.naoAntesDe ?? "")}" aria-label="Não começa antes de">
-        <span class="tec">Data mínima para a ação ser liberada, mesmo que as anteriores já tenham terminado.</span></div>`);
+        <input type="date" ${atributos("naoAntesDe", acao.naoAntesDe)} value="${esc(acao.naoAntesDe ?? "")}" aria-label="Não começa antes de"></div>`);
     }
     if (d.usaCodigos && visivel(acao, "codigo")) {
       partes.push(`<div class="campo-acao" data-campo="codigo">${rotuloHtml("codigo", "Código")}
