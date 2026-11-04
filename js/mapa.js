@@ -281,7 +281,8 @@ const TAMANHO_DO_CODIGO = 11;
  * - `raioDoPonto`: metade da menor distância entre dois pontos da mesma faixa;
  * - `meiaAlturaDoNome`: metade da altura da caixa do código; `folgaDoNome`: espaço entre duas caixas;
  * - `folgaDireita`: espaço a mais depois do código, até o ponto seguinte;
- * - `folgaDaLinha`: menor distância entre uma linha e um ponto que não é dela;
+ * - `folgaDaLinha`: menor distância entre uma linha e um ponto que não é dela (regra firme, no fim de cada passo);
+ * - `circulosSemEncostar`: a regra firme da linha não aproxima dois pontos da faixa a menos disso (os círculos têm raio 6);
  * - `margemDaParede`: espaço entre o conteúdo e a borda da faixa; `forca*`: frações da invasão corrigidas por passo;
  * - `anguloMinimo`: menor ângulo, em graus, entre duas linhas do mesmo ponto;
  * - `crescer`, `encolher`: quanto a parede cede à pressão e volta quando sobra espaço;
@@ -289,7 +290,7 @@ const TAMANHO_DO_CODIGO = 11;
  *   qual a acomodação para.
  */
 export const FISICA = Object.freeze({
-  rigidezX: 0.15, rigidezY: 0.06, raioDoPonto: 8.5, meiaAlturaDoNome: 8, folgaDoNome: 2, folgaDireita: 4, folgaDaLinha: 9, margemDaParede: 5,
+  rigidezX: 0.15, rigidezY: 0.06, raioDoPonto: 8.5, meiaAlturaDoNome: 8, folgaDoNome: 2, folgaDireita: 4, folgaDaLinha: 9, circulosSemEncostar: 13, margemDaParede: 5,
   forcaDosPontos: 0.5, forcaDosNomes: 0.12, forcaDaLinha: 0.5, forcaDoNomeSobLinha: 0.25, forcaDaParede: 0.6, anguloMinimo: 6, forcaDoAngulo: 0.15,
   crescer: 0.5, encolher: 0.06, passoMaximo: 3, passos: 160, repouso: 0.02,
 });
@@ -412,6 +413,19 @@ export function acomodar(mapa, { margem = 28 } = {}, c = FISICA) {
   const dir = (i) => (larg[i] ? x[i] + recuo + larg[i] + c.folgaDireita : x[i] + R - 2); // borda direita da caixa (ponto mais código)
   const minimo = (c.anguloMinimo * Math.PI) / 180;
   const pressao = new Float64Array(faixas.length);
+  /** Faixa (a lista da ordem) e posição de cada ponto nela. */
+  const lugarNaOrdem = [];
+  for (const l of ordem) l.forEach((i, a) => { lugarNaOrdem[i] = [l, a]; });
+  /** Em (xn, oyn), o ponto da posição `a` da faixa `l` chegaria mais perto de um vizinho da faixa que já está a menos de `circulosSemEncostar` (os círculos, de raio 6, se encostariam). */
+  const encostaEmVizinho = (l, a, xn, oyn) => {
+    const i = l[a];
+    for (let b = Math.max(0, a - 4); b <= Math.min(l.length - 1, a + 4); b++) {
+      if (b === a) continue;
+      const depois = Math.hypot(x[l[b]] - xn, oy[l[b]] - oyn);
+      if (depois < c.circulosSemEncostar && depois < Math.hypot(x[l[b]] - x[i], oy[l[b]] - oy[i])) return true;
+    }
+    return false;
+  };
   /* faixa folgada: cabe um ponto a cada diâmetro mínimo (2 × raio + 1), em média; numa faixa mais cheia que isso, a
      saída na altura (abaixo) vira uma escada pela faixa toda e não resolve, então não vale */
   const folgada = ordem.map((l) => l.length < 2 || (largura - margem) / (l.length - 1) >= 2 * R + 1);
@@ -533,6 +547,58 @@ export function acomodar(mapa, { margem = 28 } = {}, c = FISICA) {
           atualizar(i);
           break;
         }
+      }
+    }
+    /*
+     * Linha longe de ponto alheio, como regra firme (04/11/2026): as forças podem se anular com o ponto ainda rente a
+     * uma linha (por exemplo, o código empurrando o ponto de volta para ela). Por isso, no fim de cada passo, o ponto a
+     * menos de `folgaDaLinha` de uma linha que não é dele é posto a essa distância, na perpendicular da linha, para o
+     * lado em que já está; se isso trocar a ordem ou criar cruzamento, tenta só na altura e depois só para o lado.
+     */
+    for (let s = 0; s < S; s++) {
+      const A = sa[s]; const B = sb[s];
+      const ax = px[A]; const ay = py[A]; const bx = px[B]; const by = py[B];
+      const dx = bx - ax; const dy = by - ay; const comp2 = dx * dx + dy * dy;
+      if (!comp2) continue;
+      const comp = Math.sqrt(comp2);
+      const nx = -dy / comp; const ny = dx / comp;
+      const x0 = Math.min(ax, bx) - c.folgaDaLinha; const x1 = Math.max(ax, bx) + c.folgaDaLinha;
+      const y0 = Math.min(ay, by) - c.folgaDaLinha; const y1 = Math.max(ay, by) + c.folgaDaLinha;
+      for (let i = 0; i < N; i++) {
+        if (i === A || i === B || px[i] < x0 || px[i] > x1 || py[i] < y0 || py[i] > y1) continue;
+        const u = Math.max(0, Math.min(1, ((px[i] - ax) * dx + (py[i] - ay) * dy) / comp2));
+        const qx = px[i] - (ax + u * dx); const qy = py[i] - (ay + u * dy);
+        const dist = Math.hypot(qx, qy);
+        if (dist >= c.folgaDaLinha) continue;
+        /* para longe do ponto mais próximo da linha (na ponta, a direção da ponta; no meio, a perpendicular) */
+        const [ux, uy] = dist > 1e-6 ? [qx / dist, qy / dist] : [nx, ny];
+        const falta = c.folgaDaLinha - dist + 0.25;
+        const tentativas = [[ux * falta, uy * falta]];
+        if (Math.abs(uy) > 0.2) tentativas.push([0, Math.sign(uy) * Math.min(3 * falta, falta / Math.abs(uy))]);
+        if (Math.abs(ux) > 0.2) tentativas.push([Math.sign(ux) * Math.min(3 * falta, falta / Math.abs(ux)), 0]);
+        /* tenta mover o ponto; se não der, a ponta da linha que está na mesma faixa dele, para o outro lado */
+        const mover = (k, lista) => {
+          const [lk, ak] = lugarNaOrdem[k];
+          const esq = ak ? x[lk[ak - 1]] + 1 : xMinimo;
+          const dir = ak < lk.length - 1 ? x[lk[ak + 1]] - 1 : xMaximo(k);
+          const temK = incidentes[k].length > 0;
+          const antesK = temK ? cruzamentosDe(k, px[k], py[k]) : [];
+          for (const [vx, vy] of lista) {
+            const xn = x[k] + vx;
+            if (xn < esq || xn > dir) continue;
+            const oyn = oy[k] + vy;
+            if (encostaEmVizinho(lk, ak, xn, oyn)) continue;
+            if (temK && !semNovos(antesK, cruzamentosDe(k, xn, Y(k, xn, oyn)))) continue;
+            maior = Math.max(maior, Math.abs(vx), Math.abs(vy));
+            x[k] = xn; oy[k] = oyn;
+            atualizar(k);
+            return true;
+          }
+          return false;
+        };
+        if (mover(i, tentativas)) continue;
+        const ponta = faixa[A] === faixa[i] ? A : faixa[B] === faixa[i] ? B : -1;
+        if (ponta >= 0) mover(ponta, tentativas.map(([vx, vy]) => [-vx, -vy]));
       }
     }
     /* paredes elásticas: crescem com a pressão; encolhem devagar até o que o conteúdo pede, sem passar da mínima.
