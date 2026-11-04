@@ -51,6 +51,23 @@ export const TIPO_PADRAO = "projeto";
 export const tipoDe = (espaco) => (espaco?.tipo && TIPOS[espaco.tipo] ? espaco.tipo : TIPO_PADRAO);
 
 /**
+ * Código do Plano de Ação (04/11/2026, pedido do responsável), como o dos itens do catálogo: opcional, até 30 letras,
+ * sem repetir entre os Planos de Ação ativos (sem diferenciar maiúsculas). Só o Plano de Ação tem código; nos outros
+ * tipos, o campo fica vazio. Problema, ou null.
+ * @param {{id?: string, tipo?: string, codigo?: string|null}} espaco  o espaço com o código novo
+ * @param {object[]} espacos  os espaços ativos
+ * @returns {{codigo: string, mensagem: string}|null}
+ */
+export function problemaDoCodigoDoPlano(espaco, espacos) {
+  const codigo = String(espaco.codigo ?? "").trim();
+  if (!codigo) return null;
+  if (tipoDe(espaco) !== "planoDeAcao") return { codigo: "codigo-so-do-plano", mensagem: "Só o Plano de Ação tem código." };
+  if (codigo.length > 30) return { codigo: "codigo-longo", mensagem: "O código do Plano de Ação tem no máximo 30 letras." };
+  const igual = espacos.find((e) => e.id !== espaco.id && !e.excluidoEm && tipoDe(e) === "planoDeAcao" && String(e.codigo ?? "").trim().toLowerCase() === codigo.toLowerCase());
+  return igual ? { codigo: "codigo-ocupado", mensagem: `Já existe o Plano de Ação com o código ${codigo}.` } : null;
+}
+
+/**
  * Problema do tipo e dos campos que ele exige, ou null.
  * @param {{tipo?: string|null, programa?: string|null, aprovacao?: {identificacao?: string, link?: string}|null}} espaco
  * @returns {{codigo: string, mensagem: string}|null}

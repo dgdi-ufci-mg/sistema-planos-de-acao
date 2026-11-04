@@ -320,11 +320,11 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
   }
 
   /* ---------- mapa ---------- */
-  /** Planos de Ação do mapa: os ligados a itens; o que a pessoa não pode consultar entra como "restrito", sem o nome. */
+  /** Planos de Ação do mapa: os ligados a itens; o que a pessoa não pode consultar entra como "restrito", sem o nome nem o código. */
   function planosDoMapa() {
     return planos.map((e) => {
       const visivel = store.podeVerEspaco(e);
-      return { id: e.id, nome: visivel ? e.nome : "Plano de Ação restrito", restrito: !visivel, superiores: e.vinculos, encerradoEm: e.encerradoEm ?? null };
+      return { id: e.id, codigo: visivel ? e.codigo ?? "" : "", nome: visivel ? e.nome : "Plano de Ação restrito", restrito: !visivel, superiores: e.vinculos, encerradoEm: e.encerradoEm ?? null };
     });
   }
   /** "Abrir" do cartão do Mapa: o painel do item, ou o espaço do Plano de Ação (que o restrito nunca oferece). */

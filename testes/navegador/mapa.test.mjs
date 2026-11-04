@@ -436,8 +436,8 @@ describe("Mapa do Strata", { skip: pular }, () => {
   });
 
   describe("acabamento (lote 4)", () => {
-    test("três níveis de zoom, faixa a faixa: de longe só os pontos, no meio os códigos, de perto os nomes; sempre do mesmo tamanho na tela", async () => {
-      /* uma tela baixa de celular abre de longe; aproximando, os níveis sobem */
+    test("códigos no mapa, nunca os nomes (03/11/2026): só os que cabem livres; mais perto, mais códigos; sempre do mesmo tamanho na tela", async () => {
+      /* uma tela baixa de celular abre de longe; aproximando, aparecem mais códigos */
       const p = await sessao.abrir({ largura: 390, altura: 520, ...ABRIR });
       const estado = () => p.evaluate(() => {
         const visiveis = [...document.querySelectorAll(".mapa-no .mapa-nome")].filter((e) => e.textContent);
@@ -448,58 +448,100 @@ describe("Mapa do Strata", { skip: pular }, () => {
           if (a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1) encostam++;
         }
         const tamanhos = visiveis.map((e) => Math.round(e.getBoundingClientRect().height));
-        return { niveis: document.querySelector(".mapa-svg").dataset.niveis.split(" "), codigos: visiveis.filter((e) => e.classList.contains("e-codigo")).length, nomes: visiveis.filter((e) => !e.classList.contains("e-codigo")).length, encostam, tamanhos };
+        const codigoCerto = visiveis.every((e) => e.classList.contains("e-codigo") && e.textContent === e.closest(".mapa-no").querySelector("title").textContent.split(" · ")[0]);
+        return { quantos: visiveis.length, encostam, tamanhos, codigoCerto };
       });
       const longe = await estado();
-      assert.ok(longe.niveis.some((n) => n !== "nomes"), `de longe, as faixas mais cheias não mostram os nomes (${longe.niveis})`);
-      assert.ok(longe.niveis.includes("codigos") || longe.niveis.includes("pontos"));
+      assert.ok(longe.codigoCerto, "só códigos, nunca os nomes");
       assert.equal(longe.encostam, 0, "nada se sobrepõe");
       let perto = longe;
-      for (let i = 0; i < 6 && !perto.niveis.slice(0, -1).every((n) => n === "nomes"); i++) { await p.click("[data-mapa-mais]"); await p.waitForTimeout(300); perto = await estado(); }
-      assert.ok(perto.nomes > 0, "de perto, os nomes");
-      assert.equal(perto.encostam, 0, "os nomes não se encostam");
-      assert.ok(Math.max(...perto.tamanhos) <= 20, `o texto continua do mesmo tamanho na tela (${Math.max(...perto.tamanhos)} px de altura)`);
-      /* o nível do meio: um mapa com pontos próximos, códigos que cabem e nomes que não cabem */
-      const meio = await p.evaluate(async () => {
-        const { criarVistaMapa } = await import("../js/superior/mapa.js");
-        const area = document.createElement("div");
-        area.className = "mapa-area";
-        area.style.cssText = "position:fixed;inset:0;width:600px;height:500px";
-        document.body.append(area);
-        const camadas = [{ id: "a", nome: "Objetivo", plural: "Objetivos" }];
-        const itens = Array.from({ length: 30 }, (_, i) => ({ id: `i${i}`, camada: "a", nome: `Objetivo com um nome bem comprido número ${i}`, codigo: `O${i}`, superiores: [] }));
-        criarVistaMapa(area, { camadas, itens, planos: [], estado: {} });
-        await new Promise((r) => setTimeout(r, 50));
-        return area.querySelector(".mapa-svg").dataset.niveis.split(" ")[0];
-      });
-      assert.equal(meio, "codigos", "no meio, os códigos");
+      for (let i = 0; i < 5; i++) { await p.click("[data-mapa-mais]"); await p.waitForTimeout(300); perto = await estado(); }
+      assert.ok(perto.quantos >= longe.quantos && perto.quantos > 0, `mais perto, mais códigos (${longe.quantos} → ${perto.quantos})`);
+      assert.ok(perto.codigoCerto, "de perto, ainda só os códigos");
+      assert.equal(perto.encostam, 0, "os códigos não se encostam");
+      assert.ok(Math.max(...perto.tamanhos) <= 18, `o texto continua do mesmo tamanho na tela (${Math.max(...perto.tamanhos)} px de altura)`);
     });
 
-    test("no computador, o mapa abre com os nomes inteiros", async () => {
+    test("no computador, o mapa abre com os códigos de todos os itens que têm código", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
-      const niveis = await p.locator(".mapa-svg").getAttribute("data-niveis");
-      assert.ok(niveis.split(" ").slice(0, -1).every((n) => n === "nomes"), `todas as faixas com itens mostram os nomes (${niveis})`);
+      const r = await p.evaluate(() => [...document.querySelectorAll(".mapa-no:not(.plano)")].map((g) => ({ codigo: g.querySelector("title").textContent.includes(" · ") ? g.querySelector("title").textContent.split(" · ")[0] : "", texto: g.querySelector(".mapa-nome").textContent })));
+      assert.deepEqual(r.filter((n) => n.codigo && n.texto !== n.codigo), [], "cada item com código mostra o código");
+      assert.deepEqual(r.filter((n) => !n.codigo && n.texto), [], "o item sem código (a Missão) não mostra rótulo");
     });
 
-    test("ao passar o mouse ou tocar, só os nomes do caminho aparecem, inteiros; o do ponto em foco, maior, em negrito e âmbar", async () => {
+    test("ao passar o mouse ou tocar, só os rótulos do caminho aparecem: o nome inteiro em linhas curtas, sem encavalar; o do ponto em foco, maior, em negrito, com o destaque", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
       const chave = await p.evaluate(() => [...document.querySelectorAll(".mapa-no")].find((g) => g.querySelector("title").textContent.startsWith("PF1 ")).dataset.no);
       await p.locator(`.mapa-no[data-no="${chave}"] .mapa-alvo`).hover({ force: true });
       await p.waitForSelector(".mapa-svg.com-selecao");
       const r = await p.evaluate((k) => {
         const g = document.querySelector(`.mapa-no[data-no="${k}"]`);
-        const nomes = [...document.querySelectorAll(".mapa-no")].map((n) => ({ caminho: n.classList.contains("no-caminho"), texto: n.querySelector(".mapa-nome").textContent, titulo: n.querySelector("title").textContent }));
+        const nomes = [...document.querySelectorAll(".mapa-no")].map((n) => ({
+          caminho: n.classList.contains("no-caminho"), linhas: [...n.querySelectorAll(".mapa-nome tspan")].map((t) => t.textContent),
+          texto: n.querySelector(".mapa-nome").textContent, titulo: n.querySelector("title").textContent, caixa: n.querySelector(".mapa-nome").getBoundingClientRect(),
+        }));
         const estilo = getComputedStyle(g.querySelector(".mapa-nome"));
-        const outro = [...document.querySelectorAll(".mapa-no.no-caminho:not(.foco) .mapa-nome")][0];
-        return { nomes, peso: estilo.fontWeight, cor: estilo.fill, altura: g.querySelector(".mapa-nome").getBoundingClientRect().height, alturaOutro: outro.getBoundingClientRect().height, ambar: getComputedStyle(document.documentElement).getPropertyValue("--warn").trim() };
+        const outro = [...document.querySelectorAll(".mapa-no.no-caminho:not(.foco) .mapa-nome")].find((e) => e.textContent);
+        return {
+          nomes, peso: estilo.fontWeight, foco: nomes.find((n) => n.titulo.startsWith("PF1 ")),
+          tamanho: parseFloat(estilo.fontSize), tamanhoOutro: parseFloat(getComputedStyle(outro).fontSize),
+          bolinha: getComputedStyle(g.querySelector(".mapa-bolinha")).fill, destaque: getComputedStyle(document.querySelector(".mapa-svg")).getPropertyValue("--mapa-destaque").trim(),
+          raio: g.querySelector(".mapa-bolinha").getAttribute("r"),
+        };
       }, chave);
-      assert.ok(r.nomes.filter((n) => !n.caminho).every((n) => !n.texto), "fora do caminho, sem nome");
-      assert.ok(r.nomes.filter((n) => n.caminho).every((n) => n.texto === n.titulo), "no caminho, o nome inteiro, sem reticências");
+      assert.ok(r.nomes.filter((n) => !n.caminho).every((n) => !n.texto), "fora do caminho, sem rótulo");
+      assert.equal(r.foco.linhas.join(" "), r.foco.titulo, "o ponto em foco mostra o nome inteiro");
+      assert.ok(r.foco.linhas.length > 1 && r.foco.linhas.every((l) => l.length <= 26), `em linhas curtas (${r.foco.linhas.join(" | ")})`);
+      assert.ok(r.nomes.filter((n) => n.caminho && n.texto).every((n) => n.linhas.join(" ") === n.titulo || n.texto === n.titulo.split(" · ")[0]), "no caminho, o nome inteiro ou, sem espaço, o código");
+      const acesos = r.nomes.filter((n) => n.caminho && n.texto);
+      for (let i = 0; i < acesos.length; i++) for (let j = i + 1; j < acesos.length; j++) {
+        const [a, b] = [acesos[i].caixa, acesos[j].caixa];
+        assert.ok(!(a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1), `${acesos[i].titulo} e ${acesos[j].titulo} não se encostam`);
+      }
       assert.equal(r.peso, "700");
-      assert.ok(r.altura > r.alturaOutro, "o do ponto em foco é maior");
+      assert.ok(r.tamanho > r.tamanhoOutro, "o do ponto em foco é maior");
+      assert.equal(r.raio, "8", "o ponto em foco fica maior");
+      assert.equal(r.bolinha, "rgb(36, 49, 122)", `de dia, o destaque é anil (${r.destaque}), e não mais o âmbar`);
       await p.mouse.move(640, 790);
       await p.waitForSelector(".mapa-svg:not(.com-selecao)");
-      assert.ok(await p.evaluate(() => [...document.querySelectorAll(".mapa-no:not(.plano) .mapa-nome")].some((e) => e.textContent.endsWith("…") || e.textContent)), "os nomes voltam");
+      assert.ok(await p.evaluate(() => [...document.querySelectorAll(".mapa-no .mapa-nome")].some((e) => e.textContent)), "os códigos voltam");
+    });
+
+    test("legenda no pé da tela, só com o que aparece no desenho: aberta no computador; no celular, recolhida no botão Legenda (03/11/2026)", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      assert.equal(await p.locator("[data-mapa-legenda]").isHidden(), true, "sem linha tracejada nem sinal de atenção, sem legenda");
+      /* um item escondido pelo filtro faz uma linha tracejada */
+      const r = await p.evaluate(async () => {
+        const { criarVistaMapa } = await import("../js/superior/mapa.js");
+        const area = document.createElement("div");
+        area.className = "mapa-area";
+        area.style.cssText = "position:fixed;inset:0;width:600px;height:500px";
+        document.body.append(area);
+        const camadas = [{ id: "a", nome: "A", plural: "As" }, { id: "b", nome: "B", plural: "Bs" }];
+        const itens = [{ id: "x", camada: "a", nome: "X", codigo: "X1", superiores: [] }, { id: "y", camada: "b", nome: "Y", codigo: "Y1", superiores: ["x"], via: { x: ["Escondido"] }, alerta: "Encerrado, com algo vigente abaixo" }];
+        criarVistaMapa(area, { camadas, itens, planos: [], estado: {} });
+        await new Promise((ok) => setTimeout(ok, 50));
+        const legenda = area.querySelector("[data-mapa-legenda]");
+        const caixa = legenda.getBoundingClientRect();
+        return { escondida: legenda.hidden, aberta: legenda.open, itens: [...legenda.querySelectorAll("li span")].map((l) => l.textContent), baixo: caixa.bottom, esquerda: caixa.left };
+      });
+      assert.equal(r.escondida, false);
+      assert.equal(r.aberta, true, "aberta no computador");
+      assert.deepEqual(r.itens, ["Linha tracejada: passa por itens escondidos pelo filtro", "Fora da vigência, com algo vigente abaixo"]);
+      assert.ok(r.baixo > 470 && r.esquerda < 30, `presa ao pé da tela, à esquerda (${r.esquerda}, ${r.baixo})`);
+      const c = await sessao.abrir({ largura: 390, altura: 800, ...ABRIR });
+      const celular = await c.evaluate(async () => {
+        const { criarVistaMapa } = await import("../js/superior/mapa.js");
+        const area = document.createElement("div");
+        area.className = "mapa-area";
+        area.style.cssText = "position:fixed;inset:0";
+        document.body.append(area);
+        criarVistaMapa(area, { camadas: [{ id: "a", nome: "A", plural: "As" }], itens: [{ id: "y", camada: "a", nome: "Y", codigo: "Y1", superiores: [], alerta: "Encerrado" }], planos: [], estado: {} });
+        await new Promise((ok) => setTimeout(ok, 50));
+        const legenda = area.querySelector("[data-mapa-legenda]");
+        return { aberta: legenda.open, botao: getComputedStyle(legenda.querySelector("summary")).display !== "none" };
+      });
+      assert.deepEqual(celular, { aberta: false, botao: true }, "no celular, recolhida no botão Legenda");
     });
   });
 
@@ -644,7 +686,8 @@ describe("Mapa do Strata", { skip: pular }, () => {
       return [...document.querySelectorAll(".mapa-no")].every((g) => {
         const c = g.querySelector(".mapa-bolinha");
         const t = g.querySelector(".mapa-nome");
-        return !t || Math.abs(Number(t.getAttribute("x")) - Number(c.getAttribute("cx")) - 9 / k) < 0.05;
+        const x = Number((t?.getAttribute("transform") ?? "").match(/translate\(([-\d.]+)/)?.[1]);
+        return !t || Math.abs(x - Number(c.getAttribute("cx")) - 9 / k) < 0.05;
       });
     });
 

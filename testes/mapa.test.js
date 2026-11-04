@@ -2,9 +2,10 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { CAMADAS_PADRAO } from "../js/estrategia.js";
+import { itensDoCatalogoReal } from "./dados/catalogo-real.js";
 import {
   FAIXA_PLANOS, faixasDoMapa, calcularMapa, rotuloDoPonto, deslocamentoCurvo, caminhoDaFaixa, caminhoDaLigacao, problemasDasLigacoes,
-  escalaMinima, limitarTransformacao, transformacaoInicial, caminhoDoNo, caminhoAlem, linhaDoSolo, estrelasDoCeu, puxaoDosVizinhos, alturaPuxada, passoDaInercia, velocidadeDeSaida, PUXAO, INERCIA, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
+  escalaMinima, limitarTransformacao, FISICA, codigosVisiveis, quebrarEmLinhas, segmentosSeCruzam, transformacaoInicial, caminhoDoNo, caminhoAlem, linhaDoSolo, estrelasDoCeu, puxaoDosVizinhos, alturaPuxada, passoDaInercia, velocidadeDeSaida, PUXAO, INERCIA, lerCor, razaoDeContraste, melhorTinta, estrelasDoMapa, MOLA, passoDaMola, emRepouso,
 } from "../js/mapa.js";
 
 const item = (id, camada, nome, superiores = [], codigo = "") => ({ id, camada, nome, codigo, superiores });
@@ -128,36 +129,40 @@ describe("Mapa: ordem, posição e curva", () => {
     }
   });
 
-  it("faixa cheia demais cresce para baixo, em fileiras, e não para os lados (lote 4)", () => {
+  it("faixa cheia demais faz o mapa crescer para os lados, e não espremer os pontos; a física os acomoda (04/11/2026)", () => {
     const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(80), vista: { w: 400, h: 600 } });
-    assert.equal(m.largura, 400, "a largura continua a da área");
+    assert.ok(m.largura > 400, `o mapa fica mais largo que a área (${m.largura})`);
+    assert.ok(m.largura >= 2 * 28 + 60 + (79 * 26) / 2 - 1, "os pontos a 13 unidades (26 ÷ 2)");
     const pa = m.faixas.at(-1);
-    const nos = m.nos.filter((n) => n.faixa === m.faixas.length - 1).sort((a, b) => a.x - b.x);
-    assert.ok(pa.niveis >= 8, `${pa.niveis} fileiras`);
-    assert.ok(pa.altura >= 40 + 8 * 19, "a faixa fica mais alta");
-    const porFileira = new Map();
-    for (const n of nos) porFileira.set(n.nivel, [...(porFileira.get(n.nivel) ?? []), n]);
-    for (const fila of porFileira.values()) for (let i = 1; i < fila.length; i++) assert.ok(fila[i].x - fila[i - 1].x >= 26 - 1e-6, "26 entre vizinhos da mesma fileira");
+    const nos = m.nos.filter((n) => n.faixa === m.faixas.length - 1);
     for (const n of nos) assert.ok(n.y > pa.topo && n.y < pa.base, "cada ponto dentro da faixa");
+    let menor = Infinity;
+    for (let i = 0; i < nos.length; i++) for (let j = i + 1; j < nos.length; j++) menor = Math.min(menor, Math.hypot(nos[i].x - nos[j].x, nos[i].y - nos[j].y));
+    assert.ok(menor >= 12, `os círculos (raio 6) não se sobrepõem (menor distância ${menor.toFixed(1)})`);
     const outras = m.faixas.slice(0, -1).filter((f) => f.nos.length <= 3);
-    assert.ok(outras.every((f) => f.altura < pa.altura), "as faixas com poucos itens ficam baixas, com a altura mínima");
+    assert.ok(outras.every((f) => f.altura === m.alturaMinima), "as faixas com poucos itens ficam com a altura mínima");
   });
 
-  it("só passa da largura da área quando nem 8 fileiras bastam", () => {
-    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(200), vista: { w: 400, h: 600 } });
-    assert.ok(m.largura > 400);
-    assert.ok(m.largura >= 2 * 28 + 60 + (199 * 26) / 8 - 1);
-    assert.equal(m.faixas.at(-1).niveis, 8);
+  it("o mesmo desenho no celular e no computador estreito: abaixo da largura necessária, o mapa não muda (04/11/2026)", () => {
+    const real = itensDoCatalogoReal();
+    const [a, b] = [390, 800].map((w) => calcularMapa({ camadas: CAMADAS_PADRAO, itens: real, vista: { w, h: 800 } }));
+    assert.equal(a.largura, b.largura);
+    assert.deepEqual(a.nos.map((n) => [n.chave, n.x, n.yCurvo]), b.nos.map((n) => [n.chave, n.x, n.yCurvo]));
+    const largo = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), vista: { w: 1280, h: 800 } });
+    assert.equal(largo.largura, 1280, "o que cabe continua com a largura da área");
   });
 
-  it("faixa cheia alterna os pontos em níveis; o nome que não cabe é cortado com reticências", () => {
-    const largos = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), vista: { w: 1000, h: 600 }, medir: () => 400 });
-    assert.ok(largos.faixas[0].niveis >= 2, "dois objetivos com nomes de 400 não cabem lado a lado");
-    const curtos = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), vista: { w: 1000, h: 600 }, medir: () => 10 });
-    assert.ok(curtos.faixas.every((f) => f.niveis === 1));
-    const longo = calcularMapa({ camadas: CAMADAS_PADRAO, itens: [item("a", "objetivoEstrategico", "x".repeat(120), [], "OE1")], vista: { w: 300, h: 600 } });
-    assert.ok(longo.nos[0].rotulo.endsWith("…") && longo.nos[0].rotulo.length < 120);
-    assert.equal(longo.nos[0].nome.length, 120, "o nome inteiro continua no ponto");
+  it("sem degraus por regra: o rótulo é o código, o Plano de Ação não tem rótulo e o nome inteiro fica no ponto (03/11/2026)", () => {
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos: planosDe(3) });
+    assert.ok(m.faixas.every((f) => f.niveis === 1), "nenhuma faixa em níveis");
+    for (const n of m.nos) {
+      assert.equal(n.nivel, 0);
+      assert.equal(n.rotulo, n.tipo === "plano" ? "" : n.codigo);
+      assert.equal(n.completo, n.tipo === "plano" || !n.codigo ? n.nome : `${n.codigo} · ${n.nome}`);
+    }
+    const semCodigo = calcularMapa({ camadas: CAMADAS_PADRAO, itens: [item("a", "objetivoEstrategico", "x".repeat(120))] });
+    assert.equal(semCodigo.nos[0].rotulo, "", "item sem código: sem rótulo no mapa");
+    assert.equal(semCodigo.nos[0].largura, 0);
   });
 
   it("a curva é (x − centro)² ÷ (2R): zero no centro, para baixo nas pontas, igual para ponto e faixa", () => {
@@ -454,3 +459,150 @@ describe("Mapa: física, vizinhos que reagem e inércia (lote 5)", () => {
   });
 });
 
+
+/* ---------- física (03/11/2026): catálogo do tamanho do real ---------- */
+describe("Mapa: física com paredes, no catálogo do tamanho do real", () => {
+  const real = itensDoCatalogoReal();
+  const medir = (t) => t.length * 7; // como sem a tela
+  const larguraDoCodigo = (t) => ((t.length * 7 * 11) / 13) * 1.06;
+  const calcular = (w) => calcularMapa({ camadas: CAMADAS_PADRAO, itens: real, vista: { w, h: 800 }, medir });
+  const m1280 = calcular(1280);
+
+  it("o catálogo tem o tamanho do real: Missão, 14 OEs, 60 ODs, políticas, portfólios e programas", () => {
+    const conta = (camada) => real.filter((x) => x.camada === camada).length;
+    assert.deepEqual([conta("missao"), conta("objetivoEstrategico"), conta("objetivoDesenvolvimento")], [1, 14, 60]);
+    assert.ok(conta("politica") >= 10 && conta("portfolio") >= 3 && conta("programa") >= 15);
+  });
+
+  it("zero cruzamentos entre linhas sem ponta em comum (menos as de itens com mais de um superior)", () => {
+    for (const w of [1280, 960, 390]) {
+      const cruzamentos = problemasDasLigacoes(calcular(w)).filter((p) => p.tipo === "cruzamento");
+      assert.deepEqual(cruzamentos.map((p) => `${p.ligacao.de}>${p.ligacao.para} × ${p.outro.de}>${p.outro.para}`), [], `largura ${w}`);
+    }
+  });
+
+  it("no computador, nenhuma linha passa rente a um ponto que não é dela nem se sobrepõe a outra do mesmo ponto; no celular, quase nenhuma", () => {
+    assert.deepEqual(problemasDasLigacoes(m1280).map((p) => `${p.tipo} ${p.ligacao.de}>${p.ligacao.para} ${p.outro.chave ?? p.outro.de}`), []);
+    const celular = problemasDasLigacoes(calcular(390));
+    assert.ok(celular.length <= 6, `no celular, ${celular.length} (eram cerca de 60 com o mapa espremido)`);
+  });
+
+  it("nenhum ponto fora da sua faixa, em nenhuma largura", () => {
+    for (const w of [1280, 960, 390]) {
+      const m = calcular(w);
+      for (const n of m.nos) {
+        const f = m.faixas[n.faixa];
+        assert.ok(n.y - FISICA.raioDoPonto >= f.topo && n.y + FISICA.raioDoPonto <= f.base, `${n.chave} na faixa ${f.id}, largura ${w}`);
+      }
+    }
+  });
+
+  it("desenho igual em duas aberturas (sem acaso)", () => {
+    const outra = calcular(1280);
+    assert.deepEqual(outra.nos.map((n) => [n.chave, n.x, n.yCurvo]), m1280.nos.map((n) => [n.chave, n.x, n.yCurvo]));
+    assert.deepEqual(outra.faixas.map((f) => f.altura), m1280.faixas.map((f) => f.altura));
+  });
+
+  it("a física não troca a ordem das regras em nenhuma faixa", () => {
+    for (const f of m1280.faixas) {
+      const xs = f.nos.map((k) => m1280.nos.find((n) => n.chave === k).x);
+      for (let i = 1; i < xs.length; i++) assert.ok(xs[i] > xs[i - 1], `ordem da faixa ${f.id}`);
+    }
+  });
+
+  it("paredes elásticas: a altura mínima vale para a faixa com poucos itens; a faixa mais cheia cresce", () => {
+    const porId = new Map(m1280.faixas.map((f) => [f.id, f]));
+    assert.equal(porId.get("missao").altura, m1280.alturaMinima, "a Missão, sozinha, fica com a mínima");
+    assert.ok(m1280.faixas.every((f) => f.altura >= m1280.alturaMinima));
+    assert.ok(porId.get("objetivoDesenvolvimento").altura > m1280.alturaMinima, "os 60 ODs empurram as paredes");
+  });
+
+  it("códigos à vista: nenhum cobre ponto ou código alheio, nem tem linha alheia por cima, em várias escalas; mais perto, mais códigos", () => {
+    const porChave = new Map(m1280.nos.map((n) => [n.chave, n]));
+    let antes = 0;
+    for (const k of [0.6, 0.96, 1.5, 2.5]) {
+      const vis = codigosVisiveis(m1280, k, { larguraNaTela: larguraDoCodigo });
+      const caixa = (n) => [n.x + 9 / k, n.x + (9 + larguraDoCodigo(n.rotulo)) / k, n.yCurvo - 6.5 / k, n.yCurvo + 6.5 / k];
+      const caixas = [...vis].map((c) => [c, caixa(porChave.get(c))]);
+      for (const [c, cx] of caixas) {
+        for (const l of m1280.ligacoes) {
+          if (l.de === c || l.para === c) continue;
+          const [a, b] = [porChave.get(l.de), porChave.get(l.para)];
+          assert.ok(!segmentoNaCaixaTeste(a, b, cx), `linha ${l.de}>${l.para} sobre o código de ${c} (k ${k})`);
+        }
+        for (const n of m1280.nos) if (n.chave !== c) assert.ok(!(n.x + 6 / k > cx[0] && n.x - 6 / k < cx[1] && n.yCurvo + 6 / k > cx[2] && n.yCurvo - 6 / k < cx[3]), `ponto ${n.chave} sob o código de ${c} (k ${k})`);
+        for (const [d, dx] of caixas) if (d !== c) assert.ok(!(dx[0] < cx[1] && cx[0] < dx[1] && dx[2] < cx[3] && cx[2] < dx[3]), `códigos de ${c} e ${d} se encostam (k ${k})`);
+      }
+      assert.ok(vis.size >= antes, `mais perto, não menos códigos (k ${k})`);
+      antes = vis.size;
+    }
+    assert.ok(antes > 60, `de perto, a maioria aparece (${antes})`);
+  });
+});
+
+/** O segmento AB passa pela caixa (conferência independente, por amostras ao longo da linha). */
+function segmentoNaCaixaTeste(a, b, [x0, x1, y0, y1]) {
+  for (let i = 0; i <= 400; i++) {
+    const t = i / 400;
+    const x = a.x + (b.x - a.x) * t; const y = a.yCurvo + (b.yCurvo - a.yCurvo) * t;
+    if (x > x0 && x < x1 && y > y0 && y < y1) return true;
+  }
+  return false;
+}
+
+describe("Mapa: ordem dos blocos pelo caminho desde o alto (03/11/2026)", () => {
+  it("o Programa ligado direto a uma Política fica entre os blocos certos: as linhas não se cruzam", () => {
+    const itens = [
+      item("oe1", "objetivoEstrategico", "A", [], "OE1"),
+      item("pol1", "politica", "P1", [], "POL1"), item("pol2", "politica", "P2", [], "POL2"),
+      item("od1", "objetivoDesenvolvimento", "D1", ["oe1"], "OD1"),
+      item("pf1", "portfolio", "Portfólio", ["pol1"], "PF1"),
+      item("prg1", "programa", "Sob o portfólio", ["pf1"], "PRG1"), item("prg2", "programa", "Sob o portfólio 2", ["pf1"], "PRG2"),
+      item("prg3", "programa", "Direto da política 2", ["pol2"], "PRG3"),
+    ];
+    const ordem = calcularMapa({ camadas: CAMADAS_PADRAO, itens: itens.map((x) => (x.camada === "politica" ? { ...x, superiores: ["od1"] } : x)) });
+    const programas = ordem.faixas.find((f) => f.id === "programa").nos;
+    assert.deepEqual(programas, ["prg1", "prg2", "prg3"], "os filhos do portfólio (que vem da POL1) antes do filho da POL2");
+    assert.deepEqual(problemasDasLigacoes(ordem).filter((p) => p.tipo === "cruzamento"), []);
+  });
+});
+
+describe("Mapa: código do Plano de Ação (04/11/2026)", () => {
+  it("o Plano de Ação mostra o código, como os itens; o restrito, nem nome nem código; os planos seguem a ordem de código e nome", () => {
+    const planos = [
+      { id: "p1", codigo: "PA-02", nome: "Plano B", superiores: ["prg1"] },
+      { id: "p2", codigo: "PA-01", nome: "Plano A", superiores: ["prg1"] },
+      { id: "p3", codigo: "PA-09", nome: "Plano de Ação restrito", superiores: ["prg1"], restrito: true },
+      { id: "p4", nome: "Sem código", superiores: ["prg1"] },
+    ];
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos });
+    const no = (id) => m.nos.find((n) => n.id === id);
+    assert.equal(no("p1").rotulo, "PA-02");
+    assert.equal(no("p1").completo, "PA-02 · Plano B");
+    assert.equal(no("p3").rotulo, "", "restrito: sem código");
+    assert.equal(no("p3").completo, "Plano de Ação restrito");
+    assert.equal(no("p4").rotulo, "");
+    assert.equal(no("p4").completo, "Sem código");
+    const ordemInicial = m.nos.filter((n) => n.tipo === "plano").map((n) => n.id);
+    assert.deepEqual(ordemInicial.slice().sort(), ["p1", "p2", "p3", "p4"]);
+  });
+});
+
+describe("Mapa: nome do caminho aceso em linhas curtas (03/11/2026)", () => {
+  it("quebra nas palavras, em até três linhas; o resto vai para a última, com reticências", () => {
+    assert.deepEqual(quebrarEmLinhas("OE-5 · Atualizar os currículos"), ["OE-5 · Atualizar os", "currículos"]);
+    assert.deepEqual(quebrarEmLinhas("curto"), ["curto"]);
+    const longas = quebrarEmLinhas("palavra ".repeat(20).trim());
+    assert.equal(longas.length, 3);
+    assert.ok(longas.every((l) => l.length <= 26));
+    assert.ok(longas[2].endsWith("…"));
+    assert.deepEqual(quebrarEmLinhas("Supercalifragilisticexpialidocious!"), ["Supercalifragilisticexpialidocious!"], "palavra maior que a linha fica inteira");
+  });
+
+  it("segmentosSeCruzam: cruzamento próprio, sem contar pontas que se tocam", () => {
+    const p = (x, y) => ({ x, y });
+    assert.ok(segmentosSeCruzam(p(0, 0), p(10, 10), p(0, 10), p(10, 0)));
+    assert.ok(!segmentosSeCruzam(p(0, 0), p(10, 10), p(10, 10), p(20, 0)), "só se tocam na ponta");
+    assert.ok(!segmentosSeCruzam(p(0, 0), p(10, 0), p(0, 5), p(10, 5)));
+  });
+});
