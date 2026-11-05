@@ -79,7 +79,9 @@ function lerColunas() {
   return lembrado("sextante.barra", "") === "nenhuma" ? { barras: false } : {};
 }
 
-export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra }) {
+export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra, acaoInicial = null }) {
+  /** ação a abrir quando os dados chegarem, vinda do link "#/espaco/<id>/acao/<número>" (05/11/2026) */
+  let acaoDoLink = acaoInicial;
   /** Números das ações na ordem em que a tela as mostra (cada coluna do quadro segue esta ordem; ver o arrastar). */
   let ordemNaTela = [];
   /** concluidas: no Quadro de tarefas, mostrar as tarefas marcadas como concluídas (revisão de 27/10/2026; padrão: sim, como no Trello) */
@@ -2149,9 +2151,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     destino?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }
 
+  /** Link para uma ação (05/11/2026): abre a janela dela, se ainda existir no espaço. */
+  function abrirDoLink(numero) {
+    if (acoes.some((a) => a.numero === numero)) abrirJanela(numero);
+    else avisar(`${termos(espaco).Acao} do link não encontrada neste espaço. Pode ter sido excluída.`);
+  }
+
   function abrirJanela(numero, abrirCom = null) {
     janela = abrirAcao({
       store, espacoId, numero, hoje, usuario, dados: dadosDaJanela(), abrirCom,
+      abrirOutra: (n) => abrirJanela(n),
       aoFechar: () => {
         janela = null;
         lista?.querySelector(`[data-numero="${numero}"] [data-abrir-acao]`)?.focus();
@@ -2210,6 +2219,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       if (ui.entregas === null && ehPlano()) carregarEntregas(); // passo 2.6: o aviso "sem entregas" precisa delas
       janela?.atualizar(dadosDaJanela());
       novaJanela?.atualizar(dadosDaJanela());
+      if (acaoDoLink != null) { const n = acaoDoLink; acaoDoLink = null; abrirDoLink(n); }
     }).catch((e) => avisar(e.message));
   });
   /* atalho "N": nova ação, como o botão "Nova ação" (só onde ele aparece) */
@@ -2243,7 +2253,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     });
     return [...comandos, ...itens];
   });
-  return () => {
+  const pararTela = () => {
     tirarDaBusca();
     tirarTeclaN();
     for (const b of [inferior.nova, inferior.filtros]) if (b) { b.onclick = null; b.hidden = true; }
@@ -2267,6 +2277,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     barra.onchange = null;
     alvo.onchange = null;
   };
+  /* quem abriu a tela também abre uma ação pelo link (05/11/2026) */
+  pararTela.abrirAcao = (n) => (linhas ? abrirDoLink(n) : (acaoDoLink = n));
+  return pararTela;
 }
 
 function legendaHtml(podeEditar) {

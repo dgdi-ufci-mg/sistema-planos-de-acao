@@ -119,8 +119,8 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     const corpo = janela(p).locator(".painel-corpo");
     await corpo.evaluate((el) => el.scrollTo(0, el.scrollHeight));
     await assentar(p, 200);
-    const excluir = await janela(p).locator("[data-excluir-acao]").boundingBox();
-    assert.ok(excluir.y + excluir.height <= 520, "o fim da janela é alcançável rolando");
+    const fim = await janela(p).locator("[data-historico] summary").boundingBox();
+    assert.ok(fim.y + fim.height <= 520, "o fim da janela é alcançável rolando");
     assert.deepEqual(p.erros, []);
   });
   test("nas tarefas, a situação é uma linha discreta, sem caixa; no plano, o resumo continua em caixas", async () => {
@@ -175,6 +175,65 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     await assentar(p);
     assert.equal(await p.locator(".camada.aberta").count(), 1);
     assert.equal(await campo.locator("[data-abrir-data]").count(), 1);
+    assert.deepEqual(p.erros, []);
+  });
+  test("menu \"…\" do cabeçalho: data de criação, Copiar link, Duplicar e Excluir; Excluir saiu do rodapé", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const j = janela(p);
+    assert.equal(await j.locator(".janela-principal [data-excluir-acao]").count(), 0, "sem Excluir no rodapé");
+    const botao = j.locator("header [data-menu-janela]");
+    await botao.click();
+    const menu = j.locator(".menu-da-janela");
+    assert.equal(await botao.getAttribute("aria-expanded"), "true");
+    assert.match(await menu.locator(".menu-info").innerText(), /^Criada em \d{2}\/\d{2}\/\d{4} às \d{2}h\d{2}$/);
+    assert.deepEqual(await menu.locator("button").allInnerTexts(), ["Copiar link", "Duplicar", "Excluir tarefa"]);
+    /* Esc fecha só o menu */
+    await p.keyboard.press("Escape");
+    assert.equal(await menu.count(), 0);
+    assert.equal(await p.locator(".camada.aberta").count(), 1);
+    /* Duplicar: uma tarefa nova com o mesmo nome, no fim da lista */
+    const antes = await p.locator(".item").filter({ hasText: "Ler o relatório" }).count();
+    await botao.click();
+    await j.locator("[data-duplicar]").click();
+    await assentar(p);
+    assert.equal(await p.locator(".item").filter({ hasText: "Ler o relatório" }).count(), antes + 1);
+    assert.match(await p.locator(".aviso-curto").innerText(), /Tarefa duplicada/);
+    /* Excluir, pelo menu, com Desfazer no aviso */
+    await botao.click();
+    await j.locator("[data-excluir-acao]").click();
+    await assentar(p);
+    assert.equal(await p.locator(".camada.aberta").count(), 0);
+    assert.match(await p.locator(".aviso-curto").innerText(), /excluída/);
+    /* no plano, sem Duplicar (estimativas e dependências não se copiam) */
+    const plano = await sessao.abrir({ largura: 1280 });
+    await plano.locator(".linha[data-abrir-acao]").first().click();
+    await plano.waitForSelector(".camada.aberta .janela-grade");
+    await janela(plano).locator("header [data-menu-janela]").click();
+    assert.deepEqual(await janela(plano).locator(".menu-da-janela button").allInnerTexts(), ["Copiar link", "Excluir ação"]);
+    assert.deepEqual([...p.erros, ...plano.erros], []);
+  });
+
+  test("Copiar link: o endereço abre a janela da mesma tarefa; um número que não existe avisa", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    await p.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await janela(p).locator("header [data-menu-janela]").click();
+    await janela(p).locator("[data-copiar-link]").click();
+    await assentar(p);
+    const link = await p.evaluate(() => navigator.clipboard.readText());
+    assert.match(link, /#\/espaco\/[\w-]+\/acao\/\d+$/);
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    assert.equal(await p.locator(".camada.aberta").count(), 0);
+    await p.evaluate((h) => { location.hash = h; }, new URL(link).hash);
+    await p.waitForSelector(".camada.aberta .janela-grade");
+    await assentar(p);
+    assert.equal(await janela(p).locator(".janela-nome").inputValue(), "Ler o relatório da CGU");
+    assert.match(await p.evaluate(() => location.hash), /^#\/espaco\/[\w-]+$/, "o endereço volta a ser o do espaço");
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    await p.evaluate((h) => { location.hash = h.replace(/\d+$/, "9999"); }, new URL(link).hash);
+    await assentar(p);
+    assert.match(await p.locator(".aviso-curto").innerText(), /não encontrada/);
     assert.deepEqual(p.erros, []);
   });
 });

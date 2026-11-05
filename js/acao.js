@@ -102,3 +102,20 @@ export function sugerirCodigo(rotulo, existentes) {
   }
   return null;
 }
+
+/**
+ * Dados para duplicar uma tarefa (05/11/2026, pedido do responsável, como o "Duplicar" do Todoist): o que a pessoa
+ * escreveu e escolheu, sem o que é do registro (número, ordem, datas de criação e alteração) nem a conclusão. O
+ * checklist vem com os itens desmarcados; o código não vem, porque não pode repetir no espaço. Campos vazios ficam
+ * de fora. A situação personalizada não entra aqui: quem duplica a aplica depois, pela operação própria.
+ * @param {object} acao
+ * @returns {object} campos para `criarAcao`
+ */
+export function dadosDaCopia(acao) {
+  const campos = ["rotulo", "etapa", "descricao", "justificativa", "local", "responsaveis", "dataLimite", "naoAntesDe", "notas", "etiquetas", "documentos", "valoresPersonalizados"];
+  const vazio = (v) => v == null || v === "" || (Array.isArray(v) && !v.length) || (typeof v === "object" && !Array.isArray(v) && !Object.keys(v).length);
+  const dados = {};
+  for (const c of campos) if (!vazio(acao[c])) dados[c] = structuredClone(acao[c]);
+  if (acao.checklist?.length) dados.checklist = acao.checklist.map((i) => ({ ...i, feito: false }));
+  return dados;
+}

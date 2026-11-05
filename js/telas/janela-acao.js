@@ -7,7 +7,7 @@
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { duracaoPert } from "../calculo.js";
-import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo } from "../acao.js";
+import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo, dadosDaCopia } from "../acao.js";
 import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { excluirAcao } from "./exclusao.js";
@@ -38,13 +38,13 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
 /**
  * @param {{store: object, espacoId: string, numero: number, hoje: string, usuario?: string|null,
  *   dados: object, aoFechar: () => void, abrirCom?: string|null}} opcoes  dados: ver dadosDaJanela em espaco.js;
- *   abrirCom: formulário já aberto, como "concluir"
+ *   abrirCom: formulário já aberto, como "concluir"; abrirOutra: abre a janela de outra ação (a cópia recém-criada)
  * @returns {{atualizar: (dados: object) => void, fechar: () => void}}
  */
 /** Prefixo dos campos personalizados na janela (passo 3.6): "cp-" mais o id do campo. */
 const PREFIXO_CP = "cp-";
 
-export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null }) {
+export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null }) {
   let d = dados;
   /** Quem acabou de alterar a ação, se não foi quem está com a janela aberta (seção 4.6). */
   let alheia = null;
@@ -66,8 +66,104 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
     janela: true,
-    aoFechar: () => { fechada = true; pararComentarios?.(); aoFechar(); },
+    aoFechar: () => { fechada = true; pararComentarios?.(); document.removeEventListener("click", fecharMenuFora, true); aoFechar(); },
   });
+
+  /* ---------- menu "…" do cabeçalho (05/11/2026, pedido do responsável, como no Todoist) ---------- */
+  /*
+   * Ações sobre a tarefa inteira ficam num menu ao lado de "Fechar": a data de criação, "Copiar link", "Duplicar"
+   * (no Quadro e na Lista de tarefas) e "Excluir", por último e separado, que saiu do rodapé da janela.
+   */
+  const cabecaDaJanela = corpo.closest(".painel").querySelector("header");
+  const ferramentas = document.createElement("div");
+  ferramentas.className = "ferramentas-janela";
+  ferramentas.innerHTML = `<span class="menu-janela-lugar"><button type="button" class="botao discreto menu-janela" data-menu-janela
+    aria-haspopup="menu" aria-expanded="false" aria-label="Mais opções" title="Mais opções">${ICONES.opcoes}</button></span>`;
+  cabecaDaJanela.querySelector("[data-fechar]").before(ferramentas);
+  let menuAberto = false;
+  const podeDuplicar = () => ehDeTarefas(d.espaco) && store.podeGravar && d.perm.criarAcao;
+  const podeExcluir = () => store.podeGravar && d.perm.excluirAcao;
+  function menuHtml() {
+    const acao = acaoAtual();
+    const t = termos(d.espaco);
+    const criada = acao?.criadaEm ? new Date(acao.criadaEm) : null;
+    const quandoCriada = criada && !Number.isNaN(criada.getTime())
+      ? `${criada.toLocaleDateString("pt-BR")} às ${String(criada.getHours()).padStart(2, "0")}h${String(criada.getMinutes()).padStart(2, "0")}` : "";
+    return `<div class="menu-da-janela" role="menu" aria-label="Opções da ${t.acao}">
+      ${quandoCriada ? `<p class="menu-info">Criada em ${quandoCriada}</p>` : ""}
+      <button type="button" role="menuitem" data-copiar-link>Copiar link</button>
+      ${podeDuplicar() ? `<button type="button" role="menuitem" data-duplicar>Duplicar</button>` : ""}
+      ${podeExcluir() ? `<button type="button" role="menuitem" class="perigo" data-excluir-acao>Excluir ${t.acao}</button>` : ""}
+    </div>`;
+  }
+  function abrirMenu(abrir) {
+    menuAberto = abrir;
+    const lugar = ferramentas.querySelector(".menu-janela-lugar");
+    lugar.querySelector(".menu-da-janela")?.remove();
+    const botao = lugar.querySelector("[data-menu-janela]");
+    botao.setAttribute("aria-expanded", String(abrir));
+    if (!abrir) return;
+    lugar.insertAdjacentHTML("beforeend", menuHtml());
+    lugar.querySelector(".menu-da-janela button")?.focus();
+  }
+  /** Endereço que abre esta ação: o do espaço, com "/acao/<número>" (rota em js/app.js). */
+  const linkDaAcao = () => `${location.origin}${location.pathname}#/espaco/${espacoId}/acao/${numero}`;
+  async function copiarLink() {
+    const url = linkDaAcao();
+    try {
+      await navigator.clipboard.writeText(url);
+      avisar(`Link da ${termos(d.espaco).acao} copiado.`);
+    } catch {
+      avisar(`Não foi possível copiar. O link é: ${url}`);
+    }
+  }
+  async function duplicar() {
+    const acao = acaoAtual();
+    const l = d.linhaDe.get(numero);
+    try {
+      const nova = await store.criarAcao(espacoId, dadosDaCopia(acao));
+      /* na mesma coluna do quadro, se a original está numa situação personalizada */
+      if (acao.situacaoPersonalizada && l?.situacao === "liberada") {
+        try { await store.mudarSituacao(espacoId, nova, acao.situacaoPersonalizada); } catch { /* fica na coluna inicial */ }
+      }
+      avisar(`${termos(d.espaco).Acao} duplicada.`, abrirOutra ? { acao: { texto: "Abrir", fazer: () => abrirOutra(nova) } } : {});
+    } catch (e) { avisar(e.message); }
+  }
+  async function excluir() {
+    try {
+      if (await excluirAcao({ store, espacoId, acao: acaoAtual(), acoes: d.acoes })) fecharPainel();
+    } catch (falha) { avisar(falha.message); }
+  }
+  ferramentas.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.closest("[data-menu-janela]")) return abrirMenu(!menuAberto);
+    const item = t.closest(".menu-da-janela button");
+    if (!item) return;
+    abrirMenu(false);
+    if (item.matches("[data-copiar-link]")) copiarLink();
+    else if (item.matches("[data-duplicar]")) duplicar();
+    else if (item.matches("[data-excluir-acao]")) excluir();
+  });
+  /* Esc fecha o menu sem fechar a janela; setas andam pelos itens */
+  ferramentas.addEventListener("keydown", (e) => {
+    if (!menuAberto) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      abrirMenu(false);
+      ferramentas.querySelector("[data-menu-janela]").focus();
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      const itens = [...ferramentas.querySelectorAll(".menu-da-janela button")];
+      const i = itens.indexOf(document.activeElement);
+      e.preventDefault();
+      itens[(i + (e.key === "ArrowDown" ? 1 : -1) + itens.length) % itens.length]?.focus();
+    }
+  });
+  /* clique fora do menu o fecha */
+  const fecharMenuFora = (e) => { if (menuAberto && !ferramentas.contains(e.target)) abrirMenu(false); };
+  document.addEventListener("click", fecharMenuFora, true);
 
   /* ---------- comentários (passo 2.9; seção 16.5): conversa da ação, em tempo real ---------- */
   /** null enquanto carrega; depois, a lista do banco (inclusive os apagados, que a tela resume) */
@@ -243,7 +339,6 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           <div class="janela-campos">${camposHtml(acao, l, etapas, etapa)}</div>
           ${maisCamposHtml(acao)}
           ${umaColuna ? historicoAlteracoes : ""}
-          ${store.podeGravar && d.perm.excluirAcao ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ${termos(d.espaco).acao}</button></div>` : ""}
         </div>
 
         ${umaColuna ? "" : `<div class="janela-atividade" aria-label="Atividade">
@@ -1079,12 +1174,6 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const form = t.closest("[data-abrir-form]");
     if (form) return editar(form.dataset.abrirForm);
     if (t.closest("[data-cancelar]")) return cancelar();
-    if (t.closest("[data-excluir-acao]")) {
-      try {
-        if (await excluirAcao({ store, espacoId, acao: acaoAtual(), acoes: d.acoes })) fecharPainel();
-      } catch (falha) { avisar(falha.message); }
-      return;
-    }
     const editarC = t.closest("[data-editar-comentario-id]");
     if (editarC) { editandoComentario = editarC.dataset.editarComentarioId; apagandoComentario = null; return desenharComentarios(); }
     const apagarC = t.closest("[data-apagar-comentario]");
