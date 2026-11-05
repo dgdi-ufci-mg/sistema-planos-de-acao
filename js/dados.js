@@ -19,6 +19,7 @@ import { chaveValida, planejarMovimento } from "./prioridade.js";
 import { camadasDe, problemaDasCamadas, problemaDoInstrumento, problemaDoItem, problemaDosVinculos, subordinadosDe } from "./estrategia.js";
 import { encerrado, podeVer, participa, problemaDaVisibilidade, permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
 import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
+import { problemaDosCampos, problemaDosValores, camposDe, campoPorId, valorDoCampo } from "./campos-personalizados.js";
 
 export { ErroDeDados };
 
@@ -134,6 +135,12 @@ function validarEspaco(e, recusarDesconhecidos) {
   for (const x of e.etiquetas ?? []) recusarDesconhecidos(x, "etiqueta"); // passo 2.10a
   const etiquetas = problemaDasEtiquetas(e);
   if (etiquetas) throw new ErroDeDados(etiquetas.codigo, etiquetas.mensagem);
+  for (const c of e.camposPersonalizados ?? []) { // passo 3.6
+    recusarDesconhecidos(c, "campoPersonalizado");
+    for (const o of c.opcoes ?? []) recusarDesconhecidos(o, "opcaoDoCampo");
+  }
+  const campos = problemaDosCampos(e);
+  if (campos) throw new ErroDeDados(campos.codigo, campos.mensagem);
 }
 
 /** Lista de datas excluídas: data válida, sem repetir, só com os campos do dicionário. */
@@ -237,6 +244,13 @@ export function criarStore(banco, opcoes = {}) {
     if (!Array.isArray(lista) || new Set(lista).size !== lista.length) throw new ErroDeDados("etiqueta-invalida", "Lista de etiquetas inválida.");
     const catalogo = new Set(etiquetasDe(await banco.lerEspaco(espacoId)).map((x) => x.id));
     if (lista.some((id) => !catalogo.has(id))) throw new ErroDeDados("nao-encontrado", "Etiqueta não encontrada neste espaço.");
+  }
+
+  /** Valores personalizados gravados com a ação inteira (criação, restauração): campos do catálogo, no formato do tipo (passo 3.6). */
+  async function conferirValores(espacoId, campos) {
+    if (!("valoresPersonalizados" in campos) || campos.valoresPersonalizados == null) return;
+    const p = problemaDosValores(await banco.lerEspaco(espacoId), campos.valoresPersonalizados);
+    if (p) throw new ErroDeDados(p.codigo, p.mensagem);
   }
 
   /**
@@ -718,6 +732,7 @@ export function criarStore(banco, opcoes = {}) {
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o nome da ação.");
       await conferirModelo(espacoId, outros);
       await conferirEtiquetas(espacoId, outros);
+      await conferirValores(espacoId, outros);
       await conferirEntregaDaAcao(espacoId, outros);
       conferirDocumentos(outros);
       conferirPosicao(outros);
@@ -751,6 +766,8 @@ export function criarStore(banco, opcoes = {}) {
       recusarFixos(campos, FIXOS_DA_ACAO);
       if ("situacaoPersonalizada" in campos) throw new ErroDeDados("campo-fixo", "A situação muda por mudarSituacao.");
       if ("conclusaoMarcadaEm" in campos) throw new ErroDeDados("campo-fixo", "A conclusão do Quadro de tarefas muda por marcarConclusao.");
+      /* um valor de cada vez (seção 4.6): gravar o mapa inteiro apagaria o que outra pessoa acabou de preencher */
+      if ("valoresPersonalizados" in campos) throw new ErroDeDados("campo-fixo", "Os campos personalizados mudam por definirValorPersonalizado.");
       /* data mínima no futuro: a ação deixa de estar liberada e sai da situação personalizada (passo 2.7) */
       if (campos.naoAntesDe && campos.naoAntesDe > hoje()) campos = { ...campos, situacaoPersonalizada: null };
       await conferirModelo(espacoId, campos);
@@ -774,6 +791,80 @@ export function criarStore(banco, opcoes = {}) {
       await banco.retirarDaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo(), hist);
       await arrumarTons(espacoId);
     },
+    // --- campos personalizados (passo 3.6; seções 4.1.14 e 16.8): catálogo do espaço e valores da ação, um a um ---
+    /**
+     * Cria um campo personalizado no catálogo do espaço e devolve o id. O tipo não muda depois.
+     * @param {{nome: string, tipo: string, opcoes?: string[]}} dados opções: nomes, só na lista de opções
+     */
+    async criarCampoPersonalizado(espacoId, { nome, tipo, opcoes } = {}) {
+      await exigir(espacoId, "configurar");
+      const espaco = await banco.lerEspaco(espacoId);
+      const id = novoId();
+      const campo = { id, nome: String(nome ?? "").trim().replace(/\s+/g, " "), tipo };
+      if (tipo === "opcao") campo.opcoes = (opcoes ?? []).map((n) => String(n ?? "").trim()).filter(Boolean).map((n) => ({ id: novoId(), nome: n }));
+      await store.alterarEspaco(espacoId, { camposPersonalizados: [...camposDe(espaco), campo] });
+      return id;
+    },
+    /**
+     * Muda o nome, arquiva ou restaura um campo, ou muda as opções da lista. O tipo não muda.
+     * Opções: lista de {id, nome}; sem id, opção nova. A opção retirada sai também das ações que a usavam,
+     * uma a uma, com registro no histórico. Devolve em quantas ações ativas a opção retirada estava.
+     */
+    async alterarCampoPersonalizado(espacoId, id, mudanca = {}) {
+      await exigir(espacoId, "configurar");
+      recusarDesconhecidos(mudanca, "campoPersonalizado");
+      if ("id" in mudanca) throw new ErroDeDados("campo-fixo", "O identificador do campo não muda.");
+      const espaco = await banco.lerEspaco(espacoId);
+      const atual = campoPorId(espaco, id);
+      if (!atual) throw new ErroDeDados("nao-encontrado", "Campo personalizado não encontrado neste espaço.");
+      if ("tipo" in mudanca && mudanca.tipo !== atual.tipo) throw new ErroDeDados("campo-fixo", "O tipo do campo não muda depois de criado. Crie outro campo e arquive este.");
+      const novo = { ...atual };
+      if ("nome" in mudanca) novo.nome = String(mudanca.nome ?? "").trim().replace(/\s+/g, " ");
+      if ("arquivado" in mudanca) { if (mudanca.arquivado) novo.arquivado = true; else delete novo.arquivado; }
+      let retiradas = [];
+      if ("opcoes" in mudanca) {
+        if (atual.tipo !== "opcao") throw new ErroDeDados("opcoes-fora-do-tipo", "Só a lista de opções tem opções.");
+        const opcoes = (mudanca.opcoes ?? []).map((o) => {
+          recusarDesconhecidos(o, "opcaoDoCampo");
+          return { id: o.id || novoId(), nome: String(o.nome ?? "").trim() };
+        });
+        const ficam = new Set(opcoes.map((o) => o.id));
+        retiradas = (atual.opcoes ?? []).filter((o) => !ficam.has(o.id)).map((o) => o.id);
+        novo.opcoes = opcoes;
+      }
+      /* confere o catálogo antes de mexer nas ações: se o nome ou a opção forem recusados, nada muda */
+      validarEspaco({ ...espaco, camposPersonalizados: camposDe(espaco).map((c) => (c.id === id ? novo : c)) }, recusarDesconhecidos);
+      let afetadas = 0;
+      if (retiradas.length) {
+        for (const a of await banco.listarAcoes(espacoId)) {
+          if (!retiradas.includes(a.valoresPersonalizados?.[id])) continue;
+          await banco.mudarValores(espacoId, a.numero, (v) => { const n = { ...v }; delete n[id]; return n; }, carimbo(), hist);
+          if (ativa(a)) afetadas += 1;
+        }
+      }
+      await store.alterarEspaco(espacoId, { camposPersonalizados: camposDe(await banco.lerEspaco(espacoId)).map((c) => (c.id === id ? novo : c)) });
+      return afetadas;
+    },
+    /**
+     * Grava o valor de um campo personalizado numa ação, sem tocar nos outros campos (seção 4.6).
+     * `entrada`: o que a pessoa informou (texto, número, data AAAA-MM-DD, id ou nome da opção, sim/não, link);
+     * vazio apaga o valor. Campo arquivado não recebe valor.
+     */
+    async definirValorPersonalizado(espacoId, numero, campoId, entrada) {
+      await exigir(espacoId, "atualizar", numero);
+      const campo = campoPorId(await banco.lerEspaco(espacoId), campoId);
+      if (!campo) throw new ErroDeDados("nao-encontrado", "Campo personalizado não encontrado neste espaço.");
+      if (campo.arquivado) throw new ErroDeDados("campo-arquivado", `O campo “${campo.nome}” está arquivado.`);
+      const r = valorDoCampo(campo, entrada);
+      if (r.problema) throw new ErroDeDados(r.problema.codigo, r.problema.mensagem);
+      await exigirAcao(espacoId, numero);
+      await banco.mudarValores(espacoId, numero, (v) => {
+        const n = { ...v };
+        if (r.valor == null) delete n[campoId]; else n[campoId] = r.valor;
+        return n;
+      }, carimbo(), hist);
+    },
+
     // --- etiquetas (passo 2.10a; seção 16.8): catálogo do espaço e etiquetas da ação, uma a uma ---
     /** Cria uma etiqueta no catálogo do espaço e devolve o id. Sem cor, a menos usada. */
     async criarEtiqueta(espacoId, { nome, cor } = {}) {
@@ -1675,6 +1766,7 @@ export function criarStore(banco, opcoes = {}) {
     "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist",
     "criarEtiqueta", "alterarEtiqueta", "retirarEtiqueta", "acrescentarEtiquetaNaAcao", "retirarEtiquetaDaAcao", "etiquetarAcao",
     "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao", "priorizar",
+    "criarCampoPersonalizado", "alterarCampoPersonalizado", "definirValorPersonalizado",
     /* faltavam (24/10/2026): sem eles, mudar a situação ou comentar sem conexão não dava o aviso de "sem conexão" */
     "mudarSituacao", "retirarSituacao", "comentar", "editarComentario", "apagarComentario",
     "assumirAdministracao", "definirPapel", "encerrarEspaco", "reabrirEspaco", "nomearAdministrador",

@@ -22,7 +22,22 @@ export function registrosDaMudanca(antes, depois, { em, por, novoId }) {
   if (!antes) return [{ id: novoId(), ...base, tipo: "criacao", campo: null, antes: null, depois: null }];
   return CAMPOS.acao
     .filter((campo) => !SEM_HISTORICO.has(campo) && !iguais(antes[campo], depois[campo]))
-    .map((campo) => ({ id: novoId(), ...base, tipo: "alteracao", campo, antes: valor(antes[campo]), depois: valor(depois[campo]) }));
+    .flatMap((campo) => (campo === PERSONALIZADOS ? porCampoPersonalizado(antes[campo], depois[campo])
+      : [{ campo, antes: valor(antes[campo]), depois: valor(depois[campo]) }]))
+    .map((r) => ({ id: novoId(), ...base, tipo: "alteracao", ...r }));
+}
+
+/**
+ * Campos personalizados (passo 3.6): um registro por campo que mudou, com `campo` = "valoresPersonalizados.<id>",
+ * como os demais campos da ação. Assim o histórico e a carga para o Data Lakehouse seguem "um registro por campo".
+ */
+const PERSONALIZADOS = "valoresPersonalizados";
+function porCampoPersonalizado(antes, depois) {
+  const a = antes ?? {};
+  const d = depois ?? {};
+  return [...new Set([...Object.keys(a), ...Object.keys(d)])]
+    .filter((id) => !iguais(a[id], d[id]))
+    .map((id) => ({ campo: `${PERSONALIZADOS}.${id}`, antes: valor(a[id]), depois: valor(d[id]) }));
 }
 
 const dataBr = (iso) => (iso ? String(iso).slice(0, 10).split("-").reverse().join("/") : "");
@@ -45,6 +60,13 @@ export function descreverRegistro(r, nomes) {
     return [entrou.length ? `${rotulo}: acrescentou ${entrou.join(", ")}` : "", saiu.length ? `${entrou.length ? "retirou" : `${rotulo}: retirou`} ${saiu.join(", ")}` : ""]
       .filter(Boolean).join("; ") + ".";
   };
+  /* passo 3.6: o nome do campo e o valor como texto vêm do catálogo do espaço */
+  if (String(campo).startsWith(`${PERSONALIZADOS}.`)) {
+    const c = nomes.campoPersonalizado?.(campo.slice(PERSONALIZADOS.length + 1));
+    const nome = c?.nome ?? "campo retirado";
+    const texto = (v) => (c?.texto ? c.texto(v) : String(v));
+    return depois == null ? `Apagou “${nome}”.` : `Mudou “${nome}” para ${texto(depois) ? `“${texto(depois)}”` : "vazio"}${antes == null ? "" : ` (era “${texto(antes)}”)`}.`;
+  }
   switch (campo) {
     case "rotulo": return `Mudou o nome da ação de “${antes ?? ""}” para “${depois ?? ""}”.`;
     case "codigo": return depois ? `Mudou o código para ${depois}${antes ? ` (era ${antes})` : ""}.` : "Retirou o código.";
