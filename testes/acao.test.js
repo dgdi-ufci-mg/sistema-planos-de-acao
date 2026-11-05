@@ -1,7 +1,7 @@
 /** Testes das regras da janela da ação (js/acao.js) e das operações do Store usadas por ela. */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { estimativaLivre, dependentes, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo, problemaDoCodigo, sugerirCodigo } from "../js/acao.js";
+import { estimativaLivre, dependentes, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo, problemaDoCodigo, sugerirCodigo, dadosDaCopia } from "../js/acao.js";
 import { criarBancoLocal } from "../js/banco/local.js";
 import { criarStore } from "../js/dados.js";
 
@@ -158,5 +158,39 @@ describe("Janela da ação: operações do Store", async () => {
     assert.equal((await store.lerAcao(id, 1)).concluidaEm, "2026-10-19");
     await store.desfazerConclusao(id, 1);
     assert.equal((await store.lerAcao(id, 1)).concluidaEm, null);
+  });
+});
+
+describe("Duplicar a tarefa (05/11/2026)", () => {
+  it("copia o que a pessoa escreveu, com o checklist desmarcado, sem código, conclusão nem campos de registro", () => {
+    const acao = {
+      numero: 7, ordem: 3, codigo: "REL", rotulo: "Ler o relatório", descricao: "Separar as recomendações", responsaveis: ["r1"],
+      dataLimite: "2026-11-20", etiquetas: ["e1"], notas: "", checklist: [{ id: "i1", texto: "Ler", feito: true }],
+      valoresPersonalizados: {}, conclusaoMarcadaEm: "2026-11-04T10:00:00Z", situacaoPersonalizada: "s1",
+      criadaEm: "2026-11-01T10:00:00Z", alteradaEm: "2026-11-02T10:00:00Z", alteradaPor: "ana@x", dependeDe: [], estimativas: [],
+    };
+    const copia = dadosDaCopia(acao);
+    assert.deepEqual(copia, {
+      rotulo: "Ler o relatório", descricao: "Separar as recomendações", responsaveis: ["r1"], dataLimite: "2026-11-20",
+      etiquetas: ["e1"], checklist: [{ id: "i1", texto: "Ler", feito: false }],
+    });
+    copia.responsaveis.push("r2");
+    assert.deepEqual(acao.responsaveis, ["r1"], "a cópia não mexe na original");
+    assert.equal(acao.checklist[0].feito, true);
+  });
+
+  it("o Store aceita a cópia como uma tarefa nova, no fim da lista", async () => {
+    const store = criarStore(criarBancoLocal(), { usuario: null, hoje: () => "2026-11-05" });
+    const id = await store.criarEspaco({ nome: "Minhas tarefas", inicio: "2026-11-01", tipo: "lista" });
+    const n = await store.criarAcao(id, { rotulo: "Original", dataLimite: "2026-11-20", descricao: "Texto" });
+    await store.acrescentarItemNoChecklist(id, n, "Passo");
+    const original = (await store.listarAcoes(id)).find((a) => a.numero === n);
+    const nova = await store.criarAcao(id, dadosDaCopia(original));
+    const lista = await store.listarAcoes(id);
+    assert.deepEqual(lista.map((a) => a.numero), [n, nova]);
+    const copia = lista.at(-1);
+    assert.equal(copia.rotulo, "Original");
+    assert.equal(copia.dataLimite, "2026-11-20");
+    assert.deepEqual(copia.checklist.map((i) => [i.texto, i.feito]), [["Passo", false]]);
   });
 });

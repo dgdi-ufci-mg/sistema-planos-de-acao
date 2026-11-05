@@ -131,3 +131,18 @@ describe("Prazo da tarefa como texto (Lista de tarefas, 04/11/2026)", async () =
     assert.equal(prazoDaTarefa(null, hoje), null);
   });
 });
+
+describe("Atalhos da data-limite (janela da tarefa, 05/11/2026)", () => {
+  it("hoje, amanhã e a próxima segunda, em dias corridos", async () => {
+    const { atalhosDeData } = await import("../js/lista.js");
+    /* quinta-feira, 05/11/2026 */
+    assert.deepEqual(atalhosDeData("2026-11-05"), [
+      { rotulo: "Hoje", data: "2026-11-05" }, { rotulo: "Amanhã", data: "2026-11-06" }, { rotulo: "Próxima segunda", data: "2026-11-09" },
+    ]);
+    /* segunda-feira: a próxima é a da semana que vem; domingo: a de amanhã; virada de mês e de ano */
+    assert.equal(atalhosDeData("2026-11-09")[2].data, "2026-11-16");
+    assert.equal(atalhosDeData("2026-11-08")[2].data, "2026-11-09");
+    assert.equal(atalhosDeData("2026-12-31")[1].data, "2027-01-01");
+    assert.equal(atalhosDeData("2026-12-31")[2].data, "2027-01-04");
+  });
+});

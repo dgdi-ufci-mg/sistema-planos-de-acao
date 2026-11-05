@@ -192,8 +192,18 @@ async function verExemplo() {
 
 /** Para de acompanhar o espaço que estava aberto. */
 let pararEspaco = () => {};
+/** Tela do espaço aberto: abre a janela de uma ação pelo link (05/11/2026). */
+let telaDoEspaco = null;
+/**
+ * Endereço de um espaço, com ou sem uma ação: "#/espaco/<id>" ou "#/espaco/<id>/acao/<número>" (link para a
+ * tarefa, 05/11/2026, pedido do responsável, como o "Copiar link" do Todoist).
+ */
+function rota() {
+  const m = location.hash.match(/^#\/espaco\/([\w-]+)(?:\/acao\/(\d+))?$/);
+  return m ? { id: m[1], acao: m[2] ? Number(m[2]) : null } : { id: null, acao: null };
+}
 
-async function abrirEspaco(id) {
+async function abrirEspaco(id, { acao = null } = {}) {
   const daqui = storeDe(id);
   const espaco = await tentar(() => daqui.lerEspaco(id), null);
   if (!espaco) return false;
@@ -210,7 +220,8 @@ async function abrirEspaco(id) {
   pararEspaco();
   /* sem login, a tela esconde "Nova ação"; as demais gravações são recusadas com aviso */
   document.body.classList.toggle("so-leitura", !daqui.podeGravar);
-  const pararTela = mostrarEspaco(principal, { store: daqui, espacoId: id, hoje, usuario, barra: document.querySelector("[data-acoes-topo]") });
+  const pararTela = mostrarEspaco(principal, { store: daqui, espacoId: id, hoje, usuario, barra: document.querySelector("[data-acoes-topo]"), acaoInicial: acao });
+  telaDoEspaco = pararTela;
   /* o nome do espaço no topo acompanha as mudanças (por exemplo, ao renomear em "Configurar este espaço") */
   /* o topo acompanha o nome do espaço e o nome de quem entrou (o do responsável ligado ao e-mail neste espaço) */
   /* e o tipo, que muda o grupo do espaço no menu lateral (passo 2.4a) */
@@ -347,15 +358,22 @@ document.addEventListener("click", (e) => {
 
 /** Abre o espaço do link, o último aberto ou as boas-vindas. */
 async function abrirInicio() {
-  const doLink = location.hash.match(/^#\/espaco\/([\w-]+)$/)?.[1];
-  for (const id of [doLink, ultimo()]) if (id && await abrirEspaco(id)) return;
+  const { id: doLink, acao } = rota();
+  if (doLink && await abrirEspaco(doLink, { acao })) return;
+  for (const id of [ultimo()]) if (id && await abrirEspaco(id)) return;
   boasVindas();
 }
 
 /* link para outro espaço dentro do sistema (passo 2.6: "Continua a entrega X, do Plano de Ação Y") */
 window.addEventListener("hashchange", () => {
-  const id = location.hash.match(/^#\/espaco\/([\w-]+)$/)?.[1];
-  if (id && id !== abertoId && store) abrirEspaco(id);
+  const { id, acao } = rota();
+  if (!id || !store) return;
+  if (id !== abertoId) { abrirEspaco(id, { acao }); return; }
+  /* link para uma ação do espaço já aberto: abre a janela dela e o endereço volta a ser o do espaço */
+  if (acao != null) {
+    history.replaceState(null, "", `#/espaco/${id}`);
+    telaDoEspaco?.abrirAcao?.(acao);
+  }
 });
 
 /* aplicativo instalável pelo navegador: o service worker, sem cache, e a barra refeita quando o navegador oferece instalar */

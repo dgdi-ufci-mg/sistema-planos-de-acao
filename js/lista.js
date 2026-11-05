@@ -149,3 +149,21 @@ export function prazoDaTarefa(data, hoje, { concluida = false } = {}) {
   const tom = concluida ? "depois" : dias < 0 ? "vencida" : dias === 0 ? "hoje" : dias <= 6 ? "breve" : "depois";
   return { texto, tom, dias };
 }
+
+/**
+ * Atalhos da data-limite na janela da tarefa (05/11/2026, pedido do responsável, na comparação com o Todoist): "Hoje",
+ * "Amanhã" e "Próxima segunda" (a segunda-feira depois de hoje; se hoje é segunda, a da semana que vem), em dias
+ * corridos, como o prazo da lista.
+ * @param {string} hoje  data ISO
+ * @returns {{rotulo: string, data: string}[]}
+ */
+export function atalhosDeData(hoje) {
+  const [ano, mes, dia] = hoje.split("-").map(Number);
+  const mais = (n) => new Date(Date.UTC(ano, mes - 1, dia + n)).toISOString().slice(0, 10);
+  const semana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+  return [
+    { rotulo: "Hoje", data: hoje },
+    { rotulo: "Amanhã", data: mais(1) },
+    { rotulo: "Próxima segunda", data: mais(((8 - semana) % 7) || 7) },
+  ];
+}

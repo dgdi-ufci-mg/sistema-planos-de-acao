@@ -7,7 +7,7 @@
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { duracaoPert } from "../calculo.js";
-import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo } from "../acao.js";
+import { estimativaLivre, anterioresPossiveis, buscar, resumoDasEstimativas, pendencias, normalizarCodigo, dadosDaCopia } from "../acao.js";
 import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { excluirAcao } from "./exclusao.js";
@@ -24,6 +24,7 @@ import { ehDeTarefas } from "../tipos.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { camposAtivos, campoPorId, textoDoValor, valorDoCampo } from "../campos-personalizados.js";
+import { atalhosDeData } from "../lista.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -37,13 +38,14 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
 /**
  * @param {{store: object, espacoId: string, numero: number, hoje: string, usuario?: string|null,
  *   dados: object, aoFechar: () => void, abrirCom?: string|null}} opcoes  dados: ver dadosDaJanela em espaco.js;
- *   abrirCom: formulário já aberto, como "concluir"
+ *   abrirCom: formulário já aberto, como "concluir"; abrirOutra: abre a janela de outra ação (a cópia recém-criada);
+ *   vizinha(número, passo): a ação anterior (-1) ou seguinte (1) na tela, ou null (setas da janela)
  * @returns {{atualizar: (dados: object) => void, fechar: () => void}}
  */
 /** Prefixo dos campos personalizados na janela (passo 3.6): "cp-" mais o id do campo. */
 const PREFIXO_CP = "cp-";
 
-export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null }) {
+export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null, vizinha = null }) {
   let d = dados;
   /** Quem acabou de alterar a ação, se não foi quem está com a janela aberta (seção 4.6). */
   let alheia = null;
@@ -65,8 +67,150 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
     janela: true,
-    aoFechar: () => { fechada = true; pararComentarios?.(); aoFechar(); },
+    aoFechar: () => { fechada = true; pararComentarios?.(); document.removeEventListener("click", fecharMenuFora, true); aoFechar(numero); },
   });
+
+  /* ---------- menu "…" do cabeçalho (05/11/2026, pedido do responsável, como no Todoist) ---------- */
+  /*
+   * Ações sobre a tarefa inteira ficam num menu ao lado de "Fechar": a data de criação, "Copiar link", "Duplicar"
+   * (no Quadro e na Lista de tarefas) e "Excluir", por último e separado, que saiu do rodapé da janela.
+   */
+  const cabecaDaJanela = corpo.closest(".painel").querySelector("header");
+  const ferramentas = document.createElement("div");
+  ferramentas.className = "ferramentas-janela";
+  ferramentas.innerHTML = `${vizinha ? `<button type="button" class="botao discreto seta-janela" data-ir="-1">${ICONES.acima}</button>
+    <button type="button" class="botao discreto seta-janela" data-ir="1">${ICONES.abaixo}</button>` : ""}<span class="menu-janela-lugar"><button type="button" class="botao discreto menu-janela" data-menu-janela
+    aria-haspopup="menu" aria-expanded="false" aria-label="Mais opções" title="Mais opções">${ICONES.opcoes}</button></span>`;
+  cabecaDaJanela.querySelector("[data-fechar]").before(ferramentas);
+  let menuAberto = false;
+  const podeDuplicar = () => ehDeTarefas(d.espaco) && store.podeGravar && d.perm.criarAcao;
+  const podeExcluir = () => store.podeGravar && d.perm.excluirAcao;
+  function menuHtml() {
+    const acao = acaoAtual();
+    const t = termos(d.espaco);
+    const criada = acao?.criadaEm ? new Date(acao.criadaEm) : null;
+    const quandoCriada = criada && !Number.isNaN(criada.getTime())
+      ? `${criada.toLocaleDateString("pt-BR")} às ${String(criada.getHours()).padStart(2, "0")}h${String(criada.getMinutes()).padStart(2, "0")}` : "";
+    return `<div class="menu-da-janela" role="menu" aria-label="Opções da ${t.acao}">
+      ${quandoCriada ? `<p class="menu-info">Criada em ${quandoCriada}</p>` : ""}
+      <button type="button" role="menuitem" data-copiar-link>Copiar link</button>
+      ${podeDuplicar() ? `<button type="button" role="menuitem" data-duplicar>Duplicar</button>` : ""}
+      ${podeExcluir() ? `<button type="button" role="menuitem" class="perigo" data-excluir-acao>Excluir ${t.acao}</button>` : ""}
+    </div>`;
+  }
+  function abrirMenu(abrir) {
+    menuAberto = abrir;
+    const lugar = ferramentas.querySelector(".menu-janela-lugar");
+    lugar.querySelector(".menu-da-janela")?.remove();
+    const botao = lugar.querySelector("[data-menu-janela]");
+    botao.setAttribute("aria-expanded", String(abrir));
+    if (!abrir) return;
+    lugar.insertAdjacentHTML("beforeend", menuHtml());
+    lugar.querySelector(".menu-da-janela button")?.focus();
+  }
+  /** Endereço que abre esta ação: o do espaço, com "/acao/<número>" (rota em js/app.js). */
+  const linkDaAcao = () => `${location.origin}${location.pathname}#/espaco/${espacoId}/acao/${numero}`;
+  async function copiarLink() {
+    const url = linkDaAcao();
+    try {
+      await navigator.clipboard.writeText(url);
+      avisar(`Link da ${termos(d.espaco).acao} copiado.`);
+    } catch {
+      avisar(`Não foi possível copiar. O link é: ${url}`);
+    }
+  }
+  async function duplicar() {
+    const acao = acaoAtual();
+    const l = d.linhaDe.get(numero);
+    try {
+      const nova = await store.criarAcao(espacoId, dadosDaCopia(acao));
+      /* na mesma coluna do quadro, se a original está numa situação personalizada */
+      if (acao.situacaoPersonalizada && l?.situacao === "liberada") {
+        try { await store.mudarSituacao(espacoId, nova, acao.situacaoPersonalizada); } catch { /* fica na coluna inicial */ }
+      }
+      avisar(`${termos(d.espaco).Acao} duplicada.`, abrirOutra ? { acao: { texto: "Abrir", fazer: () => abrirOutra(nova) } } : {});
+    } catch (e) { avisar(e.message); }
+  }
+  async function excluir() {
+    try {
+      if (await excluirAcao({ store, espacoId, acao: acaoAtual(), acoes: d.acoes })) fecharPainel();
+    } catch (falha) { avisar(falha.message); }
+  }
+  /* ---------- setas: ação anterior e seguinte da tela, sem fechar a janela (05/11/2026, pedido do responsável) ---------- */
+  function desenharSetas() {
+    const t = termos(d.espaco);
+    for (const b of ferramentas.querySelectorAll("[data-ir]")) {
+      const anterior = b.dataset.ir === "-1";
+      const alvo = vizinha(numero, Number(b.dataset.ir));
+      const texto = `${anterior ? `${t.Acao} anterior` : `Próxima ${t.acao}`}`;
+      b.disabled = alvo == null;
+      b.setAttribute("aria-label", texto);
+      b.title = `${texto} (Alt+${anterior ? "↑" : "↓"})`;
+    }
+  }
+  /**
+   * Troca a ação mostrada pela vizinha, na mesma janela. Quem estava digitando já gravou ao sair do campo (o clique
+   * na seta tira o foco antes). O estado da janela volta ao de uma janela recém-aberta.
+   */
+  function irPara(passo) {
+    const alvo = vizinha?.(numero, passo);
+    if (alvo == null || fechada) return;
+    /* o campo em edição grava ao perder o foco; o foco fica nas ferramentas do cabeçalho, para as teclas seguirem valendo */
+    if (corpo.contains(document.activeElement)) document.activeElement.blur();
+    numero = alvo;
+    editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
+    buscando = null; editandoDoc = null; mostrados.clear(); aba = "detalhes"; status = null; abrindoData = false;
+    alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
+    abrirMenu(false);
+    pararComentarios?.();
+    comentarios = null;
+    desenhar();
+    desenharSetas();
+    const seta = ferramentas.querySelector(`[data-ir="${passo}"]:not(:disabled)`) ?? ferramentas.querySelector("[data-ir]:not(:disabled), [data-menu-janela]");
+    seta?.focus();
+    surgir(corpo.querySelector(".janela-grade"));
+    corpo.scrollTop = 0;
+    for (const el of corpo.querySelectorAll(".janela-principal, .janela-atividade")) el.scrollTop = 0;
+    pararComentarios = acompanhar();
+  }
+  ferramentas.addEventListener("click", (e) => {
+    const t = e.target;
+    const seta = t.closest("[data-ir]");
+    if (seta) return irPara(Number(seta.dataset.ir));
+    if (t.closest("[data-menu-janela]")) return abrirMenu(!menuAberto);
+    const item = t.closest(".menu-da-janela button");
+    if (!item) return;
+    abrirMenu(false);
+    if (item.matches("[data-copiar-link]")) copiarLink();
+    else if (item.matches("[data-duplicar]")) duplicar();
+    else if (item.matches("[data-excluir-acao]")) excluir();
+  });
+  /* Esc fecha o menu sem fechar a janela; setas andam pelos itens */
+  ferramentas.addEventListener("keydown", (e) => {
+    if (!menuAberto) return;
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      abrirMenu(false);
+      ferramentas.querySelector("[data-menu-janela]").focus();
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      const itens = [...ferramentas.querySelectorAll(".menu-da-janela button")];
+      const i = itens.indexOf(document.activeElement);
+      e.preventDefault();
+      itens[(i + (e.key === "ArrowDown" ? 1 : -1) + itens.length) % itens.length]?.focus();
+    }
+  });
+  /* Alt+↑ e Alt+↓, em qualquer lugar da janela, passam à ação anterior e à seguinte */
+  corpo.closest(".painel").addEventListener("keydown", (e) => {
+    if (!vizinha || !e.altKey || e.ctrlKey || e.metaKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    e.preventDefault();
+    irPara(e.key === "ArrowUp" ? -1 : 1);
+  });
+  /* clique fora do menu o fecha */
+  const fecharMenuFora = (e) => { if (menuAberto && !ferramentas.contains(e.target)) abrirMenu(false); };
+  document.addEventListener("click", fecharMenuFora, true);
 
   /* ---------- comentários (passo 2.9; seção 16.5): conversa da ação, em tempo real ---------- */
   /** null enquanto carrega; depois, a lista do banco (inclusive os apagados, que a tela resume) */
@@ -169,6 +313,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let buscando = null;
   /** documento em edição na janela (passo 2.10a): id, "novo" ou null */
   let editandoDoc = null;
+  /** data-limite vazia aberta por "Sem data-limite" (05/11/2026) */
+  let abrindoData = false;
   /** campos opcionais abertos em "Mais campos", mesmo vazios */
   const mostrados = new Set();
   /** aba no celular: "detalhes" ou "atividade" */
@@ -214,8 +360,9 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
               aria-label="Nome da ${termos(d.espaco).acao}"${somenteLeitura() ? " readonly" : ""}>${esc(acao.rotulo)}</textarea>
             ${statusHtml("rotulo")}
           </div>
+          ${descricaoHtml(acao)}
 
-          <dl class="janela-resumo">
+          <dl class="janela-resumo${ehDeTarefas(d.espaco) ? " compacto" : ""}">
             <div><dt>Situação</dt><dd class="sit">${situacaoHtml(l, sitClasse, sitIcone, sitTexto)}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
             ${ehDeTarefas(d.espaco) && l.situacao === "concluida" ? marcadaHtml(acao)
             /* sem estimativas, a data-limite fica só no campo abaixo, para não aparecer duas vezes (04/11/2026) */
@@ -239,7 +386,6 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           <div class="janela-campos">${camposHtml(acao, l, etapas, etapa)}</div>
           ${maisCamposHtml(acao)}
           ${umaColuna ? historicoAlteracoes : ""}
-          ${store.podeGravar && d.perm.excluirAcao ? `<div class="zona-exclusao"><button class="botao-excluir" type="button" data-excluir-acao>Excluir ${termos(d.espaco).acao}</button></div>` : ""}
         </div>
 
         ${umaColuna ? "" : `<div class="janela-atividade" aria-label="Atividade">
@@ -386,6 +532,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return `<div class="campo-acao campo-personalizado" data-campo="${esc(chave)}">${rotulo}${controle}</div>`;
   }
 
+  /**
+   * Descrição logo abaixo do nome (05/11/2026, pedido do responsável, na comparação com o Todoist): o "do que se trata"
+   * vem antes da situação, das datas e dos responsáveis. Vazia, fica em "Mais campos", como antes.
+   */
+  function descricaoHtml(acao) {
+    if ((d.espaco.camposOpcionais ?? {}).descricao === false || !visivel(acao, "descricao")) return "";
+    return `<div class="janela-campos janela-descricao"><div class="campo-acao" data-campo="descricao">${rotuloHtml("descricao", "Descrição")}
+        <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="O que é esta ação, em poucas linhas">${esc(acao.descricao ?? "")}</textarea></div></div>`;
+  }
+
   function camposHtml(acao, l, etapas, etapa) {
     const campos = d.espaco.camposOpcionais ?? {};
     const contexto = { tons: d.espaco.tons, meus: d.meus };
@@ -401,9 +557,20 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
 
     /* prazo: estimativa (enquanto livre) ou data-limite, conforme o modelo do espaço (passo 2.4b) */
+    if (acao.dataLimite) abrindoData = false; // com data, o campo aparece de qualquer jeito
     if (!comEstimativas) {
-      partes.push(`<div class="campo-acao${l.atrasada ? " atrasada" : ""}" data-campo="dataLimite">${rotuloHtml("dataLimite", "Data-limite", "dataLimite")}
-        <input type="date" ${atributos("dataLimite", acao.dataLimite)} value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite"></div>`);
+      /* vazia: "Sem data-limite", que abre o campo; com data (ou aberta): o calendário e os atalhos (05/11/2026) */
+      const rotulo = rotuloHtml("dataLimite", "Data-limite", "dataLimite");
+      if (!acao.dataLimite && !abrindoData) {
+        partes.push(`<div class="campo-acao" data-campo="dataLimite">${rotulo}
+          ${somenteLeitura() ? `<span class="vazio">Sem data-limite</span>` : `<button type="button" class="valor-vazio" data-abrir-data>Sem data-limite</button>`}</div>`);
+      } else {
+        const atalhos = somenteLeitura() ? "" : `<span class="atalhos-data" role="group" aria-label="Atalhos da data-limite">${atalhosDeData(hoje).map((a) =>
+          `<button type="button" class="chip-campo" data-atalho-data="${a.data}" title="${dataBr(a.data)}">${a.rotulo}</button>`).join("")}${acao.dataLimite
+          ? `<button type="button" class="chip-campo discreto" data-atalho-data="" title="Retirar a data-limite">Sem data</button>` : ""}</span>`;
+        partes.push(`<div class="campo-acao${l.atrasada ? " atrasada" : ""}" data-campo="dataLimite">${rotulo}
+          <div class="data-com-atalhos"><input type="date" ${atributos("dataLimite", acao.dataLimite)} value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite">${atalhos}</div></div>`);
+      }
     } else if (livre) {
       const e = acao.estimativas?.at(-1);
       const v = (k) => (e?.[k] ?? "");
@@ -424,7 +591,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <div class="etiquetas">${donos.map((r) =>
         `<span class="etiqueta">${seloHtml(r, contexto)}${esc(r.nome)}${somenteLeitura() ? "" : `<button type="button" class="tirar" data-tirar-responsavel="${esc(r.id)}" aria-label="Retirar ${esc(r.nome)}">${ICONES.fechar}</button>`}</span>`).join("")
         || `<span class="vazio">Nenhum responsável.</span>`}
-        ${somenteLeitura() || buscando === "responsaveis" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="responsaveis">${ICONES.mais}Acrescentar</button>`}</div>
+        ${somenteLeitura() || buscando === "responsaveis" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="responsaveis">${ICONES.mais}Adicionar</button>`}</div>
       ${buscando === "responsaveis" ? seletorHtml("responsaveis", "Digite o nome, a sigla ou o setor") : ""}</div>`);
 
     if (usaDependencias(d.espaco)) {
@@ -433,15 +600,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           const a = d.acoes.find((x) => x.numero === n);
           return `<span class="etiqueta">${a ? nomeHtml(a) : "(ação excluída)"}${somenteLeitura() ? "" : `<button type="button" class="tirar" data-tirar-dependencia="${n}" aria-label="Retirar ${esc(a ? nomeTexto(a) : "")}">${ICONES.fechar}</button>`}</span>`;
         }).join("") || `<span class="vazio">Nenhuma: pode começar no início do espaço.</span>`}
-          ${somenteLeitura() || buscando === "dependeDe" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="dependeDe">${ICONES.mais}Acrescentar</button>`}</div>
+          ${somenteLeitura() || buscando === "dependeDe" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="dependeDe">${ICONES.mais}Adicionar</button>`}</div>
         ${buscando === "dependeDe" ? seletorHtml("dependeDe", d.usaCodigos ? "Digite o nome ou o código da ação anterior" : "Digite o nome da ação anterior") : ""}
         ${confirmarAnteriorHtml()}</div>`);
     }
 
-    if (campos.descricao !== false && visivel(acao, "descricao")) {
-      partes.push(`<div class="campo-acao" data-campo="descricao">${rotuloHtml("descricao", "Descrição")}
-        <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="O que é esta ação, em poucas linhas">${esc(acao.descricao ?? "")}</textarea></div>`);
-    }
     /* justificativa e local, do 5W2H (passo 2.10a): textos simples, gravados ao sair do campo */
     if (campos.justificativa === true && visivel(acao, "justificativa")) {
       partes.push(`<div class="campo-acao" data-campo="justificativa">${rotuloHtml("justificativa", "Justificativa")}
@@ -478,7 +641,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         <div class="etiquetas">${etiquetasDaAcao(d.espaco, acao).map((x) => etiquetaHtml(x, somenteLeitura() ? ""
           : `<button type="button" class="tirar" data-tirar-etiqueta="${esc(x.id)}" aria-label="Retirar ${esc(x.nome)}">${ICONES.fechar}</button>`)).join("")
           || `<span class="vazio">Nenhuma etiqueta.</span>`}
-          ${somenteLeitura() || buscando === "etiquetas" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="etiquetas">${ICONES.mais}Acrescentar</button>`}</div>
+          ${somenteLeitura() || buscando === "etiquetas" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="etiquetas">${ICONES.mais}Adicionar</button>`}</div>
         ${buscando === "etiquetas" ? seletorHtml("etiquetas", "Digite o nome da etiqueta") : ""}</div>`);
     }
     if (campos.documentos === true && visivel(acao, "documentos")) partes.push(documentosHtml(acao));
@@ -740,12 +903,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     <p class="tec">Registro permanente: ninguém altera nem apaga.</p>`;
   }
   async function carregarHistorico() {
+    const deQuem = numero;
+    let lidos;
     try {
-      registros = await store.listarHistorico(espacoId, numero);
+      lidos = await store.listarHistorico(espacoId, numero);
     } catch (e) {
-      registros = [];
+      lidos = [];
       avisar(e.message);
     }
+    if (deQuem !== numero) return; // a janela passou a outra ação (setas) enquanto lia
+    registros = lidos;
     const alvo = corpo.querySelector("[data-registros]");
     if (alvo && !fechada) alvo.innerHTML = registrosHtml();
   }
@@ -777,7 +944,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (!a) { anteriorPendente = null; return ""; }
     return `<div class="aviso-confirmar" role="alertdialog" aria-label="Confirmar a nova dependência">
       <p>“${esc(nomeTexto(a))}” ainda não foi concluída. Com ela como anterior, esta ação passa para <b>Não liberada</b> e sai de <b>${esc(nomeDoFluxo(d.espaco, l.fluxo))}</b>. Quando a anterior terminar, ela volta para ${esc(nomeInicial(d.espaco))}.</p>
-      <div class="botoes"><button class="botao principal" type="button" data-confirmar-anterior>Acrescentar assim mesmo</button>
+      <div class="botoes"><button class="botao principal" type="button" data-confirmar-anterior>Adicionar assim mesmo</button>
         <button class="botao" type="button" data-desistir-anterior>Desistir</button></div></div>`;
   }
 
@@ -1032,6 +1199,21 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (t.closest("[data-desistir-anterior]")) { anteriorPendente = null; return desenhar(); }
     const abaB = t.closest("[data-aba]");
     if (abaB) { aba = abaB.dataset.aba; return desenhar(); }
+    /* data-limite (05/11/2026): "Sem data-limite" abre o calendário e os atalhos; um atalho grava na hora */
+    if (t.closest("[data-abrir-data]")) {
+      abrindoData = true;
+      desenhar();
+      abrirSuave(corpo.querySelector(".atalhos-data"));
+      return corpo.querySelector('[name="dataLimite"]')?.focus();
+    }
+    const atalho = t.closest("[data-atalho-data]");
+    if (atalho) {
+      const campo = corpo.querySelector('[name="dataLimite"]');
+      if (!campo) return;
+      campo.value = atalho.dataset.atalhoData;
+      if (!campo.value) abrindoData = false;
+      return gravarCampo(campo);
+    }
     const mostrar = t.closest("[data-mostrar-campo]");
     if (mostrar) return mostrarCampo(mostrar.dataset.mostrarCampo);
     const abrirBusca = t.closest("[data-buscar-abrir]");
@@ -1043,12 +1225,6 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const form = t.closest("[data-abrir-form]");
     if (form) return editar(form.dataset.abrirForm);
     if (t.closest("[data-cancelar]")) return cancelar();
-    if (t.closest("[data-excluir-acao]")) {
-      try {
-        if (await excluirAcao({ store, espacoId, acao: acaoAtual(), acoes: d.acoes })) fecharPainel();
-      } catch (falha) { avisar(falha.message); }
-      return;
-    }
     const editarC = t.closest("[data-editar-comentario-id]");
     if (editarC) { editandoComentario = editarC.dataset.editarComentarioId; apagandoComentario = null; return desenharComentarios(); }
     const apagarC = t.closest("[data-apagar-comentario]");
@@ -1163,6 +1339,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   });
   corpo.addEventListener("focusout", (e) => {
     if (e.target.dataset?.auto && e.target.type === "date" && e.relatedTarget !== e.target) gravarCampo(e.target);
+    /* data-limite aberta e deixada vazia: volta a "Sem data-limite" ao sair do campo e dos atalhos */
+    if (e.target.name === "dataLimite" || e.target.closest?.(".atalhos-data")) {
+      setTimeout(() => {
+        const ativo = document.activeElement;
+        if (fechada || !abrindoData || acaoAtual()?.dataLimite || ativo?.closest?.('[data-campo="dataLimite"]')) return;
+        if (corpo.querySelector('[name="dataLimite"]')?.value) return;
+        abrindoData = false;
+        desenhar();
+      }, 150);
+    }
     /* anotações: grava ao sair do editor (não ao ir para a barra de formatação dele) */
     const caixa = e.target.closest?.("[data-caixa-notas]");
     if (caixa && !caixa.contains(e.relatedTarget)) gravarNotas();
@@ -1206,6 +1392,14 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
     if (e.target.matches("[data-editor-notas]") && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); abrirBarraDeLink(); return; }
     if (e.key === "Escape" && editando) { e.preventDefault(); cancelar(); return; }
+    /* Esc na data-limite aberta e ainda vazia: volta a "Sem data-limite", sem fechar a janela */
+    if (e.key === "Escape" && abrindoData && e.target.name === "dataLimite" && !e.target.value && !acaoAtual()?.dataLimite) {
+      e.preventDefault();
+      abrindoData = false;
+      desenhar();
+      corpo.querySelector("[data-abrir-data]")?.focus();
+      return;
+    }
     const auto = e.target.dataset?.auto;
     /* Esc num campo alterado desfaz a digitação (sem fechar a janela); sem alteração, fecha como sempre */
     if (e.key === "Escape" && auto) {
@@ -1233,14 +1427,20 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     etiquetas: { opcoes: (texto) => opcoesDeEtiquetas(texto), vazio: "Digite o nome de uma etiqueta nova." },
   }, { aoErro: (e) => avisar(e.message) });
 
+  /** Conversa da ação em tempo real; devolve a função que para de acompanhar. */
+  function acompanhar() {
+    const deQuem = numero;
+    return store.acompanharComentarios(espacoId, numero, (lista) => {
+      if (fechada || deQuem !== numero) return; // resposta atrasada de uma ação que a janela já deixou (setas)
+      const antes = temAtividade();
+      comentarios = lista;
+      /* a primeira conversa (ou a última apagada de vez) muda a janela entre uma e duas colunas */
+      if (temAtividade() !== antes) desenhar(); else desenharComentarios();
+    });
+  }
   desenhar();
-  pararComentarios = store.acompanharComentarios(espacoId, numero, (lista) => {
-    const antes = temAtividade();
-    comentarios = lista;
-    if (fechada) return;
-    /* a primeira conversa (ou a última apagada de vez) muda a janela entre uma e duas colunas */
-    if (temAtividade() !== antes) desenhar(); else desenharComentarios();
-  });
+  if (vizinha) desenharSetas();
+  pararComentarios = acompanhar();
   return {
     /**
      * Novos dados do banco. Se outra pessoa alterou a ação, avisa por 10 segundos; os campos
@@ -1257,6 +1457,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         tempoAlheia = setTimeout(() => { alheia = null; if (!fechada) desenhar(); }, 10000);
       }
       desenhar();
+      if (vizinha) desenharSetas();
       if (historicoAberto && antes?.alteradaEm !== depois?.alteradaEm) carregarHistorico();
     },
     fechar() { if (!fechada) fecharPainel(); },

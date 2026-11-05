@@ -119,8 +119,151 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     const corpo = janela(p).locator(".painel-corpo");
     await corpo.evaluate((el) => el.scrollTo(0, el.scrollHeight));
     await assentar(p, 200);
-    const excluir = await janela(p).locator("[data-excluir-acao]").boundingBox();
-    assert.ok(excluir.y + excluir.height <= 520, "o fim da janela é alcançável rolando");
+    const fim = await janela(p).locator("[data-historico] summary").boundingBox();
+    assert.ok(fim.y + fim.height <= 520, "o fim da janela é alcançável rolando");
+    assert.deepEqual(p.erros, []);
+  });
+  test("nas tarefas, a situação é uma linha discreta, sem caixa; no plano, o resumo continua em caixas", async () => {
+    const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
+    const resumo = janela(p).locator(".janela-resumo");
+    assert.equal(await resumo.evaluate((el) => el.classList.contains("compacto")), true);
+    const caixa = await resumo.locator(":scope > div").first().evaluate((el) => { const c = getComputedStyle(el); return { fundo: c.backgroundColor, borda: c.borderTopWidth }; });
+    assert.deepEqual(caixa, { fundo: "rgba(0, 0, 0, 0)", borda: "0px" });
+    assert.ok((await resumo.boundingBox()).height < 44, "uma linha só");
+    assert.equal(await resumo.locator("select.escolha-situacao").count(), 1, "com situações personalizadas, a lista para escolher continua");
+    const plano = await sessao.abrir({ largura: 1280 });
+    await plano.locator(".linha[data-abrir-acao]").first().click();
+    await plano.waitForSelector(".camada.aberta .janela-grade");
+    assert.equal(await janela(plano).locator(".janela-resumo.compacto").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+  test("a descrição vem logo abaixo do nome, antes da situação; aberta por \"Mais campos\", aparece no mesmo lugar", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const j = janela(p);
+    const y = async (sel) => (await j.locator(sel).first().boundingBox()).y;
+    assert.ok(await y('[data-campo="descricao"]') > await y(".janela-nome"));
+    assert.ok(await y('[data-campo="descricao"]') < await y(".janela-resumo"));
+    assert.ok(await y('[data-campo="descricao"]') < await y('[data-campo="responsaveis"]'));
+    const q = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
+    await janela(q).locator('[data-mostrar-campo="descricao"]').click();
+    await assentar(q);
+    const caixa = janela(q).locator('[data-campo="descricao"] textarea');
+    assert.equal(await caixa.evaluate((el) => el === document.activeElement), true, "o cursor vai para a descrição");
+    assert.ok((await caixa.boundingBox()).y < (await janela(q).locator(".janela-resumo").boundingBox()).y);
+    assert.deepEqual([...p.erros, ...q.erros], []);
+  });
+  test("data-limite vazia: \"Sem data-limite\" abre o calendário e os atalhos; um atalho grava; \"Sem data\" retira", async () => {
+    const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
+    const campo = janela(p).locator('[data-campo="dataLimite"]');
+    assert.equal(await campo.locator('input[type="date"]').count(), 0, "vazia, sem o dd/mm/aaaa");
+    await campo.locator("[data-abrir-data]").click();
+    await assentar(p);
+    assert.equal(await p.evaluate(() => document.activeElement?.name), "dataLimite", "o cursor vai para a data");
+    assert.deepEqual(await campo.locator("[data-atalho-data]").allInnerTexts(), ["Hoje", "Amanhã", "Próxima segunda"]);
+    const amanha = await campo.locator('[data-atalho-data]').nth(1).getAttribute("data-atalho-data");
+    await campo.locator('[data-atalho-data]').nth(1).click();
+    await assentar(p);
+    assert.equal(await campo.locator('input[type="date"]').inputValue(), amanha);
+    assert.match(await campo.locator('[data-status="dataLimite"]').innerText(), /Salvo/);
+    await campo.locator('[data-atalho-data=""]').click();
+    await assentar(p);
+    assert.equal(await campo.locator("[data-abrir-data]").count(), 1, "sem data, volta a \"Sem data-limite\"");
+    /* aberta e deixada vazia, Esc volta a "Sem data-limite" sem fechar a janela */
+    await campo.locator("[data-abrir-data]").click();
+    await assentar(p);
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    assert.equal(await p.locator(".camada.aberta").count(), 1);
+    assert.equal(await campo.locator("[data-abrir-data]").count(), 1);
+    assert.deepEqual(p.erros, []);
+  });
+  test("menu \"…\" do cabeçalho: data de criação, Copiar link, Duplicar e Excluir; Excluir saiu do rodapé", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const j = janela(p);
+    assert.equal(await j.locator(".janela-principal [data-excluir-acao]").count(), 0, "sem Excluir no rodapé");
+    const botao = j.locator("header [data-menu-janela]");
+    await botao.click();
+    const menu = j.locator(".menu-da-janela");
+    assert.equal(await botao.getAttribute("aria-expanded"), "true");
+    assert.match(await menu.locator(".menu-info").innerText(), /^Criada em \d{2}\/\d{2}\/\d{4} às \d{2}h\d{2}$/);
+    assert.deepEqual(await menu.locator("button").allInnerTexts(), ["Copiar link", "Duplicar", "Excluir tarefa"]);
+    /* Esc fecha só o menu */
+    await p.keyboard.press("Escape");
+    assert.equal(await menu.count(), 0);
+    assert.equal(await p.locator(".camada.aberta").count(), 1);
+    /* Duplicar: uma tarefa nova com o mesmo nome, no fim da lista */
+    const antes = await p.locator(".item").filter({ hasText: "Ler o relatório" }).count();
+    await botao.click();
+    await j.locator("[data-duplicar]").click();
+    await assentar(p);
+    assert.equal(await p.locator(".item").filter({ hasText: "Ler o relatório" }).count(), antes + 1);
+    assert.match(await p.locator(".aviso-curto").innerText(), /Tarefa duplicada/);
+    /* Excluir, pelo menu, com Desfazer no aviso */
+    await botao.click();
+    await j.locator("[data-excluir-acao]").click();
+    await assentar(p);
+    assert.equal(await p.locator(".camada.aberta").count(), 0);
+    assert.match(await p.locator(".aviso-curto").innerText(), /excluída/);
+    /* no plano, sem Duplicar (estimativas e dependências não se copiam) */
+    const plano = await sessao.abrir({ largura: 1280 });
+    await plano.locator(".linha[data-abrir-acao]").first().click();
+    await plano.waitForSelector(".camada.aberta .janela-grade");
+    await janela(plano).locator("header [data-menu-janela]").click();
+    assert.deepEqual(await janela(plano).locator(".menu-da-janela button").allInnerTexts(), ["Copiar link", "Excluir ação"]);
+    assert.deepEqual([...p.erros, ...plano.erros], []);
+  });
+
+  test("Copiar link: o endereço abre a janela da mesma tarefa; um número que não existe avisa", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    await p.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await janela(p).locator("header [data-menu-janela]").click();
+    await janela(p).locator("[data-copiar-link]").click();
+    await assentar(p);
+    const link = await p.evaluate(() => navigator.clipboard.readText());
+    assert.match(link, /#\/espaco\/[\w-]+\/acao\/\d+$/);
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    assert.equal(await p.locator(".camada.aberta").count(), 0);
+    await p.evaluate((h) => { location.hash = h; }, new URL(link).hash);
+    await p.waitForSelector(".camada.aberta .janela-grade");
+    await assentar(p);
+    assert.equal(await janela(p).locator(".janela-nome").inputValue(), "Ler o relatório da CGU");
+    assert.match(await p.evaluate(() => location.hash), /^#\/espaco\/[\w-]+$/, "o endereço volta a ser o do espaço");
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    await p.evaluate((h) => { location.hash = h.replace(/\d+$/, "9999"); }, new URL(link).hash);
+    await assentar(p);
+    assert.match(await p.locator(".aviso-curto").innerText(), /não encontrada/);
+    assert.deepEqual(p.erros, []);
+  });
+  test("setas ↑↓ no cabeçalho passam à tarefa anterior e à seguinte da lista, sem fechar a janela", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const j = janela(p);
+    const nomes = await p.locator(".item .linha[data-abrir-acao]").evaluateAll((els) => els.filter((el) => el.getClientRects().length)
+      .map((el) => el.closest("[data-numero]").querySelector(".rotulo").textContent.trim()));
+    const i = nomes.findIndex((n) => n.startsWith("Ler o relatório"));
+    assert.ok(i > 0 && i < nomes.length - 1, "a tarefa tem vizinhas acima e abaixo");
+    const nome = () => j.locator(".janela-nome").inputValue();
+    await j.locator('header [data-ir="1"]').click();
+    await assentar(p);
+    assert.equal(await nome(), nomes[i + 1]);
+    assert.equal(await p.locator(".camada.aberta").count(), 1);
+    await j.locator('header [data-ir="-1"]').click();
+    await assentar(p);
+    assert.equal(await nome(), nomes[i]);
+    /* Alt+↑ também anda; na primeira, a seta de cima fica desligada */
+    for (let k = 0; k < i; k++) { await p.keyboard.press("Alt+ArrowUp"); await assentar(p, 150); }
+    assert.equal(await nome(), nomes[0]);
+    assert.equal(await j.locator('header [data-ir="-1"]').isDisabled(), true);
+    assert.equal(await j.locator('header [data-ir="-1"]').getAttribute("aria-label"), "Tarefa anterior");
+    /* o que se digitou grava ao trocar de tarefa */
+    await j.locator('[data-mostrar-campo="descricao"], [data-campo="descricao"] textarea').first().click();
+    await j.locator('[data-campo="descricao"] textarea').fill("Texto novo");
+    await j.locator('header [data-ir="1"]').click();
+    await assentar(p);
+    await j.locator('header [data-ir="-1"]').click();
+    await assentar(p);
+    assert.equal(await j.locator('[data-campo="descricao"] textarea').inputValue(), "Texto novo");
     assert.deepEqual(p.erros, []);
   });
 });

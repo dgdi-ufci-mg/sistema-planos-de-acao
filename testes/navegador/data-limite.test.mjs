@@ -13,7 +13,13 @@ async function abrirTarefa(sessao, nome) {
   await assentar(p);
   await p.locator(".cartao-quadro").filter({ hasText: nome }).locator(".rotulo").click();
   await assentar(p);
+  await abrirData(p);
   return p;
+}
+/** Vazia, a data-limite mostra "Sem data-limite", que abre o campo (05/11/2026). */
+async function abrirData(p) {
+  const vazio = p.locator(".camada.aberta [data-abrir-data]");
+  if (await vazio.count()) { await vazio.click(); await assentar(p); }
 }
 
 describe("Data-limite na janela da tarefa", { skip: pular }, () => {
@@ -46,6 +52,7 @@ describe("Data-limite na janela da tarefa", { skip: pular }, () => {
     await assentar(p);
     await p.locator(".cartao-quadro").filter({ hasText: "Responder o ofício" }).locator(".rotulo").click();
     await assentar(p);
+    await abrirData(p);
     assert.equal(await p.locator('.camada.aberta input[type="date"][name="dataLimite"]').inputValue(), "2026-12-12");
     assert.deepEqual(p.erros, []);
   });
@@ -76,6 +83,7 @@ describe("Data-limite na janela da tarefa", { skip: pular }, () => {
     assert.equal(await p.locator(".camada.aberta").count(), 0);
     await p.locator(".cartao-quadro").filter({ hasText: "Atualizar o dicionário" }).locator(".rotulo").click();
     await assentar(p);
+    await abrirData(p);
     assert.equal(await p.locator('.camada.aberta input[type="date"][name="dataLimite"]').inputValue(), "2026-12-12");
     assert.deepEqual(p.erros, []);
   });

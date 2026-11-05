@@ -7,6 +7,40 @@ import { abrirCamada } from "./voltar.js";
 
 let fecharAtual = null;
 
+/* ---------- foco preso na camada de cima (05/11/2026, pedido do responsável, acessibilidade) ---------- */
+/** Camadas que prendem o foco, da de baixo para a de cima: só a de cima age. */
+const prisoes = [];
+const FOCAVEIS = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+/** Elementos que recebem o foco com Tab, na ordem da página, só os visíveis. */
+const focaveis = (raiz) => [...raiz.querySelectorAll(FOCAVEIS)].filter((el) => el.getClientRects().length && !el.closest("[inert], [hidden]"));
+/**
+ * Tab e Shift+Tab circulam dentro de `raiz` (a janela ou o diálogo aberto), sem ir para a tela de trás: do último
+ * elemento, Tab volta ao primeiro; do primeiro, Shift+Tab vai ao último; com o foco fora da camada, Tab entra nela.
+ * Junto com `aria-modal`, quem usa só o teclado ou um leitor de tela fica na janela até fechá-la.
+ * @returns {() => void} solta o foco
+ */
+export function prenderFoco(raiz) {
+  const prisao = { raiz };
+  prisoes.push(prisao);
+  const aoTeclar = (e) => {
+    if (e.key !== "Tab" || e.ctrlKey || e.altKey || e.metaKey || prisoes.at(-1) !== prisao) return;
+    const lista = focaveis(raiz);
+    if (!lista.length) { e.preventDefault(); return; }
+    const primeiro = lista[0];
+    const ultimo = lista.at(-1);
+    const ativo = document.activeElement;
+    if (!raiz.contains(ativo)) { e.preventDefault(); (e.shiftKey ? ultimo : primeiro).focus(); return; }
+    if (e.shiftKey && ativo === primeiro) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && ativo === ultimo) { e.preventDefault(); primeiro.focus(); }
+  };
+  document.addEventListener("keydown", aoTeclar, true);
+  return () => {
+    document.removeEventListener("keydown", aoTeclar, true);
+    const i = prisoes.indexOf(prisao);
+    if (i >= 0) prisoes.splice(i, 1);
+  };
+}
+
 /* teclado virtual (item 15 da avaliação de celular, 25/10/2026): no iPhone, o teclado cobre o que está preso ao pé
    da tela, como o botão "Criar ação" da janela que sobe de baixo. A altura coberta vira a variável --teclado, que
    sobe essas janelas (css). Usa a área visível da tela (visualViewport), onde o navegador a oferece. */
@@ -46,8 +80,10 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
   document.addEventListener("keydown", aoTeclar);
   /* Voltar (celular) fecha o painel (item 1 da avaliação de celular) */
   const soltar = abrirCamada(() => { if (fecharAtual === fechar) fecharPainel(); });
+  const soltarFoco = prenderFoco(camada.querySelector(".painel"));
   const fechar = () => {
     soltar();
+    soltarFoco();
     document.removeEventListener("keydown", aoTeclar);
     fecharAtual = null;
     camada.classList.remove("aberta");
@@ -157,8 +193,10 @@ export function perguntar({ titulo, corpo, confirmar = "Excluir", perigo = true,
     requestAnimationFrame(() => requestAnimationFrame(() => camada.classList.add("aberta")));
     const form = camada.querySelector("form");
     const soltar = abrirCamada(() => terminar(null)); // Voltar cancela o diálogo
+    const soltarFoco = prenderFoco(form);
     const terminar = (valor) => {
       soltar();
+      soltarFoco();
       window.removeEventListener("keydown", aoTeclar, true);
       camada.classList.remove("aberta");
       setTimeout(() => camada.remove(), 250);
