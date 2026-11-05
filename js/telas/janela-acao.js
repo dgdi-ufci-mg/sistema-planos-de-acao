@@ -24,7 +24,7 @@ import { ehDeTarefas } from "../tipos.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { camposAtivos, campoPorId, textoDoValor, valorDoCampo } from "../campos-personalizados.js";
-import { atalhosDeData } from "../lista.js";
+import { atalhosDeData, atalhosDoVencimento, rotuloDaData } from "../lista.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -44,6 +44,8 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
  */
 /** Prefixo dos campos personalizados na janela (passo 3.6): "cp-" mais o id do campo. */
 const PREFIXO_CP = "cp-";
+/** Campos que, nas tarefas, ficam na coluna principal, como conteúdo; os demais vão para a coluna de atributos (05/11/2026). */
+const DO_CONTEUDO = new Set(["descricao", "checklist", "notas", "justificativa", "documentos"]);
 
 export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null, vizinha = null }) {
   let d = dados;
@@ -67,7 +69,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
     janela: true,
-    aoFechar: () => { fechada = true; pararComentarios?.(); document.removeEventListener("click", fecharMenuFora, true); aoFechar(numero); },
+    aoFechar: () => {
+      fechada = true; pararComentarios?.(); document.removeEventListener("click", fecharMenuFora, true);
+      document.removeEventListener("click", fecharPopoverFora, true); document.removeEventListener("keydown", escNaJanelinha, true);
+      removeEventListener("resize", posicionarPopover);
+      aoFechar(numero);
+    },
   });
 
   /* ---------- menu "…" do cabeçalho (05/11/2026, pedido do responsável, como no Todoist) ---------- */
@@ -161,6 +168,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
     buscando = null; editandoDoc = null; mostrados.clear(); aba = "detalhes"; status = null; abrindoData = false;
     alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
+    popover = null; focoPopover = null;
     abrirMenu(false);
     pararComentarios?.();
     comentarios = null;
@@ -170,7 +178,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     seta?.focus();
     surgir(corpo.querySelector(".janela-grade"));
     corpo.scrollTop = 0;
-    for (const el of corpo.querySelectorAll(".janela-principal, .janela-atividade")) el.scrollTop = 0;
+    for (const el of corpo.querySelectorAll(".janela-principal, .janela-atividade, .janela-lado")) el.scrollTop = 0;
     pararComentarios = acompanhar();
   }
   ferramentas.addEventListener("click", (e) => {
@@ -319,6 +327,10 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const mostrados = new Set();
   /** aba no celular: "detalhes" ou "atividade" */
   let aba = "detalhes";
+  /** janelinha aberta na coluna de atributos da tarefa (05/11/2026): o campo ("dataLimite", "responsaveis", "cp-…") ou null */
+  let popover = null;
+  /** opção a receber o foco depois de redesenhar a janelinha (a marcada ou desmarcada por último) */
+  let focoPopover = null;
   /** situação da última gravação de um campo: {campo, tipo: "salvando"|"salvo"|"erro", texto} */
   let status = null;
   let tempoStatus = null;
@@ -347,7 +359,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
             <summary><h3>Histórico de alterações</h3></summary>
             <div data-registros>${registrosHtml()}</div>
           </details>`;
-    corpo.innerHTML = `
+    if (ehDeTarefas(d.espaco)) corpo.innerHTML = tarefaHtml(acao, l, caixa, pend, historicoAlteracoes);
+    else corpo.innerHTML = `
       ${umaColuna ? "" : `<div class="janela-abas" role="tablist" aria-label="Partes da ação">
         <button type="button" role="tab" data-aba="detalhes" aria-selected="${aba === "detalhes"}">Detalhes</button>
         <button type="button" role="tab" data-aba="atividade" aria-selected="${aba === "atividade"}">Atividade${visiveis ? ` <span class="n">${visiveis}</span>` : ""}</button>
@@ -406,10 +419,356 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
     restaurarValores(valores);
     ajustarAlturas();
+    if (popover) {
+      posicionarPopover();
+      if (focoPopover) { corpo.querySelector(`[data-popover] [${focoPopover}]`)?.focus({ preventScroll: true }); focoPopover = null; }
+    }
     if (focoNoChecklist) { focoNoChecklist = false; corpo.querySelector('[name="novoItemChecklist"]')?.focus(); }
     seletores.desenhar();
     encolherFormularioGravado();
   }
+
+
+  /* ---------- tarefas: conteúdo à esquerda e coluna de atributos à direita, como no Todoist (05/11/2026) ---------- */
+  /*
+   * Pedido do responsável, na comparação com o Todoist: no Quadro e na Lista de tarefas, o nome, a descrição, o checklist,
+   * as anotações e a conversa ficam na coluna principal; os atributos (situação, datas, responsáveis, etiquetas, campos
+   * personalizados etc.) ficam numa coluna fixa ao lado, um por linha, sempre à vista. Linha vazia mostra "+"; a linha
+   * inteira é clicável e abre por cima uma janelinha própria de cada campo (calendário com atalhos, lista para marcar
+   * com busca, lista de escolha única ou caixa de texto). No celular, a coluna desce para logo abaixo da descrição.
+   */
+  function tarefaHtml(acao, l, caixa, pend, historicoAlteracoes) {
+    const comEstimativas = usaEstimativas(d.espaco);
+    const nota = pend && (pend.anteriores.length || pend.dataMinima) ? `<p class="nota-janela">Será liberada ${[
+      pend.anteriores.length ? `quando ${plural(pend.anteriores.length, "for concluída a tarefa", "forem concluídas as tarefas")} ${pend.anteriores.map((n) => `“${esc(nomeTexto(d.acoes.find((a) => a.numero === n)))}”`).join(", ")}` : "",
+      pend.dataMinima ? `a partir de ${dataBr(pend.dataMinima)}` : "",
+    ].filter(Boolean).join(", e ")}.</p>` : "";
+    return `<div class="janela-grade tarefa" data-aba-atual="detalhes">
+      <div class="janela-principal">
+        <div class="janela-topo">
+          ${alheia ? `<p class="alteracao-alheia" role="status">${esc(alheia)} alterou esta tarefa agora.</p>` : ""}
+          <div class="campo-acao campo-nome-acao${caixa ? " com-caixa" : ""}" data-campo="rotulo">${caixa}
+            <textarea class="janela-nome" rows="1" maxlength="120" name="rotulo" data-auto="rotulo" data-original="${esc(acao.rotulo)}"
+              aria-label="Nome da ${termos(d.espaco).acao}"${somenteLeitura() ? " readonly" : ""}>${esc(acao.rotulo)}</textarea>
+            ${statusHtml("rotulo")}
+          </div>
+          ${descricaoHtml(acao)}
+        </div>
+        <div class="janela-resto">
+          ${nota}
+          <div class="janela-campos">${conteudoDaTarefaHtml(acao)}</div>
+          ${maisCamposHtml(acao)}
+          ${comComentarios() ? `<div data-comentarios>${comentariosHtml()}</div>` : ""}
+          ${comEstimativas ? historicoHtml(acao, resumoDasEstimativas(acao, d.caminho.porAcao.get(numero))) : ""}
+          ${historicoAlteracoes}
+        </div>
+      </div>
+      <aside class="janela-lado" aria-label="Atributos da ${termos(d.espaco).acao}">${atributosDaTarefa(acao, l).map(linhaDeAtributo).join("")}</aside>
+    </div>${popoverHtml(acao)}`;
+  }
+
+  /** Conteúdo da tarefa, na coluna principal: justificativa, documentos, checklist e anotações. */
+  function conteudoDaTarefaHtml(acao) {
+    const campos = d.espaco.camposOpcionais ?? {};
+    const partes = [];
+    if (campos.justificativa === true && visivel(acao, "justificativa")) {
+      partes.push(`<div class="campo-acao" data-campo="justificativa">${rotuloHtml("justificativa", "Justificativa")}
+        <textarea class="cresce" rows="2" ${atributos("justificativa", acao.justificativa)} aria-label="Justificativa" placeholder="Por que esta tarefa existe">${esc(acao.justificativa ?? "")}</textarea></div>`);
+    }
+    if (campos.documentos === true && visivel(acao, "documentos")) partes.push(documentosHtml(acao));
+    partes.push(checklistHtml(acao));
+    if (campos.notas !== false && visivel(acao, "notas")) partes.push(notasHtml(acao));
+    return partes.join("");
+  }
+
+  /** Campo personalizado pelo id da linha ("cp-…"), ou null. */
+  const personalizadoDe = (campo) => (campo?.startsWith(PREFIXO_CP) ? campoPorId(d.espaco, campo.slice(PREFIXO_CP.length)) : null);
+
+  /**
+   * Atributos da tarefa, na ordem da coluna: {campo, nome, valor (HTML), vazio, clicavel, tipo, termo}.
+   * tipo: "data", "texto", "unica" (escolher uma opção), "multipla" (marcar várias) ou "fixo" (só leitura).
+   */
+  function atributosDaTarefa(acao, l) {
+    const campos = d.espaco.camposOpcionais ?? {};
+    const pode = !somenteLeitura();
+    const contexto = { tons: d.espaco.tons, meus: d.meus };
+    const lista = [];
+    const incluir = (a) => { if (pode || !a.vazio || a.tipo === "fixo") lista.push({ ...a, clicavel: pode && a.tipo !== "fixo" }); };
+    /* situação: escolhe-se só na tarefa liberada de um espaço com situações próprias; nas demais, só se lê */
+    const nomeSit = l.situacao === "liberada" ? nomeDoFluxo(d.espaco, l.fluxo) : SITUACOES[l.situacao][0];
+    const escolhe = l.situacao === "liberada" && personalizadasDe(d.espaco).length > 0;
+    incluir({ campo: "situacao", nome: "Situação", valor: esc(nomeSit), vazio: false, tipo: escolhe ? "unica" : "fixo" });
+    if (l.situacao === "concluida") {
+      const em = acao.conclusaoMarcadaEm ? new Date(acao.conclusaoMarcadaEm) : null;
+      const quando = em ? `${em.toLocaleDateString("pt-BR")} às ${String(em.getHours()).padStart(2, "0")}h${String(em.getMinutes()).padStart(2, "0")}` : "Sim";
+      incluir({ campo: "marcada", nome: "Marcada como concluída", tipo: "fixo", vazio: false,
+        valor: `<span class="mono">${quando}</span><small class="tec">Momento da marcação, e não a data em que o trabalho terminou.</small>` });
+    }
+    if (!usaEstimativas(d.espaco)) {
+      incluir({ campo: "dataLimite", nome: "Data-limite", tipo: "data", termo: "dataLimite", vazio: !acao.dataLimite,
+        valor: acao.dataLimite ? `<span${l.atrasada ? ' class="atrasada"' : ""}>${esc(rotuloDaData(acao.dataLimite, hoje))}</span>${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}` : "" });
+    }
+    incluir({ campo: "naoAntesDe", nome: "Não começa antes de", tipo: "data", termo: "naoAntesDe", vazio: !acao.naoAntesDe,
+      valor: acao.naoAntesDe ? esc(rotuloDaData(acao.naoAntesDe, hoje)) : "" });
+    const donos = acao.responsaveis.map((id) => d.pessoas.get(id)).filter(Boolean);
+    incluir({ campo: "responsaveis", nome: "Responsáveis", tipo: "multipla", vazio: !donos.length,
+      valor: donos.map((r) => `<span class="atributo-pessoa">${seloHtml(r, contexto)}${esc(r.nome)}</span>`).join("") });
+    if (usaEtiquetas(d.espaco)) {
+      const etq = etiquetasDaAcao(d.espaco, acao);
+      incluir({ campo: "etiquetas", nome: "Etiquetas", tipo: "multipla", vazio: !etq.length, valor: etq.map((x) => etiquetaHtml(x)).join("") });
+    }
+    if (usaDependencias(d.espaco)) {
+      const deps = (acao.dependeDe ?? []).map((n) => d.acoes.find((x) => x.numero === n));
+      incluir({ campo: "dependeDe", nome: "Depende de", tipo: "multipla", vazio: !deps.length,
+        valor: deps.map((a) => `<span class="atributo-item">${a ? nomeHtml(a) : "(tarefa excluída)"}</span>`).join("") });
+    }
+    if (d.usaFases) {
+      const etapa = (d.espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => ({ ...e, fase: f.nome }))).find((e) => e.id === acao.etapa);
+      incluir({ campo: "etapa", nome: "Etapa", tipo: "unica", vazio: !etapa, valor: etapa ? `${esc(etapa.fase)} · ${esc(etapa.nome)}` : "" });
+    }
+    if (campos.local === true) incluir({ campo: "local", nome: "Local", tipo: "texto", vazio: !acao.local, valor: esc(acao.local ?? "") });
+    if (d.usaCodigos) incluir({ campo: "codigo", nome: "Código", tipo: "texto", vazio: !acao.codigo, valor: `<span class="mono">${esc(acao.codigo ?? "")}</span>` });
+    if (d.entregas && (d.entregas.length || acao.entregaDoPlano)) {
+      const entrega = d.entregas.find((x) => x.id === acao.entregaDoPlano);
+      incluir({ campo: "entregaDoPlano", nome: "Entrega do Plano de Ação", tipo: "unica", termo: "entrega", vazio: !acao.entregaDoPlano,
+        valor: acao.entregaDoPlano ? esc(entrega?.titulo ?? "(entrega excluída)") : "" });
+    }
+    for (const c of camposAtivos(d.espaco)) {
+      const v = acao.valoresPersonalizados?.[c.id];
+      const tipo = c.tipo === "data" ? "data" : c.tipo === "opcao" || c.tipo === "simNao" ? "unica" : "texto";
+      const texto = v == null ? "" : c.tipo === "data" ? rotuloDaData(v, hoje) : textoDoValor(c, v);
+      incluir({ campo: PREFIXO_CP + c.id, nome: esc(c.nome), tipo, vazio: v == null, valor: esc(texto) });
+    }
+    return lista;
+  }
+
+  /** Uma linha da coluna de atributos: um botão que ocupa a linha inteira (ou só texto, sem permissão de alterar). */
+  function linhaDeAtributo(a) {
+    const aberto = popover === a.campo;
+    const cabeca = `<span class="atributo-cabeca"><span class="atributo-nome">${a.nome}</span>${statusHtml(a.campo)}${a.clicavel && a.vazio ? `<span class="atributo-mais">${ICONES.mais}</span>` : ""}</span>`;
+    const valor = a.vazio ? "" : `<span class="atributo-valor">${a.valor}</span>`;
+    if (!a.clicavel) return `<div class="atributo" data-atributo="${esc(a.campo)}">${cabeca}${valor}</div>`;
+    return `<button type="button" class="atributo${a.vazio ? " vazio" : ""}${aberto ? " aberto" : ""}" data-atributo="${esc(a.campo)}" data-tipo="${a.tipo}"
+      aria-haspopup="dialog" aria-expanded="${aberto}" title="${a.vazio ? "Adicionar" : "Alterar"}">${cabeca}${valor}</button>`;
+  }
+
+  /** Limites de uma data: "Não começa antes de" não passa da data-limite, e a data-limite não fica antes dela. */
+  function limitesDaData(campo, acao) {
+    if (campo === "dataLimite" && acao.naoAntesDe) return { min: acao.naoAntesDe, aviso: `Não pode ser antes de “Não começa antes de” (${dataBr(acao.naoAntesDe)}).` };
+    if (campo === "naoAntesDe" && acao.dataLimite && !usaEstimativas(d.espaco)) return { max: acao.dataLimite, aviso: `Não pode passar da data-limite (${dataBr(acao.dataLimite)}).` };
+    return {};
+  }
+
+  /** A janelinha do atributo aberto, por cima da janela, junto da linha. */
+  function popoverHtml(acao) {
+    if (!popover) return "";
+    const a = atributosDaTarefa(acao, d.linhaDe.get(numero)).find((x) => x.campo === popover);
+    if (!a || !a.clicavel) { popover = null; return ""; }
+    const ajuda = a.termo ? ` <a href="#" class="oque" data-termo="${a.termo}" aria-label="O que é?" title="O que é?">${ICONES.ajuda}</a>` : "";
+    let miolo;
+    if (a.tipo === "data") miolo = popoverDataHtml(a, acao);
+    else if (a.tipo === "texto") miolo = popoverTextoHtml(a, acao);
+    else if (a.tipo === "unica") miolo = `<div class="popover-lista" role="listbox" aria-label="${a.nome}">${opcoesUnicas(a.campo, acao).map((o) => o.grupo
+      ? `<p class="popover-grupo">${esc(o.grupo)}</p>`
+      : `<button type="button" class="popover-opcao${o.atual ? " atual" : ""}" role="option" aria-selected="${o.atual}" data-escolher="${esc(o.valor)}">
+          <span class="popover-texto">${o.html}</span>${o.atual ? `<span class="popover-marca">${ICONES.marcado}</span>` : ""}</button>`).join("")}</div>`;
+    else miolo = `<input class="popover-busca" name="filtroPopover" autocomplete="off" aria-label="Buscar" placeholder="${a.campo === "etiquetas" ? "Digite uma etiqueta" : a.campo === "responsaveis" ? "Digite o nome, a sigla ou o setor" : "Digite o nome da tarefa"}">
+      <div class="popover-lista" role="listbox" aria-multiselectable="true" aria-label="${a.nome}" data-lista-multipla>${opcoesMultiplasHtml(a.campo, "")}</div>
+      ${a.campo === "dependeDe" ? confirmarAnteriorHtml() : ""}`;
+    return `<div class="popover-atributo" data-popover="${esc(a.campo)}" role="dialog" aria-label="${a.nome}">
+      <div class="popover-cabeca"><b>${a.nome}</b>${ajuda}</div>${miolo}</div>`;
+  }
+
+  /** Data: o calendário do aparelho no alto, os atalhos com o dia ao lado e "Sem data", se houver uma. */
+  function popoverDataHtml(a, acao) {
+    const cp = personalizadoDe(a.campo);
+    const valor = cp ? acao.valoresPersonalizados?.[cp.id] ?? "" : acao[a.campo] ?? "";
+    const lim = cp ? {} : limitesDaData(a.campo, acao);
+    const fora = (x) => (lim.min && x < lim.min) || (lim.max && x > lim.max);
+    return `<input type="date" class="popover-data" ${atributos(a.campo, valor)} value="${esc(valor)}"${lim.min ? ` min="${lim.min}"` : ""}${lim.max ? ` max="${lim.max}"` : ""} aria-label="${a.nome}">
+      ${lim.aviso ? `<p class="tec popover-aviso">${esc(lim.aviso)}</p>` : ""}
+      <div class="popover-lista" role="group" aria-label="Atalhos">
+        ${atalhosDoVencimento(hoje).map((x) => `<button type="button" class="popover-opcao" data-atalho-data="${x.data}" data-para="${esc(a.campo)}"${fora(x.data) ? ` disabled title="${esc(lim.aviso)}"` : ""}>
+          <span class="popover-texto">${x.rotulo}</span><span class="popover-dia">${x.dia}</span></button>`).join("")}
+        ${valor ? `<button type="button" class="popover-opcao discreto" data-atalho-data="" data-para="${esc(a.campo)}"><span class="popover-texto">Sem data</span></button>` : ""}
+      </div>`;
+  }
+
+  /** Texto (local, código, campos personalizados de texto, número e link): Enter grava e fecha; Esc desiste. */
+  function popoverTextoHtml(a, acao) {
+    const cp = personalizadoDe(a.campo);
+    const bruto = cp ? acao.valoresPersonalizados?.[cp.id] : acao[a.campo];
+    const valor = bruto == null ? "" : cp ? textoDoValor(cp, bruto) : bruto;
+    const tipo = cp?.tipo === "link" ? ' type="url" inputmode="url"' : cp?.tipo === "numero" ? ' inputmode="decimal"' : "";
+    const dica = a.campo === "codigo" ? "De 2 a 8 letras ou números, sem repetir no espaço. Vazio: sem código."
+      : cp?.tipo === "numero" ? "Número, como 3 ou 1.250,50." : "";
+    const link = cp?.tipo === "link" && bruto && linkSeguro(bruto) ? `<a class="abrir-link" href="${esc(bruto)}" target="_blank" rel="noopener noreferrer">Abrir o link${ICONES.seguir}</a>` : "";
+    return `<input class="popover-entrada${a.campo === "codigo" ? " mono" : ""}"${tipo} maxlength="${a.campo === "codigo" ? 12 : 200}" autocomplete="off" ${atributos(a.campo, valor)} value="${esc(valor)}" aria-label="${a.nome}"
+        placeholder="${cp?.tipo === "link" ? "https://…" : a.campo === "local" ? "Onde a tarefa acontece" : ""}">
+      <p class="tec popover-aviso">${dica ? `${dica} ` : ""}Enter grava; Esc desiste.</p>${link}`;
+  }
+
+  /** Opções de escolha única: situação, etapa, entrega do plano e campos personalizados de lista ou de sim ou não. */
+  function opcoesUnicas(campo, acao) {
+    const op = (valor, texto, atual) => ({ valor, html: esc(texto), atual });
+    if (campo === "situacao") {
+      const fluxo = d.linhaDe.get(numero).fluxo;
+      return [op("", nomeInicial(d.espaco), fluxo === "inicial"), ...personalizadasDe(d.espaco).map((x) => op(x.id, x.nome, fluxo === x.id))];
+    }
+    if (campo === "etapa") {
+      return [op("", "Sem fase nem etapa", !acao.etapa), ...(d.espaco.estrutura ?? []).flatMap((f) => [{ grupo: f.nome }, ...f.etapas.map((e) => op(e.id, e.nome, e.id === acao.etapa))])];
+    }
+    if (campo === "entregaDoPlano") return [op("", "Nenhuma", !acao.entregaDoPlano), ...d.entregas.map((x) => op(x.id, x.titulo, x.id === acao.entregaDoPlano))];
+    const c = personalizadoDe(campo);
+    const v = acao.valoresPersonalizados?.[c.id];
+    if (c.tipo === "simNao") return [op("", "Sem resposta", v == null), op("sim", "Sim", v === true), op("nao", "Não", v === false)];
+    return [op("", "Nenhuma", v == null), ...(c.opcoes ?? []).map((o) => op(o.id, o.nome, o.id === v))];
+  }
+  async function escolherOpcao(campo, valor) {
+    const acao = acaoAtual();
+    const nome = opcoesUnicas(campo, acao).find((o) => o.valor === valor)?.html ?? "";
+    fecharPopover();
+    if (campo === "situacao") return executar(() => store.mudarSituacao(espacoId, numero, valor || null), `Situação: ${nome}.`);
+    if (campo === "etapa" || campo === "entregaDoPlano") return executar(() => store.alterarAcao(espacoId, numero, { [campo]: valor || null }));
+    const c = personalizadoDe(campo);
+    const entrada = c.tipo === "simNao" ? (valor === "sim" ? true : valor === "nao" ? false : null) : valor || null;
+    return executar(() => store.definirValorPersonalizado(espacoId, numero, c.id, entrada));
+  }
+
+  /**
+   * Opções de marcar várias (responsáveis, etiquetas e "Depende de"), filtradas pelo que foi digitado; as marcadas vêm
+   * primeiro. No fim, criar um responsável ou uma etiqueta com o nome digitado, se ainda não existir.
+   */
+  function opcoesMultiplas(campo, texto) {
+    const acao = acaoAtual();
+    const contexto = { tons: d.espaco.tons, meus: d.meus };
+    let itens;
+    if (campo === "responsaveis") {
+      itens = buscar(d.responsaveis, texto, (r) => [r.nome, r.sigla, r.setor]).map((r) => ({ id: r.id, marcado: acao.responsaveis.includes(r.id),
+        html: `${seloHtml(r, contexto)} ${esc(r.nome)}${r.setor ? ` <span class="tec">${esc(r.setor)}</span>` : ""}` }));
+    } else if (campo === "etiquetas") {
+      itens = buscar(etiquetasDe(d.espaco), texto, (x) => [x.nome]).map((x) => ({ id: x.id, marcado: (acao.etiquetas ?? []).includes(x.id), html: etiquetaHtml(x) }));
+    } else {
+      const ja = new Set(acao.dependeDe ?? []);
+      const candidatas = [...d.acoes.filter((a) => ja.has(a.numero)), ...anterioresPossiveis(d.acoes, numero).filter((a) => !ja.has(a.numero))];
+      itens = buscar(candidatas, texto, (a) => [a.rotulo, d.usaCodigos ? a.codigo : ""]).map((a) => ({ id: String(a.numero), marcado: ja.has(a.numero), html: nomeHtml(a) }));
+    }
+    itens.sort((x, y) => Number(y.marcado) - Number(x.marcado));
+    const nome = texto.trim();
+    const criar = [];
+    if (nome && campo === "responsaveis" && !d.responsaveis.some((r) => r.nome.toLowerCase() === nome.toLowerCase())) {
+      criar.push({ criar: "pessoa", html: `${ICONES.mais} Cadastrar “${esc(nome)}” como pessoa` },
+        { criar: "unidade", html: `${ICONES.mais} Cadastrar “${esc(nome)}” como unidade (setor, equipe ou grupo)` });
+    }
+    if (nome && campo === "etiquetas" && !etiquetaPorNome(d.espaco, nome)) {
+      criar.push(nome.length > TAMANHO_DO_NOME ? { html: `<span class="tec">O nome passa de ${TAMANHO_DO_NOME} caracteres.</span>` }
+        : { criar: "etiqueta", html: `${ICONES.mais} Criar a etiqueta “${esc(nome)}”` });
+    }
+    return { itens, criar };
+  }
+  function opcoesMultiplasHtml(campo, texto) {
+    const { itens, criar } = opcoesMultiplas(campo, texto);
+    const vazio = campo === "dependeDe" ? "Nenhuma tarefa disponível." : campo === "etiquetas" ? "Digite o nome de uma etiqueta nova." : "Digite um nome para buscar ou cadastrar.";
+    return `${itens.map((x) => `<button type="button" class="popover-opcao" role="option" aria-selected="${x.marcado}" data-alternar="${esc(x.id)}">
+        <span class="popover-caixa">${x.marcado ? ICONES.marcado : ""}</span><span class="popover-texto">${x.html}</span></button>`).join("")}
+      ${criar.map((x) => x.criar ? `<button type="button" class="popover-opcao criar" data-criar="${x.criar}">${x.html}</button>` : `<p class="popover-grupo">${x.html}</p>`).join("")}
+      ${!itens.length && !criar.length ? `<p class="tec popover-aviso">${vazio}</p>` : ""}`;
+  }
+  async function alternarOpcao(campo, id, marcado) {
+    focoPopover = `data-alternar="${CSS.escape(id)}"`;
+    if (campo === "responsaveis") return executar(() => (marcado ? store.retirarResponsavelDaAcao(espacoId, numero, id) : store.acrescentarResponsavelNaAcao(espacoId, numero, id)));
+    if (campo === "etiquetas") return executar(() => (marcado ? store.retirarEtiquetaDaAcao(espacoId, numero, id) : store.acrescentarEtiquetaNaAcao(espacoId, numero, id)));
+    const n = Number(id);
+    if (marcado) return executar(() => store.retirarDependencia(espacoId, numero, n));
+    return executar(() => acrescentarAnterior(d.acoes.find((a) => a.numero === n)));
+  }
+  async function criarOpcao(campo, tipo) {
+    const nome = corpo.querySelector('[name="filtroPopover"]')?.value.trim();
+    if (!nome) return;
+    const ok = await executar(async () => {
+      if (tipo === "etiqueta") return store.etiquetarAcao(espacoId, numero, nome);
+      const id = await store.criarResponsavel(espacoId, { tipo, nome, ...(tipo === "unidade" ? { sigla: nome.length <= 10 ? nome.toUpperCase() : "" } : {}) });
+      return store.acrescentarResponsavelNaAcao(espacoId, numero, id);
+    });
+    const busca = corpo.querySelector('[name="filtroPopover"]');
+    if (ok && busca) { busca.value = ""; desenharListaMultipla(); busca.focus(); }
+  }
+  /** Só a lista da janelinha, ao digitar na busca (sem redesenhar a janela inteira). */
+  function desenharListaMultipla() {
+    const lista = corpo.querySelector("[data-lista-multipla]");
+    if (lista && popover) lista.innerHTML = opcoesMultiplasHtml(popover, corpo.querySelector('[name="filtroPopover"]')?.value ?? "");
+  }
+
+  function abrirPopover(campo) {
+    popover = campo;
+    focoPopover = null;
+    desenhar();
+    const pop = corpo.querySelector("[data-popover]");
+    if (!pop) return;
+    surgir(pop);
+    (pop.querySelector("input:not([type=checkbox])") ?? pop.querySelector(".popover-opcao.atual, .popover-opcao:not(:disabled)"))?.focus();
+  }
+  /** Fecha a janelinha. O campo de texto ou de data com valor novo grava antes, ao perder o foco. */
+  function fecharPopover(devolverFoco = false) {
+    if (!popover) return;
+    const campo = popover;
+    const pop = corpo.querySelector("[data-popover]");
+    if (pop?.contains(document.activeElement)) document.activeElement.blur();
+    popover = null;
+    focoPopover = null;
+    pop?.remove();
+    const linha = corpo.querySelector(`[data-atributo="${CSS.escape(campo)}"]`);
+    linha?.classList.remove("aberto");
+    linha?.setAttribute("aria-expanded", "false");
+    if (devolverFoco) linha?.focus();
+  }
+  /**
+   * Põe a janelinha junto da linha: embaixo, alinhada à esquerda dela, ou em cima, se não couber; sempre dentro da tela.
+   * Ela é fixa, mas a janela da ação usa transform, que muda a referência da posição: por isso desconta a origem medida.
+   */
+  function posicionarPopover() {
+    const pop = corpo.querySelector("[data-popover]");
+    const linha = popover && corpo.querySelector(`[data-atributo="${CSS.escape(popover)}"]`);
+    if (!pop || !linha) return;
+    const margem = 8;
+    pop.style.left = "0px";
+    pop.style.top = "0px";
+    const origem = pop.getBoundingClientRect();
+    const r = linha.getBoundingClientRect();
+    const largura = pop.offsetWidth;
+    const altura = pop.offsetHeight;
+    const esquerda = Math.max(margem, Math.min(r.left, innerWidth - largura - margem));
+    let topo = r.bottom + 4;
+    if (topo + altura > innerHeight - margem) topo = r.top - altura - 4 >= margem ? r.top - altura - 4 : Math.max(margem, innerHeight - altura - margem);
+    pop.style.left = `${esquerda - origem.left}px`;
+    pop.style.top = `${topo - origem.top}px`;
+  }
+  /* clique fora da janelinha e da linha dela a fecha */
+  const fecharPopoverFora = (e) => {
+    if (!popover || fechada) return;
+    if (e.target.closest?.("[data-popover]") || e.target.closest?.(`[data-atributo="${CSS.escape(popover)}"]`)) return;
+    if (!e.target.isConnected) return; // opção redesenhada no meio do clique
+    fecharPopover();
+  };
+  document.addEventListener("click", fecharPopoverFora, true);
+  /*
+   * Esc com a janelinha aberta fecha só ela, onde quer que esteja o foco (por exemplo, de volta da Ajuda), e devolve o foco
+   * à linha. O que foi digitado e não gravado na janelinha é descartado, como no Todoist. Só vale se esta janela é a de
+   * cima: com a Ajuda aberta por cima, Esc fecha a Ajuda.
+   */
+  const escNaJanelinha = (e) => {
+    if (!popover || fechada || e.key !== "Escape" || e.defaultPrevented) return;
+    const camadas = [...document.querySelectorAll(".camada.aberta")];
+    if (!camadas.at(-1)?.contains(corpo)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const ativo = document.activeElement;
+    if (ativo?.closest?.("[data-popover]") && "original" in (ativo.dataset ?? {})) { ativo.value = ativo.dataset.original; ativo.classList.remove("com-erro"); }
+    fecharPopover(true);
+  };
+  document.addEventListener("keydown", escNaJanelinha, true);
+  addEventListener("resize", posicionarPopover);
+  corpo.addEventListener("scroll", () => { if (popover) posicionarPopover(); }, true);
 
   /**
    * Situação (passo 2.7): na ação liberada de um espaço com situações personalizadas, uma lista para
@@ -451,11 +810,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /** Campos que aparecem: os que têm valor, os essenciais e os abertos em "Mais campos". */
   function visivel(acao, campo) {
     if (mostrados.has(campo)) return true;
-    if (campo === "descricao") return Boolean(acao.descricao);
+    if (campo === "descricao") return Boolean(acao.descricao) || ehDeTarefas(d.espaco); // nas tarefas, sempre à vista, como no Todoist
     if (campo === "naoAntesDe") return Boolean(acao.naoAntesDe);
     if (campo === "codigo") return Boolean(acao.codigo);
     if (campo === "notas") return Boolean(acao.notas);
-    if (campo === "checklist") return Boolean(acao.checklist?.length) || checklistAberto;
+    if (campo === "checklist") return Boolean(acao.checklist?.length) || checklistAberto || ehDeTarefas(d.espaco); // nas tarefas, "Adicionar checklist" fica sempre à vista
     if (campo === "etiquetas") return Boolean(acao.etiquetas?.length);
     if (campo === "justificativa") return Boolean(acao.justificativa);
     if (campo === "local") return Boolean(acao.local);
@@ -484,7 +843,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }
   function maisCamposHtml(acao) {
     if (somenteLeitura()) return "";
-    const fechados = opcionais().filter(([campo]) => !visivel(acao, campo));
+    /* nas tarefas, os atributos ficam na coluna ao lado; aqui, só o que é conteúdo (05/11/2026) */
+    const fechados = opcionais().filter(([campo]) => !visivel(acao, campo) && (!ehDeTarefas(d.espaco) || DO_CONTEUDO.has(campo)));
     if (!fechados.length) return "";
     return `<div class="chips-campos mais-campos" role="group" aria-label="Mais campos"><span class="tec">Mais campos:</span>
       ${fechados.map(([campo, texto]) => `<button type="button" class="chip-campo" data-mostrar-campo="${campo}">${ICONES.mais}${texto}</button>`).join("")}</div>`;
@@ -539,7 +899,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   function descricaoHtml(acao) {
     if ((d.espaco.camposOpcionais ?? {}).descricao === false || !visivel(acao, "descricao")) return "";
     return `<div class="janela-campos janela-descricao"><div class="campo-acao" data-campo="descricao">${rotuloHtml("descricao", "Descrição")}
-        <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="O que é esta ação, em poucas linhas">${esc(acao.descricao ?? "")}</textarea></div></div>`;
+        <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="${ehDeTarefas(d.espaco) ? "Descrição" : "O que é esta ação, em poucas linhas"}">${esc(acao.descricao ?? "")}</textarea></div></div>`;
   }
 
   function camposHtml(acao, l, etapas, etapa) {
@@ -1052,7 +1412,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       const tres = lerTres();
       if (["o", "m", "p"].every((k) => tres[k] === corpo.querySelector(`[name="${k}"]`).dataset.original)) return;
       if (["o", "m", "p"].some((k) => tres[k] === "")) return mostrarStatus("estimativa", "aviso", "Preencha os três pontos para gravar.");
-    } else if (texto === el.dataset.original) return;
+    } else if (texto === el.dataset.original) return true;
     /* campo personalizado (passo 3.6): o Store confere o valor pelo tipo do campo */
     if (campo.startsWith(PREFIXO_CP)) {
       const id = campo.slice(PREFIXO_CP.length);
@@ -1067,12 +1427,14 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           const formatado = textoDoValor(c, valorDoCampo(c, texto).valor);
           corpo.querySelectorAll(`[data-auto="${campo}"]`).forEach((x) => { if (x.value === texto) { x.value = formatado; x.dataset.original = formatado; } });
         }
+        else if (el.isConnected && el.value === texto) el.dataset.original = texto;
         mostrarStatus(campo, "salvo");
+        return true;
       } catch (e) {
         mostrarStatus(campo, "erro", e.message);
         corpo.querySelectorAll(`[data-auto="${campo}"]`).forEach((x) => x.classList.add("com-erro"));
+        return false;
       }
-      return;
     }
     const operacoes = {
       rotulo: () => {
@@ -1085,18 +1447,30 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       justificativa: () => store.alterarAcao(espacoId, numero, { justificativa: texto.trim() }),
       local: () => store.alterarAcao(espacoId, numero, { local: texto.trim().replace(/\s+/g, " ") }),
       entregaDoPlano: () => store.alterarAcao(espacoId, numero, { entregaDoPlano: texto || null }),
-      naoAntesDe: () => store.alterarAcao(espacoId, numero, { naoAntesDe: texto || null }),
-      dataLimite: () => store.alterarAcao(espacoId, numero, { dataLimite: texto || null }),
+      naoAntesDe: () => { conferirDatas("naoAntesDe", texto); return store.alterarAcao(espacoId, numero, { naoAntesDe: texto || null }); },
+      dataLimite: () => { conferirDatas("dataLimite", texto); return store.alterarAcao(espacoId, numero, { dataLimite: texto || null }); },
       estimativa: () => { const t = lerTres(); return store.corrigirEstimativa(espacoId, numero, { o: Number(t.o), m: Number(t.m), p: Number(t.p) }); },
     };
     mostrarStatus(campo, "salvando", "Salvando…");
     try {
       await operacoes[campo]();
+      if (el.isConnected && el.value === texto) el.dataset.original = texto; // gravado: sair do campo depois não grava de novo
       mostrarStatus(campo, "salvo");
+      return true;
     } catch (e) {
       mostrarStatus(campo, "erro", e.message);
       corpo.querySelectorAll(`[data-auto="${campo}"]`).forEach((x) => x.classList.add("com-erro"));
+      return false;
     }
+  }
+  /**
+   * Nas tarefas (05/11/2026), uma combinação impossível de datas não é gravada: "Não começa antes de" depois da
+   * data-limite. A janelinha já desliga os atalhos fora do intervalo; isto cobre a data digitada.
+   */
+  function conferirDatas(campo, texto) {
+    if (!ehDeTarefas(d.espaco) || !texto) return;
+    const lim = limitesDaData(campo, acaoAtual());
+    if ((lim.min && texto < lim.min) || (lim.max && texto > lim.max)) throw new Error(lim.aviso);
   }
   /** As anotações gravam ao sair do editor, se mudaram. */
   const notasMudaram = () => {
@@ -1208,12 +1582,27 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
     const atalho = t.closest("[data-atalho-data]");
     if (atalho) {
-      const campo = corpo.querySelector('[name="dataLimite"]');
+      const campo = corpo.querySelector(`[name="${CSS.escape(atalho.dataset.para ?? "dataLimite")}"]`);
       if (!campo) return;
       campo.value = atalho.dataset.atalhoData;
       if (!campo.value) abrindoData = false;
-      return gravarCampo(campo);
+      /* na janelinha da tarefa, o atalho grava e fecha, como no Todoist */
+      if (atalho.closest("[data-popover]") && await gravarCampo(campo)) fecharPopover(true);
+      else if (!atalho.closest("[data-popover]")) return gravarCampo(campo);
+      return;
     }
+    /* coluna de atributos da tarefa (05/11/2026): a linha abre (ou fecha) a janelinha do campo */
+    const linhaAtributo = t.closest("button[data-atributo]");
+    if (linhaAtributo) {
+      const campo = linhaAtributo.dataset.atributo;
+      return popover === campo ? fecharPopover(true) : abrirPopover(campo);
+    }
+    const escolha = t.closest("[data-escolher]");
+    if (escolha && popover) return escolherOpcao(popover, escolha.dataset.escolher);
+    const alternar = t.closest("[data-alternar]");
+    if (alternar && popover) return alternarOpcao(popover, alternar.dataset.alternar, alternar.getAttribute("aria-selected") === "true");
+    const criar = t.closest("[data-criar]");
+    if (criar && popover) return criarOpcao(popover, criar.dataset.criar);
     const mostrar = t.closest("[data-mostrar-campo]");
     if (mostrar) return mostrarCampo(mostrar.dataset.mostrarCampo);
     const abrirBusca = t.closest("[data-buscar-abrir]");
@@ -1364,6 +1753,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
   });
   corpo.addEventListener("input", (e) => {
+    if (e.target.name === "filtroPopover") return desenharListaMultipla();
     const bloco = e.target.closest("form, [data-campo]");
     const pert = bloco?.querySelector("[data-pert]");
     if (pert && ["o", "m", "p"].includes(e.target.name)) {
@@ -1384,7 +1774,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       return;
     }
     if (e.target.dataset.buscar) return; // o seletor cuida das teclas
-    if (e.key === "Enter" && e.target.dataset.auto && e.target.type === "date") { e.preventDefault(); return gravarCampo(e.target); }
+    if (e.key === "Enter" && e.target.dataset.auto && e.target.type === "date" && !e.target.closest("[data-popover]")) { e.preventDefault(); return gravarCampo(e.target); }
     if (e.target.matches("[data-endereco-link]")) {
       if (e.key === "Enter") { e.preventDefault(); aplicarLink(); }
       if (e.key === "Escape") { e.preventDefault(); corpo.querySelector("[data-barra-link]").hidden = true; editorNotas()?.focus(); }
@@ -1414,8 +1804,31 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       return;
     }
     /* Enter no nome e no código grava (o nome não tem quebra de linha) */
-    if (e.key === "Enter" && (auto === "rotulo" || auto === "codigo")) { e.preventDefault(); e.target.blur(); return; }
+    if (e.key === "Enter" && (auto === "rotulo" || auto === "codigo") && !e.target.closest("[data-popover]")) { e.preventDefault(); e.target.blur(); return; }
     if (e.key === "Enter" && e.target.matches("[data-texto-item]") && !e.target.isContentEditable) { e.preventDefault(); editarItem(e.target); }
+  });
+
+  /*
+   * Teclas da janelinha da tarefa (05/11/2026): Enter no texto ou na data grava e fecha; Esc fecha (depois de desfazer o
+   * que foi digitado, se for o caso) e devolve o foco à linha, sem fechar a janela; ↑↓ andam pelas opções.
+   */
+  corpo.addEventListener("keydown", async (e) => {
+    if (!popover || e.defaultPrevented) return;
+    const dentro = e.target.closest?.("[data-popover]");
+    if (!dentro) return;
+    if (e.key === "Enter" && e.target.dataset.auto) {
+      e.preventDefault();
+      if (await gravarCampo(e.target)) fecharPopover(true);
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      const opcoes = [...dentro.querySelectorAll(".popover-opcao:not(:disabled)")];
+      if (!opcoes.length) return;
+      const i = opcoes.indexOf(document.activeElement);
+      if (i < 0 && e.target.type === "date") return; // no calendário, as setas mudam o dia
+      e.preventDefault();
+      opcoes[i < 0 ? (e.key === "ArrowDown" ? 0 : opcoes.length - 1) : (i + (e.key === "ArrowDown" ? 1 : -1) + opcoes.length) % opcoes.length].focus();
+    }
   });
 
   const seletores = ligarSeletores(corpo, {

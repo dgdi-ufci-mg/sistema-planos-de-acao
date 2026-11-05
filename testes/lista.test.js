@@ -146,3 +146,29 @@ describe("Atalhos da data-limite (janela da tarefa, 05/11/2026)", () => {
     assert.equal(atalhosDeData("2026-12-31")[2].data, "2027-01-04");
   });
 });
+
+describe("Atalhos e rótulos da janelinha de data (coluna de atributos da tarefa, 05/11/2026)", () => {
+  it("hoje, amanhã, este fim de semana (de segunda a sexta) e próxima semana, com o dia ao lado", async () => {
+    const { atalhosDoVencimento } = await import("../js/lista.js");
+    /* quinta-feira, 05/11/2026 */
+    assert.deepEqual(atalhosDoVencimento("2026-11-05"), [
+      { rotulo: "Hoje", data: "2026-11-05", dia: "qui" },
+      { rotulo: "Amanhã", data: "2026-11-06", dia: "sex" },
+      { rotulo: "Este fim de semana", data: "2026-11-07", dia: "sáb" },
+      { rotulo: "Próxima semana", data: "2026-11-09", dia: "seg 9 nov" },
+    ]);
+    /* sábado e domingo: sem "Este fim de semana"; a próxima semana é a segunda seguinte */
+    assert.deepEqual(atalhosDoVencimento("2026-11-07").map((a) => a.rotulo), ["Hoje", "Amanhã", "Próxima semana"]);
+    assert.equal(atalhosDoVencimento("2026-11-08").at(-1).data, "2026-11-09");
+    /* segunda-feira: a próxima semana é a segunda da semana que vem; virada de ano */
+    assert.equal(atalhosDoVencimento("2026-11-09").at(-1).data, "2026-11-16");
+    assert.equal(atalhosDoVencimento("2026-12-31").at(-1).dia, "seg 4 jan");
+  });
+  it("rótulo da data: Hoje, Amanhã, Ontem ou a data com o dia da semana", async () => {
+    const { rotuloDaData } = await import("../js/lista.js");
+    assert.equal(rotuloDaData("2026-11-05", "2026-11-05"), "Hoje");
+    assert.equal(rotuloDaData("2026-11-06", "2026-11-05"), "Amanhã");
+    assert.equal(rotuloDaData("2026-11-04", "2026-11-05"), "Ontem");
+    assert.equal(rotuloDaData("2026-11-09", "2026-11-05"), "09/11/2026 · seg");
+  });
+});

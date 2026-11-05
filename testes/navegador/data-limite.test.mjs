@@ -16,11 +16,12 @@ async function abrirTarefa(sessao, nome) {
   await abrirData(p);
   return p;
 }
-/** Vazia, a data-limite mostra "Sem data-limite", que abre o campo (05/11/2026). */
+/** A data fica na janelinha da linha "Data-limite", na coluna de atributos (05/11/2026). */
 async function abrirData(p) {
-  const vazio = p.locator(".camada.aberta [data-abrir-data]");
-  if (await vazio.count()) { await vazio.click(); await assentar(p); }
+  await p.locator('.camada.aberta [data-atributo="dataLimite"]').click();
+  await assentar(p);
 }
+const linhaDaData = (p) => p.locator('.camada.aberta [data-atributo="dataLimite"]');
 
 describe("Data-limite na janela da tarefa", { skip: pular }, () => {
   let sessao;
@@ -45,8 +46,8 @@ describe("Data-limite na janela da tarefa", { skip: pular }, () => {
     /* Tab só anda entre dia, mês e ano; sair do campo é clicar fora dele */
     await janela.locator("h2, .janela-nome").first().click();
     await assentar(p);
-    assert.equal(await campo().inputValue(), "2026-12-12");
     assert.match(await janela.locator('[data-status="dataLimite"]').innerText(), /Salvo/);
+    assert.match(await linhaDaData(p).innerText(), /12\/12\/2026/);
     /* a gravação chegou ao banco: reaberta, a janela mostra a data nova */
     await p.keyboard.press("Escape");
     await assentar(p);
@@ -66,10 +67,9 @@ describe("Data-limite na janela da tarefa", { skip: pular }, () => {
     await p.keyboard.press("Enter");
     await assentar(p);
     assert.match(await janela.locator('[data-status="dataLimite"]').innerText(), /Salvo/);
-    assert.equal(await campo.inputValue(), "2026-12-12");
-    assert.equal(await p.locator(".camada.aberta").count(), 1, "Enter não fecha a janela");
-    /* depois de gravar, o campo já conhece o valor novo: sair dele não grava de novo */
-    assert.equal(await campo.getAttribute("data-original"), "2026-12-12");
+    assert.match(await linhaDaData(p).innerText(), /12\/12\/2026/);
+    assert.equal(await p.locator(".camada.aberta").count(), 1, "Enter fecha só a janelinha, não a janela");
+    assert.equal(await janela.locator("[data-popover]").count(), 0);
   });
 
   test("fechar a janela com a data digitada grava antes de fechar", async () => {

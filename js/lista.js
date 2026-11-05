@@ -167,3 +167,47 @@ export function atalhosDeData(hoje) {
     { rotulo: "Próxima segunda", data: mais(((8 - semana) % 7) || 7) },
   ];
 }
+
+const DIAS_CURTOS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const MESES_CURTOS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+/** Dia da semana abreviado ("qui") de uma data ISO. */
+export function diaDaSemana(data) {
+  const [ano, mes, dia] = data.split("-").map(Number);
+  return DIAS_CURTOS[new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay()];
+}
+
+/**
+ * Atalhos da janelinha de data na coluna de atributos da tarefa (05/11/2026, pedido do responsável, como no Todoist):
+ * "Hoje", "Amanhã", "Este fim de semana" (o sábado da semana; só de segunda a sexta, porque no sábado e no domingo
+ * o nome ficaria ambíguo) e "Próxima semana" (a segunda-feira seguinte). Cada um traz o dia ao lado, para a pessoa
+ * não precisar calcular: o dia da semana ("qui") e, na próxima semana, também o dia e o mês ("seg 9 nov").
+ * @param {string} hoje  data ISO
+ * @returns {{rotulo: string, data: string, dia: string}[]}
+ */
+export function atalhosDoVencimento(hoje) {
+  const [ano, mes, dia] = hoje.split("-").map(Number);
+  const mais = (n) => new Date(Date.UTC(ano, mes - 1, dia + n)).toISOString().slice(0, 10);
+  const semana = new Date(Date.UTC(ano, mes - 1, dia)).getUTCDay();
+  const segunda = mais(((8 - semana) % 7) || 7);
+  const [, mSeg, dSeg] = segunda.split("-").map(Number);
+  return [
+    { rotulo: "Hoje", data: hoje, dia: diaDaSemana(hoje) },
+    { rotulo: "Amanhã", data: mais(1), dia: diaDaSemana(mais(1)) },
+    ...(semana >= 1 && semana <= 5 ? [{ rotulo: "Este fim de semana", data: mais(6 - semana), dia: "sáb" }] : []),
+    { rotulo: "Próxima semana", data: segunda, dia: `seg ${dSeg} ${MESES_CURTOS[mSeg - 1]}` },
+  ];
+}
+
+/**
+ * Data como aparece na coluna de atributos: "Hoje", "Amanhã" e "Ontem" pelo nome; as demais com o dia da semana,
+ * como "09/11/2026 · seg".
+ */
+export function rotuloDaData(data, hoje) {
+  const [ano, mes, dia] = hoje.split("-").map(Number);
+  const mais = (n) => new Date(Date.UTC(ano, mes - 1, dia + n)).toISOString().slice(0, 10);
+  if (data === hoje) return "Hoje";
+  if (data === mais(1)) return "Amanhã";
+  if (data === mais(-1)) return "Ontem";
+  const [a, m, d] = data.split("-");
+  return `${d}/${m}/${a} · ${diaDaSemana(data)}`;
+}

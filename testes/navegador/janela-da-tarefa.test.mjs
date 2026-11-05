@@ -25,45 +25,97 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
   before(async () => { sessao = await iniciar(); });
   after(async () => { await sessao?.fechar(); });
 
-  test("a data-limite aparece só no campo, e vencida fica em vermelho nele", async () => {
+  /** Abre a janelinha do atributo `campo` na coluna ao lado (05/11/2026). */
+  async function abrirAtributo(p, campo) {
+    await janela(p).locator(`[data-atributo="${campo}"]`).click();
+    await assentar(p);
+    return p.locator(`.camada.aberta [data-popover="${campo}"]`);
+  }
+
+  test("a data-limite fica na coluna de atributos; vencida, em vermelho, com \"Atrasada\"", async () => {
     const p = await abrirTarefa(sessao, "Enviar a frequência", { largura: 1280 });
     const j = janela(p);
-    assert.doesNotMatch(await j.locator(".janela-resumo").innerText(), /Data-limite/);
-    assert.equal(await j.locator('[data-campo="dataLimite"] input[type="date"]').count(), 1);
-    assert.equal(await j.locator('[data-campo="dataLimite"]').evaluate((el) => el.classList.contains("atrasada")), true);
+    assert.equal(await j.locator(".janela-resumo").count(), 0, "sem o resumo antigo");
+    const linha = j.locator('.janela-lado [data-atributo="dataLimite"]');
+    assert.equal(await linha.locator(".atributo-valor .atrasada").count(), 1);
+    assert.match(await linha.innerText(), /Atrasada/i);
+    assert.equal(await j.locator('input[type="date"]').count(), 0, "o calendário só aparece na janelinha");
     assert.deepEqual(p.erros, []);
   });
 
   for (const largura of [1280, 390]) {
-    test(`sem comentários nem estimativas: uma coluna, sem abas, com o histórico no fim (${largura} px)`, async () => {
+    test(`conteúdo à esquerda e atributos numa coluna fixa ao lado; no celular, logo abaixo da descrição (${largura} px)`, async () => {
       const p = await abrirTarefa(sessao, "Ler o relatório", { largura });
       const j = janela(p);
-      assert.equal(await j.locator(".janela-grade.uma-coluna").count(), 1);
+      assert.equal(await j.locator(".janela-grade.tarefa").count(), 1);
       assert.equal(await j.locator(".janela-abas").count(), 0);
-      assert.equal(await j.locator(".janela-atividade").count(), 0);
+      const caixa = async (sel) => j.locator(sel).first().boundingBox();
+      const lado = await caixa(".janela-lado");
+      const nome = await caixa(".janela-nome");
+      const descricao = await caixa('[data-campo="descricao"]');
+      const checklist = await caixa(".janela-resto");
+      if (largura > 640) {
+        assert.ok(lado.x > nome.x + nome.width - 2, "a coluna fica à direita do nome");
+        assert.ok(lado.y <= nome.y, "e começa no alto");
+      } else {
+        assert.ok(lado.y > descricao.y && lado.y < checklist.y, "entre a descrição e o resto do conteúdo");
+      }
+      assert.deepEqual(await j.locator(".janela-lado [data-atributo]").evaluateAll((els) => els.map((el) => el.dataset.atributo).slice(0, 4)),
+        ["situacao", "dataLimite", "naoAntesDe", "responsaveis"]);
       assert.equal(await j.locator(".janela-principal [data-historico]").count(), 1);
-      if (largura > 640) assert.ok((await j.boundingBox()).width <= 760, "janela mais estreita");
+      assert.ok(await p.evaluate(() => document.documentElement.scrollWidth) <= largura, "sem rolagem lateral");
       assert.deepEqual(p.erros, []);
     });
   }
 
-  test("no plano com estimativas, as duas colunas continuam", async () => {
+  test("no plano com estimativas, as duas colunas de antes continuam", async () => {
     const p = await sessao.abrir({ largura: 1280 });
     await p.locator(".linha[data-abrir-acao]").first().click();
     await p.waitForSelector(".camada.aberta .janela-grade");
     await assentar(p);
-    assert.equal(await janela(p).locator(".janela-grade.uma-coluna").count(), 0);
+    assert.equal(await janela(p).locator(".janela-grade.tarefa, .janela-lado").count(), 0);
     assert.equal(await janela(p).locator(".janela-atividade [data-historico]").count(), 1);
     assert.deepEqual(p.erros, []);
   });
 
-  test("a ajuda da data-limite fica no \"?\", que abre o glossário, e não numa frase fixa", async () => {
+  test("linha vazia mostra \"+\"; a linha inteira abre a janelinha, com a ajuda no \"?\"; clicar fora e Esc fecham", async () => {
     const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
-    const campo = janela(p).locator('[data-campo="dataLimite"]');
-    assert.equal(await campo.locator(".tec").count(), 0);
-    await campo.locator('[data-termo="dataLimite"]').click();
+    const j = janela(p);
+    const linha = j.locator('[data-atributo="naoAntesDe"]');
+    assert.equal(await linha.locator(".atributo-mais").count(), 1);
+    /* clique perto da borda direita da linha, longe do texto: a linha inteira é o alvo */
+    const r = await linha.boundingBox();
+    await p.mouse.click(r.x + r.width - 30, r.y + r.height - 6);
     await assentar(p);
-    assert.match(await p.locator(".camada.aberta").last().innerText(), /Data-limite/);
+    const pop = p.locator('.camada.aberta [data-popover="naoAntesDe"]');
+    assert.equal(await pop.count(), 1);
+    assert.equal(await linha.getAttribute("aria-expanded"), "true");
+    assert.equal(await p.evaluate(() => document.activeElement?.name), "naoAntesDe", "o cursor vai para a data");
+    const caixaPop = await pop.boundingBox();
+    assert.ok(caixaPop.y >= r.y + r.height - 1 || caixaPop.y + caixaPop.height <= r.y + 1, "junto da linha, sem cobri-la");
+    /* Esc fecha só a janelinha, e a janela continua aberta */
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    assert.equal(await pop.count(), 0);
+    assert.equal(await p.locator(".camada.aberta .janela-grade").count(), 1, "a janela continua aberta");
+    /* o que se digitou e não gravou é descartado no Esc */
+    await linha.click();
+    await assentar(p);
+    await p.keyboard.type("12122026", { delay: 40 });
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    assert.equal(await linha.locator(".atributo-mais").count(), 1, "continua vazia");
+    await linha.click();
+    await assentar(p);
+    await j.locator(".janela-nome").click();
+    await assentar(p);
+    assert.equal(await pop.count(), 0, "clicar fora fecha");
+    /* a ajuda fica no "?" da janelinha, que abre o glossário */
+    await linha.click();
+    await assentar(p);
+    await pop.locator('[data-termo="naoAntesDe"]').click();
+    await assentar(p);
+    assert.match(await p.locator(".camada.aberta").last().innerText(), /antes de/i);
     assert.deepEqual(p.erros, []);
   });
 
@@ -100,81 +152,100 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
-  test("nas tarefas, a situação não tem o ícone de cadeado; no plano, continua", async () => {
+  test("situação: lista com a atual marcada; escolher grava e fecha; sem o ícone de cadeado; no plano, o resumo continua", async () => {
     const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
-    const sit = janela(p).locator(".janela-resumo dd.sit");
-    assert.equal(await sit.locator(".icone-liberada, svg").count(), 0);
-    assert.match(await sit.innerText(), /A fazer/);
+    const linha = janela(p).locator('[data-atributo="situacao"]');
+    assert.equal(await linha.locator("svg").count(), 0);
+    assert.match(await linha.innerText(), /A fazer/);
+    const pop = await abrirAtributo(p, "situacao");
+    assert.equal(await pop.locator('[aria-selected="true"]').innerText(), "A fazer");
+    const outra = pop.locator('[data-escolher]:not([data-escolher=""])').first();
+    const nome = (await outra.innerText()).trim();
+    await outra.click();
+    await assentar(p);
+    assert.equal(await pop.count(), 0, "fecha ao escolher");
+    assert.match(await linha.innerText(), new RegExp(nome));
     const plano = await sessao.abrir({ largura: 1280 });
     await plano.locator(".linha[data-abrir-acao]").first().click();
     await plano.waitForSelector(".camada.aberta .janela-grade");
     assert.ok(await janela(plano).locator(".janela-resumo dd.sit svg").count() >= 1);
+    assert.deepEqual([...p.erros, ...plano.erros], []);
+  });
+
+  test("a janela tem altura fixa no computador, e cada coluna rola sozinha quando a tela é baixa", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280, altura: 520 });
+    const principal = janela(p).locator(".janela-principal");
+    await principal.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await assentar(p, 200);
+    const fim = await janela(p).locator("[data-historico] summary").boundingBox();
+    assert.ok(fim.y + fim.height <= 520, "o fim do conteúdo é alcançável rolando");
     assert.deepEqual(p.erros, []);
   });
 
-  test("em uma coluna, a janela tem a altura do conteúdo e rola quando a tela é baixa", async () => {
-    const alta = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280, altura: 900 });
-    assert.ok((await janela(alta).boundingBox()).height < 900 * 0.85, "não ocupa a altura toda à toa");
-    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280, altura: 520 });
-    const corpo = janela(p).locator(".painel-corpo");
-    await corpo.evaluate((el) => el.scrollTo(0, el.scrollHeight));
-    await assentar(p, 200);
-    const fim = await janela(p).locator("[data-historico] summary").boundingBox();
-    assert.ok(fim.y + fim.height <= 520, "o fim da janela é alcançável rolando");
-    assert.deepEqual(p.erros, []);
-  });
-  test("nas tarefas, a situação é uma linha discreta, sem caixa; no plano, o resumo continua em caixas", async () => {
-    const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
-    const resumo = janela(p).locator(".janela-resumo");
-    assert.equal(await resumo.evaluate((el) => el.classList.contains("compacto")), true);
-    const caixa = await resumo.locator(":scope > div").first().evaluate((el) => { const c = getComputedStyle(el); return { fundo: c.backgroundColor, borda: c.borderTopWidth }; });
-    assert.deepEqual(caixa, { fundo: "rgba(0, 0, 0, 0)", borda: "0px" });
-    assert.ok((await resumo.boundingBox()).height < 44, "uma linha só");
-    assert.equal(await resumo.locator("select.escolha-situacao").count(), 1, "com situações personalizadas, a lista para escolher continua");
-    const plano = await sessao.abrir({ largura: 1280 });
-    await plano.locator(".linha[data-abrir-acao]").first().click();
-    await plano.waitForSelector(".camada.aberta .janela-grade");
-    assert.equal(await janela(plano).locator(".janela-resumo.compacto").count(), 0);
-    assert.deepEqual(p.erros, []);
-  });
-  test("a descrição vem logo abaixo do nome, antes da situação; aberta por \"Mais campos\", aparece no mesmo lugar", async () => {
-    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
-    const j = janela(p);
-    const y = async (sel) => (await j.locator(sel).first().boundingBox()).y;
-    assert.ok(await y('[data-campo="descricao"]') > await y(".janela-nome"));
-    assert.ok(await y('[data-campo="descricao"]') < await y(".janela-resumo"));
-    assert.ok(await y('[data-campo="descricao"]') < await y('[data-campo="responsaveis"]'));
+  test("a descrição fica sempre à vista, logo abaixo do nome, mesmo vazia", async () => {
     const q = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
-    await janela(q).locator('[data-mostrar-campo="descricao"]').click();
-    await assentar(q);
-    const caixa = janela(q).locator('[data-campo="descricao"] textarea');
-    assert.equal(await caixa.evaluate((el) => el === document.activeElement), true, "o cursor vai para a descrição");
-    assert.ok((await caixa.boundingBox()).y < (await janela(q).locator(".janela-resumo").boundingBox()).y);
-    assert.deepEqual([...p.erros, ...q.erros], []);
+    const j = janela(q);
+    assert.equal(await j.locator('[data-mostrar-campo="descricao"], [data-mostrar-campo="checklist"]').count(), 0);
+    const caixa = j.locator('[data-campo="descricao"] textarea');
+    assert.equal(await caixa.getAttribute("placeholder"), "Descrição");
+    assert.ok((await caixa.boundingBox()).y > (await j.locator(".janela-nome").boundingBox()).y);
+    assert.ok((await caixa.boundingBox()).y < (await j.locator("[data-abrir-checklist]").boundingBox()).y);
+    assert.deepEqual(q.erros, []);
   });
-  test("data-limite vazia: \"Sem data-limite\" abre o calendário e os atalhos; um atalho grava; \"Sem data\" retira", async () => {
+
+  test("data: atalhos com o dia ao lado; um atalho grava e fecha; \"Sem data\" retira; datas impossíveis não passam", async () => {
     const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
-    const campo = janela(p).locator('[data-campo="dataLimite"]');
-    assert.equal(await campo.locator('input[type="date"]').count(), 0, "vazia, sem o dd/mm/aaaa");
-    await campo.locator("[data-abrir-data]").click();
+    const linha = janela(p).locator('[data-atributo="dataLimite"]');
+    let pop = await abrirAtributo(p, "dataLimite");
+    const textos = await pop.locator("[data-atalho-data] .popover-texto").allInnerTexts();
+    assert.deepEqual([textos[0], textos[1], textos.at(-1)], ["Hoje", "Amanhã", "Próxima semana"]);
+    assert.ok((await pop.locator("[data-atalho-data] .popover-dia").first().innerText()).length >= 3, "o dia da semana ao lado");
+    await pop.locator("[data-atalho-data]").nth(1).click();
     await assentar(p);
-    assert.equal(await p.evaluate(() => document.activeElement?.name), "dataLimite", "o cursor vai para a data");
-    assert.deepEqual(await campo.locator("[data-atalho-data]").allInnerTexts(), ["Hoje", "Amanhã", "Próxima segunda"]);
-    const amanha = await campo.locator('[data-atalho-data]').nth(1).getAttribute("data-atalho-data");
-    await campo.locator('[data-atalho-data]').nth(1).click();
-    await assentar(p);
-    assert.equal(await campo.locator('input[type="date"]').inputValue(), amanha);
-    assert.match(await campo.locator('[data-status="dataLimite"]').innerText(), /Salvo/);
-    await campo.locator('[data-atalho-data=""]').click();
-    await assentar(p);
-    assert.equal(await campo.locator("[data-abrir-data]").count(), 1, "sem data, volta a \"Sem data-limite\"");
-    /* aberta e deixada vazia, Esc volta a "Sem data-limite" sem fechar a janela */
-    await campo.locator("[data-abrir-data]").click();
-    await assentar(p);
+    assert.equal(await pop.count(), 0, "fecha ao escolher");
+    assert.match(await linha.innerText(), /Amanhã/);
+    assert.equal(await p.evaluate(() => document.activeElement?.dataset?.atributo), "dataLimite", "o foco volta à linha");
+    /* "Não começa antes de" não passa da data-limite: os atalhos depois dela ficam desligados */
+    pop = await abrirAtributo(p, "naoAntesDe");
+    assert.match(await pop.innerText(), /Não pode passar da data-limite/);
+    assert.equal(await pop.locator('[data-atalho-data]:has-text("Próxima semana")').isDisabled(), true);
     await p.keyboard.press("Escape");
     await assentar(p);
-    assert.equal(await p.locator(".camada.aberta").count(), 1);
-    assert.equal(await campo.locator("[data-abrir-data]").count(), 1);
+    pop = await abrirAtributo(p, "dataLimite");
+    await pop.locator('[data-atalho-data=""]').click();
+    await assentar(p);
+    assert.equal(await linha.locator(".atributo-mais").count(), 1, "sem data, volta ao \"+\"");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("responsáveis: marcar e desmarcar na lista, que fica aberta; a busca filtra e cadastra um nome novo", async () => {
+    const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
+    const linha = janela(p).locator('[data-atributo="responsaveis"]');
+    const pop = await abrirAtributo(p, "responsaveis");
+    const primeira = pop.locator("[data-alternar]").first();
+    const nome = (await primeira.innerText()).trim().split("\n").at(-1).trim();
+    const antes = await primeira.getAttribute("aria-selected");
+    await primeira.click();
+    await assentar(p);
+    assert.equal(await pop.count(), 1, "continua aberta para marcar outros");
+    const depois = pop.locator("[data-alternar]").filter({ hasText: nome });
+    assert.notEqual(await depois.getAttribute("aria-selected"), antes);
+    assert.equal((await linha.innerText()).includes(nome), antes !== "true");
+    await pop.locator('[name="filtroPopover"]').fill("Fulana de Teste");
+    assert.equal(await pop.locator("[data-alternar]").count(), 0);
+    await pop.locator('[data-criar="pessoa"]').click();
+    await assentar(p);
+    assert.match(await linha.innerText(), /Fulana de Teste/);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("celular: a janelinha cabe na tela e não cria rolagem lateral", async () => {
+    const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 390 }, "tarefas da equipe", ".cartao-quadro");
+    const pop = await abrirAtributo(p, "dataLimite");
+    const c = await pop.boundingBox();
+    assert.ok(c.x >= 0 && c.x + c.width <= 390, "dentro da largura");
+    assert.ok(c.y >= 0 && c.y + c.height <= 800, "dentro da altura");
+    assert.ok(await p.evaluate(() => document.documentElement.scrollWidth) <= 390);
     assert.deepEqual(p.erros, []);
   });
   test("menu \"…\" do cabeçalho: data de criação, Copiar link, Duplicar e Excluir; Excluir saiu do rodapé", async () => {
@@ -257,7 +328,7 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.equal(await j.locator('header [data-ir="-1"]').isDisabled(), true);
     assert.equal(await j.locator('header [data-ir="-1"]').getAttribute("aria-label"), "Tarefa anterior");
     /* o que se digitou grava ao trocar de tarefa */
-    await j.locator('[data-mostrar-campo="descricao"], [data-campo="descricao"] textarea').first().click();
+    await j.locator('[data-campo="descricao"] textarea').click();
     await j.locator('[data-campo="descricao"] textarea').fill("Texto novo");
     await j.locator('header [data-ir="1"]').click();
     await assentar(p);
