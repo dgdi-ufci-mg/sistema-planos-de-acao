@@ -24,6 +24,7 @@ import { ehDeTarefas } from "../tipos.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { camposAtivos, campoPorId, textoDoValor, valorDoCampo } from "../campos-personalizados.js";
+import { atalhosDeData } from "../lista.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -169,6 +170,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let buscando = null;
   /** documento em edição na janela (passo 2.10a): id, "novo" ou null */
   let editandoDoc = null;
+  /** data-limite vazia aberta por "Sem data-limite" (05/11/2026) */
+  let abrindoData = false;
   /** campos opcionais abertos em "Mais campos", mesmo vazios */
   const mostrados = new Set();
   /** aba no celular: "detalhes" ou "atividade" */
@@ -412,9 +415,20 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
 
     /* prazo: estimativa (enquanto livre) ou data-limite, conforme o modelo do espaço (passo 2.4b) */
+    if (acao.dataLimite) abrindoData = false; // com data, o campo aparece de qualquer jeito
     if (!comEstimativas) {
-      partes.push(`<div class="campo-acao${l.atrasada ? " atrasada" : ""}" data-campo="dataLimite">${rotuloHtml("dataLimite", "Data-limite", "dataLimite")}
-        <input type="date" ${atributos("dataLimite", acao.dataLimite)} value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite"></div>`);
+      /* vazia: "Sem data-limite", que abre o campo; com data (ou aberta): o calendário e os atalhos (05/11/2026) */
+      const rotulo = rotuloHtml("dataLimite", "Data-limite", "dataLimite");
+      if (!acao.dataLimite && !abrindoData) {
+        partes.push(`<div class="campo-acao" data-campo="dataLimite">${rotulo}
+          ${somenteLeitura() ? `<span class="vazio">Sem data-limite</span>` : `<button type="button" class="valor-vazio" data-abrir-data>Sem data-limite</button>`}</div>`);
+      } else {
+        const atalhos = somenteLeitura() ? "" : `<span class="atalhos-data" role="group" aria-label="Atalhos da data-limite">${atalhosDeData(hoje).map((a) =>
+          `<button type="button" class="chip-campo" data-atalho-data="${a.data}" title="${dataBr(a.data)}">${a.rotulo}</button>`).join("")}${acao.dataLimite
+          ? `<button type="button" class="chip-campo discreto" data-atalho-data="" title="Retirar a data-limite">Sem data</button>` : ""}</span>`;
+        partes.push(`<div class="campo-acao${l.atrasada ? " atrasada" : ""}" data-campo="dataLimite">${rotulo}
+          <div class="data-com-atalhos"><input type="date" ${atributos("dataLimite", acao.dataLimite)} value="${esc(acao.dataLimite ?? "")}" aria-label="Data-limite">${atalhos}</div></div>`);
+      }
     } else if (livre) {
       const e = acao.estimativas?.at(-1);
       const v = (k) => (e?.[k] ?? "");
@@ -1039,6 +1053,21 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (t.closest("[data-desistir-anterior]")) { anteriorPendente = null; return desenhar(); }
     const abaB = t.closest("[data-aba]");
     if (abaB) { aba = abaB.dataset.aba; return desenhar(); }
+    /* data-limite (05/11/2026): "Sem data-limite" abre o calendário e os atalhos; um atalho grava na hora */
+    if (t.closest("[data-abrir-data]")) {
+      abrindoData = true;
+      desenhar();
+      abrirSuave(corpo.querySelector(".atalhos-data"));
+      return corpo.querySelector('[name="dataLimite"]')?.focus();
+    }
+    const atalho = t.closest("[data-atalho-data]");
+    if (atalho) {
+      const campo = corpo.querySelector('[name="dataLimite"]');
+      if (!campo) return;
+      campo.value = atalho.dataset.atalhoData;
+      if (!campo.value) abrindoData = false;
+      return gravarCampo(campo);
+    }
     const mostrar = t.closest("[data-mostrar-campo]");
     if (mostrar) return mostrarCampo(mostrar.dataset.mostrarCampo);
     const abrirBusca = t.closest("[data-buscar-abrir]");
@@ -1170,6 +1199,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   });
   corpo.addEventListener("focusout", (e) => {
     if (e.target.dataset?.auto && e.target.type === "date" && e.relatedTarget !== e.target) gravarCampo(e.target);
+    /* data-limite aberta e deixada vazia: volta a "Sem data-limite" ao sair do campo e dos atalhos */
+    if (e.target.name === "dataLimite" || e.target.closest?.(".atalhos-data")) {
+      setTimeout(() => {
+        const ativo = document.activeElement;
+        if (fechada || !abrindoData || acaoAtual()?.dataLimite || ativo?.closest?.('[data-campo="dataLimite"]')) return;
+        if (corpo.querySelector('[name="dataLimite"]')?.value) return;
+        abrindoData = false;
+        desenhar();
+      }, 150);
+    }
     /* anotações: grava ao sair do editor (não ao ir para a barra de formatação dele) */
     const caixa = e.target.closest?.("[data-caixa-notas]");
     if (caixa && !caixa.contains(e.relatedTarget)) gravarNotas();
@@ -1213,6 +1252,14 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
     if (e.target.matches("[data-editor-notas]") && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); abrirBarraDeLink(); return; }
     if (e.key === "Escape" && editando) { e.preventDefault(); cancelar(); return; }
+    /* Esc na data-limite aberta e ainda vazia: volta a "Sem data-limite", sem fechar a janela */
+    if (e.key === "Escape" && abrindoData && e.target.name === "dataLimite" && !e.target.value && !acaoAtual()?.dataLimite) {
+      e.preventDefault();
+      abrindoData = false;
+      desenhar();
+      corpo.querySelector("[data-abrir-data]")?.focus();
+      return;
+    }
     const auto = e.target.dataset?.auto;
     /* Esc num campo alterado desfaz a digitação (sem fechar a janela); sem alteração, fecha como sempre */
     if (e.key === "Escape" && auto) {

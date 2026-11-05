@@ -1477,6 +1477,13 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
   font: inherit; font-size: .98rem; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); color: var(--ink); width: 100%;
 }
 .janela-campos input[type=date] { max-width: 220px; }
+/* data-limite (05/11/2026): vazia, um texto que se toca para escolher; com data, o calendário e os atalhos ao lado */
+.valor-vazio { align-self: flex-start; border: 0; background: none; padding: 4px 0; font: inherit; font-size: .98rem; color: var(--muted); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.valor-vazio:hover, .valor-vazio:focus-visible { color: var(--accent-ink); }
+.data-com-atalhos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.data-com-atalhos input[type=date] { flex: 0 1 220px; }
+.atalhos-data { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.atalhos-data .chip-campo { padding: 3px 10px; }
 .janela-campos input.mono { max-width: 160px; }
 .janela-campos textarea { resize: vertical; min-height: 2.6em; overflow: hidden; }
 /* textos que crescem sozinhos (descrição, justificativa): parecem texto comum, como o nome; a borda aparece ao passar o mouse e o fundo ao editar (04/11/2026) */

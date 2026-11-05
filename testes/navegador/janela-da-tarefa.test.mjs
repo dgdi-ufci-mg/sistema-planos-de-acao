@@ -152,4 +152,29 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.ok((await caixa.boundingBox()).y < (await janela(q).locator(".janela-resumo").boundingBox()).y);
     assert.deepEqual([...p.erros, ...q.erros], []);
   });
+  test("data-limite vazia: \"Sem data-limite\" abre o calendário e os atalhos; um atalho grava; \"Sem data\" retira", async () => {
+    const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
+    const campo = janela(p).locator('[data-campo="dataLimite"]');
+    assert.equal(await campo.locator('input[type="date"]').count(), 0, "vazia, sem o dd/mm/aaaa");
+    await campo.locator("[data-abrir-data]").click();
+    await assentar(p);
+    assert.equal(await p.evaluate(() => document.activeElement?.name), "dataLimite", "o cursor vai para a data");
+    assert.deepEqual(await campo.locator("[data-atalho-data]").allInnerTexts(), ["Hoje", "Amanhã", "Próxima segunda"]);
+    const amanha = await campo.locator('[data-atalho-data]').nth(1).getAttribute("data-atalho-data");
+    await campo.locator('[data-atalho-data]').nth(1).click();
+    await assentar(p);
+    assert.equal(await campo.locator('input[type="date"]').inputValue(), amanha);
+    assert.match(await campo.locator('[data-status="dataLimite"]').innerText(), /Salvo/);
+    await campo.locator('[data-atalho-data=""]').click();
+    await assentar(p);
+    assert.equal(await campo.locator("[data-abrir-data]").count(), 1, "sem data, volta a \"Sem data-limite\"");
+    /* aberta e deixada vazia, Esc volta a "Sem data-limite" sem fechar a janela */
+    await campo.locator("[data-abrir-data]").click();
+    await assentar(p);
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    assert.equal(await p.locator(".camada.aberta").count(), 1);
+    assert.equal(await campo.locator("[data-abrir-data]").count(), 1);
+    assert.deepEqual(p.erros, []);
+  });
 });
