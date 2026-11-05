@@ -73,13 +73,55 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     });
   }
 
-  test("no plano com estimativas, as duas colunas de antes continuam", async () => {
+  for (const largura of [1280, 390]) {
+    test(`no plano, a mesma janela: atributos ao lado e o bloco do prazo no alto do conteúdo (${largura} px)`, async () => {
+      const p = await sessao.abrir({ largura });
+      /* a ação do exemplo que está liberada, com estimativa e "Depende de" */
+      await p.locator(".linha[data-abrir-acao]").filter({ hasText: "Redigir a norma" }).first().click();
+      await p.waitForSelector(".camada.aberta .janela-grade");
+      await assentar(p);
+      const j = janela(p);
+      assert.equal(await j.locator(".janela-atividade, .janela-abas").count(), 0, "sem a coluna e as abas de atividade");
+      assert.deepEqual(await j.locator(".janela-lado [data-atributo]").evaluateAll((els) => els.map((el) => el.dataset.atributo).slice(0, 5)),
+        ["situacao", "naoAntesDe", "responsaveis", "dependeDe", "etapa"]);
+      const bloco = j.locator(".bloco-prazo");
+      assert.match(await bloco.innerText(), /Conclusão prevista/);
+      assert.match(await bloco.innerText(), /Índice de criticidade/);
+      assert.equal(await bloco.getByRole("button", { name: "Reestimar" }).count(), 1);
+      assert.equal(await bloco.getByRole("button", { name: /Registrar conclusão/ }).count(), 1);
+      assert.doesNotMatch(await j.locator("header h2").innerText(), /Fase|Etapa/, "o título é o nome do espaço; fase e etapa ficam na coluna");
+      if (largura <= 640) {
+        const y = async (sel) => (await j.locator(sel).first().boundingBox()).y;
+        assert.ok(await y(".bloco-prazo") < await y(".janela-lado"), "no celular, o prazo vem antes dos atributos");
+      }
+      /* "Depende de" abre a janelinha de marcar várias, com a anterior marcada */
+      const pop = await abrirAtributo(p, "dependeDe");
+      assert.equal(await pop.locator('[data-alternar][aria-selected="true"]').count(), 1);
+      /* o histórico de estimativas fica no conteúdo; o de alterações, no menu */
+      await p.keyboard.press("Escape");
+      await assentar(p);
+      assert.equal(await j.locator(".janela-principal .historico:not(.alteracoes)").count(), 1);
+      assert.equal(await j.locator("[data-historico]").count(), 0);
+      assert.ok(await p.evaluate(() => document.documentElement.scrollWidth) <= largura);
+      assert.deepEqual(p.erros, []);
+    });
+  }
+
+  test("no plano, Reestimar abre o formulário no bloco do prazo e grava", async () => {
     const p = await sessao.abrir({ largura: 1280 });
-    await p.locator(".linha[data-abrir-acao]").first().click();
+    await p.locator(".linha[data-abrir-acao]").filter({ hasText: "Redigir a norma" }).first().click();
     await p.waitForSelector(".camada.aberta .janela-grade");
     await assentar(p);
-    assert.equal(await janela(p).locator(".janela-grade.tarefa, .janela-lado").count(), 0);
-    assert.equal(await janela(p).locator(".janela-atividade [data-historico]").count(), 1);
+    const j = janela(p);
+    await j.getByRole("button", { name: "Reestimar" }).click();
+    await assentar(p);
+    const form = j.locator('.bloco-prazo [data-salvar="reestimar"]');
+    assert.equal(await form.count(), 1);
+    for (const [k, v] of [["o", "2"], ["m", "4"], ["p", "6"]]) await form.locator(`[name="${k}"]`).fill(v);
+    await form.locator('[type="submit"]').click();
+    await assentar(p, 400);
+    assert.match(await p.locator(".aviso-curto").innerText(), /Reestimativa registrada/);
+    assert.match(await j.locator(".bloco-prazo").innerText(), /2 · 4 · 6/);
     assert.deepEqual(p.erros, []);
   });
 
@@ -173,7 +215,7 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     const plano = await sessao.abrir({ largura: 1280 });
     await plano.locator(".linha[data-abrir-acao]").first().click();
     await plano.waitForSelector(".camada.aberta .janela-grade");
-    assert.ok(await janela(plano).locator(".janela-resumo dd.sit svg").count() >= 1);
+    assert.equal(await janela(plano).locator('.janela-lado [data-atributo="situacao"]').count(), 1, "no plano, a situação também fica na coluna");
     assert.deepEqual([...p.erros, ...plano.erros], []);
   });
 
@@ -335,7 +377,7 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     await plano.locator(".linha[data-abrir-acao]").first().click();
     await plano.waitForSelector(".camada.aberta .janela-grade");
     await janela(plano).locator("header [data-menu-janela]").click();
-    assert.deepEqual(await janela(plano).locator(".menu-da-janela button").allInnerTexts(), ["Copiar link", "Excluir ação"]);
+    assert.deepEqual(await janela(plano).locator(".menu-da-janela button").allInnerTexts(), ["Copiar link", "Histórico de alterações", "Excluir ação"]);
     assert.deepEqual([...p.erros, ...plano.erros], []);
   });
 
