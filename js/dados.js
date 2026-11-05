@@ -1710,6 +1710,22 @@ export function criarStore(banco, opcoes = {}) {
         };
       }));
     },
+    /**
+     * Dados para "Minhas tarefas" (seção 8, "Minhas tarefas"; 05/11/2026): dos espaços ativos e não encerrados de que
+     * quem está usando participa, as ações ativas e os responsáveis, mais o calendário geral. Só leitura. Um espaço que
+     * não pode ser lido fica de fora, sem interromper os demais.
+     * @returns {Promise<Array<{espaco: object, acoes: object[], responsaveis: object[], geral: object|null}>>}
+     */
+    async dadosParaMinhasTarefas() {
+      const geral = (await banco.lerCalendarioGeral()) ?? null;
+      const espacos = (await banco.listarEspacos()).filter((e) => ativo(e) && !e.encerradoEm && store.participaDoEspaco(e));
+      const fontes = await Promise.all(espacos.map(async (espaco) => {
+        try {
+          return { espaco, geral, acoes: (await banco.listarAcoes(espaco.id)).filter(ativa), responsaveis: await banco.listarResponsaveis(espaco.id) };
+        } catch { return null; } // sem permissão de leitura: fica de fora
+      }));
+      return fontes.filter(Boolean);
+    },
     /** Se quem está usando pode consultar o espaço (passo 2.2); fora do banco compartilhado, sempre. */
     podeVerEspaco(espaco) {
       return !opcoes.exigirLogin || podeVer(espaco, usuario);

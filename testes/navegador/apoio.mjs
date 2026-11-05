@@ -72,9 +72,12 @@ export async function iniciar() {
    * `tema` é o tema do sistema do aparelho. Com `temaGuardado` (padrão "automatico"), a página começa com essa escolha
    * guardada nos dois aplicativos, se ainda não houver outra; assim os testes seguem o tema do sistema. Com `null`, nada
    * é guardado e valem os padrões de cada aplicativo (Sextante claro, Strata escuro; 30/10/2026).
-   * @param {{largura?: number, altura?: number, toque?: boolean, tema?: "light"|"dark", temaGuardado?: string|null, exemplo?: boolean, caminho?: string, aguardar?: string}} [o]
+   * Com `rotas` (05/11/2026), uma função que recebe o contexto e o endereço e acrescenta interceptações antes de abrir a
+   * página; elas valem por cima das de cima (no Playwright, a última registrada vence). Serve, por exemplo, para simular
+   * um login sem Firebase (ver minhas-tarefas.test.mjs).
+   * @param {{largura?: number, altura?: number, toque?: boolean, tema?: "light"|"dark", temaGuardado?: string|null, exemplo?: boolean, caminho?: string, aguardar?: string, rotas?: (contexto: object, endereco: string) => Promise<void>}} [o]
    */
-  async function abrir({ largura = 390, altura = 800, toque = largura <= 640, tema = "light", temaGuardado = "automatico", exemplo = true, caminho = "sextante/", aguardar = null } = {}) {
+  async function abrir({ largura = 390, altura = 800, toque = largura <= 640, tema = "light", temaGuardado = "automatico", exemplo = true, caminho = "sextante/", aguardar = null, rotas = null } = {}) {
     const contexto = await navegador.newContext({
       viewport: { width: largura, height: altura }, hasTouch: toque, isMobile: toque, locale: "pt-BR", colorScheme: tema,
     });
@@ -87,6 +90,7 @@ export async function iniciar() {
     await contexto.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body: "export const FIREBASE_CONFIG = null;" }));
     /* nada sai para a internet: fontes e CDN ficam de fora (o sistema usa as fontes de reserva) */
     await contexto.route((url) => !url.href.startsWith(endereco), (r) => r.abort());
+    if (rotas) await rotas(contexto, endereco);
     const pagina = await contexto.newPage();
     pagina.erros = [];
     pagina.on("pageerror", (e) => pagina.erros.push(e.message));
