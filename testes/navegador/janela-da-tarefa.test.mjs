@@ -123,4 +123,18 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.ok(excluir.y + excluir.height <= 520, "o fim da janela é alcançável rolando");
     assert.deepEqual(p.erros, []);
   });
+  test("nas tarefas, a situação é uma linha discreta, sem caixa; no plano, o resumo continua em caixas", async () => {
+    const p = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
+    const resumo = janela(p).locator(".janela-resumo");
+    assert.equal(await resumo.evaluate((el) => el.classList.contains("compacto")), true);
+    const caixa = await resumo.locator(":scope > div").first().evaluate((el) => { const c = getComputedStyle(el); return { fundo: c.backgroundColor, borda: c.borderTopWidth }; });
+    assert.deepEqual(caixa, { fundo: "rgba(0, 0, 0, 0)", borda: "0px" });
+    assert.ok((await resumo.boundingBox()).height < 44, "uma linha só");
+    assert.equal(await resumo.locator("select.escolha-situacao").count(), 1, "com situações personalizadas, a lista para escolher continua");
+    const plano = await sessao.abrir({ largura: 1280 });
+    await plano.locator(".linha[data-abrir-acao]").first().click();
+    await plano.waitForSelector(".camada.aberta .janela-grade");
+    assert.equal(await janela(plano).locator(".janela-resumo.compacto").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
 });

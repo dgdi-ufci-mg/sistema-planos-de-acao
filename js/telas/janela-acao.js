@@ -215,7 +215,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
             ${statusHtml("rotulo")}
           </div>
 
-          <dl class="janela-resumo">
+          <dl class="janela-resumo${ehDeTarefas(d.espaco) ? " compacto" : ""}">
             <div><dt>Situação</dt><dd class="sit">${situacaoHtml(l, sitClasse, sitIcone, sitTexto)}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
             ${ehDeTarefas(d.espaco) && l.situacao === "concluida" ? marcadaHtml(acao)
             /* sem estimativas, a data-limite fica só no campo abaixo, para não aparecer duas vezes (04/11/2026) */
