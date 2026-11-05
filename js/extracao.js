@@ -12,6 +12,7 @@ import { montarRetrato } from "./retrato.js";
 import { descreverRegistro } from "./historico.js";
 import { nomeDoFluxo, fluxoDe, personalizadasDe } from "./situacoes.js";
 import { etiquetasDe } from "./etiquetas.js";
+import { valoresDaAcao, campoPorId, textoDoValor } from "./campos-personalizados.js";
 import { estimativaVigente } from "./calculo.js";
 import { alcanceAtual, registrosDa, SITUACOES_DA_ENTREGA, TIPOS_DE_META } from "./entregas.js";
 
@@ -50,6 +51,8 @@ export const CAMPOS_DA_ACAO = [
   ["prioridadeRevisao", "Contribuição para a incerteza", (a) => (a.prioridadeRevisao == null ? null : { fracao: a.prioridadeRevisao }), false],
   ["etiquetas", "Etiquetas", (a, c) => juntar((a.etiquetas ?? []).map((id) => c.etiqueta.get(id))), false],
   ["entregaDoPlano", "Entrega do Plano de Ação", (a, c) => (a.entregaDoPlano ? c.entrega.get(a.entregaDoPlano) ?? "(entrega excluída)" : null), false],
+  /* passo 3.6: cada espaço tem os seus campos; numa coluna só, "Nome: valor", para a extração de vários espaços de uma vez */
+  ["valoresPersonalizados", "Campos personalizados", (a, c) => juntar(valoresDaAcao(c.espaco, a).map((v) => `${v.campo.nome}: ${v.texto}`)), false],
   ["checklist", "Checklist (feitos de total)", (a) => (a.checklist?.length ? `${a.checklist.filter((i) => i.feito).length} de ${a.checklist.length}` : null), false],
   ["documentos", "Documentos e links", (a) => juntar((a.documentos ?? []).map((d) => `${d.nome} (${d.link || d.identificacao})`)), false],
   ["notas", "Anotações", (a) => a.notas ?? null, false],
@@ -147,6 +150,7 @@ export function montarExtracao({ espacos, geral, hoje, escolha }) {
       const nomes = {
         acao: (n) => c.referencia(n), responsavel: (id) => c.pessoa.get(id) ?? "responsável excluído", etapa: (id) => c.etapa.get(id) ?? "etapa excluída",
         etiqueta: (id) => c.etiqueta.get(id), situacao: (id) => situacoes.get(id), entrega: (id) => c.entrega.get(id),
+        campoPersonalizado: (id) => { const cp = campoPorId(e.espaco, id); return cp && { nome: cp.nome, texto: (v) => textoDoValor(cp, v) }; },
       };
       for (const r of [...(e.historico ?? [])].sort((a, b) => a.em.localeCompare(b.em) || a.id.localeCompare(b.id))) {
         linhas.push([e.espaco.nome, r.chave, c.rotulo(r.chave), r.campo ?? r.tipo, descreverRegistro(r, nomes), momento(r.em), r.por ?? null]);

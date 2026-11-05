@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 04/11/2026 (versão 269 da página)
+**Última atualização deste documento:** 04/11/2026 (versão 270 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -94,6 +94,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/extracao.js`, `js/arquivo-planilha.js` | Extração personalizada: as tabelas (ações, entregas, alcances, histórico) e os arquivos CSV, .xlsx e .ods, feitos sem biblioteca |
 | `js/vocabulario.js` | Palavras da tela que mudam com o tipo do espaço: "ação" ou "tarefa" (passo 3.1) |
 | `js/tipos.js` | Tipos de espaço: nomes, tipo padrão, o que cada tipo exige, agrupamento do menu lateral |
+| `js/campos-personalizados.js` | Campos personalizados (passo 3.6): tipos, limite, conferência do catálogo e dos valores, conversão do que a pessoa digita e valor como texto |
 | `js/modelos.js` | Modelos do espaço: estruturado, aberto e personalizado; o que cada espaço usa (estimativas ou data-limite, dependências, simulação) e as opções do cálculo |
 | `js/cronograma.js`, `js/rede.js`, `js/linha-do-tempo.js` | Geometria do cronograma, da rede e da linha do tempo |
 | `js/mapa.js` | Mapa do Strata: faixas por camada, ordem dos pontos por baricentro com os filhos agrupados por pai (blocos na ordem do caminho desde o alto), pais sobre os blocos, acomodação física (pontos, linhas, códigos e paredes elásticas, sem cruzamentos novos), códigos à vista, nome do caminho em linhas curtas, curvatura e contornos, céu e solo da tela cheia e limites da vista com a folga do alto (seção 8, "Mapa") |
@@ -231,6 +232,9 @@ erDiagram
   RETRATO ||--o{ RETRATO_ACAO : "acoes"
   ESPACO ||--o{ DATA_EXCLUIDA : "datasExcluidas"
   ESPACO ||--o{ DOCUMENTO : "documentos"
+  ESPACO ||--o{ CAMPO_PERSONALIZADO : "camposPersonalizados"
+  CAMPO_PERSONALIZADO ||--o{ OPCAO_DO_CAMPO : "opcoes"
+  ACAO }o--o{ CAMPO_PERSONALIZADO : "valoresPersonalizados"
 ```
 
 **Como ler o diagrama:** notação "pé de galinha" (*Termo técnico: crow's foot, de James Martin*), padrão em modelagem de dados. Em cada ponta da linha: `||` exatamente um; `|o` zero ou um; `|{` um ou muitos; `o{` zero ou muitos (o "pé" indica "muitos"). Exemplo: entre ESPACO e ACAO, cada ação pertence a exatamente um espaço, e um espaço tem zero ou muitas ações.
@@ -238,6 +242,7 @@ erDiagram
 - Um **espaço** tem ações, retratos, datas excluídas, documentos e uma estrutura de fases e etapas.
 - Uma **ação** pertence a um espaço e, opcionalmente, a uma etapa; depende de outras ações do mesmo espaço; tem responsáveis e um histórico de estimativas.
 - **Responsáveis** são globais: os mesmos para todos os espaços.
+- **Campos personalizados** (passo 3.6) são de cada espaço; cada ação guarda, para cada campo, no máximo um valor.
 
 ### 4.1 Espaço de Planejamento
 
@@ -263,6 +268,7 @@ erDiagram
 | `nomeInicial` | texto | não | Nome da situação inicial nos espaços sem dependências (seção 16.2; passo 2.7). **Ausente: "A fazer"**. Nos espaços com dependências, a inicial é sempre "Liberada" | `Para fazer` |
 | `situacoes` | lista de situação (4.1.8) | não | Situações personalizadas, na ordem das colunas do quadro, entre a inicial e Concluídas (passo 2.7) | |
 | `etiquetas` | lista de etiqueta (4.1.9) | não | Catálogo de etiquetas do espaço, na ordem de cadastro (passo 2.10a). Só aparece na tela com o campo opcional `etiquetas` ligado | |
+| `camposPersonalizados` | lista de campo personalizado (4.1.14) | não | Catálogo dos campos criados pela equipe para as ações do espaço, na ordem de cadastro, com os arquivados (passo 3.6). No máximo 8 ativos. Vazio: sem campos personalizados | |
 | `inicio` | data | não | Início do espaço: a partir dele contam os dias úteis | `2026-08-03` |
 | `prazoFinal` | data | não | Prazo final, por exemplo o fixado por ato da Diretoria-Geral | `2027-04-14` |
 | `datasExcluidas` | lista de data excluída (4.1.1) | não | Datas sem expediente próprias do espaço (feriados locais, exclusões específicas), que complementam o calendário geral (4.1.5) | |
@@ -430,6 +436,31 @@ Passo 2.3. Um só documento, **editado só no console do Firebase** (decisão do
 | `cadastradoEm` | momento | sim | Quando foi cadastrado pela primeira vez | |
 | `cadastradoPor` | usuário | sim | Administrador do Sistema que cadastrou | `wesley@ufci.edu.br` |
 
+#### 4.1.14 Campo personalizado: cada item de `camposPersonalizados`
+
+Passo 3.6 (seção 16.8; avaliação de 04/11/2026). Campos que **cada espaço cria** para as suas ações, como "Nº do processo SEI", "Unidade demandante" ou "Branch", no espírito dos campos personalizados do Redmine, do Trello e do Jira. Limitados de propósito, para o sistema não virar um construtor de bancos de dados (o problema que o responsável vê no Notion): seis tipos, **no máximo 8 campos ativos por espaço**, sem fórmulas, relações, somatórios, obrigatoriedade nem valor padrão. Regras em `js/campos-personalizados.js`.
+
+- **Quem muda:** o administrador do espaço (permissão `configurar`), em "Configurar este espaço". Quem atualiza a ação preenche os valores (4.2, `valoresPersonalizados`).
+- **Tipo imutável:** escolhido na criação; mudar o tipo invalidaria os valores já preenchidos. Para mudar, cria-se outro campo e arquiva-se este (como o tipo do responsável, 4.5).
+- **Arquivar, não apagar:** o campo arquivado some da janela da ação e das exportações, os valores ficam guardados e voltam ao restaurar. Arquivados não contam no limite; restaurar exige vaga.
+- **Nomes:** até 40 caracteres, sem espaços repetidos, sem repetir no espaço (sem diferenciar maiúsculas e minúsculas) e **sem usar o nome de um campo do sistema** ("Situação", "Responsáveis", "Data-limite"…; lista em `nomeReservado`), para não haver duas colunas iguais nas exportações.
+- **Opções** (só no tipo `opcao`): id e nome, na ordem da lista; o nome segue as regras acima, sem repetir no campo. Renomear mantém o id, e as ações continuam com a opção. **Retirar uma opção a retira também das ações** que a usavam, uma a uma, com registro no histórico de cada uma (como a etiqueta, 4.1.9); a tela avisa quantas ações ficam sem valor.
+
+<!-- dicionario: campoPersonalizado -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador do campo, chave dos valores em `valoresPersonalizados` da ação. Imutável | `c1a2…` |
+| `nome` | texto | sim | Nome na tela e título da coluna nas exportações, até 40 caracteres, único no espaço | `Nº do processo SEI` |
+| `tipo` | texto: `texto`, `numero`, `data`, `opcao`, `simNao` ou `link` | sim | Texto curto (até 200 caracteres), número, data, lista de opções (uma escolha), sim ou não, link (`https://` ou `http://`). Imutável | `opcao` |
+| `opcoes` | lista de opção do campo (abaixo) | não | Só no tipo `opcao`: as escolhas, na ordem do menu. Em outro tipo, o Store recusa (`opcoes-fora-do-tipo`) | |
+| `arquivado` | sim/não | não | Arquivado: fora da tela, valores guardados. **Ausente: ativo** | `true` |
+
+<!-- dicionario: opcaoDoCampo -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Identificador da opção, guardado como valor na ação. Imutável | `o1a2…` |
+| `nome` | texto | sim | Nome na tela, até 40 caracteres, único no campo | `PROGRAD` |
+
 ### 4.2 Ação
 
 Chave: o par (espaço, `numero`).
@@ -464,6 +495,7 @@ Chave: o par (espaço, `numero`).
 | `posicaoPrioridade` | texto | não | Posição da ação na prioridade da equipe (passo 2.10a; seção 5.8): chave de ordenação fracionária, em base 36 ("0" a "9" e "a" a "z"), sem terminar em "0", comparada em ordem alfabética. Mantida pelo sistema quando a ação é arrastada; não é digitada. Vazia: a ação vem depois das que têm posição, na ordem do espaço | `i`, `iz`, `0i` |
 | `entregaDoPlano` | id | não | Entrega do Plano de Ação (4.12) para a qual a ação contribui (passo 2.6): uma entrega ativa do mesmo espaço, conferida pelo Store. Opcional e discreta, em "Mais campos" da janela da ação. Se a entrega for excluída depois, a ligação fica e a tela mostra "(entrega excluída)" | `e1a2…` |
 | `documentos` | lista de documento da ação (4.2.4) | não | Documentos e links da ação, na ordem em que foram acrescentados (passo 2.10a). Vazio: sem documentos | |
+| `valoresPersonalizados` | mapa de id de campo personalizado → valor | não | Valores dos campos personalizados do espaço (4.1.14; passo 3.6): para cada campo preenchido, o valor no formato do tipo: texto (sem espaços nas pontas), número, data `AAAA-MM-DD`, id da opção, `true`/`false` ou endereço. Campo sem valor: a chave sai do mapa; nenhum valor: vazio. Gravado **um campo de cada vez** (`definirValorPersonalizado`, seção 4.6); `alterarAcao` recusa o mapa inteiro (`campo-fixo`). Valores de campos arquivados ficam guardados | `{"c1a2…": "23062.004512/2026-10", "c3b4…": "o1a2…"}` |
 | `etiquetas` | lista de id | não | Ids das etiquetas do catálogo do espaço (4.1.9; passo 2.10a), acrescentados e retirados um a um (seção 4.6). Na tela, aparecem na ordem do catálogo. Vazio: sem etiquetas | |
 | `criadaEm` | momento | sim | Criação da ação. Imutável | |
 | `alteradaEm` | momento | sim | Última gravação na ação (seção 4.6) | |
@@ -484,7 +516,7 @@ Toda alteração de uma ação gera registros no histórico (seção 16.4; passo
 | `entidade` | texto | sim | O que foi alterado. Por enquanto, sempre `acao` | `acao` |
 | `chave` | inteiro | sim | Número da ação no espaço | `7` |
 | `tipo` | texto | sim | `criacao` ou `alteracao` | `alteracao` |
-| `campo` | texto | não | Campo da ação que mudou (seção 4.2). Vazio na criação | `concluidaEm` |
+| `campo` | texto | não | Campo da ação que mudou (seção 4.2). Vazio na criação. Nos campos personalizados (passo 3.6), um registro por campo que mudou, com `valoresPersonalizados.` seguido do id do campo (4.1.14) | `concluidaEm` |
 | `antes` | qualquer | não | Valor antes da alteração, no formato do campo. Vazio na criação ou se o campo não existia | `null` |
 | `depois` | qualquer | não | Valor depois da alteração. Vazio na criação ou se o campo foi esvaziado | `2026-10-21` |
 | `em` | momento | sim | Quando | |
@@ -654,6 +686,7 @@ Várias pessoas podem editar o mesmo espaço ao mesmo tempo. Nenhuma gravação 
 |---|---|
 | Duas pessoas mudam campos diferentes | Cada gravação leva só o campo alterado, nunca a ação inteira |
 | Responsáveis, "depende de" e etiquetas | Acrescentar e retirar itens um a um, nunca regravar a lista inteira. Assim, se duas pessoas acrescentam responsáveis ao mesmo tempo, os dois ficam |
+| Campos personalizados (passo 3.6) | Um valor de cada vez, numa operação que lê e grava a ação de uma vez (no Firebase, numa transação), como o checklist: duas pessoas preenchendo campos diferentes da mesma ação ao mesmo tempo não apagam uma à outra |
 | Reestimativa | Entra no fim do histórico, sem regravar as anteriores. A correção de digitação da seção 4.3, que substitui a mais recente, só grava se ninguém tiver acrescentado outra estimativa nesse meio-tempo |
 | Ação nova | O número é reservado no banco (contador do espaço, gravado numa transação), e não na tela de quem cria: duas pessoas criando ao mesmo tempo recebem números diferentes. O código mnemônico, quando usado, é conferido contra o banco; se outra pessoa usou o mesmo código antes, aparece "Já existe uma ação com o código X. Escolha outro." |
 | Mesmo campo, mesma ação, quase juntas | Vale a última gravação, mas sem surpresa: se a ação aberta na janela for alterada por outra pessoa, a janela mostra "Fulano alterou esta ação agora" e atualiza os campos que não estão sendo editados. O campo em edição fica como está, e a pessoa decide se grava |
@@ -702,6 +735,8 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Responsável da ação | lista `responsaveis` dentro da ação | tabela `acao_responsavel` |
 | Etiqueta | lista `etiquetas` dentro do espaço | tabela `etiqueta`, com `espaco_id` |
 | Etiqueta da ação | lista `etiquetas` dentro da ação | tabela `acao_etiqueta` |
+| Campo personalizado, opção (passo 3.6) | lista `camposPersonalizados` dentro do espaço, com a lista `opcoes` | tabelas `campo_personalizado`, com `espaco_id`, e `campo_opcao` |
+| Valor personalizado da ação | mapa `valoresPersonalizados` dentro da ação | tabela `acao_valor_personalizado`, chave (`espaco_id`, `numero`, `campo_id`), com colunas tipadas (`valor_texto`, `valor_numero`, `valor_data`, `valor_booleano`, `opcao_id`) e uma restrição que só aceita a coluna do tipo do campo. É o desenho de atributos por entidade (*termo técnico: EAV, entidade-atributo-valor*), restrito a poucos tipos, o que evita o defeito comum dele (tudo como texto, sem validação) |
 | Acesso (papel por espaço) | mapa `acessos` dentro do espaço | tabela `acesso`, chave (`espaco_id`, e-mail), com o papel; o responsável ligado sai da tabela `responsavel` |
 | Documento da ação | lista `documentos` dentro da ação | tabela `acao_documento` |
 | Estimativa | lista `estimativas` dentro da ação | tabela `estimativa` |
@@ -1147,6 +1182,17 @@ Os painéis abrem sob o menu, com a transição padrão. Os menus do centro most
 - **Importação e exportação:** coluna "Etiquetas" (também "Etiqueta", "Marcadores" e "Tags"), com os nomes separados por ";" (a vírgula pode fazer parte do nome). Na importação, as etiquetas que não existem são criadas, listadas na conferência, e o campo opcional é ligado; na atualização, as etiquetas da linha substituem as da ação, e a mesma lista não conta como mudança. A exportação traz a coluna só com o campo ligado, depois de "Responsáveis".
 - **Histórico:** "Etiquetas: acrescentou 'X'" e "Etiquetas: retirou 'X'"; etiqueta já retirada do catálogo aparece como "etiqueta retirada".
 
+**Campos personalizados** (passo 3.6; seção 4.1.14), em todos os tipos de espaço:
+- **Catálogo:** em "Configurar este espaço" > Campos personalizados (só para o administrador do espaço), com o número de campos em uso no título. Cada campo ativo aparece num quadro com o nome (grava ao sair do campo), o tipo, numa pílula só de leitura, "Arquivar" (sem confirmação, porque nada se perde) e quantas ações o preencheram. No tipo lista de opções, as opções aparecem como pílulas editáveis (o nome grava ao sair), com × e "Nova opção: escreva e tecle Enter"; retirar uma opção que alguma ação usa pede confirmação na própria linha ("N ações ficam sem valor em 'X'. Retirar a opção 'Y'?"); sem ações com ela, retira direto.
+- **Criar:** formulário com o nome e o tipo (menu com os seis tipos e uma explicação curta do escolhido, abaixo) e "Criar campo". Na lista de opções, o cursor vai para "Nova opção". Com 8 campos em uso, o formulário dá lugar ao aviso "O espaço chegou a 8 campos em uso. Arquive um para criar outro."
+- **Arquivados:** seção recolhida "Arquivados", com "Restaurar" (desligado sem vaga) e a explicação de que os valores voltam.
+- **Na janela da ação:** depois dos campos do sistema, cada campo ativo com valor aparece com o controle do seu tipo: caixa de texto (até 200 caracteres), número (aceita "1.250,50" e "1250.5"; mostrado no formato brasileiro), data (calendário do navegador; grava ao sair ou com Enter, como as demais datas), menu de opções (com "Nenhuma"; uma opção retirada aparece como "(opção retirada)"), menu "Sem resposta / Sim / Não" e link (endereço editável e, abaixo, "Abrir o link", numa aba nova, só para endereços seguros). Vazios, ficam recolhidos em "Mais campos", com o nome do campo. Gravam ao sair do campo ou ao escolher, com "Salvando…" e "Salvo" ao lado do nome, como os demais; a recusa aparece no mesmo lugar, com o campo marcado.
+- **Histórico:** "Mudou 'Unidade' para 'PROGRAD' (era 'DGDI')" e "Apagou 'Unidade'"; um campo que não existe mais aparece como "campo retirado".
+- **Exportação ("Copiar para planilha"):** uma coluna por campo ativo, com o nome do campo, depois de "Documentos", com o valor como texto (data no formato brasileiro, nome da opção, "Sim" ou "Não"). **Importação:** essas colunas ainda não são lidas: ficam entre as ignoradas, mesmo que o nome do campo coincida com um título que a importação reconhece (um campo "Prazo" não vira a data-limite).
+- **Extração de dados:** campo "Campos personalizados", desmarcado por padrão: uma coluna só, com "Nome: valor" separados por ";", porque cada espaço tem os seus campos e a extração junta vários espaços. O histórico extraído descreve as mudanças com o nome do campo.
+- **Cópia de segurança e retratos:** o catálogo vai com o espaço e os valores vão com cada ação, como os demais campos.
+- **Ainda não** (próximas partes, seção 12, passo 3.6): coluna na planilha, filtro e ordenação, valores nos cartões, leitura na importação e "copiar os campos de outro espaço".
+
 **Documentos e links da ação** (passo 2.10a, com o campo opcional "Documentos e links das ações" ligado; seção 4.2.4):
 - Campo "Documentos e links" na janela da ação, recolhido em "Mais campos" enquanto a ação não tem nenhum; aberto, já vem com o formulário.
 - Cada documento mostra o nome (que abre o link numa aba nova, quando há link seguro), a identificação e a data, com "Editar" e ×. "+ Documento" abre um formulário curto (nome; identificação no SIPAC/Protocolo e data lado a lado; link) com Salvar e Cancelar; Esc desiste. É o único campo da janela com Salvar, porque um documento tem vários campos que só fazem sentido juntos.
@@ -1568,6 +1614,7 @@ Cada decisão de detalhe está registrada, com a data e o motivo, na seção do 
 - **Largura da barra lateral ajustável, como no Todoist** (04/11/2026, pedido do responsável; seção 8.0, "Largura da barra lateral ajustável"): quem tem muitos espaços ou nomes longos pode alargar a barra; quem quer mais área de trabalho pode estreitá-la. Limites de 200 a 420 px, para a barra não sumir nem tomar a tela; largura lembrada no aparelho; duplo clique volta ao padrão; só no computador, porque no celular a barra abre por cima. É só de interface: não muda o banco.
 - **Arrastar cartões como no Trello, sem puxador no quadro** (29/10/2026): o primeiro arrasto (puxador no quadro, arrastar nativo do navegador) funcionou mal e deixou a lista sem gravar. O responsável pediu o comportamento do Trello e a mesma forma de pegar o cartão dentro da coluna e entre colunas. Por isso o arrasto passou a usar eventos de ponteiro, com vaga no lugar do cartão e animação dos vizinhos; o puxador ficou só na lista. No celular, o quadro exige segurar 0,4 s para não competir com a rolagem; soltar sem mexer abre o menu do cartão.
 - **Conclusão: círculo nas tarefas, botão nos planos e projetos** (04/11/2026, pedido do responsável): no Quadro e na Lista de tarefas, concluir é só marcar (grava o momento da marcação, sem data de conclusão), e o círculo antes do nome diz isso, como no Todoist. No Plano de Ação e no Projeto, concluir pede a **data em que o trabalho terminou**, que entra nos cálculos; por isso continua o botão "Registrar conclusão", que abre o formulário com a data. Um círculo ali sugeriria uma marca instantânea e esconderia a pergunta pela data.
+- **Campos personalizados limitados, e não um construtor de bancos de dados** (04/11/2026, avaliação pedida pelo responsável; passo 3.6): o responsável considera a funcionalidade vital para a adesão das equipes, mas sem "a complicação do Notion". Por isso, seis tipos, até 8 campos em uso por espaço, tipo imutável, arquivar em vez de apagar, nenhum campo do sistema alterável e nada de fórmulas ou relações. Os valores ficam num mapa na ação, gravado um campo de cada vez (seção 4.6), e o histórico registra cada campo à parte, para a carga no Data Lakehouse seguir "um registro por campo". No PostgreSQL, uma tabela de valores com colunas tipadas (seção 4.9). Detalhes de tela escolhidos sem consulta e listados no passo 3.6, a confirmar.
 
 ---
 
@@ -1666,6 +1713,13 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 3.3. ✔ Quadro de tarefas revisto (27/10/2026, decisões do responsável, como no Trello; seção 8, "Quadro de tarefas"): só a visualização Quadro; colunas todas iguais e livres, sem Concluídas e sem ícones fixos; caixinha de concluída que guarda só o momento da marcação (`conclusaoMarcadaEm`), com a data de conclusão em branco; a tarefa marcada fica na coluna; filtro "Mostrar as concluídas", ligado por padrão; atraso conta até a marcação. Os quadros que já existiam (de teste) passam a valer assim: as tarefas concluídas contam como marcadas.
 3.4. ✔ Tipo **Lista de tarefas** (decisão do responsável, 27/10/2026; seção 8, "Lista de tarefas"): quarto tipo, com uma visualização só, a Lista, e a mesma caixinha de concluída do quadro. Na lista, a tarefa marcada **some na hora**, por padrão; o filtro mostra ou esconde as concluídas. Regras em `js/tipos.js` (`TIPOS_DE_TAREFAS`, `ehDeTarefas`, que o Quadro e a Lista compartilham); exemplo em `carregarExemploDeLista` (`js/exemplo.js`). Escolhas feitas sem consulta: deslizar para a direita marca direto, sem abrir a janela (a conclusão não pede data); o filtro de situação fica só com Todas e Atrasadas.
 3.5. ✔ **Troca entre Lista de tarefas e Quadro de tarefas** em "Configurar este espaço" (decisões do responsável, 27/10/2026): as tarefas são as mesmas; só muda a forma de ver. (1) Do Quadro para a Lista, as colunas ficam guardadas (`situacoes`), sem aparecer; de volta ao Quadro, cada tarefa reaparece na coluna em que estava. (2) Da Lista para o Quadro sem colunas guardadas, o quadro nasce com "A fazer" e "Fazendo", e as tarefas entram na primeira. (3) A marca de concluída não muda; só o padrão do filtro "Mostrar as concluídas" (escondidas na Lista, à vista no Quadro), que volta ao padrão do tipo novo, assim como a visualização. Os tipos de tarefas continuam sem virar Plano de Ação ou Projeto, nem o contrário. Regra no Store (`alterarEspaco`); na Lista, as colunas guardadas seguem as regras de nome do quadro e podem estar vazias.
+
+3.6. Campos personalizados (avaliação de 04/11/2026, pedida pelo responsável; seções 4.1.14, 8 e 16.8). A gestão de tarefas de equipes só ganha adesão se cada equipe puder registrar o dado próprio que acompanha o seu trabalho (o caso da equipe de TI com o Redmine). Em partes:
+- ✔ Parte 1 (04/11/2026, em *pull request*, para conferência do responsável antes de ir ao ar): catálogo por espaço (`camposPersonalizados`, 4.1.14) com seis tipos, até 8 em uso, tipo imutável, arquivar em vez de apagar; valores na ação (`valoresPersonalizados`), gravados um de cada vez (`mudarValores` nos dois bancos, com teste de contrato); "Configurar este espaço" > Campos personalizados; janela da ação; histórico por campo; exportação, extração, cópia e retratos. Sem mudança em `firestore.rules`: o catálogo fica no espaço, que só o administrador altera, e os valores na ação. Escolhas feitas sem consulta, seguindo as recomendações da avaliação, a confirmar: nome "Campos personalizados"; sem o tipo "pessoa" (os Responsáveis já cumprem esse papel) nem lista de múltipla escolha (as etiquetas já cumprem); limite de 8; só o administrador cria; todos os tipos de espaço.
+- Parte 2: coluna na planilha (primeiro só de leitura), filtro por opção e por sim ou não, e "mostrar no cartão", por campo.
+- Parte 3: leitura na importação por planilha, pelo nome do campo.
+- Parte 4: copiar os campos de outro espaço (modelo de equipe, útil a setores com vários quadros).
+- Fica para o sistema definitivo: integração automática com o GitHub ou outro sistema (commits e branches na tarefa, como no Redmine); no protótipo, o campo do tipo link cobre o essencial.
 
 ### Fase 4: passagem do protótipo à equipe de TI da UFCI-MG
 
@@ -1989,6 +2043,7 @@ Os campos opcionais servem à **adesão** (o espaço começa simples) e à **sof
   - valores em centavos (inteiros), para evitar erros de arredondamento;
   - ligação futura com o orçamento institucional (ação orçamentária, natureza de despesa, fonte), quando essa integração for desenhada.
 - **Registro de riscos do espaço** (futuro, sem fase): risco, probabilidade, impacto e resposta, como no PMBOK e na gestão de riscos cobrada pelo TCU.
+- **Campos personalizados** (Fase 3; passo 3.6, seção 4.1.14). Diferentes dos campos opcionais acima, que são do sistema e só se ligam ou desligam: são **criados pela equipe**, por espaço, como no Redmine, no Trello e no Jira. Limitados de propósito: seis tipos (texto curto, número, data, lista de opções, sim ou não, link), até 8 em uso, sem fórmulas, relações, somatórios, obrigatoriedade nem valor padrão, e sem mudar os campos do sistema. Ficam fora o tipo "pessoa" (os Responsáveis já fazem isso, com papéis e o filtro "Minhas") e a múltipla escolha (as etiquetas já fazem isso).
 - **Continuam fora, de propósito:** percentual concluído, data de início real e horas de esforço (seções 4.2 e 5.1): geram trabalho de registro sem melhorar as previsões.
 
 ---
@@ -2357,3 +2412,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 267 | Janela da tarefa (pedido do responsável, 04/11/2026, como no Todoist): no Quadro e na Lista de tarefas, o círculo de concluída antes do nome substitui os botões "Marcar como concluída" e "Desmarcar a conclusão"; Plano de Ação e Projeto continuam com "Registrar conclusão", porque pedem a data (seção 10); testes de navegador `janela-da-tarefa.test.mjs` e `quadro-de-tarefas.test.mjs` (seção 8, "Quadro de tarefas") |
 | 268 | Janela da tarefa (pedido do responsável, 04/11/2026): no Quadro e na Lista de tarefas, a situação da tarefa liberada aparece sem o ícone do cadeado aberto, que parecia bloqueio; nos planos e projetos, nada muda; teste de navegador `janela-da-tarefa.test.mjs` (seção 8, "Quadro de tarefas") |
 | 269 | Janela da tarefa (pedido do responsável, 04/11/2026): em uma coluna, no computador, a janela tem a altura do conteúdo (até 90% da tela) e o corpo rola quando ele é maior; teste de navegador `janela-da-tarefa.test.mjs` (seção 8, "Ação") |
+| 270 | Campos personalizados, parte 1 (avaliação pedida pelo responsável, 04/11/2026; passo 3.6): catálogo por espaço com seis tipos e até 8 em uso, valores na ação gravados um a um, seção em "Configurar este espaço", campos na janela da ação, histórico por campo, exportação, extração, cópia e retratos (seções 4.1.14, 4.2, 4.6, 4.9, 8, 10, 12 e 16.8); testes `campos-personalizados.test.js`, contrato dos bancos e teste de navegador `campos-personalizados.test.mjs` |

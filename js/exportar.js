@@ -8,6 +8,7 @@
  */
 import { criarCalendario, datasEfetivas } from "./calendario.js";
 import { usaEtiquetas, etiquetasDaAcao } from "./etiquetas.js";
+import { camposAtivos, textoDoValor } from "./campos-personalizados.js";
 import { posicoesDaPrioridade } from "./prioridade.js";
 import { caminhoCritico, estimativaVigente, duracaoPert } from "./calculo.js";
 import { dataBr } from "./formato.js";
@@ -62,10 +63,12 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
   /* colunas conforme o modelo do espaço (passo 2.4b): dependências, e estimativas ou data-limite */
   const comDependencias = usaDependencias(espaco);
   const comEstimativas = !usaDataLimite(espaco);
+  /* campos personalizados ativos (passo 3.6): uma coluna cada, com o nome do campo; a importação ainda as ignora */
+  const personalizados = camposAtivos(espaco);
   const titulos = ["Número", ...(usaCodigos ? ["Código"] : []), ...(usaFases ? ["Fase", "Etapa"] : []), "Ação",
     ...(usaDescricao ? ["Descrição"] : []), ...(comJustificativa ? ["Justificativa"] : []), ...(comLocal ? ["Local"] : []), ...(comDependencias ? ["Depende de"] : []),
     ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
-    "Responsáveis", ...(posicao ? ["Prioridade da equipe"] : []), ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), ...(comEntrega ? ["Entrega do Plano de Ação"] : []), "Situação", "Atrasada",
+    "Responsáveis", ...(posicao ? ["Prioridade da equipe"] : []), ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), ...personalizados.map((x) => x.nome), ...(comEntrega ? ["Entrega do Plano de Ação"] : []), "Situação", "Atrasada",
     ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
   const linhas = [...acoes].sort((a, b) => a.ordem - b.ordem).map((a) => {
     const { c, concluida, inicio, fim } = datas(a);
@@ -80,6 +83,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
       ...(posicao ? [posicao.get(a.numero) ?? ""] : []),
       ...(comEtiquetas ? [etiquetasDaAcao(espaco, a).map((x) => x.nome).join("; ")] : []),
       ...(comDocumentos ? [(a.documentos ?? []).map((d) => `${d.nome} (${d.link || d.identificacao})`).join("; ")] : []),
+      ...personalizados.map((x) => textoDoValor(x, a.valoresPersonalizados?.[x.id])),
       ...(comEntrega ? [tituloDaEntrega(a.entregaDoPlano)] : []),
       /* situação personalizada, quando houver (passo 2.7) */
       c.situacao === "liberada" ? nomeDoFluxo(espaco, fluxoDe(a, c.situacao, espaco)) : SITUACAO[c.situacao] ?? c.situacao, c.atrasada ? "sim" : "não",

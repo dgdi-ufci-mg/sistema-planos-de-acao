@@ -23,6 +23,7 @@ import { nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
 import { ehDeTarefas } from "../tipos.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO_NOME } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
+import { camposAtivos, campoPorId, textoDoValor, valorDoCampo } from "../campos-personalizados.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -39,6 +40,9 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
  *   abrirCom: formulário já aberto, como "concluir"
  * @returns {{atualizar: (dados: object) => void, fechar: () => void}}
  */
+/** Prefixo dos campos personalizados na janela (passo 3.6): "cp-" mais o id do campo. */
+const PREFIXO_CP = "cp-";
+
 export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null }) {
   let d = dados;
   /** Quem acabou de alterar a ação, se não foi quem está com a janela aberta (seção 4.6). */
@@ -311,6 +315,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (campo === "local") return Boolean(acao.local);
     if (campo === "entregaDoPlano") return Boolean(acao.entregaDoPlano);
     if (campo === "documentos") return Boolean(acao.documentos?.length) || editandoDoc != null;
+    /* campos personalizados (passo 3.6): aparecem com valor; vazios, em "Mais campos" */
+    if (campo.startsWith(PREFIXO_CP)) return acao.valoresPersonalizados?.[campo.slice(PREFIXO_CP.length)] != null;
     return true;
   }
   /** Campos opcionais que o espaço usa, na ordem de "Mais campos". */
@@ -327,6 +333,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       usaEtiquetas(d.espaco) && ["etiquetas", "Etiquetas"],
       campos.documentos === true && ["documentos", "Documentos e links"],
       d.entregas?.length && ["entregaDoPlano", "Entrega do Plano de Ação"],
+      ...camposAtivos(d.espaco).map((c) => [PREFIXO_CP + c.id, c.nome]),
     ].filter(Boolean);
   }
   function maisCamposHtml(acao) {
@@ -335,6 +342,48 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (!fechados.length) return "";
     return `<div class="chips-campos mais-campos" role="group" aria-label="Mais campos"><span class="tec">Mais campos:</span>
       ${fechados.map(([campo, texto]) => `<button type="button" class="chip-campo" data-mostrar-campo="${campo}">${ICONES.mais}${texto}</button>`).join("")}</div>`;
+  }
+
+  /**
+   * Campo personalizado (passo 3.6), com o controle do tipo. Grava ao sair do campo (texto, número, link e data)
+   * ou ao escolher (lista de opções, sim ou não), como os demais. O valor original guardado em `data-original`
+   * é o texto como aparece no controle, para comparar com o que foi digitado.
+   */
+  function campoPersonalizadoHtml(c, valor) {
+    const chave = PREFIXO_CP + c.id;
+    const rotulo = rotuloHtml(chave, esc(c.nome));
+    const aria = `aria-label="${esc(c.nome)}"`;
+    let controle;
+    switch (c.tipo) {
+      case "data":
+        controle = `<input type="date" ${atributos(chave, valor)} value="${esc(valor ?? "")}" ${aria}>`;
+        break;
+      case "numero": {
+        const t = valor == null ? "" : textoDoValor(c, valor);
+        controle = `<input inputmode="decimal" autocomplete="off" ${atributos(chave, t)} value="${esc(t)}" ${aria} placeholder="Número, como 3 ou 1.250,50">`;
+        break;
+      }
+      case "opcao": {
+        const existe = valor == null || (c.opcoes ?? []).some((o) => o.id === valor);
+        controle = `<select ${atributos(chave, valor)} ${aria}><option value="">Nenhuma</option>
+          ${existe ? "" : `<option value="${esc(valor)}" selected>(opção retirada)</option>`}
+          ${(c.opcoes ?? []).map((o) => `<option value="${esc(o.id)}"${o.id === valor ? " selected" : ""}>${esc(o.nome)}</option>`).join("")}</select>`;
+        break;
+      }
+      case "simNao": {
+        const v = valor === true ? "sim" : valor === false ? "nao" : "";
+        controle = `<select ${atributos(chave, v)} ${aria}><option value=""${v ? "" : " selected"}>Sem resposta</option>
+          <option value="sim"${v === "sim" ? " selected" : ""}>Sim</option><option value="nao"${v === "nao" ? " selected" : ""}>Não</option></select>`;
+        break;
+      }
+      case "link":
+        controle = `<input type="url" inputmode="url" autocomplete="off" ${atributos(chave, valor)} value="${esc(valor ?? "")}" ${aria} placeholder="https://…">
+          ${valor && linkSeguro(valor) ? `<a class="abrir-link" href="${esc(valor)}" target="_blank" rel="noopener noreferrer">Abrir o link${ICONES.seguir}</a>` : ""}`;
+        break;
+      default:
+        controle = `<input maxlength="200" autocomplete="off" ${atributos(chave, valor)} value="${esc(valor ?? "")}" ${aria}>`;
+    }
+    return `<div class="campo-acao campo-personalizado" data-campo="${esc(chave)}">${rotulo}${controle}</div>`;
   }
 
   function camposHtml(acao, l, etapas, etapa) {
@@ -433,6 +482,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         ${buscando === "etiquetas" ? seletorHtml("etiquetas", "Digite o nome da etiqueta") : ""}</div>`);
     }
     if (campos.documentos === true && visivel(acao, "documentos")) partes.push(documentosHtml(acao));
+    for (const c of camposAtivos(d.espaco)) if (visivel(acao, PREFIXO_CP + c.id)) partes.push(campoPersonalizadoHtml(c, acao.valoresPersonalizados?.[c.id]));
     if (visivel(acao, "checklist")) partes.push(checklistHtml(acao));
     if (campos.notas !== false && visivel(acao, "notas")) partes.push(notasHtml(acao));
     return partes.join("");
@@ -679,6 +729,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       situacao: (id) => personalizadasDe(d.espaco).find((x) => x.id === id)?.nome ?? "situação retirada",
       etiqueta: (id) => etiquetasDe(d.espaco).find((x) => x.id === id)?.nome ?? "etiqueta retirada",
       entrega: (id) => d.entregas?.find((x) => x.id === id)?.titulo ?? "entrega excluída",
+      campoPersonalizado: (id) => { const c = campoPorId(d.espaco, id); return c && { nome: c.nome, texto: (v) => textoDoValor(c, v) }; },
     };
     const quem = (email) => (email ? d.responsaveis.find((r) => r.usuario === email)?.nome ?? email : "Sem login");
     const quando = (iso) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -835,6 +886,27 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       if (["o", "m", "p"].every((k) => tres[k] === corpo.querySelector(`[name="${k}"]`).dataset.original)) return;
       if (["o", "m", "p"].some((k) => tres[k] === "")) return mostrarStatus("estimativa", "aviso", "Preencha os três pontos para gravar.");
     } else if (texto === el.dataset.original) return;
+    /* campo personalizado (passo 3.6): o Store confere o valor pelo tipo do campo */
+    if (campo.startsWith(PREFIXO_CP)) {
+      const id = campo.slice(PREFIXO_CP.length);
+      const tipo = campoPorId(d.espaco, id)?.tipo;
+      const entrada = tipo === "simNao" ? (texto === "sim" ? true : texto === "nao" ? false : null) : texto;
+      mostrarStatus(campo, "salvando", "Salvando…");
+      try {
+        await store.definirValorPersonalizado(espacoId, numero, id, entrada);
+        /* número: o que foi digitado ("1250,5") passa ao formato da tela ("1.250,5"), sem parecer alteração pendente */
+        if (tipo === "numero") {
+          const c = campoPorId(d.espaco, id);
+          const formatado = textoDoValor(c, valorDoCampo(c, texto).valor);
+          corpo.querySelectorAll(`[data-auto="${campo}"]`).forEach((x) => { if (x.value === texto) { x.value = formatado; x.dataset.original = formatado; } });
+        }
+        mostrarStatus(campo, "salvo");
+      } catch (e) {
+        mostrarStatus(campo, "erro", e.message);
+        corpo.querySelectorAll(`[data-auto="${campo}"]`).forEach((x) => x.classList.add("com-erro"));
+      }
+      return;
+    }
     const operacoes = {
       rotulo: () => {
         if (!texto.trim()) throw new Error("O nome da ação não pode ficar vazio.");

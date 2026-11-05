@@ -14,6 +14,7 @@ import { estimativaLivre } from "./acao.js";
 import { usaEstimativas, usaDependencias } from "./modelos.js";
 import { lerColagem, lerData, lerResponsaveis } from "./planilha.js";
 import { etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
+import { camposDe } from "./campos-personalizados.js";
 
 /** Títulos aceitos para cada coluna (sem acentos, minúsculas). */
 const TITULOS = {
@@ -59,8 +60,11 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
   const [titulos, ...corpo] = tabela;
   const mapa = {};
   const ignoradas = [];
+  /* colunas dos campos personalizados (passo 3.6), que "Copiar para planilha" leva: ignoradas, mesmo que o nome
+     coincida com um título reconhecido (um campo chamado "Prazo" não pode virar a data-limite) */
+  const personalizados = new Set(camposDe(espaco).map((x) => normalizar(x.nome).trim()));
   titulos.forEach((t, i) => {
-    const c = colunaDe(t);
+    const c = personalizados.has(normalizar(t).trim()) ? null : colunaDe(t);
     if (c && mapa[c] == null) mapa[c] = i; else if (t.trim()) ignoradas.push(t.trim());
   });
   if (mapa.rotulo == null) {

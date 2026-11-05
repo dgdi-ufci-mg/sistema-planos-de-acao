@@ -9,6 +9,7 @@
 import { ligarSecoesSuaves } from "./movimento.js";
 import { criarTelaResponsaveis } from "./responsaveis.js";
 import { esc, dataBr, plural } from "../formato.js";
+import { termos } from "../vocabulario.js";
 import { ICONES } from "../icones.js";
 import { abrirCamada } from "./voltar.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
@@ -27,6 +28,7 @@ import { opcoesDoCalculo, usaSimulacao, usaDependencias } from "../modelos.js";
 import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO, ehQuadro } from "../situacoes.js";
 import { resumoDoModelo } from "./modelo-espaco.js";
 import { CORES_ETIQUETA, etiquetasDe, tomDaCor, TAMANHO_DO_NOME } from "../etiquetas.js";
+import { TIPOS_DE_CAMPO, LIMITE_DE_CAMPOS, TAMANHO_DO_NOME as TAMANHO_DO_CAMPO, camposDe, camposAtivos, campoPorId, nomeDoTipo } from "../campos-personalizados.js";
 import { pendenciasParaEncerrar } from "../entregas.js";
 import { tipoDe, ehDeTarefas } from "../tipos.js";
 import { PAPEIS, nomeDoPapel, semAdministracao, fechado, VISIBILIDADES, visibilidadeDe } from "../papeis.js";
@@ -183,6 +185,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       ${adm ? `${ligado(campos, "fasesEtapas") ? estruturaHtml() : ""}
       ${situacoesHtml()}
       ${ligado(campos, "etiquetas") ? etiquetasHtml() : ""}
+      ${camposPersonalizadosHtml()}
 
       <details class="config" data-secao="campos"${aberta("campos")}>
         <summary><h3>Campos opcionais</h3></summary>
@@ -628,6 +631,57 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       ${pode ? `<input class="nova-situacao" data-nova-etiqueta maxlength="${TAMANHO_DO_NOME}" placeholder="Nova etiqueta: escreva e tecle Enter" aria-label="Nova etiqueta">` : ""}
     </details>`;
   }
+  /**
+   * Campos personalizados (passo 3.6; seção 4.1.14): catálogo do espaço, cuidado pelo administrador. Cada mudança
+   * grava na hora: nome (ao sair do campo), arquivar e restaurar (sem confirmação: nada se perde), opções
+   * (acrescentar com Enter, renomear ao sair, retirar com aviso se houver ações com ela) e criar (formulário).
+   */
+  let retirandoOpcao = null; // {campo, opcao}
+  function camposPersonalizadosHtml() {
+    const ativos = camposAtivos(espaco);
+    const arquivados = camposDe(espaco).filter((c) => c.arquivado);
+    const pode = store.podeGravar;
+    const usos = (campo) => acoes.filter((a) => a.valoresPersonalizados?.[campo] != null).length;
+    const comOpcao = (campo, opcao) => acoes.filter((a) => a.valoresPersonalizados?.[campo] === opcao).length;
+    const cheio = ativos.length >= LIMITE_DE_CAMPOS;
+    const opcoesHtml = (c) => `<div class="opcoes-campo" role="group" aria-label="Opções de ${esc(c.nome)}">
+      ${(c.opcoes ?? []).map((o) => `<span class="opcao-campo">
+        ${pode ? `<input data-nome-opcao="${esc(o.id)}" data-do-campo="${esc(c.id)}" maxlength="${TAMANHO_DO_CAMPO}" value="${esc(o.nome)}" aria-label="Opção de ${esc(c.nome)}" size="${Math.max(6, Math.min(24, o.nome.length + 1))}">
+          <button type="button" class="tirar" data-retirar-opcao="${esc(o.id)}" data-do-campo="${esc(c.id)}" aria-label="Retirar a opção ${esc(o.nome)}">${ICONES.fechar}</button>` : esc(o.nome)}</span>
+        ${retirandoOpcao?.opcao === o.id ? `<div class="aviso-confirmar">
+          <p>${comOpcao(c.id, o.id)} ${plural(comOpcao(c.id, o.id), `${termos(espaco).acao} fica`, `${termos(espaco).acoes} ficam`)} sem valor em “${esc(c.nome)}”. Retirar a opção “${esc(o.nome)}”?</p>
+          <div class="botoes"><button type="button" class="botao principal" data-confirmar-retirar-opcao="${esc(o.id)}" data-do-campo="${esc(c.id)}">Retirar</button>
+            <button type="button" class="botao" data-cancelar-retirar-opcao>Cancelar</button></div></div>` : ""}`).join("")
+        || `<span class="vazio">Nenhuma opção ainda.</span>`}
+      ${pode ? `<input class="nova-opcao" data-nova-opcao="${esc(c.id)}" maxlength="${TAMANHO_DO_CAMPO}" placeholder="Nova opção: escreva e tecle Enter" aria-label="Nova opção de ${esc(c.nome)}">` : ""}
+    </div>`;
+    return `<details class="config" data-secao="personalizados"${aberta("personalizados")}>
+      <summary><h3>Campos personalizados</h3><span class="n">${ativos.length}</span></summary>
+      <p class="tec">Campos que a equipe cria para as suas ${termos(espaco).acoes}, como “Nº do processo SEI”, “Unidade demandante” ou “Branch”. Aparecem na janela de cada ${termos(espaco).acao}. Até ${LIMITE_DE_CAMPOS} em uso; o tipo não muda depois de criado.</p>
+      <ul class="lista-campos">${ativos.map((c) => `<li>
+        <div class="linha-campo">
+          ${pode ? `<input data-nome-campo="${esc(c.id)}" maxlength="${TAMANHO_DO_CAMPO}" value="${esc(c.nome)}" aria-label="Nome do campo">` : `<b>${esc(c.nome)}</b>`}
+          <span class="tipo-campo">${esc(nomeDoTipo(c.tipo))}</span>
+          ${pode ? `<button type="button" class="botao" data-arquivar-campo="${esc(c.id)}" aria-label="Arquivar ${esc(c.nome)}">Arquivar</button>` : ""}
+        </div>
+        ${c.tipo === "opcao" ? opcoesHtml(c) : ""}
+        <small class="tec">${usos(c.id) ? `Preenchido em ${usos(c.id)} ${plural(usos(c.id), termos(espaco).acao, termos(espaco).acoes)}.` : "Ainda sem valores."}</small>
+      </li>`).join("") || `<li class="vazio">Nenhum campo personalizado.</li>`}</ul>
+      ${pode && !cheio ? `<form class="novo-campo" data-novo-campo>
+        <label class="campo"><span>Nome do novo campo</span><input name="nome" maxlength="${TAMANHO_DO_CAMPO}" required autocomplete="off" placeholder="Por exemplo, Nº do processo SEI"></label>
+        <label class="campo"><span>Tipo</span><select name="tipo">${TIPOS_DE_CAMPO.map(([t, nome]) => `<option value="${t}">${nome}</option>`).join("")}</select></label>
+        <small class="tec" data-dica-tipo>${esc(TIPOS_DE_CAMPO[0][2])}</small>
+        <div class="botoes"><button type="submit" class="botao principal">Criar campo</button></div>
+      </form>` : ""}
+      ${pode && cheio ? `<p class="tec">O espaço chegou a ${LIMITE_DE_CAMPOS} campos em uso. Arquive um para criar outro.</p>` : ""}
+      ${arquivados.length ? `<details class="arquivados-campos"><summary>Arquivados <span class="n">${arquivados.length}</span></summary>
+        <p class="tec">Não aparecem nas ${termos(espaco).acoes}; os valores já preenchidos ficam guardados e voltam ao restaurar.</p>
+        <ul class="lista-campos">${arquivados.map((c) => `<li><div class="linha-campo"><span>${esc(c.nome)}</span><span class="tipo-campo">${esc(nomeDoTipo(c.tipo))}</span>
+          ${pode ? `<button type="button" class="botao" data-restaurar-campo="${esc(c.id)}"${cheio ? " disabled" : ""}>Restaurar</button>` : ""}</div></li>`).join("")}</ul>
+      </details>` : ""}
+    </details>`;
+  }
+
   /** Grava uma mudança das etiquetas e redesenha; na recusa, avisa e devolve false. */
   async function gravarEtiqueta(operacao, mensagem) {
     try {
@@ -798,6 +852,27 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       await gravarEtiqueta(() => store.alterarEtiqueta(espacoId, e.target.dataset.corEtiqueta, { cor: e.target.value }));
       return;
     }
+    /* campos personalizados (passo 3.6): nome do campo e nome da opção ao sair do campo */
+    if (e.target.dataset.nomeCampo) {
+      const id = e.target.dataset.nomeCampo;
+      if (!(await gravarEtiqueta(() => store.alterarCampoPersonalizado(espacoId, id, { nome: e.target.value }), "Campo renomeado."))) {
+        e.target.value = campoPorId(espaco, id)?.nome ?? "";
+      }
+      return;
+    }
+    if (e.target.dataset.nomeOpcao) {
+      const c = campoPorId(espaco, e.target.dataset.doCampo);
+      const opcoes = (c?.opcoes ?? []).map((o) => (o.id === e.target.dataset.nomeOpcao ? { ...o, nome: e.target.value } : o));
+      if (!(await gravarEtiqueta(() => store.alterarCampoPersonalizado(espacoId, c.id, { opcoes }), "Opção renomeada."))) {
+        e.target.value = (c?.opcoes ?? []).find((o) => o.id === e.target.dataset.nomeOpcao)?.nome ?? "";
+      }
+      return;
+    }
+    if (e.target.matches("[data-novo-campo] select[name=tipo]")) {
+      const dica = corpo.querySelector("[data-dica-tipo]");
+      if (dica) dica.textContent = TIPOS_DE_CAMPO.find(([t]) => t === e.target.value)?.[2] ?? "";
+      return;
+    }
     if (e.target.matches("[data-nome-inicial]")) {
       const nome = e.target.value.trim();
       if (!(await gravarSituacoes({ nomeInicial: nome || NOME_INICIAL_PADRAO }, "Situação inicial renomeada."))) e.target.value = nomeInicial(espaco);
@@ -902,6 +977,36 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     if (t.dataset.assumir != null) { await gravarAcesso(() => store.assumirAdministracao(espacoId), "Você agora é administrador deste espaço."); return; }
     if (t.dataset.tirarAcesso) { await gravarAcesso(() => store.definirPapel(espacoId, t.dataset.tirarAcesso, null), "Acesso retirado."); return; }
     /* etiquetas (passo 2.10a) */
+    /* campos personalizados (passo 3.6) */
+    if (t.dataset.arquivarCampo) {
+      const nome = campoPorId(espaco, t.dataset.arquivarCampo)?.nome ?? "";
+      await gravarEtiqueta(() => store.alterarCampoPersonalizado(espacoId, t.dataset.arquivarCampo, { arquivado: true }), `Campo “${nome}” arquivado. Os valores ficam guardados.`);
+      return;
+    }
+    if (t.dataset.restaurarCampo) {
+      const nome = campoPorId(espaco, t.dataset.restaurarCampo)?.nome ?? "";
+      await gravarEtiqueta(() => store.alterarCampoPersonalizado(espacoId, t.dataset.restaurarCampo, { arquivado: false }), `Campo “${nome}” restaurado.`);
+      return;
+    }
+    if (t.dataset.retirarOpcao) {
+      const campo = t.dataset.doCampo;
+      const opcao = t.dataset.retirarOpcao;
+      /* sem ações com a opção, retira direto; com ações, pede confirmação, como a etiqueta */
+      if (acoes.some((a) => a.valoresPersonalizados?.[campo] === opcao)) { retirandoOpcao = { campo, opcao }; desenhar(); return; }
+      const c = campoPorId(espaco, campo);
+      await gravarEtiqueta(() => store.alterarCampoPersonalizado(espacoId, campo, { opcoes: (c?.opcoes ?? []).filter((o) => o.id !== opcao) }), "Opção retirada.");
+      return;
+    }
+    if (t.dataset.cancelarRetirarOpcao != null) { retirandoOpcao = null; desenhar(); return; }
+    if (t.dataset.confirmarRetirarOpcao) {
+      const campo = t.dataset.doCampo;
+      const c = campoPorId(espaco, campo);
+      retirandoOpcao = null;
+      let n = 0;
+      await gravarEtiqueta(async () => { n = await store.alterarCampoPersonalizado(espacoId, campo, { opcoes: (c?.opcoes ?? []).filter((o) => o.id !== t.dataset.confirmarRetirarOpcao) }); });
+      avisar(n ? `Opção retirada; ${n} ${plural(n, termos(espaco).acao, termos(espaco).acoes)} ${plural(n, "ficou", "ficaram")} sem valor.` : "Opção retirada.");
+      return;
+    }
     if (t.dataset.retirarEtiqueta) { retirandoEtiqueta = t.dataset.retirarEtiqueta; desenhar(); return; }
     if (t.dataset.cancelarRetirarEtiqueta != null) { retirandoEtiqueta = null; desenhar(); return; }
     if (t.dataset.confirmarRetirarEtiqueta) {
@@ -981,6 +1086,16 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       }
       return;
     }
+    if (e.key === "Enter" && e.target.matches("[data-nova-opcao]")) {
+      e.preventDefault();
+      const nome = e.target.value.trim();
+      if (!nome) return;
+      const c = campoPorId(espaco, e.target.dataset.novaOpcao);
+      if (await gravarEtiqueta(() => store.alterarCampoPersonalizado(espacoId, c.id, { opcoes: [...(c.opcoes ?? []), { nome }] }), `Opção “${nome}” criada.`)) {
+        corpo.querySelector(`[data-nova-opcao="${c.id}"]`)?.focus();
+      }
+      return;
+    }
     if (e.key === "Enter" && e.target.matches("[data-nova-etiqueta]")) {
       e.preventDefault();
       const nome = e.target.value.trim();
@@ -990,7 +1105,19 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     }
     if (e.key === "Enter" && e.target.matches("[data-nome-retrato]")) { e.preventDefault(); corpo.querySelector("[data-salvar-retrato]")?.click(); }
   });
-  corpo.addEventListener("submit", (e) => {
+  corpo.addEventListener("submit", async (e) => {
+    /* campo personalizado novo (passo 3.6) */
+    if (e.target.matches("[data-novo-campo]")) {
+      e.preventDefault();
+      const nome = e.target.elements.nome.value.trim();
+      const tipo = e.target.elements.tipo.value;
+      if (!nome) return;
+      if (await gravarEtiqueta(() => store.criarCampoPersonalizado(espacoId, { nome, tipo }), `Campo “${nome}” criado${tipo === "opcao" ? ". Acrescente as opções" : ""}.`)) {
+        if (tipo === "opcao") [...corpo.querySelectorAll("[data-nova-opcao]")].at(-1)?.focus();
+        else corpo.querySelector("[data-novo-campo] input[name=nome]")?.focus();
+      }
+      return;
+    }
     if (!e.target.dataset.salvar) return; // o formulário dos responsáveis grava por conta própria
     e.preventDefault();
     gravarSecao(e.target.dataset.salvar); // Enter num campo grava, como sair dele

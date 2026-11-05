@@ -8,7 +8,7 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "codigo", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "visibilidade", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes", "vinculos", "nomeInicial", "situacoes", "etiquetas", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
+    "id", "nome", "codigo", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "visibilidade", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes", "vinculos", "nomeInicial", "situacoes", "etiquetas", "camposPersonalizados", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
@@ -41,6 +41,10 @@ export const CAMPOS = Object.freeze({
   acesso: ["papel", "responsavel"],
   /** Etiqueta do catálogo do espaço (passo 2.10a): a ação guarda só o id. */
   etiqueta: ["id", "nome", "cor"],
+  /** Campo personalizado do catálogo do espaço (passo 3.6): a ação guarda o valor em `valoresPersonalizados`. */
+  campoPersonalizado: ["id", "nome", "tipo", "opcoes", "arquivado"],
+  /** Opção de um campo personalizado do tipo lista de opções (passo 3.6): a ação guarda o id. */
+  opcaoDoCampo: ["id", "nome"],
   /** Modelo de configuração do espaço, fixo depois de criado (passo 2.4b). */
   modelo: ["nome", "prazos", "dependencias", "simulacao"],
   fase: ["id", "nome", "etapas"],
@@ -48,7 +52,7 @@ export const CAMPOS = Object.freeze({
   camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos", "justificativa", "local", "prioridade"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao", "justificativa", "local",
-    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "conclusaoMarcadaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "posicaoPrioridade", "entregaDoPlano",
+    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "conclusaoMarcadaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "valoresPersonalizados", "posicaoPrioridade", "entregaDoPlano",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],

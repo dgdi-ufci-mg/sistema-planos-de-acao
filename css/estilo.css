@@ -679,6 +679,9 @@ body.sem-criar-acao [data-nova] { display: none !important; } /* só o administr
 /* data-limite vencida: a data fica em vermelho no próprio campo, que é o único lugar onde ela aparece (04/11/2026) */
 .campo-acao.atrasada input[type="date"] { color: var(--crit-ink); font-weight: 600; border-color: color-mix(in oklab, var(--crit) 45%, var(--line)); }
 .campo-nome { font-size: .8rem; font-weight: 700; color: var(--muted); }
+/* campo personalizado do tipo link (passo 3.6): o endereço editável e, abaixo, o atalho para abri-lo */
+.abrir-link { align-self: flex-start; display: inline-flex; align-items: center; gap: 2px; font-size: .85rem; color: var(--accent-ink); }
+.abrir-link .icone { width: 14px; height: 14px; }
 .editavel { cursor: pointer; border-radius: var(--raio); padding: 4px 6px; margin: 0 -6px; border: 1px solid transparent; }
 .editavel:hover, .editavel:focus-visible { background: var(--surface); border-color: var(--line); }
 h3.editavel { padding: 2px 6px; }
@@ -1580,6 +1583,28 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .lista-etiquetas li input { flex: 1 1 140px; min-width: 0; }
 .lista-etiquetas li select { flex: 0 0 auto; width: auto; }
 .lista-etiquetas li .aviso-confirmar { flex-basis: 100%; }
+/* campos personalizados (passo 3.6): nome, tipo e arquivar numa linha; opções em pílulas editáveis abaixo */
+.lista-campos { list-style: none; margin: 0 0 10px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lista-campos > li { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); }
+.lista-campos > li.vazio { border: 0; background: none; padding: 0; }
+.linha-campo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.linha-campo input { flex: 1 1 160px; min-width: 0; }
+.tipo-campo { font-size: .8rem; color: var(--muted); padding: 2px 8px; border: 1px solid var(--line); border-radius: 99px; white-space: nowrap; }
+.opcoes-campo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.opcao-campo { display: inline-flex; align-items: center; gap: 0; padding: 0 4px 0 0; border: 1px solid var(--line); border-radius: 99px; background: var(--bg); }
+.config .opcao-campo input:not([type=checkbox]):not([type=radio]) { border: 0; background: transparent; padding: 3px 4px 3px 10px; font-size: .9rem; width: auto; border-radius: 99px; }
+.opcoes-campo .nova-opcao { flex: 1 1 180px; min-width: 0; font-size: .9rem; }
+.opcoes-campo .aviso-confirmar { flex-basis: 100%; }
+.novo-campo { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px 10px; align-items: end; padding-top: 4px; }
+.novo-campo .tec, .novo-campo .botoes { grid-column: 1 / -1; margin: 0; }
+.novo-campo select { font-size: 1rem; padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); width: 100%; min-width: 0; }
+.linha-campo .botao { margin-left: auto; }
+@media (max-width: 520px) {
+  .novo-campo { grid-template-columns: minmax(0, 1fr); }
+  .config .linha-campo input, .opcoes-campo .nova-opcao { flex-basis: 100%; }
+}
+.arquivados-campos { margin-top: 10px; }
+.arquivados-campos > summary { cursor: pointer; font-weight: 600; color: var(--muted); }
 
 /* documentos e links da ação (passo 2.10a) */
 .documentos-acao { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }

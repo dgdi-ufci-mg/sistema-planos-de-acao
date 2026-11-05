@@ -197,6 +197,17 @@ export function criarBancoFirestore(db) {
     async mudarDocumentos(espacoId, numero, mudanca, extra = {}, historico) {
       await mudarAcao(espacoId, numero, (a) => ({ ...extra, documentos: mudanca(a.documentos ?? []) }), historico);
     },
+    /**
+     * Muda os valores personalizados da ação (passo 3.6): `mudanca` recebe o mapa atual e devolve o novo.
+     * Lê e grava de uma vez, como o checklist: duas pessoas preenchendo campos diferentes ao mesmo tempo não
+     * apagam uma à outra (seção 4.6). Mapa vazio: o campo é gravado vazio (null).
+     */
+    async mudarValores(espacoId, numero, mudanca, extra = {}, historico) {
+      await mudarAcao(espacoId, numero, (a) => {
+        const novo = mudanca({ ...(a.valoresPersonalizados ?? {}) });
+        return { ...extra, valoresPersonalizados: Object.keys(novo).length ? novo : null };
+      }, historico);
+    },
     async acrescentarEstimativa(espacoId, numero, estimativa, extra = {}, historico) {
       await mudarAcao(espacoId, numero, (a) => ({ ...extra, estimativas: [...(a.estimativas ?? []), estimativa] }), historico);
     },

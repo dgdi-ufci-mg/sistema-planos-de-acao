@@ -171,6 +171,20 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await assert.rejects(banco.mudarDocumentos("p1", 9, (l) => l), { codigo: "nao-encontrado" });
     });
 
+    it("valores personalizados (passo 3.6): duas mudanças de campos diferentes ao mesmo tempo ficam as duas", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarAcao("p1", acao(1, { valoresPersonalizados: { a: "x" } }));
+      await Promise.all([
+        banco.mudarValores("p1", 1, (v) => ({ ...v, b: 2 })),
+        banco.mudarValores("p1", 1, (v) => ({ ...v, c: true })),
+      ]);
+      assert.deepEqual((await banco.lerAcao("p1", 1)).valoresPersonalizados, { a: "x", b: 2, c: true });
+      await banco.mudarValores("p1", 1, () => ({}));
+      assert.equal((await banco.lerAcao("p1", 1)).valoresPersonalizados, null, "mapa vazio: o campo fica vazio");
+      await assert.rejects(banco.mudarValores("p1", 9, (v) => v), { codigo: "nao-encontrado" });
+    });
+
     it("estimativas: acrescenta no fim e só corrige a última se ninguém acrescentou outra", async () => {
       const banco = criarBanco();
       await banco.criarEspaco("p1", { nome: "Espaço 1" });
