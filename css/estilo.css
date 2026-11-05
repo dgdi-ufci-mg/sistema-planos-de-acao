@@ -2743,3 +2743,53 @@ button.atributo:hover .atributo-mais { color: var(--accent-ink); }
   .popover-atributo input:not([type=checkbox]) { font-size: 16px; }
   .popover-opcao { min-height: 44px; }
 }
+
+/* ---------- janela da tarefa, limpeza (05/11/2026, decisões do responsável na comparação com o Todoist) ---------- */
+.camada.janela .painel:focus { outline: none; }
+/* descrição e conteúdo alinhados ao nome, recuados pelo espaço do círculo */
+.janela-grade.tarefa.com-circulo .janela-descricao, .janela-grade.tarefa.com-circulo .janela-resto { padding-left: 38px; }
+.janela-grade.tarefa .janela-descricao .campo-acao { gap: 0; }
+.janela-grade.tarefa .janela-descricao textarea.cresce { min-height: 0; color: var(--ink); }
+.janela-grade.tarefa .janela-descricao .status-campo:empty { display: none; }
+.janela-grade.tarefa .janela-resto .janela-campos:empty { display: none; }
+.janela-grade.tarefa .janela-resto { gap: 10px; }
+.botao-texto.adicionar-conteudo { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 500; }
+.botao-texto.adicionar-conteudo:hover, .botao-texto.adicionar-conteudo:focus-visible { color: var(--accent-ink); }
+.botao-texto.adicionar-conteudo .icone { width: 16px; height: 16px; }
+/* rótulo do atributo mais leve que o valor */
+.atributo-cabeca { font-weight: 500; }
+.atributo-valor { font-weight: 400; }
+.atributo-icone, .atributo-vazio-curto, .atributo-prefixo { display: none; }
+/* duas colunas a partir de 641 px (antes, 900 px): na tela média, a janela já não vira a do celular */
+@media (min-width: 641px) and (max-width: 899px) {
+  .camada.janela .painel:has(.janela-grade.tarefa) { width: min(940px, calc(100% - 32px)); height: min(88vh, 820px); }
+  .camada.janela .painel:has(.janela-grade.tarefa) .painel-corpo { padding: 0; overflow: hidden; flex: 1; min-height: 0; }
+  .janela-grade.tarefa { grid-template-columns: minmax(0, 1fr) 240px; grid-template-areas: none; gap: 0; height: 100%; }
+  .janela-grade.tarefa > .janela-principal { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding: 18px 22px 22px; }
+  .janela-grade.tarefa .janela-lado { grid-area: auto; overflow-y: auto; padding: 12px 10px 18px; background: var(--sunk); border-top: 0; border-left: 1px solid var(--line); }
+  .camada.janela .painel:has(.janela-grade.tarefa) { height: min(88vh, 820px); }
+}
+/* celular: uma linha por atributo, com ícone, como no Todoist */
+@media (max-width: 640px) {
+  .janela-grade.tarefa .janela-lado { border-top: 0; margin-left: -4px; }
+  .janela-grade.tarefa .atributo { flex-direction: row; align-items: center; gap: 14px; min-height: 48px; padding: 8px 4px; border-bottom: 0; }
+  .janela-grade.tarefa .atributo > :not(.atributo-icone) { border-bottom: 1px solid var(--grid); align-self: stretch; display: flex; align-items: center; flex: 1; min-width: 0; padding: 4px 0; }
+  .janela-grade.tarefa .atributo:has(.atributo-valor) .atributo-cabeca { display: none; }
+  .janela-grade.tarefa .atributo-icone { display: inline-flex; flex: none; color: var(--muted); }
+  .janela-grade.tarefa .atributo-icone .icone { width: 20px; height: 20px; }
+  .janela-grade.tarefa .atributo-nome, .janela-grade.tarefa .atributo-mais { display: none; }
+  .janela-grade.tarefa .atributo-vazio-curto { display: inline; font-size: .98rem; font-weight: 400; color: var(--muted); }
+  .janela-grade.tarefa .atributo-cabeca { font-size: .98rem; }
+  .janela-grade.tarefa .atributo-valor { font-size: .98rem; gap: 4px 10px; }
+  .janela-grade.tarefa .atributo-prefixo { display: inline; }
+  .janela-grade.tarefa .atributo-valor small.tec { display: none; }
+  .janela-grade.tarefa .atributo-cabeca .status-campo { margin-left: auto; }
+  button.atributo:hover, button.atributo.aberto { border-radius: 8px; }
+}
+.janela-grade.tarefa .historico.alteracoes summary h3 { font-size: 1rem; }
+@media (max-width: 640px) {
+  /* os "+ Adicionar …" alinham o "+" com os ícones dos atributos e o texto com os valores, como no Todoist */
+  .janela-grade.tarefa.com-circulo .janela-resto { padding-left: 0; }
+  .janela-grade.tarefa .botao-texto.adicionar-conteudo { gap: 14px; min-height: 44px; padding-left: 0; }
+  .janela-grade.tarefa .botao-texto.adicionar-conteudo .icone { width: 20px; height: 20px; }
+}

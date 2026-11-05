@@ -46,6 +46,11 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
 const PREFIXO_CP = "cp-";
 /** Campos que, nas tarefas, ficam na coluna principal, como conteúdo; os demais vão para a coluna de atributos (05/11/2026). */
 const DO_CONTEUDO = new Set(["descricao", "checklist", "notas", "justificativa", "documentos"]);
+/** Ícone de cada atributo na linha do celular (05/11/2026). */
+const ICONE_DO_ATRIBUTO = {
+  situacao: "colunas", marcada: "concluida", dataLimite: "calendario", naoAntesDe: "inicio", responsaveis: "pessoa",
+  etiquetas: "etiqueta", dependeDe: "elo", etapa: "legenda", local: "local", codigo: "codigo", entregaDoPlano: "modoEntregas",
+};
 
 export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null, vizinha = null }) {
   let d = dados;
@@ -70,7 +75,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
     janela: true,
     aoFechar: () => {
-      fechada = true; pararComentarios?.(); document.removeEventListener("click", fecharMenuFora, true);
+      fechada = true; pararComentarios?.(); medirDeNovo.disconnect(); document.removeEventListener("click", fecharMenuFora, true);
       document.removeEventListener("click", fecharPopoverFora, true); document.removeEventListener("keydown", escNaJanelinha, true);
       removeEventListener("resize", posicionarPopover);
       aoFechar(numero);
@@ -101,6 +106,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return `<div class="menu-da-janela" role="menu" aria-label="Opções da ${t.acao}">
       ${quandoCriada ? `<p class="menu-info">Criada em ${quandoCriada}</p>` : ""}
       <button type="button" role="menuitem" data-copiar-link>Copiar link</button>
+      ${ehDeTarefas(d.espaco) ? `<button type="button" role="menuitem" data-ver-historico>Histórico de alterações</button>` : ""}
       ${podeDuplicar() ? `<button type="button" role="menuitem" data-duplicar>Duplicar</button>` : ""}
       ${podeExcluir() ? `<button type="button" role="menuitem" class="perigo" data-excluir-acao>Excluir ${t.acao}</button>` : ""}
     </div>`;
@@ -138,6 +144,20 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       avisar(`${termos(d.espaco).Acao} duplicada.`, abrirOutra ? { acao: { texto: "Abrir", fazer: () => abrirOutra(nova) } } : {});
     } catch (e) { avisar(e.message); }
   }
+  /**
+   * Nas tarefas, o histórico de alterações fica no menu "…" (05/11/2026, decisão do responsável, como a atividade no
+   * Todoist): a escolha mostra a seção no fim do conteúdo, já aberta, e leva a janela até ela. Some ao trocar de tarefa.
+   */
+  function verHistorico() {
+    historicoVisivel = true;
+    historicoAberto = true;
+    desenhar();
+    carregarHistorico();
+    const secao = corpo.querySelector("[data-historico]");
+    surgir(secao);
+    secao?.scrollIntoView({ block: "start", behavior: reduzirMovimento() ? "auto" : "smooth" });
+    secao?.querySelector("summary")?.focus({ preventScroll: true });
+  }
   async function excluir() {
     try {
       if (await excluirAcao({ store, espacoId, acao: acaoAtual(), acoes: d.acoes })) fecharPainel();
@@ -168,7 +188,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
     buscando = null; editandoDoc = null; mostrados.clear(); aba = "detalhes"; status = null; abrindoData = false;
     alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
-    popover = null; focoPopover = null;
+    popover = null; focoPopover = null; historicoVisivel = false;
     abrirMenu(false);
     pararComentarios?.();
     comentarios = null;
@@ -191,6 +211,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     abrirMenu(false);
     if (item.matches("[data-copiar-link]")) copiarLink();
     else if (item.matches("[data-duplicar]")) duplicar();
+    else if (item.matches("[data-ver-historico]")) verHistorico();
     else if (item.matches("[data-excluir-acao]")) excluir();
   });
   /* Esc fecha o menu sem fechar a janela; setas andam pelos itens */
@@ -331,6 +352,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let popover = null;
   /** opção a receber o foco depois de redesenhar a janelinha (a marcada ou desmarcada por último) */
   let focoPopover = null;
+  /** nas tarefas, o histórico de alterações só aparece depois de escolhido no menu "…" (05/11/2026) */
+  let historicoVisivel = false;
   /** situação da última gravação de um campo: {campo, tipo: "salvando"|"salvo"|"erro", texto} */
   let status = null;
   let tempoStatus = null;
@@ -443,7 +466,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       pend.anteriores.length ? `quando ${plural(pend.anteriores.length, "for concluída a tarefa", "forem concluídas as tarefas")} ${pend.anteriores.map((n) => `“${esc(nomeTexto(d.acoes.find((a) => a.numero === n)))}”`).join(", ")}` : "",
       pend.dataMinima ? `a partir de ${dataBr(pend.dataMinima)}` : "",
     ].filter(Boolean).join(", e ")}.</p>` : "";
-    return `<div class="janela-grade tarefa" data-aba-atual="detalhes">
+    return `<div class="janela-grade tarefa${caixa ? " com-circulo" : ""}" data-aba-atual="detalhes">
       <div class="janela-principal">
         <div class="janela-topo">
           ${alheia ? `<p class="alteracao-alheia" role="status">${esc(alheia)} alterou esta tarefa agora.</p>` : ""}
@@ -460,7 +483,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           ${maisCamposHtml(acao)}
           ${comComentarios() ? `<div data-comentarios>${comentariosHtml()}</div>` : ""}
           ${comEstimativas ? historicoHtml(acao, resumoDasEstimativas(acao, d.caminho.porAcao.get(numero))) : ""}
-          ${historicoAlteracoes}
+          ${historicoVisivel ? historicoAlteracoes : ""}
         </div>
       </div>
       <aside class="janela-lado" aria-label="Atributos da ${termos(d.espaco).acao}">${atributosDaTarefa(acao, l).map(linhaDeAtributo).join("")}</aside>
@@ -545,12 +568,22 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /** Uma linha da coluna de atributos: um botão que ocupa a linha inteira (ou só texto, sem permissão de alterar). */
   function linhaDeAtributo(a) {
     const aberto = popover === a.campo;
-    const cabeca = `<span class="atributo-cabeca"><span class="atributo-nome">${a.nome}</span>${statusHtml(a.campo)}${a.clicavel && a.vazio ? `<span class="atributo-mais">${ICONES.mais}</span>` : ""}</span>`;
-    const valor = a.vazio ? "" : `<span class="atributo-valor">${a.valor}</span>`;
+    /*
+     * No celular (até 640 px), uma linha só, como no Todoist (05/11/2026, decisão do responsável): o ícone do campo e,
+     * vazio, o nome em cinza ("Data-limite", "Adicionar responsáveis"); com valor, só o valor ("A partir de …" na data
+     * de início; "Nome: valor" nos campos personalizados). O nome em cima e o "+" ficam para o computador.
+     */
+    const vazioCurto = a.tipo === "multipla" || a.tipo === "texto" ? `Adicionar ${a.nome.toLowerCase()}` : a.nome;
+    const prefixo = a.campo === "naoAntesDe" ? "A partir de " : a.campo.startsWith(PREFIXO_CP) ? `${a.nome}: ` : "";
+    const icone = `<span class="atributo-icone" aria-hidden="true">${ICONES[ICONE_DO_ATRIBUTO[a.campo] ?? (a.campo.startsWith(PREFIXO_CP) ? "campo" : "legenda")]}</span>`;
+    const cabeca = `${icone}<span class="atributo-cabeca"><span class="atributo-nome">${a.nome}</span>${a.vazio ? `<span class="atributo-vazio-curto">${vazioCurto}</span>` : ""}${statusHtml(a.campo)}${a.clicavel && a.vazio ? `<span class="atributo-mais">${ICONES.mais}</span>` : ""}</span>`;
+    const valor = a.vazio ? "" : `<span class="atributo-valor">${prefixo ? `<span class="atributo-prefixo">${prefixo}</span>` : ""}${a.valor}</span>`;
     if (!a.clicavel) return `<div class="atributo" data-atributo="${esc(a.campo)}">${cabeca}${valor}</div>`;
     return `<button type="button" class="atributo${a.vazio ? " vazio" : ""}${aberto ? " aberto" : ""}" data-atributo="${esc(a.campo)}" data-tipo="${a.tipo}"
-      aria-haspopup="dialog" aria-expanded="${aberto}" title="${a.vazio ? "Adicionar" : "Alterar"}">${cabeca}${valor}</button>`;
+      aria-haspopup="dialog" aria-expanded="${aberto}" title="${a.vazio ? "Adicionar" : "Alterar"}: ${esc(textoSimples(a.nome))}">${cabeca}${valor}</button>`;
   }
+
+  const textoSimples = (html) => String(html).replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 
   /** Limites de uma data: "Não começa antes de" não passa da data-limite, e a data-limite não fica antes dela. */
   function limitesDaData(campo, acao) {
@@ -846,6 +879,10 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     /* nas tarefas, os atributos ficam na coluna ao lado; aqui, só o que é conteúdo (05/11/2026) */
     const fechados = opcionais().filter(([campo]) => !visivel(acao, campo) && (!ehDeTarefas(d.espaco) || DO_CONTEUDO.has(campo)));
     if (!fechados.length) return "";
+    /* nas tarefas, em vez da faixa "Mais campos", um link para cada um, como o do checklist (05/11/2026) */
+    if (ehDeTarefas(d.espaco)) {
+      return fechados.map(([campo, texto]) => `<button type="button" class="botao-texto adicionar-conteudo" data-mostrar-campo="${campo}">${ICONES.mais}Adicionar ${texto.toLowerCase()}</button>`).join("");
+    }
     return `<div class="chips-campos mais-campos" role="group" aria-label="Mais campos"><span class="tec">Mais campos:</span>
       ${fechados.map(([campo, texto]) => `<button type="button" class="chip-campo" data-mostrar-campo="${campo}">${ICONES.mais}${texto}</button>`).join("")}</div>`;
   }
@@ -898,8 +935,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
    */
   function descricaoHtml(acao) {
     if ((d.espaco.camposOpcionais ?? {}).descricao === false || !visivel(acao, "descricao")) return "";
-    return `<div class="janela-campos janela-descricao"><div class="campo-acao" data-campo="descricao">${rotuloHtml("descricao", "Descrição")}
-        <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="${ehDeTarefas(d.espaco) ? "Descrição" : "O que é esta ação, em poucas linhas"}">${esc(acao.descricao ?? "")}</textarea></div></div>`;
+    /* nas tarefas, sem o rótulo "Descrição", como no Todoist: a frase de exemplo na caixa vazia já diz o que é (05/11/2026) */
+    const tarefa = ehDeTarefas(d.espaco);
+    return `<div class="janela-campos janela-descricao"><div class="campo-acao" data-campo="descricao">${tarefa ? "" : rotuloHtml("descricao", "Descrição")}
+        <textarea class="cresce" rows="${tarefa ? 1 : 2}" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="${tarefa ? "Descrição" : "O que é esta ação, em poucas linhas"}">${esc(acao.descricao ?? "")}</textarea>
+        ${tarefa ? statusHtml("descricao") : ""}</div></div>`;
   }
 
   function camposHtml(acao, l, etapas, etapa) {
@@ -1088,8 +1128,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const itens = acao.checklist ?? [];
     const pode = !somenteLeitura();
     if (!itens.length && !checklistAberto) {
-      return pode ? `<div class="campo-acao"><span class="campo-nome">Checklist</span>
-        <button type="button" class="botao-texto" data-abrir-checklist>${ICONES.mais}Adicionar checklist</button></div>` : "";
+      if (!pode) return "";
+      /* nas tarefas, só o "+ Adicionar checklist", sem rótulo em cima, como o "Adicionar subtarefa" do Todoist (05/11/2026) */
+      if (ehDeTarefas(d.espaco)) return `<button type="button" class="botao-texto adicionar-conteudo" data-abrir-checklist>${ICONES.mais}Adicionar checklist</button>`;
+      return `<div class="campo-acao"><span class="campo-nome">Checklist</span>
+        <button type="button" class="botao-texto" data-abrir-checklist>${ICONES.mais}Adicionar checklist</button></div>`;
     }
     const feitos = itens.filter((i) => i.feito).length;
     return `<div class="campo-acao checklist">
@@ -1851,6 +1894,19 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       if (temAtividade() !== antes) desenhar(); else desenharComentarios();
     });
   }
+  /*
+   * As caixas que crescem com o texto (nome e descrição) medem a altura na largura do momento. A janela ainda está
+   * chegando à largura final quando é desenhada, e a coluna muda de largura com a tela: a medida antiga cortava a última
+   * linha da descrição (correção de 05/11/2026). Por isso, mede de novo sempre que a largura do corpo muda.
+   */
+  let larguraMedida = 0;
+  const medirDeNovo = new ResizeObserver(() => {
+    if (fechada || corpo.clientWidth === larguraMedida) return;
+    larguraMedida = corpo.clientWidth;
+    ajustarAlturas();
+  });
+  medirDeNovo.observe(corpo);
+  document.fonts?.ready.then(() => { if (!fechada) ajustarAlturas(); }); // a letra carregada depois muda a largura das linhas
   desenhar();
   if (vizinha) desenharSetas();
   pararComentarios = acompanhar();

@@ -89,5 +89,14 @@ export const ICONES = Object.freeze({
   /** Fechar: xis. */
   /** Busca e paleta de comandos (Ctrl+K, 24/10/2026): lupa. */
   buscar: svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+  /* coluna de atributos da tarefa no celular, uma linha por atributo com ícone, como no Todoist (05/11/2026) */
+  calendario: svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>'),
+  inicio: svg('<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M10 13.5l3 2-3 2"/>'),
+  etiqueta: svg('<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1.5 1.5 0 0 1 0 2.1l-6.2 6.2a1.5 1.5 0 0 1-2.1 0z"/><circle cx="8" cy="8" r="1.3"/>'),
+  elo: svg('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
+  local: svg('<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>'),
+  codigo: svg('<path d="M9 4 7 20M17 4l-2 16M4.5 9h16M3.5 15h16"/>'),
+  campo: svg('<rect x="3.5" y="6" width="17" height="12" rx="2.5"/><path d="M7.5 12h6"/>'),
+  historico: svg('<path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 4v4h4M12 8v4.5l3 1.8"/>'),
   fechar: svg('<path d="M6 6l12 12M18 6 6 18"/>'),
 });

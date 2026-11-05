@@ -29,7 +29,8 @@ export function prenderFoco(raiz) {
     const primeiro = lista[0];
     const ultimo = lista.at(-1);
     const ativo = document.activeElement;
-    if (!raiz.contains(ativo)) { e.preventDefault(); (e.shiftKey ? ultimo : primeiro).focus(); return; }
+    /* fora da camada, ou na própria janela (foco inicial da janela da ação): Tab vai ao primeiro, Shift+Tab ao último */
+    if (!raiz.contains(ativo) || ativo === raiz) { e.preventDefault(); (e.shiftKey ? ultimo : primeiro).focus(); return; }
     if (e.shiftKey && ativo === primeiro) { e.preventDefault(); ultimo.focus(); }
     else if (!e.shiftKey && ativo === ultimo) { e.preventDefault(); primeiro.focus(); }
   };
@@ -95,7 +96,16 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
   };
   fecharAtual = fechar;
   if (deBaixo || janela) puxarParaFechar(camada, fechar);
-  camada.querySelector(".painel [data-fechar]").focus();
+  /*
+   * Janela da ação (05/11/2026): o foco inicial vai para a própria janela, e não para "Fechar". Posto por script depois
+   * de um clique, o foco no botão às vezes acendia a moldura de teclado nele ao abrir, chamando a atenção para o
+   * fechar. O leitor de tela continua anunciando a janela pelo nome; Tab vai ao primeiro botão, como antes.
+   */
+  if (janela) {
+    const painel = camada.querySelector(".painel");
+    painel.tabIndex = -1;
+    painel.focus({ preventScroll: true });
+  } else camada.querySelector(".painel [data-fechar]").focus();
   return camada.querySelector(".painel-corpo");
 }
 
