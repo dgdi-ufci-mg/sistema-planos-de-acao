@@ -38,13 +38,14 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
 /**
  * @param {{store: object, espacoId: string, numero: number, hoje: string, usuario?: string|null,
  *   dados: object, aoFechar: () => void, abrirCom?: string|null}} opcoes  dados: ver dadosDaJanela em espaco.js;
- *   abrirCom: formulário já aberto, como "concluir"; abrirOutra: abre a janela de outra ação (a cópia recém-criada)
+ *   abrirCom: formulário já aberto, como "concluir"; abrirOutra: abre a janela de outra ação (a cópia recém-criada);
+ *   vizinha(número, passo): a ação anterior (-1) ou seguinte (1) na tela, ou null (setas da janela)
  * @returns {{atualizar: (dados: object) => void, fechar: () => void}}
  */
 /** Prefixo dos campos personalizados na janela (passo 3.6): "cp-" mais o id do campo. */
 const PREFIXO_CP = "cp-";
 
-export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null }) {
+export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null, vizinha = null }) {
   let d = dados;
   /** Quem acabou de alterar a ação, se não foi quem está com a janela aberta (seção 4.6). */
   let alheia = null;
@@ -66,7 +67,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
     janela: true,
-    aoFechar: () => { fechada = true; pararComentarios?.(); document.removeEventListener("click", fecharMenuFora, true); aoFechar(); },
+    aoFechar: () => { fechada = true; pararComentarios?.(); document.removeEventListener("click", fecharMenuFora, true); aoFechar(numero); },
   });
 
   /* ---------- menu "…" do cabeçalho (05/11/2026, pedido do responsável, como no Todoist) ---------- */
@@ -77,7 +78,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   const cabecaDaJanela = corpo.closest(".painel").querySelector("header");
   const ferramentas = document.createElement("div");
   ferramentas.className = "ferramentas-janela";
-  ferramentas.innerHTML = `<span class="menu-janela-lugar"><button type="button" class="botao discreto menu-janela" data-menu-janela
+  ferramentas.innerHTML = `${vizinha ? `<button type="button" class="botao discreto seta-janela" data-ir="-1">${ICONES.acima}</button>
+    <button type="button" class="botao discreto seta-janela" data-ir="1">${ICONES.abaixo}</button>` : ""}<span class="menu-janela-lugar"><button type="button" class="botao discreto menu-janela" data-menu-janela
     aria-haspopup="menu" aria-expanded="false" aria-label="Mais opções" title="Mais opções">${ICONES.opcoes}</button></span>`;
   cabecaDaJanela.querySelector("[data-fechar]").before(ferramentas);
   let menuAberto = false;
@@ -134,8 +136,47 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       if (await excluirAcao({ store, espacoId, acao: acaoAtual(), acoes: d.acoes })) fecharPainel();
     } catch (falha) { avisar(falha.message); }
   }
+  /* ---------- setas: ação anterior e seguinte da tela, sem fechar a janela (05/11/2026, pedido do responsável) ---------- */
+  function desenharSetas() {
+    const t = termos(d.espaco);
+    for (const b of ferramentas.querySelectorAll("[data-ir]")) {
+      const anterior = b.dataset.ir === "-1";
+      const alvo = vizinha(numero, Number(b.dataset.ir));
+      const texto = `${anterior ? `${t.Acao} anterior` : `Próxima ${t.acao}`}`;
+      b.disabled = alvo == null;
+      b.setAttribute("aria-label", texto);
+      b.title = `${texto} (Alt+${anterior ? "↑" : "↓"})`;
+    }
+  }
+  /**
+   * Troca a ação mostrada pela vizinha, na mesma janela. Quem estava digitando já gravou ao sair do campo (o clique
+   * na seta tira o foco antes). O estado da janela volta ao de uma janela recém-aberta.
+   */
+  function irPara(passo) {
+    const alvo = vizinha?.(numero, passo);
+    if (alvo == null || fechada) return;
+    /* o campo em edição grava ao perder o foco; o foco fica nas ferramentas do cabeçalho, para as teclas seguirem valendo */
+    if (corpo.contains(document.activeElement)) document.activeElement.blur();
+    numero = alvo;
+    editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
+    buscando = null; editandoDoc = null; mostrados.clear(); aba = "detalhes"; status = null; abrindoData = false;
+    alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
+    abrirMenu(false);
+    pararComentarios?.();
+    comentarios = null;
+    desenhar();
+    desenharSetas();
+    const seta = ferramentas.querySelector(`[data-ir="${passo}"]:not(:disabled)`) ?? ferramentas.querySelector("[data-ir]:not(:disabled), [data-menu-janela]");
+    seta?.focus();
+    surgir(corpo.querySelector(".janela-grade"));
+    corpo.scrollTop = 0;
+    for (const el of corpo.querySelectorAll(".janela-principal, .janela-atividade")) el.scrollTop = 0;
+    pararComentarios = acompanhar();
+  }
   ferramentas.addEventListener("click", (e) => {
     const t = e.target;
+    const seta = t.closest("[data-ir]");
+    if (seta) return irPara(Number(seta.dataset.ir));
     if (t.closest("[data-menu-janela]")) return abrirMenu(!menuAberto);
     const item = t.closest(".menu-da-janela button");
     if (!item) return;
@@ -160,6 +201,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       e.preventDefault();
       itens[(i + (e.key === "ArrowDown" ? 1 : -1) + itens.length) % itens.length]?.focus();
     }
+  });
+  /* Alt+↑ e Alt+↓, em qualquer lugar da janela, passam à ação anterior e à seguinte */
+  corpo.closest(".painel").addEventListener("keydown", (e) => {
+    if (!vizinha || !e.altKey || e.ctrlKey || e.metaKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    e.preventDefault();
+    irPara(e.key === "ArrowUp" ? -1 : 1);
   });
   /* clique fora do menu o fecha */
   const fecharMenuFora = (e) => { if (menuAberto && !ferramentas.contains(e.target)) abrirMenu(false); };
@@ -856,12 +903,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     <p class="tec">Registro permanente: ninguém altera nem apaga.</p>`;
   }
   async function carregarHistorico() {
+    const deQuem = numero;
+    let lidos;
     try {
-      registros = await store.listarHistorico(espacoId, numero);
+      lidos = await store.listarHistorico(espacoId, numero);
     } catch (e) {
-      registros = [];
+      lidos = [];
       avisar(e.message);
     }
+    if (deQuem !== numero) return; // a janela passou a outra ação (setas) enquanto lia
+    registros = lidos;
     const alvo = corpo.querySelector("[data-registros]");
     if (alvo && !fechada) alvo.innerHTML = registrosHtml();
   }
@@ -1376,14 +1427,20 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     etiquetas: { opcoes: (texto) => opcoesDeEtiquetas(texto), vazio: "Digite o nome de uma etiqueta nova." },
   }, { aoErro: (e) => avisar(e.message) });
 
+  /** Conversa da ação em tempo real; devolve a função que para de acompanhar. */
+  function acompanhar() {
+    const deQuem = numero;
+    return store.acompanharComentarios(espacoId, numero, (lista) => {
+      if (fechada || deQuem !== numero) return; // resposta atrasada de uma ação que a janela já deixou (setas)
+      const antes = temAtividade();
+      comentarios = lista;
+      /* a primeira conversa (ou a última apagada de vez) muda a janela entre uma e duas colunas */
+      if (temAtividade() !== antes) desenhar(); else desenharComentarios();
+    });
+  }
   desenhar();
-  pararComentarios = store.acompanharComentarios(espacoId, numero, (lista) => {
-    const antes = temAtividade();
-    comentarios = lista;
-    if (fechada) return;
-    /* a primeira conversa (ou a última apagada de vez) muda a janela entre uma e duas colunas */
-    if (temAtividade() !== antes) desenhar(); else desenharComentarios();
-  });
+  if (vizinha) desenharSetas();
+  pararComentarios = acompanhar();
   return {
     /**
      * Novos dados do banco. Se outra pessoa alterou a ação, avisa por 10 segundos; os campos
@@ -1400,6 +1457,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         tempoAlheia = setTimeout(() => { alheia = null; if (!fechada) desenhar(); }, 10000);
       }
       desenhar();
+      if (vizinha) desenharSetas();
       if (historicoAberto && antes?.alteradaEm !== depois?.alteradaEm) carregarHistorico();
     },
     fechar() { if (!fechada) fecharPainel(); },

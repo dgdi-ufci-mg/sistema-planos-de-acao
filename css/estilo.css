@@ -1568,6 +1568,9 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 .painel header .ferramentas-janela { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
 .painel header .ferramentas-janela + [data-fechar] { margin-left: 0; }
 .menu-janela-lugar { position: relative; display: inline-flex; }
+.seta-janela { padding: 6px; display: inline-flex; align-items: center; color: var(--muted); }
+.seta-janela .icone { width: 18px; height: 18px; }
+.seta-janela:disabled { opacity: .35; cursor: default; }
 .menu-janela { padding: 6px 8px; display: inline-flex; align-items: center; color: var(--muted); }
 .menu-janela .icone { width: 18px; height: 18px; }
 .menu-janela[aria-expanded="true"] { color: var(--ink); background: var(--sunk); }

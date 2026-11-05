@@ -236,4 +236,34 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.match(await p.locator(".aviso-curto").innerText(), /não encontrada/);
     assert.deepEqual(p.erros, []);
   });
+  test("setas ↑↓ no cabeçalho passam à tarefa anterior e à seguinte da lista, sem fechar a janela", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const j = janela(p);
+    const nomes = await p.locator(".item .linha[data-abrir-acao]").evaluateAll((els) => els.filter((el) => el.getClientRects().length)
+      .map((el) => el.closest("[data-numero]").querySelector(".rotulo").textContent.trim()));
+    const i = nomes.findIndex((n) => n.startsWith("Ler o relatório"));
+    assert.ok(i > 0 && i < nomes.length - 1, "a tarefa tem vizinhas acima e abaixo");
+    const nome = () => j.locator(".janela-nome").inputValue();
+    await j.locator('header [data-ir="1"]').click();
+    await assentar(p);
+    assert.equal(await nome(), nomes[i + 1]);
+    assert.equal(await p.locator(".camada.aberta").count(), 1);
+    await j.locator('header [data-ir="-1"]').click();
+    await assentar(p);
+    assert.equal(await nome(), nomes[i]);
+    /* Alt+↑ também anda; na primeira, a seta de cima fica desligada */
+    for (let k = 0; k < i; k++) { await p.keyboard.press("Alt+ArrowUp"); await assentar(p, 150); }
+    assert.equal(await nome(), nomes[0]);
+    assert.equal(await j.locator('header [data-ir="-1"]').isDisabled(), true);
+    assert.equal(await j.locator('header [data-ir="-1"]').getAttribute("aria-label"), "Tarefa anterior");
+    /* o que se digitou grava ao trocar de tarefa */
+    await j.locator('[data-mostrar-campo="descricao"], [data-campo="descricao"] textarea').first().click();
+    await j.locator('[data-campo="descricao"] textarea').fill("Texto novo");
+    await j.locator('header [data-ir="1"]').click();
+    await assentar(p);
+    await j.locator('header [data-ir="-1"]').click();
+    await assentar(p);
+    assert.equal(await j.locator('[data-campo="descricao"] textarea').inputValue(), "Texto novo");
+    assert.deepEqual(p.erros, []);
+  });
 });

@@ -2157,13 +2157,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     else avisar(`${termos(espaco).Acao} do link não encontrada neste espaço. Pode ter sido excluída.`);
   }
 
+  /**
+   * Ação vizinha na tela (05/11/2026, setas da janela da ação): a anterior (passo -1) ou a seguinte (passo 1) entre os
+   * cartões à vista, na ordem da tela (no quadro, coluna por coluna). Sem vizinha, null.
+   */
+  function vizinha(numero, passo) {
+    const numeros = [...(lista?.querySelectorAll(".linha[data-abrir-acao]") ?? [])]
+      .filter((el) => !el.closest(".fechado") && el.getClientRects().length)
+      .map((el) => Number(el.closest("[data-numero]")?.dataset.numero)).filter((n) => !Number.isNaN(n));
+    const i = numeros.indexOf(numero);
+    return i < 0 ? null : numeros[i + passo] ?? null;
+  }
+
   function abrirJanela(numero, abrirCom = null) {
     janela = abrirAcao({
       store, espacoId, numero, hoje, usuario, dados: dadosDaJanela(), abrirCom,
       abrirOutra: (n) => abrirJanela(n),
-      aoFechar: () => {
+      vizinha,
+      aoFechar: (atual = numero) => {
         janela = null;
-        lista?.querySelector(`[data-numero="${numero}"] [data-abrir-acao]`)?.focus();
+        lista?.querySelector(`[data-numero="${atual}"] [data-abrir-acao]`)?.focus();
       },
     });
   }
