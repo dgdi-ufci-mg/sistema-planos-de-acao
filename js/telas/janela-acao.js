@@ -214,6 +214,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
               aria-label="Nome da ${termos(d.espaco).acao}"${somenteLeitura() ? " readonly" : ""}>${esc(acao.rotulo)}</textarea>
             ${statusHtml("rotulo")}
           </div>
+          ${descricaoHtml(acao)}
 
           <dl class="janela-resumo${ehDeTarefas(d.espaco) ? " compacto" : ""}">
             <div><dt>Situação</dt><dd class="sit">${situacaoHtml(l, sitClasse, sitIcone, sitTexto)}${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}</dd></div>
@@ -386,6 +387,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return `<div class="campo-acao campo-personalizado" data-campo="${esc(chave)}">${rotulo}${controle}</div>`;
   }
 
+  /**
+   * Descrição logo abaixo do nome (05/11/2026, pedido do responsável, na comparação com o Todoist): o "do que se trata"
+   * vem antes da situação, das datas e dos responsáveis. Vazia, fica em "Mais campos", como antes.
+   */
+  function descricaoHtml(acao) {
+    if ((d.espaco.camposOpcionais ?? {}).descricao === false || !visivel(acao, "descricao")) return "";
+    return `<div class="janela-campos janela-descricao"><div class="campo-acao" data-campo="descricao">${rotuloHtml("descricao", "Descrição")}
+        <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="O que é esta ação, em poucas linhas">${esc(acao.descricao ?? "")}</textarea></div></div>`;
+  }
+
   function camposHtml(acao, l, etapas, etapa) {
     const campos = d.espaco.camposOpcionais ?? {};
     const contexto = { tons: d.espaco.tons, meus: d.meus };
@@ -438,10 +449,6 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         ${confirmarAnteriorHtml()}</div>`);
     }
 
-    if (campos.descricao !== false && visivel(acao, "descricao")) {
-      partes.push(`<div class="campo-acao" data-campo="descricao">${rotuloHtml("descricao", "Descrição")}
-        <textarea class="cresce" rows="2" ${atributos("descricao", acao.descricao)} aria-label="Descrição" placeholder="O que é esta ação, em poucas linhas">${esc(acao.descricao ?? "")}</textarea></div>`);
-    }
     /* justificativa e local, do 5W2H (passo 2.10a): textos simples, gravados ao sair do campo */
     if (campos.justificativa === true && visivel(acao, "justificativa")) {
       partes.push(`<div class="campo-acao" data-campo="justificativa">${rotuloHtml("justificativa", "Justificativa")}

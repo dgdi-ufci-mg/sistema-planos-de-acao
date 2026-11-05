@@ -137,4 +137,19 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.equal(await janela(plano).locator(".janela-resumo.compacto").count(), 0);
     assert.deepEqual(p.erros, []);
   });
+  test("a descrição vem logo abaixo do nome, antes da situação; aberta por \"Mais campos\", aparece no mesmo lugar", async () => {
+    const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
+    const j = janela(p);
+    const y = async (sel) => (await j.locator(sel).first().boundingBox()).y;
+    assert.ok(await y('[data-campo="descricao"]') > await y(".janela-nome"));
+    assert.ok(await y('[data-campo="descricao"]') < await y(".janela-resumo"));
+    assert.ok(await y('[data-campo="descricao"]') < await y('[data-campo="responsaveis"]'));
+    const q = await abrirTarefa(sessao, "Marcar reunião", { largura: 1280 }, "tarefas da equipe", ".cartao-quadro");
+    await janela(q).locator('[data-mostrar-campo="descricao"]').click();
+    await assentar(q);
+    const caixa = janela(q).locator('[data-campo="descricao"] textarea');
+    assert.equal(await caixa.evaluate((el) => el === document.activeElement), true, "o cursor vai para a descrição");
+    assert.ok((await caixa.boundingBox()).y < (await janela(q).locator(".janela-resumo").boundingBox()).y);
+    assert.deepEqual([...p.erros, ...q.erros], []);
+  });
 });
