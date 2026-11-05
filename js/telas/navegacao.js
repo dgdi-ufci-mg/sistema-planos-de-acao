@@ -4,7 +4,8 @@
  * - No computador, com a barra recolhida: o botão de painel no canto esquerdo da barra do topo abre a barra
  *   (revisto em 26/10/2026, decisão do responsável: o puxador na borda esquerda, de 23/10, saiu), e Ctrl+B (⌘B)
  *   abre e recolhe.
- * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar", "Buscar" e, logo abaixo, "Novo espaço"
+ * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar", "Buscar", "Novo espaço" e "Minhas tarefas" (só com
+ *   login, 05/11/2026)
  *   (29/10/2026, decisão do responsável: sempre à vista, sem depender do tamanho da lista); no meio, os espaços,
  *   cada um com a engrenagem de "Configurar este espaço"; no pé (24/10/2026, avaliação de
  *   usabilidade), à vista "Ajuda e manual" e "Configurar o sistema"; recolhidos em "Mais", a Lixeira, a "Extração de dados"
@@ -201,17 +202,31 @@ function ligar() {
 }
 
 /**
+ * "Minhas tarefas" (05/11/2026, pedido do responsável): entre "Novo espaço" e a lista de espaços, só para quem entrou
+ * ("Novo espaço" continua logo abaixo de "Buscar", decisão de 29/10/2026). O número ao lado
+ * conta as atrasadas e as de hoje (vazio enquanto não foi contado, e sem número quando é zero). Na tela de Minhas
+ * tarefas, o item fica marcado como a página atual, como o espaço aberto.
+ * @param {{minhasAtual?: boolean, nMinhas?: number|null}} opcoes
+ */
+function minhasHtml({ minhasAtual = false, nMinhas = null }) {
+  const n = nMinhas ? `<span class="n" title="Atrasadas e de hoje">${nMinhas}</span>` : "";
+  return `<button type="button" class="lateral-acao lateral-minhas${minhasAtual ? " atual" : ""}" data-item="minhasTarefas"${minhasAtual ? ' aria-current="page"' : ""}>${ICONES.concluida}Minhas tarefas${n}</button>`;
+}
+
+/**
  * Desenha a barra e o menu lateral.
  * @param {{espacos: object[], abertoId?: string|null, titulo?: string, usuario?: {email: string, nome?: string}|null,
  *   comLogin?: boolean, podeCriar?: boolean, podeConfigurar: (id: string) => boolean,
  *   aoAbrir: (id: string) => void, aoConfigurar: (id: string) => void, aoNovo: () => void, aoAjuda: () => void,
- *   aoSistema: () => void, aoEntrar: () => void, aoTrocarSenha: () => void, aoSair: () => void}} opcoes
+ *   aoSistema: () => void, aoEntrar: () => void, aoTrocarSenha: () => void, aoSair: () => void,
+ *   aoMinhasTarefas?: (() => void)|null, minhasAtual?: boolean, nMinhas?: number|null}} opcoes
  */
 export function mostrarNavegacao(opcoes) {
   const { espacos, abertoId = null, titulo = "", usuario = null, comLogin = true, podeCriar = true, podeConfigurar } = opcoes;
   acoes = {
     aoAbrir: opcoes.aoAbrir, aoConfigurar: opcoes.aoConfigurar, novo: opcoes.aoNovo, ajuda: opcoes.aoAjuda,
     sistema: opcoes.aoSistema, buscar: opcoes.aoBuscar, entrar: opcoes.aoEntrar, trocarSenha: opcoes.aoTrocarSenha, sair: opcoes.aoSair,
+    minhasTarefas: opcoes.aoMinhasTarefas,
     lixeira: opcoes.aoLixeira, consulta: opcoes.aoConsulta, extracao: opcoes.aoExtracao, instalar: opcoes.aoInstalar,
   };
   if (!ligado) ligar();
@@ -250,6 +265,7 @@ export function mostrarNavegacao(opcoes) {
     <div class="lateral-conta">${contaHtml}</div>
     ${opcoes.aoBuscar ? `<button type="button" class="lateral-acao lateral-buscar" data-item="buscar" aria-keyshortcuts="Control+K Meta+K">${ICONES.buscar}Buscar<kbd>${atalhoDaBusca()}</kbd></button>` : ""}
     ${podeCriar ? `<button type="button" class="lateral-acao lateral-novo" data-item="novo">${ICONES.mais}Novo espaço</button>` : ""}
+    ${opcoes.aoMinhasTarefas ? minhasHtml(opcoes) : ""}
     <nav class="lateral-espacos" aria-label="Espaços">
       ${grupos.map((g) => `<section class="lateral-grupo"><h2 class="lateral-rotulo lateral-titulo-grupo">${g.tipo ? `<span class="lateral-icone-grupo" aria-hidden="true">${ICONES[ICONE_DO_TIPO[g.tipo]] ?? ""}</span>` : ""}${g.titulo}</h2>
       <ul>${g.espacos.map(itemHtml).join("")}</ul></section>`).join("")}

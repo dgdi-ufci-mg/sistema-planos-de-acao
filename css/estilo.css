@@ -1723,6 +1723,30 @@ body[data-tipo-espaco="lista"] .conteudo { max-width: 800px; }
 .sem-acesso { max-width: 560px; margin: 40px auto; }
 .sem-acesso p { margin: 8px 0 14px; }
 .lateral-acao .n { margin-left: auto; font-family: var(--f-dados); font-size: .75rem; color: var(--muted); }
+.lateral-acao.atual { background: var(--accent-soft); color: var(--accent-ink); }
+/* "Minhas tarefas" (05/11/2026): número das atrasadas e de hoje em destaque discreto, como no Todoist */
+.lateral-minhas .n { color: var(--crit-ink); font-weight: 600; }
+
+/* tela "Minhas tarefas" (05/11/2026; seção 8, "Minhas tarefas"): grupos por prazo, uma linha por tarefa */
+.minhas-tarefas { max-width: 760px; margin: 0 auto; padding: 8px 0 32px; }
+.minhas-explica { margin: 0 0 4px; }
+.minhas-grupo { margin-top: 18px; }
+#principal .minhas-grupo h2 { display: flex; align-items: baseline; gap: 8px; font-size: 1rem; margin: 0 0 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.minhas-grupo h2 .n { font-family: var(--f-dados); font-size: .8rem; font-weight: 500; color: var(--muted); }
+.minhas-atrasadas h2 { color: var(--crit-ink); }
+.minhas-grupo ul { list-style: none; margin: 0; padding: 0; }
+.minhas-grupo li { border-bottom: 1px solid var(--grid); }
+.minhas-item { display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 44px; padding: 8px 6px; border: 0; border-radius: var(--raio);
+  background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+  transition: background var(--mov-rapido) var(--mov-curva); }
+.minhas-item:hover, .minhas-item:focus-visible { background: var(--accent-soft); }
+.minhas-nome { overflow-wrap: anywhere; }
+.minhas-detalhe { display: flex; flex-wrap: wrap; gap: 0 6px; font-size: .82rem; color: var(--muted); }
+.minhas-espaco { overflow-wrap: anywhere; }
+.minhas-prazo { font-family: var(--f-dados); }
+.minhas-prazo.atrasada { color: var(--crit-ink); font-weight: 600; }
+.minhas-vazio { margin-top: 12px; }
+.minhas-vazio p { margin: 0 0 6px; }
 
 /* Administrador do Sistema (passo 2.3) */
 .espacos-sistema { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -1971,6 +1995,8 @@ body.redimensionando, body.redimensionando * { cursor: col-resize !important; us
 /* "Novo espaço" logo abaixo de "Buscar" (29/10/2026): os dois juntos, e o respiro antes da lista */
 .lateral-buscar + .lateral-novo { margin-top: -4px; }
 .lateral-novo { margin-bottom: 6px; }
+.lateral-novo + .lateral-minhas { margin-top: -4px; }
+.lateral-minhas { margin-bottom: 6px; }
 .lateral-buscar kbd, .busca kbd {
   font: 600 .7rem/1 var(--f-dados); color: var(--muted); border: 1px solid var(--line); border-bottom-width: 2px;
   border-radius: 4px; padding: 2px 5px; background: var(--bg);

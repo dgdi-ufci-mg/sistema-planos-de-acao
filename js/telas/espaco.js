@@ -80,7 +80,7 @@ function lerColunas() {
 }
 
 export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra, acaoInicial = null }) {
-  /** ação a abrir quando os dados chegarem, vinda do link "#/espaco/<id>/acao/<número>" (05/11/2026) */
+  /** ação a abrir quando os dados chegarem, vinda do link "#/espaco/<id>/acao/<número>" ou de "Minhas tarefas" (05/11/2026) */
   let acaoDoLink = acaoInicial;
   /** Números das ações na ordem em que a tela as mostra (cada coluna do quadro segue esta ordem; ver o arrastar). */
   let ordemNaTela = [];

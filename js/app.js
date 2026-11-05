@@ -16,6 +16,8 @@ import { criarStore, hojeLocal } from "./dados.js";
 import { carregarExemplo, carregarExemploDeQuadro, carregarExemploDeLista } from "./exemplo.js";
 import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
+import { mostrarMinhasTarefas, mostrarCarregandoMinhas } from "./telas/minhas-tarefas.js";
+import { montarMinhasTarefas } from "./minhas-tarefas.js";
 import { mostrarNavegacao } from "./telas/navegacao.js";
 import { mostrarAjuda } from "./telas/ajuda.js";
 import { avisar, fecharPainel } from "./telas/painel.js";
@@ -70,6 +72,9 @@ let exemploId = null;
 /** espaços do banco do exemplo (passo 3.1: o Plano de Ação e o Quadro de tarefas de exemplo) */
 const exemplos = new Set();
 let abertoId = null;
+/** Tela "Minhas tarefas" aberta (05/11/2026); nela, nenhum espaço está aberto. */
+let naMinhas = false;
+const ENDERECO_MINHAS = "#/minhas-tarefas";
 
 const storeDe = (id) => (id && exemplos.has(id) ? exemplo : store);
 const tentar = async (f, padrao) => { try { return await f(); } catch (e) { avisar(e.message); return padrao; } };
@@ -89,7 +94,7 @@ async function espacosDoBanco() {
 async function atualizarTopo() {
   const { meus, consulta } = await espacosDoBanco();
   const espacos = [...meus, ...(exemplo ? await exemplo.listarEspacos() : [])];
-  const titulo = abertoId ? (await tentar(() => storeDe(abertoId).lerEspaco(abertoId), null))?.nome ?? "" : "";
+  const titulo = abertoId ? (await tentar(() => storeDe(abertoId).lerEspaco(abertoId), null))?.nome ?? "" : naMinhas ? "Minhas tarefas" : "";
   /* nome de quem entrou: o do responsável ligado ao e-mail no espaço aberto (os responsáveis são de cada espaço) */
   const ligado = usuario && abertoId ? (await tentar(() => storeDe(abertoId).listarResponsaveis(abertoId), [])).find((r) => r.usuario === usuario) : null;
   mostrarNavegacao({
@@ -103,6 +108,10 @@ async function atualizarTopo() {
     podeConfigurar: (id) => storeDe(id).podeGravar,
     podeCriar: store.podeGravar,
     aoAbrir: abrirEspaco,
+    /* "Minhas tarefas" (05/11/2026): só para quem entrou, porque depende do e-mail ligado aos responsáveis */
+    aoMinhasTarefas: usuario ? () => abrirMinhasTarefas() : null,
+    minhasAtual: naMinhas,
+    nMinhas: usuario ? contagemMinhas : null,
     /* a engrenagem de outro espaço abre esse espaço antes de configurar */
     aoConfigurar: async (id) => {
       if (id !== abertoId && !(await abrirEspaco(id))) return;
@@ -130,6 +139,53 @@ async function atualizarTopo() {
     aoTrocarSenha: () => abrirTrocarSenha({ acesso }),
     aoSair: () => tentar(async () => { await acesso.sair(); avisar("Você saiu."); }),
   });
+}
+
+/* ---------- Minhas tarefas (05/11/2026; documentação técnica, seção 8, "Minhas tarefas") ----------
+ * O número da barra lateral (atrasadas e de hoje) lê todos os espaços de que a pessoa participa. Para não reler a cada
+ * troca de espaço, a contagem vale por um minuto; abrir a tela de Minhas tarefas sempre conta de novo. */
+const VALIDADE_DA_CONTAGEM = 60_000;
+let contagemMinhas = null;
+let contadoEm = 0;
+let contando = null;
+/** Lê os espaços e monta Minhas tarefas de quem entrou; guarda o número da barra lateral. */
+async function lerMinhasTarefas() {
+  const doUsuario = usuario;
+  const resultado = montarMinhasTarefas(await store.dadosParaMinhasTarefas(), doUsuario, hoje);
+  if (doUsuario === usuario) { contagemMinhas = resultado.urgentes; contadoEm = Date.now(); }
+  return resultado;
+}
+/** Recontagem em segundo plano, quando a anterior venceu; se o número mudou, refaz a barra. */
+function recontarMinhas() {
+  if (!usuario || contando || Date.now() - contadoEm < VALIDADE_DA_CONTAGEM) return;
+  const antes = contagemMinhas;
+  contando = lerMinhasTarefas()
+    .then(() => { if (contagemMinhas !== antes) atualizarTopo(); })
+    .catch(() => { /* sem leitura agora: o número fica como estava */ })
+    .finally(() => { contando = null; });
+}
+const esquecerContagem = () => { contagemMinhas = null; contadoEm = 0; };
+
+/** Abre "Minhas tarefas": a tela vem no lugar do espaço aberto, com endereço próprio (Voltar e recarregar funcionam). */
+async function abrirMinhasTarefas() {
+  if (!usuario) return boasVindas();
+  await historicoPronto();
+  const vindoDeEspaco = Boolean(abertoId);
+  pararEspaco();
+  pararEspaco = () => {};
+  abertoId = null;
+  naMinhas = true;
+  document.body.classList.remove("so-leitura", "sem-criar-acao");
+  if (location.hash !== ENDERECO_MINHAS) {
+    if (vindoDeEspaco) history.pushState(null, "", ENDERECO_MINHAS); else history.replaceState(null, "", ENDERECO_MINHAS);
+  }
+  mostrarCarregandoMinhas(principal);
+  atualizarTopo();
+  window.scrollTo(0, 0);
+  const resultado = await tentar(lerMinhasTarefas, null);
+  if (!naMinhas) return; // a pessoa saiu da tela enquanto lia
+  if (resultado) mostrarMinhasTarefas(principal, { resultado, hoje, aoAbrir: (id, numero) => abrirEspaco(id, { acao: numero }) });
+  atualizarTopo();
 }
 
 const entrar = () => abrirEntrar({ acesso });
@@ -210,8 +266,10 @@ async function abrirEspaco(id, { acao = null } = {}) {
   /* espaço restrito (ou institucional, sem login) que a pessoa não pode consultar (passo 2.2) */
   if (!daqui.podeVerEspaco(espaco)) { semAcesso(espaco); return true; }
   /* trocar de espaço cria uma entrada no histórico: Voltar volta ao espaço anterior (item 1 da avaliação de celular) */
-  const trocou = abertoId && abertoId !== id;
+  /* vindo de "Minhas tarefas", também: Voltar volta à lista (05/11/2026) */
+  const trocou = (abertoId && abertoId !== id) || naMinhas;
   abertoId = id;
+  naMinhas = false;
   if (!exemplos.has(id)) lembrar(id);
   if (location.hash !== `#/espaco/${id}`) {
     await historicoPronto(); // se uma janela acabou de fechar, espera o navegador devolver a entrada dela
@@ -236,6 +294,7 @@ async function abrirEspaco(id, { acao = null } = {}) {
   pararEspaco = () => { pararTela(); pararTopo(); };
   atualizarConexao();
   await atualizarTopo();
+  recontarMinhas();
   window.scrollTo(0, 0);
   return true;
 }
@@ -245,6 +304,7 @@ function semAcesso(espaco) {
   pararEspaco();
   pararEspaco = () => {};
   abertoId = null;
+  naMinhas = false;
   esquecer();
   document.body.classList.remove("so-leitura", "sem-criar-acao");
   const institucional = espaco.visibilidade === "institucional";
@@ -268,6 +328,7 @@ async function boasVindas({ comFormulario = false } = {}) {
   pararEspaco();
   pararEspaco = () => {};
   abertoId = null;
+  naMinhas = false;
   document.body.classList.remove("so-leitura", "sem-criar-acao");
   if (!comFormulario) esquecer(); // ao cancelar o novo espaço, volta ao que estava aberto
   history.replaceState(null, "", location.pathname + location.search);
@@ -358,6 +419,7 @@ document.addEventListener("click", (e) => {
 
 /** Abre o espaço do link, o último aberto ou as boas-vindas. */
 async function abrirInicio() {
+  if (location.hash === ENDERECO_MINHAS && usuario) return abrirMinhasTarefas();
   const { id: doLink, acao } = rota();
   if (doLink && await abrirEspaco(doLink, { acao })) return;
   for (const id of [ultimo()]) if (id && await abrirEspaco(id)) return;
@@ -366,6 +428,7 @@ async function abrirInicio() {
 
 /* link para outro espaço dentro do sistema (passo 2.6: "Continua a entrega X, do Plano de Ação Y") */
 window.addEventListener("hashchange", () => {
+  if (location.hash === ENDERECO_MINHAS && !naMinhas && store && usuario) { abrirMinhasTarefas(); return; } // Voltar a partir de um espaço
   const { id, acao } = rota();
   if (!id || !store) return;
   if (id !== abertoId) { abrirEspaco(id, { acao }); return; }
@@ -404,8 +467,10 @@ async function partida() {
     usuario = email;
     store.definirUsuario(email);
     exemplo?.definirUsuario(email);
-    if (primeira) { primeira = false; return abrirInicio(); }
+    esquecerContagem(); // o número da barra é de quem entrou
+    if (primeira) { primeira = false; await abrirInicio(); recontarMinhas(); return; }
     if (abertoId) await abrirEspaco(abertoId);
+    else if (naMinhas && usuario) await abrirMinhasTarefas();
     else boasVindas();
   });
 }
