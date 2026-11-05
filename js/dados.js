@@ -910,7 +910,7 @@ export function criarStore(banco, opcoes = {}) {
     },
     /**
      * Acrescenta à ação a etiqueta com este nome; se ela não existir, cria no catálogo antes.
-     * Devolve o id. É o "+ Acrescentar" da janela da ação.
+     * Devolve o id. É o "+ Adicionar" da janela da ação.
      */
     async etiquetarAcao(espacoId, numero, nome) {
       await exigir(espacoId, "atualizar", numero);

@@ -66,7 +66,7 @@ export async function abrirConfiguracaoDoSistema({ store, hoje, acesso = null, a
         ${admSistema ? `<div class="feriados-ano">
           <label class="campo"><span>Feriados nacionais de</span>
             <select data-ano>${[anoAtual - 1, anoAtual, anoAtual + 1, anoAtual + 2].map((a) => `<option${a === anoFeriados ? " selected" : ""}>${a}</option>`).join("")}</select></label>
-          <button class="botao" type="button" data-feriados>${ICONES.mais}Acrescentar</button>
+          <button class="botao" type="button" data-feriados>${ICONES.mais}Adicionar</button>
         </div>` : ""}
         <form class="editor" data-salvar-calendario>
           ${[...porAno].sort(([a], [b]) => a.localeCompare(b)).map(([ano, itens]) => `<details class="ano-calendario"${novas.size || porAno.size === 1 || ano === String(anoFeriados) || ano === "Sem data" ? " open" : ""}>

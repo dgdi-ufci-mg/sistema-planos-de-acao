@@ -591,7 +591,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <div class="etiquetas">${donos.map((r) =>
         `<span class="etiqueta">${seloHtml(r, contexto)}${esc(r.nome)}${somenteLeitura() ? "" : `<button type="button" class="tirar" data-tirar-responsavel="${esc(r.id)}" aria-label="Retirar ${esc(r.nome)}">${ICONES.fechar}</button>`}</span>`).join("")
         || `<span class="vazio">Nenhum responsável.</span>`}
-        ${somenteLeitura() || buscando === "responsaveis" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="responsaveis">${ICONES.mais}Acrescentar</button>`}</div>
+        ${somenteLeitura() || buscando === "responsaveis" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="responsaveis">${ICONES.mais}Adicionar</button>`}</div>
       ${buscando === "responsaveis" ? seletorHtml("responsaveis", "Digite o nome, a sigla ou o setor") : ""}</div>`);
 
     if (usaDependencias(d.espaco)) {
@@ -600,7 +600,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           const a = d.acoes.find((x) => x.numero === n);
           return `<span class="etiqueta">${a ? nomeHtml(a) : "(ação excluída)"}${somenteLeitura() ? "" : `<button type="button" class="tirar" data-tirar-dependencia="${n}" aria-label="Retirar ${esc(a ? nomeTexto(a) : "")}">${ICONES.fechar}</button>`}</span>`;
         }).join("") || `<span class="vazio">Nenhuma: pode começar no início do espaço.</span>`}
-          ${somenteLeitura() || buscando === "dependeDe" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="dependeDe">${ICONES.mais}Acrescentar</button>`}</div>
+          ${somenteLeitura() || buscando === "dependeDe" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="dependeDe">${ICONES.mais}Adicionar</button>`}</div>
         ${buscando === "dependeDe" ? seletorHtml("dependeDe", d.usaCodigos ? "Digite o nome ou o código da ação anterior" : "Digite o nome da ação anterior") : ""}
         ${confirmarAnteriorHtml()}</div>`);
     }
@@ -641,7 +641,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         <div class="etiquetas">${etiquetasDaAcao(d.espaco, acao).map((x) => etiquetaHtml(x, somenteLeitura() ? ""
           : `<button type="button" class="tirar" data-tirar-etiqueta="${esc(x.id)}" aria-label="Retirar ${esc(x.nome)}">${ICONES.fechar}</button>`)).join("")
           || `<span class="vazio">Nenhuma etiqueta.</span>`}
-          ${somenteLeitura() || buscando === "etiquetas" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="etiquetas">${ICONES.mais}Acrescentar</button>`}</div>
+          ${somenteLeitura() || buscando === "etiquetas" ? "" : `<button type="button" class="chip-campo" data-buscar-abrir="etiquetas">${ICONES.mais}Adicionar</button>`}</div>
         ${buscando === "etiquetas" ? seletorHtml("etiquetas", "Digite o nome da etiqueta") : ""}</div>`);
     }
     if (campos.documentos === true && visivel(acao, "documentos")) partes.push(documentosHtml(acao));
@@ -944,7 +944,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (!a) { anteriorPendente = null; return ""; }
     return `<div class="aviso-confirmar" role="alertdialog" aria-label="Confirmar a nova dependência">
       <p>“${esc(nomeTexto(a))}” ainda não foi concluída. Com ela como anterior, esta ação passa para <b>Não liberada</b> e sai de <b>${esc(nomeDoFluxo(d.espaco, l.fluxo))}</b>. Quando a anterior terminar, ela volta para ${esc(nomeInicial(d.espaco))}.</p>
-      <div class="botoes"><button class="botao principal" type="button" data-confirmar-anterior>Acrescentar assim mesmo</button>
+      <div class="botoes"><button class="botao principal" type="button" data-confirmar-anterior>Adicionar assim mesmo</button>
         <button class="botao" type="button" data-desistir-anterior>Desistir</button></div></div>`;
   }
 
