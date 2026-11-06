@@ -245,8 +245,9 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       ${adm ? `<details class="config" data-secao="importar"${aberta("importar")}>
         <summary><h3>Importar ações de planilha</h3></summary>
         <p class="tec">Selecione as linhas no Google Planilhas ou no Excel, incluindo a linha de títulos, copie e cole abaixo.
-          Colunas reconhecidas: Ação (obrigatória), Número, Código, Fase, Etapa, Descrição, Depende de, Otimista, Mais provável,
-          Pessimista e Responsáveis. É o mesmo formato de "Copiar para planilha"; as demais colunas são ignoradas.</p>
+          Colunas reconhecidas: Ação (obrigatória), Número, Código, Fase, Etapa, Descrição, Anotações, Checklist (um item por linha
+          da célula), Justificativa, Local, Etiquetas, Depende de, Não começa antes de, Otimista, Mais provável, Pessimista,
+          Data-limite e Responsáveis. É o mesmo formato de "Copiar para planilha"; as demais colunas são ignoradas.</p>
         <textarea class="texto-exportado" data-importar-texto rows="6" aria-label="Linhas coladas da planilha"></textarea>
         <div class="opcoes-importar" role="radiogroup" aria-label="Ações que já existem">
           <label><input type="radio" name="modo-importar" value="criar" checked> Só criar ações novas</label>

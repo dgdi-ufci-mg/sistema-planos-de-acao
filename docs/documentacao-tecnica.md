@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 06/11/2026 (versão 288 da página)
+**Última atualização deste documento:** 06/11/2026 (versão 288.1 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2474,3 +2474,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 286 | Importação de ações por planilha: colunas "Anotações" e "Checklist" (pedido do responsável, 06/11/2026, para levar as atividades do Quadro de Ações e Atividades do PA-GR como itens do checklist e detalhá-las nas anotações). A coluna Anotações liga o campo opcional; o checklist traz um item por linha e, ao atualizar, só acrescenta. Na conferência, "Atualiza:" diz "anotações" e "itens do checklist" (seção 8.6) |
 | 287 | Importação de ações: enquanto grava, "Configurar este espaço" fica travado (não fecha por nenhum caminho; sair da página pede confirmação) e mostra o progresso das ações e das dependências; no fim, o resultado fica no painel (pedido do responsável, 06/11/2026; seções 8.6 e 10). `travarPainel` em `js/telas/painel.js`; `aoAvancar` em `importarAcoes`. Testes novos em `testes/importar.test.js` e `testes/navegador/importar.test.mjs` |
 | 288 | Correção: "Configurar este espaço" só grava, ao fechar, as seções de lista (datas excluídas, fases e etapas, documentos) que a pessoa mexeu; antes, podia gravar por cima o que a importação, ou outra pessoa, tinha mudado com o painel aberto (seção 8.6) |
+| 288.1 | Importação de ações: a explicação da seção passa a listar todas as colunas que a importação reconhece, inclusive Anotações e Checklist (um item por linha), Justificativa, Local, Etiquetas, Não começa antes de e Data-limite, que já eram lidas mas não estavam na lista (seção 8.6) |
