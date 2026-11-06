@@ -145,4 +145,14 @@ describe("Importação por planilha (passo 1.19b)", () => {
     assert.deepEqual(deps("001"), ["VCT", "VRA"]);
     assert.deepEqual(deps("R9G"), ["001"]);
   });
+  it("as ações ficam ligadas às etapas que a importação cria (correção, 06/11/2026)", async () => {
+    const store = criarStore(criarBancoLocal(), { usuario: "ana@ufci.edu.br", hoje: () => HOJE });
+    const id = await store.criarEspaco({ nome: "PA-GR", inicio: "2026-11-10" });
+    const texto = ["Código\tAção\tFase\tEtapa", "111\tElaborar metodologia\tFase 1\tEtapa 1.1", "112\tElaborar materiais\tFase 1\tEtapa 1.1"].join("\n");
+    const plano = planejarImportacao({ texto, ...(await contexto(store, id)), modo: "criar" });
+    assert.equal(plano.etapasNovas.length, 1);
+    assert.deepEqual(await store.importarAcoes(id, plano), { criadas: 2, atualizadas: 0, falhas: [] });
+    const etapaId = (await store.lerEspaco(id)).estrutura[0].etapas[0].id;
+    assert.deepEqual((await store.listarAcoes(id)).map((a) => a.etapa), [etapaId, etapaId]);
+  });
 });

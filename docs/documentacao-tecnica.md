@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 06/11/2026 (versão 284 da página)
+**Última atualização deste documento:** 06/11/2026 (versão 285 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1550,7 +1550,7 @@ Construir um Gantt e uma rede interativos sem biblioteca externa é o maior trab
 
 ### 8.6 Importação, exportação e cópia de segurança
 
-- **Importar ações de planilha** ("Configurar este espaço"): colar a planilha a partir da linha de títulos; as colunas são reconhecidas pelo nome, em qualquer ordem (para o nome da ação, "Ação", "Rótulo", "Nome" ou "Nome da ação"). Antes de gravar, a conferência aponta erros (código inválido ou repetido, nome repetido, dependência que não existe, ciclo) e avisos. Quem importa escolhe entre só criar ações novas ou também atualizar as existentes. Dependências por código da planilha, número ou nome, nessa ordem. Fases e etapas que faltam são criadas. Detalhes no passo 1.19b da seção 12.
+- **Importar ações de planilha** ("Configurar este espaço"): colar a planilha a partir da linha de títulos; as colunas são reconhecidas pelo nome, em qualquer ordem (para o nome da ação, "Ação", "Rótulo", "Nome" ou "Nome da ação"). Antes de gravar, a conferência aponta erros (código inválido ou repetido, nome repetido, dependência que não existe, ciclo) e avisos. Quem importa escolhe entre só criar ações novas ou também atualizar as existentes. Dependências por código da planilha, número ou nome, nessa ordem. Fases e etapas que faltam são criadas, e as ações da planilha ficam ligadas a elas (até 06/11/2026, um erro deixava sem etapa as ações novas cuja etapa também era nova; correção na versão 285). Detalhes no passo 1.19b da seção 12.
 - **Importar responsáveis de planilha:** Nome (obrigatório), Tipo, Sigla, Setor e E-mail. Com e-mail, é pessoa e ganha a conta de acesso, criada numa instância separada do Firebase, sem guardar sessão; a senha é sorteada e descartada, e a pessoa recebe o e-mail para definir a sua. Sem e-mail, o tipo precisa vir na planilha. Provisório até os papéis por espaço (seção 12, passo 2.1).
 - **Exportar:** "Copiar para planilha" e "Copiar fluxograma" (Mermaid), por cópia para colar.
 - **Cópia de segurança** ("Configurar o sistema"): arquivo `sextante-copia-de-seguranca`, versão 4, com os espaços que quem a gera pode consultar (inclusive a lixeira), ações, responsáveis, histórico, comentários e retratos, o calendário geral e, desde o passo 2.5, o catálogo da estratégia (`estrategia`: modelo, instrumentos e itens, inclusive os excluídos), que só é restaurado num banco sem catálogo, e, desde o passo 2.6, as entregas (inclusive as excluídas) e os registros de alcance de cada espaço. Arquivos das versões 1 a 3 continuam aceitos. A restauração só é feita num banco sem nenhum espaço, para nunca misturar nem sobrescrever dados.
@@ -2469,3 +2469,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 282 | Cartões sem data no "Tempo restante": some também o símbolo do cronômetro, que aparecia sozinho no quadro e na lista (correção, 06/11/2026, item 5 da avaliação de uso; seção 16.1, passo 2.4b) |
 | 283 | Entregas: no resumo por situação, selo e número ficam juntos, com espaço maior entre os pares (ajuste visual, 06/11/2026, item 9 da avaliação de uso; seção 8, "Entregas do Plano de Ação") |
 | 284 | Linha de criação rápida: o texto de orientação termina em reticências quando não cabe, em vez de ser cortado no meio da palavra (ajuste visual, 06/11/2026, item 12 da avaliação de uso; seção 8, Lista) |
+| 285 | Correção: na importação de ações por planilha, as ações novas ficam ligadas às fases e etapas que a própria importação cria; antes, ficavam sem etapa (encontrado ao importar o Plano de Ação da Gestão de Riscos 2026-2027; seção 8.6). Teste novo em `testes/importar.test.js` |

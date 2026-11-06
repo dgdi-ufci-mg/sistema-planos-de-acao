@@ -129,7 +129,8 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
       if (v && v !== existente?.[campo]) r.campos[campo] = v;
     }
     const etapa = etapaDe(celula(c, "fase"), celula(c, "etapa"));
-    if (etapa && etapa.id !== existente?.etapa) r.campos.etapa = etapa;
+    /* etapa nova ({nova}) ainda não tem id: sem este cuidado, numa ação nova "undefined !== undefined" deixava a ação sem etapa */
+    if (etapa && (etapa.nova != null || etapa.id !== existente?.etapa)) r.campos.etapa = etapa;
     const nao = celula(c, "naoAntesDe");
     if (nao) {
       const d = lerData(nao);
