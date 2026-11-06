@@ -934,7 +934,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 /* ---------- criação rápida e "Falta estimar" (passo 1.14a) ---------- */
 .linha-rapida { display: flex; align-items: center; gap: 8px; padding: 4px 12px; margin: 4px 0 8px; border-radius: var(--raio); color: var(--muted); }
 .linha-rapida:focus-within { background: var(--sunk); color: var(--accent-ink); }
-.linha-rapida input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); padding: 6px 0; outline: none; }
+.linha-rapida input { flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: var(--ink); padding: 6px 0; outline: none; text-overflow: ellipsis; }
 .linha-rapida input::placeholder { color: var(--muted); }
 .coluna .linha-rapida { margin: 6px 0 0; }
 .falta-estimar { display: inline-block; font-size: .78rem; font-weight: 600; color: var(--warn-ink); background: var(--warn-soft); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
