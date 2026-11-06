@@ -68,7 +68,7 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAca
         <p class="tec">Os resultados do Plano de Ação que importam para o PEI/PDI. ${pode() ? "Abra uma entrega para registrar o alcance, com evidência, ou mudar a situação." : "Só o administrador do espaço registra o alcance e muda a situação."}</p>
         ${pode() ? `<button class="botao principal" type="button" data-nova-entrega>${ICONES.mais}Nova entrega</button>` : ""}
       </div>
-      ${conta.length ? `<p class="entregas-resumo">${conta.map(([s, n]) => `${seloDaSituacao(s)} <b>${n}</b>`).join(" ")}</p>` : ""}
+      ${conta.length ? `<p class="entregas-resumo">${conta.map(([s, n]) => `<span class="entregas-conta">${seloDaSituacao(s)} <b>${n}</b></span>`).join("")}</p>` : ""}
       ${lista.length ? `<div class="lista-entregas">${lista.map(cartaoHtml).join("")}</div>`
         : `<div class="entregas-vazio"><p><b>Este Plano de Ação ainda não tem entregas.</b> Ele fica como rascunho até ter pelo menos uma.</p>
             <p class="tec">Uma entrega é um resultado do plano como um todo, com meta: percentual (como “95% dos pedidos atendidos em 24 horas”), quantitativa (“10 Procedimentos-Padrão publicados”) ou entrega padrão, feita ou não (“Relatório homologado”).</p></div>`}

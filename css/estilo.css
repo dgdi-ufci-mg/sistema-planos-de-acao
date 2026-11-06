@@ -1862,7 +1862,8 @@ a.lateral-acao { text-decoration: none; }
 .entregas { display: flex; flex-direction: column; gap: 12px; }
 .entregas-cabeca { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; }
 .entregas-cabeca .tec { margin: 0; flex: 1 1 280px; }
-.entregas-resumo { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: .9rem; }
+.entregas-resumo { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; font-size: .9rem; }
+.entregas-conta { display: inline-flex; align-items: center; gap: 6px; } /* selo e número juntos, separados do par seguinte (06/11/2026) */
 .entregas-vazio { padding: 16px; border: 1px dashed var(--line); border-radius: 10px; background: var(--surface); }
 .entregas-vazio p { margin: 0 0 6px; }
 .lista-entregas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 10px; }
