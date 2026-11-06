@@ -1442,8 +1442,13 @@ export function criarStore(banco, opcoes = {}) {
      * impede as outras; o resultado diz quais falharam e por quê.
      * @returns {Promise<{criadas: number, atualizadas: number, falhas: {linha: number, mensagem: string}[]}>}
      */
-    async importarAcoes(espacoId, plano) {
+    /**
+     * Grava o plano da importação. `aoAvancar` (opcional; 06/11/2026) recebe {fase, feitas, total} depois de cada
+     * linha gravada ("acoes") e de cada linha com dependências ligadas ("dependencias"), para a tela mostrar o progresso.
+     */
+    async importarAcoes(espacoId, plano, { aoAvancar } = {}) {
       await exigir(espacoId, "configurar");
+      const avancar = (fase, feitas, total) => { try { aoAvancar?.({ fase, feitas, total }); } catch { /* a tela não interrompe a gravação */ } };
       const falhas = [];
       const tentar = async (linha, f) => { try { await f(); return true; } catch (e) { falhas.push({ linha, mensagem: e.message }); return false; } };
       /* fases e etapas novas */
@@ -1484,6 +1489,9 @@ export function criarStore(banco, opcoes = {}) {
       const numeroDaLinha = new Map();
       let criadas = 0;
       let atualizadas = 0;
+      const aGravar = plano.linhas.filter((l) => l.tipo === "nova" || l.tipo === "atualiza");
+      let gravadas = 0;
+      avancar("acoes", 0, aGravar.length);
       for (const l of plano.linhas) {
         const { rotulo, codigo, descricao, notas, checklist, justificativa, local, etapa, naoAntesDe, dataLimite, responsaveis: resp, estimativa, etiquetas: etq } = l.campos;
         const comuns = {
@@ -1510,16 +1518,21 @@ export function criarStore(banco, opcoes = {}) {
           });
           if (ok) atualizadas++;
         }
+        if (l.tipo === "nova" || l.tipo === "atualiza") avancar("acoes", ++gravadas, aGravar.length);
       }
       /* dependências, depois de todas as ações existirem */
+      const comDependencias = plano.linhas.filter((l) => l.campos.dependeDe && (l.tipo === "nova" || l.tipo === "atualiza"));
+      let ligadas = 0;
+      if (comDependencias.length) avancar("dependencias", 0, comDependencias.length);
       for (const l of plano.linhas) {
         if (!l.campos.dependeDe || (l.tipo !== "nova" && l.tipo !== "atualiza")) continue;
         const numero = l.tipo === "nova" ? numeroDaLinha.get(l.linha) : l.numero;
-        if (numero == null) continue;
+        if (numero == null) { avancar("dependencias", ++ligadas, comDependencias.length); continue; }
         const desejadas = l.campos.dependeDe.map((r) => r.numero ?? numeroDaLinha.get(r.linha)).filter((n) => n != null);
         const atuais = (await banco.lerAcao(espacoId, numero))?.dependeDe ?? [];
         for (const n of atuais.filter((x) => !desejadas.includes(x))) await tentar(l.linha, () => store.retirarDependencia(espacoId, numero, n));
         for (const n of desejadas.filter((x) => !atuais.includes(x))) await tentar(l.linha, () => store.acrescentarDependencia(espacoId, numero, n));
+        avancar("dependencias", ++ligadas, comDependencias.length);
       }
       return { criadas, atualizadas, falhas };
     },

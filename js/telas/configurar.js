@@ -17,7 +17,7 @@ import { datasEfetivas, criarCalendario } from "../calendario.js";
 import { caminhoCritico } from "../calculo.js";
 import { planejarImportacao } from "../importar.js";
 import { planejarResponsaveis } from "../importar-responsaveis.js";
-import { abrirPainel, fecharPainel, avisar } from "./painel.js";
+import { abrirPainel, fecharPainel, avisar, travarPainel } from "./painel.js";
 import { excluirEtapas, excluirEspaco } from "./exclusao.js";
 import { marcarPendencias, AVISO_INCOMPLETO, ESTADO_DA_GRAVACAO, mostrarEstado } from "./pendencias.js";
 import { planilhaDoEspaco, mermaidDoEspaco } from "../exportar.js";
@@ -492,20 +492,44 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       <div class="botoes"><button class="botao principal" type="button" data-importar${novas + atualiza ? "" : " disabled"}>Importar</button></div>
     </div>`;
   }
+  /*
+   * Importar (revisto em 06/11/2026, pedido do responsável): a gravação de um plano grande leva dezenas de segundos.
+   * Enquanto grava, o painel não fecha (botão, Esc, fundo, puxar, Voltar; sair da página pede confirmação) e mostra
+   * o progresso; no fim, o resultado fica no painel, e não só num aviso que some.
+   */
   async function importar(botao) {
     botao.disabled = true;
+    const area = corpo.querySelector("[data-previa-importacao]");
+    const soltar = travarPainel("A importação ainda está gravando. Espere terminar para fechar.");
+    area.innerHTML = `<div class="progresso-importacao" role="status" aria-live="polite">
+      <p><b data-progresso-texto>Preparando a importação…</b></p>
+      <progress data-progresso-barra max="1" value="0"></progress>
+      <p class="tec">Não feche este painel nem a página até terminar.</p>
+    </div>`;
+    const texto = area.querySelector("[data-progresso-texto]");
+    const barra = area.querySelector("[data-progresso-barra]");
+    const aoAvancar = ({ fase, feitas, total }) => {
+      texto.textContent = fase === "acoes"
+        ? `Gravando as ações: ${feitas} de ${total}`
+        : `Ligando as dependências: ${feitas} de ${total}`;
+      barra.max = Math.max(1, total);
+      barra.value = feitas;
+    };
     try {
-      const r = await store.importarAcoes(espacoId, plano);
+      const r = await store.importarAcoes(espacoId, plano, { aoAvancar });
       await recarregar();
       plano = null;
       rascunho.estrutura = structuredClone(espaco.estrutura ?? []); // a importação pode ter criado etapas
       desenhar();
-      corpo.querySelector("[data-previa-importacao]").innerHTML = r.falhas.length
-        ? `<p class="erro">Algumas linhas não foram gravadas:</p><ul class="falhas-importacao">${r.falhas.map((f) => `<li>Linha ${f.linha}: ${esc(f.mensagem)}</li>`).join("")}</ul>` : "";
-      avisar(`Importação concluída: ${r.criadas} ${plural(r.criadas, "ação criada", "ações criadas")} e ${r.atualizadas} ${plural(r.atualizadas, "atualizada", "atualizadas")}.`);
+      const resumo = `Importação concluída: ${r.criadas} ${plural(r.criadas, "ação criada", "ações criadas")} e ${r.atualizadas} ${plural(r.atualizadas, "atualizada", "atualizadas")}.`;
+      corpo.querySelector("[data-previa-importacao]").innerHTML = `<p class="importacao-concluida" role="status"><b>${esc(resumo)}</b></p>`
+        + (r.falhas.length ? `<p class="erro">Algumas linhas não foram gravadas:</p><ul class="falhas-importacao">${r.falhas.map((f) => `<li>Linha ${f.linha}: ${esc(f.mensagem)}</li>`).join("")}</ul>` : "");
+      avisar(resumo);
     } catch (falha) {
-      botao.disabled = false;
+      area.innerHTML = previaHtml();
       avisar(falha.message);
+    } finally {
+      soltar();
     }
   }
 

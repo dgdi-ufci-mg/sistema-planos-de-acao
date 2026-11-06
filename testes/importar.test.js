@@ -174,4 +174,13 @@ describe("Importação por planilha (passo 1.19b)", () => {
     await store.importarAcoes(id, planejarImportacao({ texto: texto2, ...(await contexto(store, id)), modo: "atualizar" }));
     assert.deepEqual((await store.listarAcoes(id))[0].checklist.map((x) => x.texto), ["1111 Elaborar normas", "1112 Elaborar página", "1113 Revisar"]);
   });
+  it("progresso da gravação: aoAvancar conta as ações e depois as dependências (06/11/2026)", async () => {
+    const store = criarStore(criarBancoLocal(), { usuario: "ana@ufci.edu.br", hoje: () => HOJE });
+    const id = await store.criarEspaco({ nome: "PA-GR", inicio: "2026-11-10" });
+    const texto = ["Código\tAção\tDepende de", "AA\tPrimeira\t", "BB\tSegunda\tAA", "CC\tTerceira\tBB"].join("\n");
+    const plano = planejarImportacao({ texto, ...(await contexto(store, id)), modo: "criar" });
+    const passos = [];
+    await store.importarAcoes(id, plano, { aoAvancar: (x) => passos.push(`${x.fase} ${x.feitas}/${x.total}`) });
+    assert.deepEqual(passos, ["acoes 0/3", "acoes 1/3", "acoes 2/3", "acoes 3/3", "dependencias 0/2", "dependencias 1/2", "dependencias 2/2"]);
+  });
 });

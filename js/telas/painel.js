@@ -6,6 +6,39 @@
 import { abrirCamada } from "./voltar.js";
 
 let fecharAtual = null;
+/** camada do painel aberto (para desativar o botão Fechar enquanto travado) */
+let camadaAtual = null;
+
+/* ---------- painel travado enquanto grava (06/11/2026, pedido do responsável) ---------- */
+/** Motivos das travas ativas: com alguma, o painel aberto não fecha por nenhum caminho (botão, Esc, fundo, puxar, Voltar). */
+const travas = new Set();
+/**
+ * Impede o painel aberto de fechar enquanto uma gravação longa acontece (a importação de ações), porque fechar no meio
+ * deixava a gravação pela metade ou fazia o painel salvar uma cópia antiga por cima. Quem tenta fechar recebe `aviso`.
+ * Sair ou recarregar a página também pede confirmação ao navegador.
+ * @param {string} aviso  frase mostrada a quem tenta fechar
+ * @returns {() => void}  solta a trava
+ */
+export function travarPainel(aviso) {
+  const trava = { aviso };
+  travas.add(trava);
+  const aoSair = (e) => { e.preventDefault(); e.returnValue = ""; };
+  addEventListener("beforeunload", aoSair);
+  const botao = camadaAtual?.querySelector(".painel > header [data-fechar]");
+  if (botao) botao.disabled = true;
+  return () => {
+    travas.delete(trava);
+    removeEventListener("beforeunload", aoSair);
+    if (botao && !travas.size) botao.disabled = false;
+  };
+}
+/** Se há trava, mostra o aviso dela e devolve true (o painel fica). */
+function recusarFechar() {
+  const trava = [...travas].at(-1);
+  if (!trava) return false;
+  avisar(trava.aviso);
+  return true;
+}
 
 /* ---------- foco preso na camada de cima (05/11/2026, pedido do responsável, acessibilidade) ---------- */
 /** Camadas que prendem o foco, da de baixo para a de cima: só a de cima age. */
@@ -64,6 +97,9 @@ if (vv) {
  *   criação, para a animação de abrir ser a dela desde o começo (27/10/2026)
  */
 export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = false, botao = "Fechar", aoFechar, classe = "" } = {}) {
+  /* painel travado (importação gravando): outro painel não abre por cima, por atalho ou busca; quem chamou recebe um
+     corpo solto, fora da página, para não quebrar */
+  if (recusarFechar()) return document.createElement("div");
   fecharPainel();
   const camada = document.createElement("div");
   camada.className = `${janela ? "camada de-baixo janela" : deBaixo ? "camada de-baixo" : "camada"}${classe ? ` ${classe}` : ""}`;
@@ -75,14 +111,20 @@ export function abrirPainel(titulo, conteudoHtml, { deBaixo = false, janela = fa
       <div class="painel-corpo">${conteudoHtml}</div>
     </div>`;
   document.body.append(camada);
+  camadaAtual = camada;
   requestAnimationFrame(() => requestAnimationFrame(() => camada.classList.add("aberta")));
   const aoTeclar = (e) => { if (e.key === "Escape" && !e.defaultPrevented) fecharPainel(); };
   camada.addEventListener("click", (e) => { if (e.target.closest("[data-fechar]")) fecharPainel(); });
   document.addEventListener("keydown", aoTeclar);
   /* Voltar (celular) fecha o painel (item 1 da avaliação de celular) */
-  const soltar = abrirCamada(() => { if (fecharAtual === fechar) fecharPainel(); });
+  /* Voltar com o painel travado: a entrada do histórico já foi consumida; a camada é registrada de novo, depois de o
+     navegador terminar de tratar o Voltar, para o próximo Voltar continuar caindo aqui */
+  let soltar;
+  const registrar = () => { soltar = abrirCamada(() => { if (fecharAtual !== fechar) return; if (travas.size) { recusarFechar(); queueMicrotask(registrar); return; } fecharPainel(); }); };
+  registrar();
   const soltarFoco = prenderFoco(camada.querySelector(".painel"));
   const fechar = () => {
+    if (recusarFechar()) return;
     soltar();
     soltarFoco();
     document.removeEventListener("keydown", aoTeclar);
