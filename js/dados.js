@@ -1475,7 +1475,7 @@ export function criarStore(banco, opcoes = {}) {
         await store.alterarEspaco(espacoId, { etiquetas, camposOpcionais: { ...(espaco.camposOpcionais ?? {}), etiquetas: true } });
       }
       /* justificativa e local (passo 2.10a): a coluna na planilha liga o campo opcional, como as etapas */
-      const ligar = ["justificativa", "local"].filter((c) => plano.linhas.some((l) => l.campos?.[c]));
+      const ligar = ["justificativa", "local", "notas"].filter((c) => plano.linhas.some((l) => l.campos?.[c]));
       if (ligar.length) {
         const espaco = await store.lerEspaco(espacoId);
         await store.alterarEspaco(espacoId, { camposOpcionais: { ...(espaco.camposOpcionais ?? {}), ...Object.fromEntries(ligar.map((c) => [c, true])) } });
@@ -1485,9 +1485,9 @@ export function criarStore(banco, opcoes = {}) {
       let criadas = 0;
       let atualizadas = 0;
       for (const l of plano.linhas) {
-        const { rotulo, codigo, descricao, justificativa, local, etapa, naoAntesDe, dataLimite, responsaveis: resp, estimativa, etiquetas: etq } = l.campos;
+        const { rotulo, codigo, descricao, notas, checklist, justificativa, local, etapa, naoAntesDe, dataLimite, responsaveis: resp, estimativa, etiquetas: etq } = l.campos;
         const comuns = {
-          ...(codigo ? { codigo } : {}), ...(descricao ? { descricao } : {}), ...(justificativa ? { justificativa } : {}), ...(local ? { local } : {}), ...(etapa ? { etapa: etapaId(etapa) } : {}),
+          ...(codigo ? { codigo } : {}), ...(descricao ? { descricao } : {}), ...(notas ? { notas } : {}), ...(justificativa ? { justificativa } : {}), ...(local ? { local } : {}), ...(etapa ? { etapa: etapaId(etapa) } : {}),
           ...(naoAntesDe !== undefined ? { naoAntesDe } : {}), ...(dataLimite !== undefined ? { dataLimite } : {}), ...(resp ? { responsaveis: resp } : {}),
           ...(etq ? { etiquetas: etiquetaIds(etq) } : {}),
         };
@@ -1496,6 +1496,7 @@ export function criarStore(banco, opcoes = {}) {
             const numero = await store.criarAcao(espacoId, {
               rotulo, ...comuns,
               ...(estimativa ? { estimativas: [{ em: hoje(), por: usuario, ...estimativa, contaDe: "liberacao" }] } : {}),
+              ...(checklist?.length ? { checklist: checklist.map((texto) => ({ id: novoId(), texto, feito: false })) } : {}),
             });
             numeroDaLinha.set(l.linha, numero);
             criadas++;
@@ -1505,6 +1506,7 @@ export function criarStore(banco, opcoes = {}) {
             const campos = { ...(rotulo ? { rotulo } : {}), ...comuns };
             if (Object.keys(campos).length) await store.alterarAcao(espacoId, l.numero, campos);
             if (estimativa) await store.corrigirEstimativa(espacoId, l.numero, estimativa);
+            for (const texto of checklist ?? []) await store.acrescentarItemNoChecklist(espacoId, l.numero, texto);
           });
           if (ok) atualizadas++;
         }

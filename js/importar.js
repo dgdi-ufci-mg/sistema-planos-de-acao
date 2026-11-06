@@ -24,6 +24,8 @@ const TITULOS = {
   etapa: ["etapa"],
   rotulo: ["acao", "rotulo", "nome", "nome da acao"],
   descricao: ["descricao"],
+  notas: ["anotacoes", "anotacao", "notas"],
+  checklist: ["checklist", "itens do checklist"],
   justificativa: ["justificativa", "por que", "porque"],
   local: ["local", "onde"],
   dependeDe: ["depende de", "dependencias", "anteriores", "predecessores", "predecessoras", "predecessor", "depende"],
@@ -123,6 +125,15 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     }
     const descricao = celula(c, "descricao");
     if (descricao && descricao !== existente?.descricao) r.campos.descricao = descricao;
+    /* anotações e checklist (06/11/2026, pedido do responsável, para levar as atividades do 5W2H para dentro da ação):
+       a coluna Anotações liga o campo opcional; o checklist traz um item por linha da célula e só acrescenta
+       itens que a ação ainda não tem (nunca retira nem desmarca) */
+    const notas = celula(c, "notas");
+    if (notas && notas !== existente?.notas) r.campos.notas = notas;
+    const itens = [...new Set((celula(c, "checklist") ?? "").split("\n").map((t) => t.trim()).filter(Boolean))];
+    const jaTem = new Set((existente?.checklist ?? []).map((i) => normalizar(i.texto).trim()));
+    const novosItens = itens.filter((t) => !jaTem.has(normalizar(t).trim()));
+    if (novosItens.length) r.campos.checklist = novosItens;
     /* justificativa e local (passo 2.10a): a coluna liga o campo opcional na gravação */
     for (const campo of ["justificativa", "local"]) {
       const v = celula(c, campo);

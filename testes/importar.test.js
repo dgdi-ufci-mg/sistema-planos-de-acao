@@ -155,4 +155,23 @@ describe("Importação por planilha (passo 1.19b)", () => {
     const etapaId = (await store.lerEspaco(id)).estrutura[0].etapas[0].id;
     assert.deepEqual((await store.listarAcoes(id)).map((a) => a.etapa), [etapaId, etapaId]);
   });
+  it("anotações e checklist (06/11/2026): atualizar só acrescenta os itens que faltam", async () => {
+    const store = criarStore(criarBancoLocal(), { usuario: "ana@ufci.edu.br", hoje: () => HOJE });
+    const id = await store.criarEspaco({ nome: "PA-GR", inicio: "2026-11-10" });
+    const texto = ["Código\tAção\tAnotações\tChecklist",
+      "111\tElaborar metodologia\tObservação da ação\t\"1111 Elaborar normas\n1112 Elaborar página\"",
+      "112\tElaborar materiais\t\t"].join("\n");
+    const plano = planejarImportacao({ texto, ...(await contexto(store, id)), modo: "criar" });
+    assert.equal(plano.erro, null);
+    assert.deepEqual(plano.ignoradas, []);
+    assert.deepEqual(await store.importarAcoes(id, plano), { criadas: 2, atualizadas: 0, falhas: [] });
+    const [a, b] = await store.listarAcoes(id);
+    assert.equal(a.notas, "Observação da ação");
+    assert.deepEqual(a.checklist.map((x) => [x.texto, x.feito]), [["1111 Elaborar normas", false], ["1112 Elaborar página", false]]);
+    assert.deepEqual(b.checklist ?? [], []);
+    assert.equal((await store.lerEspaco(id)).camposOpcionais.notas, true);
+    const texto2 = ["Código\tAção\tChecklist", "111\tElaborar metodologia\t\"1111 Elaborar normas\n1113 Revisar\""].join("\n");
+    await store.importarAcoes(id, planejarImportacao({ texto: texto2, ...(await contexto(store, id)), modo: "atualizar" }));
+    assert.deepEqual((await store.listarAcoes(id))[0].checklist.map((x) => x.texto), ["1111 Elaborar normas", "1112 Elaborar página", "1113 Revisar"]);
+  });
 });
