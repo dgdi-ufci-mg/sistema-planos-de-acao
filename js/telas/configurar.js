@@ -74,6 +74,11 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     estrutura: structuredClone(espaco.estrutura ?? []),
     documentos: structuredClone(espaco.documentos ?? []),
   };
+  /* o que cada rascunho era quando foi tirado do espaço (06/11/2026): uma seção que a pessoa não mexeu não é gravada,
+     nem ao fechar o painel. Antes, ao fechar, o painel comparava o rascunho com o espaço relido e gravava por cima
+     o que tivesse mudado nesse meio-tempo (assim, fechar durante a importação apagou as fases e etapas criadas nela) */
+  const base = structuredClone(rascunho);
+  const mexida = (secao) => JSON.stringify(rascunho[secao]) !== JSON.stringify(base[secao]);
 
   /* enquanto o painel está aberto, mudanças nos responsáveis (de quem quer que seja) aparecem na seção;
      as demais seções não são redesenhadas, para não perder o que está sendo digitado */
@@ -520,6 +525,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       await recarregar();
       plano = null;
       rascunho.estrutura = structuredClone(espaco.estrutura ?? []); // a importação pode ter criado etapas
+      base.estrutura = structuredClone(rascunho.estrutura);
       desenhar();
       const resumo = `Importação concluída: ${r.criadas} ${plural(r.criadas, "ação criada", "ações criadas")} e ${r.atualizadas} ${plural(r.atualizadas, "atualizada", "atualizadas")}.`;
       corpo.querySelector("[data-previa-importacao]").innerHTML = `<p class="importacao-concluida" role="status"><b>${esc(resumo)}</b></p>`
@@ -788,6 +794,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       const atual = Object.fromEntries(Object.keys(mudanca).map((k) => [k, espaco[k] ?? null]));
       return JSON.stringify(atual) === JSON.stringify(Object.fromEntries(Object.entries(mudanca).map(([k, v]) => [k, v ?? null]))) ? null : mudanca;
     }
+    if (["datas", "estrutura", "documentos"].includes(secao) && !mexida(secao)) return null;
     if (secao === "datas") {
       mudanca = { datasExcluidas: rascunho.datas.filter((d) => DATA_ISO.test(d.data ?? "")).map((d) => limpo({ data: d.data, motivo: d.motivo?.trim() }))
         .sort((a, b) => a.data.localeCompare(b.data)) };
@@ -817,6 +824,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       mostrarEstado(form, "salvando");
       try {
         await store.alterarEspaco(espacoId, mudanca);
+        if (secao in base) base[secao] = structuredClone(rascunho[secao]);
         await recarregar();
         erro.hidden = true;
         mostrarEstado(form, "salvo");
@@ -950,7 +958,9 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
       });
       if (!excluiu) return;
       await recarregar();
-      rascunho.estrutura = rascunho.estrutura.filter((f) => !fora.has(f.id)).map((f) => ({ ...f, etapas: f.etapas.filter((x) => !fora.has(x.id)) }));
+      const semAsExcluidas = (lista) => lista.filter((f) => !fora.has(f.id)).map((f) => ({ ...f, etapas: f.etapas.filter((x) => !fora.has(x.id)) }));
+      rascunho.estrutura = semAsExcluidas(rascunho.estrutura);
+      base.estrutura = semAsExcluidas(base.estrutura);
       desenhar();
     } catch (falha) {
       avisar(falha.message);
