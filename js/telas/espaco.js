@@ -857,6 +857,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
       conteudo = medidor(l.revisao, `Contribuição para a incerteza: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
     } else conteudo = medidor(l.execucao, "Índice de criticidade", "var(--execucao)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`);
+    /* sem data, o tempo restante não tem barra: some também o símbolo, que ficava sozinho no cartão (06/11/2026) */
+    if (!conteudo) return `<div class="pr"></div>`;
     return `<div class="pr">${simbolo}${conteudo}</div>`;
   }
 
