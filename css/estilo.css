@@ -1167,7 +1167,15 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .rede.ligando, .rede.ligando * { cursor: crosshair !important; }
 .rede-ligando { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .rede-ligando path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
-@media (prefers-reduced-motion: reduce) { .rede-mais, .rede-alca { transition: none; } }
+/* inserir entre duas ações (09/11/2026): "+" no meio da seta, ao passar o mouse nela ou com ela selecionada */
+.rede-inserir { position: absolute; z-index: 3; width: 24px; height: 24px; margin: -12px 0 0 -12px; padding: 0; display: grid; place-items: center;
+  border-radius: 999px; border: 1px solid var(--accent); background: var(--surface); color: var(--accent-ink); box-shadow: var(--relevo); cursor: pointer;
+  opacity: 0; pointer-events: none; transform: scale(.7); transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
+.rede-inserir svg { width: 14px; height: 14px; }
+.rede-inserir.visivel, .rede-inserir.selecionada, .rede-inserir:focus-visible { opacity: 1; pointer-events: auto; transform: none; }
+.rede-inserir:hover { background: var(--accent); color: var(--surface); }
+.rede.ligando .rede-inserir { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .rede-mais, .rede-alca, .rede-inserir { transition: none; } }
 
 /* ---------- exportação (passo 1.19a) ---------- */
 .texto-exportado { width: 100%; box-sizing: border-box; font: .8rem var(--f-dados); padding: 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--sunk); color: var(--ink); margin-top: 8px; }

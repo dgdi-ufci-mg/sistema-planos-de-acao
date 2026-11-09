@@ -92,6 +92,22 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
       d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>${edicao ? `
       <path class="rede-seta-alvo" data-seta-de="${de}" data-seta-para="${para}" d="${caminhoDaSeta(pontos, saltos)}"><title>Clique para selecionar; Delete retira a ligação</title></path>` : ""}`)).join("");
 
+  /* inserir entre duas ações (09/11/2026): um "+" no meio do trecho mais longo de cada seta */
+  const meioDaSeta = (pontos) => {
+    let melhor = null;
+    for (let k = 1; k < pontos.length; k++) {
+      const [[x0, y0], [x1, y1]] = [pontos[k - 1], pontos[k]];
+      const tam = Math.hypot(x1 - x0, y1 - y0);
+      if (!melhor || tam > melhor.tam) melhor = { tam, x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
+    }
+    return melhor;
+  };
+  const insercoes = edicao?.podeCriar ? arestas.filter((a) => !a.ligacao).map(({ de, para, pontos }) => {
+    const { x, y } = meioDaSeta(pontos);
+    return `<button type="button" class="rede-inserir" data-inserir-de="${de}" data-inserir-para="${para}" style="left:${x}px;top:${y}px"
+      title="Inserir uma ação entre estas duas" aria-label="Inserir uma ação entre a ${de} e a ${para}">${ICONES.mais}</button>`;
+  }).join("") : "";
+
   const anterior = alvo.querySelector("[data-rede-rolagem]");
   const focoDentro = alvo.contains(document.activeElement);
   const rolagemAnterior = anterior ? [anterior.scrollLeft, anterior.scrollTop] : null;
@@ -111,7 +127,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
         <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
       </div>
       <p class="tec rede-explicacao">Da esquerda para a direita, na ordem em que as ações podem acontecer. ${edicao
-        ? `Clique numa ação para selecioná-la; o <b>+</b> cria a próxima e a bolinha, arrastada até outra ação, liga as duas. Duplo clique renomeia; Enter abre. Clique numa seta e aperte Delete para desligar.`
+        ? `Clique numa ação para selecioná-la; o <b>+</b> cria a próxima e a bolinha, arrastada até outra ação, liga as duas. O <b>+</b> no meio de uma seta insere uma ação entre as duas. Duplo clique renomeia; Enter abre. Clique numa seta e aperte Delete para desligar.`
         : `Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la.`} Ctrl + rolar o mouse aproxima e afasta; arraste o fundo para mover a rede. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
     </div>
     <div class="rede${edicao ? " editavel" : ""}" data-rede tabindex="-1">
@@ -128,6 +144,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
             </svg>
             ${cartoes}
             ${pontosHtml}
+            ${insercoes}
             ${edicao ? `<svg class="rede-ligando" width="${largura}" height="${altura}" aria-hidden="true"><path data-ligando d=""/></svg>` : ""}
           </div>
         </div>
@@ -184,7 +201,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   /* arrastar o fundo (fora dos cartões) move a rede; um arrasto não conta como clique no fundo */
   let moveuFundo = false;
   rolagem.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-alca], .rede-seta-alvo")) return;
+    if (e.button !== 0 || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-alca], .rede-seta-alvo, [data-inserir-de]")) return;
     const inicio = { x: e.clientX, y: e.clientY, l: rolagem.scrollLeft, t: rolagem.scrollTop };
     rolagem.setPointerCapture(e.pointerId);
     rolagem.classList.add("arrastando");
@@ -266,10 +283,14 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
 function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpar, focoDentro, moveuFundo }) {
   const no = (n) => caixa.querySelector(`.rede-no[data-numero="${n}"]`);
   const seta = (de, para) => caixa.querySelector(`.rede-seta[data-de="${de}"][data-para="${para}"]`);
+  const inserir = (de, para) => caixa.querySelector(`[data-inserir-de="${de}"][data-inserir-para="${para}"]`);
   const marcar = () => {
     for (const el of caixa.querySelectorAll(".selecionada")) el.classList.remove("selecionada");
     if (selecao?.tipo === "no") no(selecao.numero)?.classList.add("selecionada");
-    if (selecao?.tipo === "seta") seta(selecao.de, selecao.para)?.classList.add("selecionada");
+    if (selecao?.tipo === "seta") {
+      seta(selecao.de, selecao.para)?.classList.add("selecionada");
+      inserir(selecao.de, selecao.para)?.classList.add("selecionada");
+    }
     if (selecao && !caixa.querySelector(".selecionada")) selecao = null; // sumiu depois de uma mudança
     caixa.classList.toggle("com-selecao", Boolean(selecao));
   };
@@ -301,6 +322,16 @@ function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpa
     return true;
   };
 
+  /* depois de criar pelo "+" (no cartão ou na seta): a nova fica selecionada, com o nome aberto */
+  const criarE = (botao, promessa) => {
+    botao.disabled = true;
+    promessa.then((numero) => {
+      botao.disabled = false;
+      if (numero == null) return;
+      /* o redesenho pode chegar antes ou depois da resposta */
+      if (!renomearNoAtual(numero)) { renomearAoDesenhar = numero; selecao = { tipo: "no", numero }; }
+    });
+  };
   renomearNoAtual = renomear;
   marcar();
   if (renomearAoDesenhar != null && renomear(renomearAoDesenhar)) renomearAoDesenhar = null;
@@ -313,15 +344,12 @@ function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpa
     const mais = e.target.closest("[data-rede-mais]");
     if (mais) {
       e.stopPropagation();
-      const origem = Number(mais.dataset.redeMais);
-      mais.disabled = true;
-      edicao.criarDepois(origem).then((numero) => {
-        mais.disabled = false;
-        if (numero == null) return;
-        /* o redesenho pode chegar antes ou depois da resposta */
-        if (!renomearNoAtual(numero)) { renomearAoDesenhar = numero; selecao = { tipo: "no", numero }; }
-      });
-      return;
+      return criarE(mais, edicao.criarDepois(Number(mais.dataset.redeMais)));
+    }
+    const entre = e.target.closest("[data-inserir-de]");
+    if (entre) {
+      e.stopPropagation();
+      return criarE(entre, edicao.inserirEntre(Number(entre.dataset.inserirDe), Number(entre.dataset.inserirPara)));
     }
     if (e.target.closest("[data-rede-alca]")) return e.stopPropagation();
     const alvoSeta = e.target.closest(".rede-seta-alvo");
@@ -343,6 +371,11 @@ function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpa
   caixa.addEventListener("keydown", (e) => {
     if (e.target.closest("[data-editando]")) return;
     if (e.key === "Escape" && selecao) { e.stopPropagation(); desmarcar(); return caixa.focus({ preventScroll: true }); }
+    if (selecao?.tipo === "seta" && (e.key === "Enter" || e.key === "Insert")) {
+      const botao = inserir(selecao.de, selecao.para);
+      if (botao) { e.preventDefault(); e.stopPropagation(); botao.click(); }
+      return;
+    }
     if (selecao?.tipo === "seta" && (e.key === "Delete" || e.key === "Backspace")) {
       e.preventDefault();
       e.stopPropagation();
@@ -357,6 +390,26 @@ function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpa
     if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); return edicao.abrir(n); }
     if (e.key === "F2") { e.preventDefault(); e.stopPropagation(); return renomear(n); }
   }, true);
+  /* o "+" do meio da seta aparece ao passar o mouse na seta e fica enquanto o mouse estiver nele */
+  let sobSeta = null;
+  let esconder = 0;
+  const mostrarInserir = (botao) => {
+    clearTimeout(esconder);
+    if (sobSeta && sobSeta !== botao) sobSeta.classList.remove("visivel");
+    sobSeta = botao;
+    botao?.classList.add("visivel");
+  };
+  caixa.addEventListener("pointerover", (e) => {
+    const alvoSeta = e.target.closest(".rede-seta-alvo");
+    if (alvoSeta) return mostrarInserir(inserir(alvoSeta.dataset.setaDe, alvoSeta.dataset.setaPara));
+    const botao = e.target.closest("[data-inserir-de]");
+    if (botao) mostrarInserir(botao);
+  });
+  caixa.addEventListener("pointerout", (e) => {
+    if (!e.target.closest(".rede-seta-alvo, [data-inserir-de]")) return;
+    clearTimeout(esconder);
+    esconder = setTimeout(() => { sobSeta?.classList.remove("visivel"); sobSeta = null; }, 350);
+  });
   /* o foco por teclado também seleciona */
   caixa.addEventListener("focusin", (e) => {
     const cartao = e.target.closest("[data-rede-no]");

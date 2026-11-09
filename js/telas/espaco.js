@@ -2208,6 +2208,25 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           });
         } catch (f) { return falhar(f); }
       },
+      /*
+       * Inserir entre duas ações (09/11/2026, pedido do responsável): cria a nova dependente da de origem e troca,
+       * na de chegada, a dependência da de origem pela da nova (A → B vira A → nova → B). A etapa é a de origem.
+       */
+      async inserirEntre(de, para) {
+        const origem = acoes.find((a) => a.numero === de);
+        const naoAntesDe = dataMinimaPadrao(espaco, hoje);
+        try {
+          const numero = await store.criarAcao(espacoId, {
+            rotulo: `Nova ${termos(espaco).acao}`,
+            dependeDe: [de],
+            ...(origem?.etapa ? { etapa: origem.etapa } : {}),
+            ...(naoAntesDe ? { naoAntesDe } : {}),
+          });
+          await store.acrescentarDependencia(espacoId, para, numero);
+          await store.retirarDependencia(espacoId, para, de);
+          return numero;
+        } catch (f) { return falhar(f); }
+      },
       ligar: (de, para) => store.acrescentarDependencia(espacoId, para, de).then(() => true, falhar),
       desligar: (de, para) => store.retirarDependencia(espacoId, para, de).then(() => {
         avisar("Ligação retirada.", { acao: { texto: "Desfazer", fazer: () => store.acrescentarDependencia(espacoId, para, de).catch(falhar) } });

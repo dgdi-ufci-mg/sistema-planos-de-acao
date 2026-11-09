@@ -104,6 +104,49 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("o + no meio de uma seta insere uma ação entre as duas (A → nova → B)", async () => {
+    const p = await abrirRede();
+    /* uma seta com as duas pontas visíveis */
+    const [de, para] = await p.evaluate(() => {
+      const v = document.querySelector("[data-rede-rolagem]").getBoundingClientRect();
+      const dentro = (el) => { const r = el.getBoundingClientRect(); return r.left > v.left && r.right < v.right && r.top > v.top && r.bottom < v.bottom; };
+      const s = [...document.querySelectorAll(".rede-seta")].find((el) => dentro(el)
+        && dentro(document.querySelector(`.rede-no[data-numero="${el.dataset.de}"]`)) && dentro(document.querySelector(`.rede-no[data-numero="${el.dataset.para}"]`)));
+      return [Number(s.dataset.de), Number(s.dataset.para)];
+    });
+    const botao = p.locator(`[data-inserir-de="${de}"][data-inserir-para="${para}"]`);
+    assert.equal(await botao.evaluate((el) => getComputedStyle(el).opacity), "0", "escondido até passar o mouse");
+    await p.locator(`.rede-seta-alvo[data-seta-de="${de}"][data-seta-para="${para}"]`).dispatchEvent("pointerover");
+    await assentar(p, 250);
+    assert.ok(await botao.isVisible());
+    if (SCREENSHOTS) await p.screenshot({ path: `${SCREENSHOTS}/5-inserir.png` });
+    await botao.click();
+    await p.waitForSelector(".rede [data-editando]");
+    await p.keyboard.type("Etapa intermediária");
+    await p.keyboard.press("Enter");
+    await assentar(p);
+    const nova = Number(await p.locator(".rede-no", { hasText: "Etapa intermediária" }).getAttribute("data-numero"));
+    const existe = (a, b) => p.locator(`.rede-seta[data-de="${a}"][data-para="${b}"]`).count();
+    assert.equal(await existe(de, nova), 1, "origem → nova");
+    assert.equal(await existe(nova, para), 1, "nova → chegada");
+    assert.equal(await existe(de, para), 0, "a ligação direta saiu");
+    if (SCREENSHOTS) await p.screenshot({ path: `${SCREENSHOTS}/6-inserida.png` });
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("seta selecionada: Enter insere uma ação no meio", async () => {
+    const p = await abrirRede();
+    const s = p.locator(".rede-seta-alvo").first();
+    const [de, para] = [Number(await s.getAttribute("data-seta-de")), Number(await s.getAttribute("data-seta-para"))];
+    await s.evaluate((el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await p.keyboard.press("Enter");
+    await p.waitForSelector(".rede [data-editando]");
+    await p.keyboard.press("Enter");
+    await assentar(p);
+    assert.equal(await p.locator(`.rede-seta[data-de="${de}"][data-para="${para}"]`).count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("duplo clique renomeia; Esc tira a seleção", async () => {
     const p = await abrirRede();
     const no = p.locator(".rede-no").nth(1);
