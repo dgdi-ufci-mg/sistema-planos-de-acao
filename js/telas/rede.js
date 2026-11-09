@@ -251,26 +251,26 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
           </div>
         </div>
       </div>
-      <div class="rede-legenda rede-flutuante">
+      <div class="rede-legenda rede-sobre">
         <span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
         <span class="crono-legenda"><i class="folga"></i>Com folga</span>
         <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
         ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
         ${temContinuas ? `<button type="button" class="rede-legenda-botao" data-ocultar-continuas aria-pressed="${ocultarContinuas}">${ocultarContinuas ? "Mostrar ações contínuas" : "Ocultar ações contínuas"}</button>` : ""}
       </div>
-      <div class="rede-ajuda rede-flutuante" data-rede-ajuda-cartao${ajudaAberta ? "" : " hidden"}>
+      <div class="rede-ajuda rede-sobre" data-rede-ajuda-cartao${ajudaAberta ? "" : " hidden"}>
         <p>${explicacao}</p>
         <p><b>Navegar:</b> role o mouse para aproximar e afastar, em volta do ponteiro; arraste o fundo para mover a rede.</p>
         <p class="tec">Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
       </div>
       <div class="rede-controles" data-rede-controles>
-        <button type="button" class="rede-controle rede-flutuante redondo" data-rede-ajuda aria-expanded="${ajudaAberta}" title="Como usar a rede" aria-label="Como usar a rede">${ICONES.ajuda}</button>
-        <div class="rede-controles-grupo rede-flutuante" role="group" aria-label="Zoom">
+        <button type="button" class="rede-controle rede-sobre redondo" data-rede-ajuda aria-expanded="${ajudaAberta}" title="Como usar a rede" aria-label="Como usar a rede">${ICONES.ajuda}</button>
+        <div class="rede-controles-grupo rede-sobre" role="group" aria-label="Zoom">
           <button type="button" class="rede-controle" data-zoom-passo="1" title="Aproximar (role o mouse)" aria-label="Aproximar">${ICONES.mais}</button>
           <button type="button" class="rede-controle rede-zoom-valor mono" data-escala="normal" data-zoom-valor title="Voltar ao tamanho normal (100%)"></button>
           <button type="button" class="rede-controle" data-zoom-passo="-1" title="Afastar (role o mouse)" aria-label="Afastar">${ICONES.menos}</button>
         </div>
-        <button type="button" class="rede-controle rede-flutuante" data-escala="tudo" title="Ajustar à tela: ver a rede inteira" aria-label="Ajustar à tela">${ICONES.enquadrar}</button>
+        <button type="button" class="rede-controle rede-sobre" data-escala="tudo" title="Ajustar à tela: ver a rede inteira" aria-label="Ajustar à tela">${ICONES.enquadrar}</button>
       </div>
     </div>`;
 

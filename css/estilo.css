@@ -2905,12 +2905,12 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
 }
 body[data-vista-atual="rede"] #principal .titulo-conteudo { font-size: 1.35rem; }
-.rede-flutuante { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sombra); }
+.rede-sobre { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sombra); }
 .rede-legenda { position: absolute; left: 16px; bottom: 16px; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 12px; font-size: .8rem; }
 .rede-controles { position: absolute; right: 16px; bottom: 16px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .rede-controles-grupo { display: flex; flex-direction: column; overflow: hidden; }
 .rede-controle { width: 40px; height: 40px; border: 0; padding: 0; background: transparent; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
-.rede-controle.rede-flutuante { background: var(--surface); }
+.rede-controle.rede-sobre { background: var(--surface); }
 .rede-controle.redondo { border-radius: 50%; }
 .rede-controle:hover { background: var(--sunk); }
 .rede-controle .icone { width: 20px; height: 20px; }
