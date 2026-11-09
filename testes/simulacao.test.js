@@ -102,8 +102,9 @@ describe("Referência da PI² com a beta-PERT (seção 3.2)", () => {
     estimativas: [{ o: t.o, m: t.m, p: t.p, contaDe: "liberacao" }] }));
   const r = simular(acoes, calPi2, { hoje: pi2.start, semente: 20261014, simulacoes: 10000, prazoFinal: pi2.target });
 
-  it("versão do cálculo 1: P50 30/03/2027, P80 08/04/2027, P95 22/04/2027, chance 89,5%", () => {
-    assert.equal(VERSAO_CALCULO, 1);
+  /* a versão 2 (09/11/2026) só tira as ações contínuas da simulação; a PI² não tem nenhuma, e os números são os da versão 1 */
+  it("versão do cálculo 2: P50 30/03/2027, P80 08/04/2027, P95 22/04/2027, chance 89,5% (iguais aos da versão 1)", () => {
+    assert.equal(VERSAO_CALCULO, 2);
     assert.deepEqual([r.p50, r.p80, r.p95].map((x) => calPi2.dataDeConclusao(x, 0)), ["2027-03-30", "2027-04-08", "2027-04-22"]);
     assert.equal(r.chancePrazo, 0.8948);
   });

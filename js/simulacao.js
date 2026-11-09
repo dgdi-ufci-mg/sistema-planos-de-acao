@@ -15,8 +15,9 @@ import { ordenarPorDependencia, estimativaVigente } from "./calculo.js";
 /**
  * Versão do método de cálculo, guardada em cada retrato (seção 5.7).
  * Aumente-a sempre que uma mudança fizer a mesma semente dar outro resultado.
+ * Versão 2 (09/11/2026): as ações contínuas ficam fora da simulação (seção 5.9; js/modelos.js, acoesParaCalculo).
  */
-export const VERSAO_CALCULO = 1;
+export const VERSAO_CALCULO = 2;
 
 /** Gerador de números pseudoaleatórios mulberry32: devolve números em [0, 1). */
 export function mulberry32(semente) {

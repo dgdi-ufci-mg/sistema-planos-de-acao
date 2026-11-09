@@ -7,6 +7,7 @@
  * - o modelo é escolhido na criação e fica fixo (a reavaliar com o uso).
  * Espaços sem o campo `modelo`, criados antes do passo 2.4b (como a PI²), valem como "Cronograma estruturado".
  */
+import { separarContinuas } from "./calculo.js";
 
 export const MODELOS = Object.freeze({
   estruturado: Object.freeze({
@@ -66,11 +67,19 @@ export function problemaDoModelo(modelo) {
   return null;
 }
 
-/** Opções de caminhoCritico conforme o modelo do espaço (js/calculo.js). */
+/** Opções de caminhoCritico conforme o modelo do espaço (js/calculo.js); a estrutura serve aos marcos de fase das ações contínuas. */
 export function opcoesDoCalculo(espaco) {
   const m = modeloDe(espaco);
-  return { prazos: m.prazos, dependencias: m.dependencias };
+  return { prazos: m.prazos, dependencias: m.dependencias, estrutura: espaco?.estrutura ?? [] };
 }
 
-/** Ações como entram na simulação: sem as anteriores, no espaço sem dependências. */
-export const acoesParaCalculo = (espaco, acoes) => (usaDependencias(espaco) ? acoes : acoes.map((a) => ({ ...a, dependeDe: [] })));
+/** O espaço aceita ações contínuas (seção 5.9): só com estimativas e dependências. */
+export const usaContinuas = (espaco) => usaEstimativas(espaco) && usaDependencias(espaco);
+
+/**
+ * Ações como entram na simulação: sem as anteriores, no espaço sem dependências; sem as ações contínuas
+ * (e sem as dependências que apontem para elas), no espaço que as aceita (seção 5.9; versão 2 do cálculo).
+ */
+export const acoesParaCalculo = (espaco, acoes) => (usaDependencias(espaco)
+  ? (usaContinuas(espaco) ? separarContinuas(acoes).comuns : acoes)
+  : acoes.map((a) => ({ ...a, dependeDe: [] })));

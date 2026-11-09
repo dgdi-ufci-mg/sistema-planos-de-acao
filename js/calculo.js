@@ -27,6 +27,36 @@ export const duracaoPert = ({ o, m, p }) => (o + 4 * m + p) / 6;
 /** Estimativa vigente: a mais recente (seção 5.6). Sem estimativa, duração zero. */
 export const estimativaVigente = (acao) => acao.estimativas?.at(-1) ?? null;
 
+/* ---------- ação contínua (seção 5.9; termo técnico: atividade hammock) ---------- */
+
+/** Tipos de marco, na ordem em que aparecem na tela. */
+export const TIPOS_DE_MARCO = ["projeto", "fase", "etapa", "acao"];
+
+/**
+ * A ação é contínua quando tem os dois marcos: "Começa com" e "Termina com" (seção 5.9).
+ * Só vale no espaço com estimativas e dependências; nos demais, os marcos não são gravados.
+ */
+export const ehContinua = (acao) => Boolean(acao?.comecaCom && acao?.terminaCom);
+
+/**
+ * Ações como entram no caminho crítico e na simulação: sem as contínuas e sem as dependências que
+ * apontem para elas (uma ação comum não pode depender de uma contínua; dado antigo ou importado é ignorado).
+ * @returns {{comuns: object[], continuas: object[], ignoradas: {acao: number, dependeDe: number}[]}}
+ */
+export function separarContinuas(acoes) {
+  const continuas = acoes.filter(ehContinua);
+  if (!continuas.length) return { comuns: acoes, continuas, ignoradas: [] };
+  const sao = new Set(continuas.map((a) => a.numero));
+  const ignoradas = [];
+  const comuns = acoes.filter((a) => !sao.has(a.numero)).map((a) => {
+    const fora = (a.dependeDe ?? []).filter((d) => sao.has(d));
+    if (!fora.length) return a;
+    for (const d of fora) ignoradas.push({ acao: a.numero, dependeDe: d });
+    return { ...a, dependeDe: a.dependeDe.filter((d) => !sao.has(d)) };
+  });
+  return { comuns, continuas, ignoradas };
+}
+
 /**
  * Ordem em que as ações podem ser calculadas: cada uma depois das suas anteriores.
  * Dependências de ações inexistentes são ignoradas e devolvidas como aviso.
@@ -79,15 +109,21 @@ export function ordenarPorDependencia(acoes) {
  *   é a data-limite (ou a liberação, sem ela); Atrasada = data-limite vencida e ação não concluída,
  *   liberada ou não; sem caminho crítico nem folga, e sem a regra "nada termina no passado".
  * - Espaço sem dependências: as anteriores gravadas são ignoradas.
+ * - Ações contínuas (seção 5.9), só no espaço com estimativas e dependências: ficam fora das duas
+ *   passadas e são calculadas no fim, pelos marcos; não mudam a data do projeto, das fases nem das etapas.
  *
  * @param {object[]} acoes ações do espaço (dicionário de dados, 4.2)
  * @param {ReturnType<import("./calendario.js").criarCalendario>} calendario
- * @param {{hoje?: string, prazos?: "estimativa"|"dataLimite", dependencias?: boolean}} [opcoes]
- *   sem `hoje`, só o cálculo pelas estimativas e conclusões; prazos e dependências vêm do modelo do espaço (js/modelos.js)
+ * @param {{hoje?: string, prazos?: "estimativa"|"dataLimite", dependencias?: boolean, estrutura?: object[]}} [opcoes]
+ *   sem `hoje`, só o cálculo pelas estimativas e conclusões; prazos e dependências vêm do modelo do espaço (js/modelos.js);
+ *   estrutura: fases e etapas do espaço, para os marcos de fase
  */
-export function caminhoCritico(acoes, calendario, { hoje, prazos = "estimativa", dependencias = true } = {}) {
+export function caminhoCritico(acoes, calendario, { hoje, prazos = "estimativa", dependencias = true, estrutura = [] } = {}) {
   const porDataLimite = prazos === "dataLimite";
-  const { ordem, anteriores, seguintes, avisos } = ordenarPorDependencia(dependencias ? acoes : acoes.map((a) => ({ ...a, dependeDe: [] })));
+  const comContinuas = !porDataLimite && dependencias;
+  const { comuns, continuas, ignoradas } = comContinuas ? separarContinuas(acoes) : { comuns: acoes, continuas: [], ignoradas: [] };
+  const { ordem, anteriores, seguintes, avisos } = ordenarPorDependencia(dependencias ? comuns : comuns.map((a) => ({ ...a, dependeDe: [] })));
+  for (const i of ignoradas) avisos.push({ codigo: "dependencia-de-continua", ...i });
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   const indiceDeHoje = hoje ? calendario.diasUteisAntes(hoje) : null;
   const porAcao = new Map();
@@ -151,5 +187,64 @@ export function caminhoCritico(acoes, calendario, { hoje, prazos = "estimativa",
     r.folga = porDataLimite ? null : r.liberacaoTardia - r.liberacao;
     r.critica = !porDataLimite && r.folga < 1e-6 && !concluida(porNumero.get(numero));
   }
+  if (continuas.length) calcularContinuas({ continuas, ordem, porNumero, porAcao, fim, estrutura, calendario, hoje, avisos });
   return { fim, porAcao, avisos };
+}
+
+/**
+ * Datas e situação das ações contínuas, depois das duas passadas (seção 5.9).
+ * Marco de início: o projeto (dia 0), a liberação mais cedo das ações comuns da fase ou da etapa, ou a liberação de uma ação.
+ * Marco de fim: o fim do projeto (sem as contínuas), a conclusão mais tardia das ações comuns da fase ou da etapa,
+ * ou a conclusão de uma ação. Marco que não existe mais (ou sem ações comuns): vale o projeto, com aviso.
+ */
+function calcularContinuas({ continuas, ordem, porNumero, porAcao, fim, estrutura, calendario, hoje, avisos }) {
+  const etapasDaFase = new Map(estrutura.map((f) => [f.id, new Set(f.etapas.map((e) => e.id))]));
+  const etapasConhecidas = new Set(estrutura.flatMap((f) => f.etapas.map((e) => e.id)));
+  const resultados = (filtro) => ordem.filter((n) => filtro(porNumero.get(n))).map((n) => porAcao.get(n));
+  const todas = resultados(() => true);
+  const doProjeto = { inicio: 0, fim, alcancado: true, concluido: todas.length > 0 && todas.every((r) => r.situacao === "concluida") };
+  /** Datas e estado de um marco; null se não existe mais. */
+  const marco = (m) => {
+    if (m?.tipo === "projeto") return doProjeto;
+    let rs;
+    if (m?.tipo === "acao") {
+      const r = porAcao.get(m.numero);
+      rs = r && !ehContinua(porNumero.get(m.numero)) ? [r] : [];
+    } else if (m?.tipo === "etapa" && etapasConhecidas.has(m.id)) rs = resultados((a) => a.etapa === m.id);
+    else if (m?.tipo === "fase" && etapasDaFase.has(m.id)) rs = resultados((a) => etapasDaFase.get(m.id).has(a.etapa));
+    else rs = [];
+    if (!rs.length) return null;
+    return {
+      inicio: Math.min(...rs.map((r) => r.liberacao)),
+      fim: Math.max(...rs.map((r) => r.conclusao)),
+      alcancado: rs.some((r) => r.situacao !== "naoLiberada"),
+      concluido: rs.every((r) => r.situacao === "concluida"),
+    };
+  };
+  for (const acao of continuas) {
+    let inicio = marco(acao.comecaCom);
+    let termino = marco(acao.terminaCom);
+    if (!inicio) { avisos.push({ codigo: "marco-inexistente", acao: acao.numero, lado: "inicio" }); inicio = doProjeto; }
+    if (!termino) { avisos.push({ codigo: "marco-inexistente", acao: acao.numero, lado: "fim" }); termino = doProjeto; }
+    let liberacao = inicio.inicio;
+    let conclusao = termino.fim;
+    const invertidos = conclusao < liberacao;
+    if (invertidos) { avisos.push({ codigo: "marcos-invertidos", acao: acao.numero }); conclusao = liberacao; }
+    if (acao.concluidaEm) {
+      conclusao = calendario.diasUteisAte(acao.concluidaEm);
+      liberacao = Math.min(liberacao, conclusao); // registro anterior ao marco de início: vale o registro
+    }
+    const r = {
+      continua: true, liberacao, conclusao, liberacaoTardia: liberacao, conclusaoTardia: conclusao,
+      folga: null, critica: false, regraDoPassado: false,
+      marcoInexistente: inicio === doProjeto && acao.comecaCom?.tipo !== "projeto" || termino === doProjeto && acao.terminaCom?.tipo !== "projeto",
+      marcosInvertidos: invertidos,
+    };
+    if (hoje) {
+      r.situacao = acao.concluidaEm ? "concluida" : inicio.alcancado ? "liberada" : "naoLiberada";
+      r.atrasada = false; // o atraso aparece no marco, e a contínua se estende com ele
+      r.podeEncerrar = !acao.concluidaEm && termino.concluido;
+    }
+    porAcao.set(acao.numero, r);
+  }
 }

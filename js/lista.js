@@ -45,8 +45,14 @@ export function montarLinhas(acoes, caminho, simulacao, calendario, hoje, { praz
       execucao: semPrioridade ? null : s.prioridadeExecucao,
       revisao: semPrioridade ? null : s.prioridadeRevisao,
       vigente: estimativaVigente(acao),
-      /** ação ainda sem estimativa: conta como zero dias no cálculo (seção 5.2) */
-      semEstimativa: !porDataLimite && !concluida && !estimativaVigente(acao),
+      /** ação ainda sem estimativa: conta como zero dias no cálculo (seção 5.2); a contínua não tem estimativa (seção 5.9) */
+      semEstimativa: !porDataLimite && !concluida && !c.continua && !estimativaVigente(acao),
+      /** ação contínua (seção 5.9): datas pelos marcos; fora do caminho crítico e da simulação */
+      continua: Boolean(c.continua),
+      /** contínua não concluída cujo marco de fim já foi concluído: "Pode ser encerrada" */
+      podeEncerrar: Boolean(c.podeEncerrar),
+      /** contínua com marco que não existe mais (vale o projeto) ou com o início depois do fim */
+      problemaDosMarcos: c.marcoInexistente ? "inexistente" : c.marcosInvertidos ? "invertidos" : null,
     };
   });
 }

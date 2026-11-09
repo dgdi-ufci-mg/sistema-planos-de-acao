@@ -9,6 +9,7 @@ import { ErroDeDados } from "./banco/local.js";
 import { CAMPOS } from "./modelo.js";
 import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
+import { problemaDosMarcos, ehContinua } from "./continuas.js";
 import { registrosDaMudanca } from "./historico.js";
 import { montarRetrato } from "./retrato.js";
 import { problemaDoTipo, problemaDoCodigoDoPlano, tipoDe, ehDeTarefas, TIPOS, COLUNAS_INICIAIS_DO_QUADRO } from "./tipos.js";
@@ -203,6 +204,21 @@ export function criarStore(banco, opcoes = {}) {
     if (campos.estimativas?.length && m.prazos !== "estimativa") throw new ErroDeDados("recurso-desligado", "Este espaço usa data-limite, e não estimativas.");
     if (campos.dataLimite != null && m.prazos !== "dataLimite") throw new ErroDeDados("recurso-desligado", "Este espaço usa estimativas, e não data-limite.");
     if (campos.dependeDe?.length && !m.dependencias) throw new ErroDeDados("recurso-desligado", "Este espaço não usa dependências entre ações.");
+  }
+
+  /**
+   * Marcos da ação contínua (seção 5.9): confere a ação como ficará depois da gravação, só quando a
+   * gravação mexe nos marcos ou nas anteriores de uma ação contínua.
+   * @param {number|null} numero null: ação nova
+   */
+  async function conferirMarcos(espacoId, numero, campos) {
+    const mexe = "comecaCom" in campos || "terminaCom" in campos;
+    const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
+    const atual = numero == null ? {} : acoes.find((a) => a.numero === numero) ?? {};
+    if (!mexe && !(campos.dependeDe?.length && ehContinua(atual))) return;
+    const depois = { ...atual, ...campos, numero };
+    const p = problemaDosMarcos(depois, acoes, await banco.lerEspaco(espacoId));
+    if (p) throw new ErroDeDados(p.codigo, p.mensagem);
   }
 
   /**
@@ -731,6 +747,7 @@ export function criarStore(banco, opcoes = {}) {
       const { rotulo, codigo, ...outros } = dados;
       if (!rotulo?.trim()) throw new ErroDeDados("rotulo-vazio", "Informe o nome da ação.");
       await conferirModelo(espacoId, outros);
+      await conferirMarcos(espacoId, null, outros);
       await conferirEtiquetas(espacoId, outros);
       await conferirValores(espacoId, outros);
       await conferirEntregaDaAcao(espacoId, outros);
@@ -771,6 +788,7 @@ export function criarStore(banco, opcoes = {}) {
       /* data mínima no futuro: a ação deixa de estar liberada e sai da situação personalizada (passo 2.7) */
       if (campos.naoAntesDe && campos.naoAntesDe > hoje()) campos = { ...campos, situacaoPersonalizada: null };
       await conferirModelo(espacoId, campos);
+      await conferirMarcos(espacoId, numero, campos);
       await conferirEtiquetas(espacoId, campos);
       await conferirEntregaDaAcao(espacoId, campos);
       conferirDocumentos(campos);
@@ -1034,6 +1052,9 @@ export function criarStore(banco, opcoes = {}) {
       const acoes = (await banco.listarAcoes(espacoId)).filter(ativa);
       if (anterior === numero) throw new ErroDeDados("ciclo", "Uma ação não pode depender dela mesma.");
       if (!acoes.some((a) => a.numero === anterior)) throw new ErroDeDados("nao-encontrado", `Ação ${anterior} não encontrada.`);
+      /* ação contínua (seção 5.9): não tem anteriores nem é anterior de outra; as datas dela vêm dos marcos */
+      const continua = [numero, anterior].map((n) => acoes.find((a) => a.numero === n)).find(ehContinua);
+      if (continua) throw new ErroDeDados("continua-sem-dependencias", `“${continua.rotulo}” é uma ação contínua: ela não depende de outras pelo “termina e começa”, e nenhuma depende dela.`);
       const hipotese = acoes.map((a) => (a.numero === numero ? { ...a, dependeDe: [...(a.dependeDe ?? []), anterior] } : a));
       try {
         ordenarPorDependencia(hipotese);

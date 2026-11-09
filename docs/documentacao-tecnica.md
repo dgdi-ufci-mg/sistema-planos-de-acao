@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 06/11/2026 (versão 288.1 da página)
+**Última atualização deste documento:** 09/11/2026 (versão 289 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -87,6 +87,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/feriados.js` | Sugestão anual dos feriados nacionais e pontos facultativos (Páscoa calculada) |
 | `js/calculo.js` | Estimativa vigente, ordem por dependência, caminho crítico, situações, carimbo Atrasada |
 | `js/simulacao.js` | Monte Carlo beta-PERT, prioridades, chave da simulação (reaproveitamento) |
+| `js/continuas.js` | Ações contínuas (seção 5.9): regras dos marcos, marcos possíveis, nomes e sugestão; o cálculo das datas fica em `js/calculo.js`. Testes em `testes/continuas.test.js` |
 | `js/lista.js` | Linhas da lista: filtros, ordens, agrupamento por fase e etapa, resumos |
 | `js/minhas-tarefas.js` | Regras puras de "Minhas tarefas" (seção 8, "Minhas tarefas"): as ações e tarefas de quem entrou, de todos os espaços, agrupadas por prazo |
 | `js/busca.js` | Regra da busca (Ctrl+K): combinar o digitado com os itens, sem acento, e ordenar (seção 8.0) |
@@ -135,7 +136,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 ### 3.2 Testes
 
 - **Testes de unidade** das funções de calendário, cálculo, simulação e Markdown, com `node --test`, sem dependências.
-- **Teste de comparação:** o espaço da PI² precisa produzir as mesmas datas do caminho crítico da versão 1, já que essa regra não mudou. O cálculo da versão 1 é executado a partir da cópia congelada em `testes/dados/versao1-index.html`. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência. **Referência (versão do cálculo 1, semente 20261014, 10.000 simulações, só estimativas):** P50 em 30/03/2027, P80 em 08/04/2027, P95 em 22/04/2027 e chance de 89,5% de cumprir o prazo de 14/04/2027. Na versão 1, com a triangular e 3.000 simulações, a chance era de 74%: a triangular, com os mesmos três pontos, espalha mais as durações do que a beta-PERT, que concentra os sorteios perto do mais provável. Um teste automático confere esses valores; se mudarem, é preciso aumentar a versão do cálculo.
+- **Teste de comparação:** o espaço da PI² precisa produzir as mesmas datas do caminho crítico da versão 1, já que essa regra não mudou. O cálculo da versão 1 é executado a partir da cópia congelada em `testes/dados/versao1-index.html`. As probabilidades mudam por causa da troca para a beta-PERT; os novos valores são registrados como referência. **Referência (versões do cálculo 1 e 2, que dão os mesmos números na PI², sem ações contínuas; semente 20261014, 10.000 simulações, só estimativas):** P50 em 30/03/2027, P80 em 08/04/2027, P95 em 22/04/2027 e chance de 89,5% de cumprir o prazo de 14/04/2027. Na versão 1, com a triangular e 3.000 simulações, a chance era de 74%: a triangular, com os mesmos três pontos, espalha mais as durações do que a beta-PERT, que concentra os sorteios perto do mais provável. Um teste automático confere esses valores; se mudarem, é preciso aumentar a versão do cálculo.
 - **Teste do dicionário de dados:** compara os campos usados pelo código (tipos JSDoc do modelo) com os da seção 4 e falha se divergirem. Roda com os demais, em toda mudança.
 - **Teste visual:** capturas de tela das visualizações afetadas, nos temas claro e escuro e na largura de celular, com o Playwright e o Chromium, sobre o sistema servido localmente e com o Firebase desligado (`config.js` interceptado com `null`).
 - **Testes de navegador** (desde 27/10/2026, `testes/navegador/`): abrem o sistema num Chromium, pelo Playwright, sobre o "Ver um exemplo", só na memória (o `config.js` é interceptado com `null` e nada sai para a internet), e simulam o uso. **Celular** (`celular.test.mjs`, 390 × 800 px, com toque): barra de baixo (e a ausência dela no tablet, 700 px); alvos de 44 px; faixa do prazo, que abre a Linha do tempo; Voltar fechando "Filtros e exibição" e a janela da ação sem sair do espaço, e reabrindo o espaço anterior depois de uma troca; segurar o cartão (menu do cartão); deslizar para a direita (registro da conclusão), para a esquerda (menu) e na vertical (só rola); puxar a janela para baixo (fecha com 200 px, volta com 40 px); "Criar ação" acima de um teclado de 320 px simulado pela área visível do navegador (`visualViewport`); campos com 16 px. **Barra do topo** (`barra-do-topo.test.mjs`, sem toque): de 700 a 1.366 px, com a barra lateral aberta e recolhida, nenhum controle encosta no vizinho (8 px entre grupos) nem é cortado, pelas mesmas regras de `ajustarBarra`; em 1.366 px os nomes dos menus aparecem; clicar num menu não muda a barra (correção da versão 184). **Barra lateral** (`barra-lateral.test.mjs`, 390 e 1.280 px): entre outros, desde 04/11/2026, a **largura ajustável**: arrastar a borda muda a largura e o conteúdo acompanha, os limites de 200 e 420 px seguram o arrasto, a seta do teclado soma 16 px, a largura volta ao recarregar, o duplo clique volta aos 264 px e apaga a chave guardada, a borda some com a barra recolhida e, no celular, não existe e não muda a gaveta. **Foco preso** (`foco-preso.test.mjs`, desde 05/11/2026): Tab e Shift+Tab não saem da janela da ação nem do diálogo de confirmação aberto sobre ela. **Minhas tarefas** (`minhas-tarefas.test.mjs`, desde 05/11/2026): o único que simula um login, trocando no teste o `config.js` e o `js/banco/firebase.js` por um banco em memória com os exemplos; o `apoio.mjs` aceita, para isso, a opção `rotas`.
@@ -496,6 +497,8 @@ Chave: o par (espaço, `numero`).
 | `checklist` | lista de item do checklist (4.2.2) | não | Itens a cumprir dentro da ação, na ordem em que foram acrescentados (seção 16.5; passo 2.8). Vazio: sem checklist | |
 | `posicaoPrioridade` | texto | não | Posição da ação na prioridade da equipe (passo 2.10a; seção 5.8): chave de ordenação fracionária, em base 36 ("0" a "9" e "a" a "z"), sem terminar em "0", comparada em ordem alfabética. Mantida pelo sistema quando a ação é arrastada; não é digitada. Vazia: a ação vem depois das que têm posição, na ordem do espaço | `i`, `iz`, `0i` |
 | `entregaDoPlano` | id | não | Entrega do Plano de Ação (4.12) para a qual a ação contribui (passo 2.6): uma entrega ativa do mesmo espaço, conferida pelo Store. Opcional e discreta, em "Mais campos" da janela da ação. Se a entrega for excluída depois, a ligação fica e a tela mostra "(entrega excluída)" | `e1a2…` |
+| `comecaCom` | marco (4.2.5) | não | Marco de início da **ação contínua** (seção 5.9): com o que ela começa. Preenchido junto com `terminaCom`; os dois preenchidos fazem da ação uma contínua, e os dois vazios, uma ação comum. Só no espaço com estimativas e dependências | `{"tipo": "etapa", "id": "e1"}` |
+| `terminaCom` | marco (4.2.5) | não | Marco de fim da ação contínua: com o que ela termina | `{"tipo": "acao", "numero": 12}` |
 | `documentos` | lista de documento da ação (4.2.4) | não | Documentos e links da ação, na ordem em que foram acrescentados (passo 2.10a). Vazio: sem documentos | |
 | `valoresPersonalizados` | mapa de id de campo personalizado → valor | não | Valores dos campos personalizados do espaço (4.1.14; passo 3.6): para cada campo preenchido, o valor no formato do tipo: texto (sem espaços nas pontas), número, data `AAAA-MM-DD`, id da opção, `true`/`false` ou endereço. Campo sem valor: a chave sai do mapa; nenhum valor: vazio. Gravado **um campo de cada vez** (`definirValorPersonalizado`, seção 4.6); `alterarAcao` recusa o mapa inteiro (`campo-fixo`). Valores de campos arquivados ficam guardados | `{"c1a2…": "23062.004512/2026-10", "c3b4…": "o1a2…"}` |
 | `etiquetas` | lista de id | não | Ids das etiquetas do catálogo do espaço (4.1.9; passo 2.10a), acrescentados e retirados um a um (seção 4.6). Na tela, aparecem na ordem do catálogo. Vazio: sem etiquetas | |
@@ -572,6 +575,19 @@ Passo 2.10a (seção 16.8). Como o documento do espaço (4.1.2), mais o `id`, po
 | `identificacao` | texto | não | Número no SIPAC/Protocolo. Obrigatório quando não há link | `23062.004512/2026-10` |
 | `link` | texto (endereço web) | não | Endereço para abrir o documento; começa com `https://` ou `http://`. Obrigatório quando não há identificação | `https://…` |
 
+#### 4.2.5 Marco da ação contínua: `comecaCom` e `terminaCom`
+
+Seção 5.9 (decisão do responsável, 09/11/2026). Diz onde a ação contínua começa ou termina: no projeto, numa fase, numa etapa ou numa ação comum. Um dos dois identificadores, conforme o tipo; o outro fica de fora.
+
+<!-- dicionario: marco -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `tipo` | texto: `projeto`, `fase`, `etapa` ou `acao` | sim | O que marca a data | `etapa` |
+| `id` | id | não | A fase ou a etapa (seção 4.1, `estrutura`). Só nos tipos `fase` e `etapa` | `e1` |
+| `numero` | inteiro | não | Número da ação (4.2). Só no tipo `acao`; precisa ser uma ação ativa, comum (não contínua) e diferente da própria | `12` |
+
+Regras conferidas pelo Store a cada gravação que mexe nos marcos (`problemaDosMarcos`, em `js/continuas.js`): os dois marcos juntos (`marcos-incompletos`); só no espaço com estimativas e dependências (`recurso-desligado`); forma certa, e fase, etapa ou ação existentes (`marco-invalido`); a ação contínua sem ações anteriores (`continua-com-anteriores`) e sem ações que dependam dela (`continua-com-seguintes`); uma contínua não é marco de outra, nem uma ação vira contínua enquanto outra contínua a usa como marco (`marco-continua`). Acrescentar uma dependência em que uma das duas ações é contínua é recusado (`continua-sem-dependencias`). Excluir a ação, a fase ou a etapa que é marco **não** é impedido: o cálculo passa a usar o projeto e avisa (seção 5.9).
+
 ### 4.3 Estimativa: cada item de `estimativas`
 
 <!-- dicionario: estimativa -->
@@ -628,7 +644,7 @@ Cada ação do retrato tem **todos os campos da ação (4.2)**, copiados como es
 | `atrasada` | sim/não | sim | Carimbo Atrasada | `false` |
 | `liberacaoPrevista` | data | sim | Data prevista de liberação | `2026-10-05` |
 | `conclusaoPrevista` | data | sim | Data prevista de conclusão; no espaço com data-limite, a data-limite (vazia se a ação não tem) | `2026-10-27` |
-| `folga` | dias úteis | sim | Folga total no cálculo determinístico; 0 no espaço com data-limite, que não tem caminho crítico | `4` |
+| `folga` | dias úteis | não | Folga total no cálculo determinístico; 0 no espaço com data-limite, que não tem caminho crítico. Vazia na ação contínua, que não tem folga (seção 5.9) | `4` |
 | `prioridadeExecucao` | número de 0 a 1 | sim | Índice de criticidade (seção 7.1). Vazio no espaço sem simulação (passo 2.4b) | `0.72` |
 | `prioridadeRevisao` | número de 0 a 1 | sim | Contribuição para a variância do prazo (seção 7.2). Vazio no espaço sem simulação (passo 2.4b) | `0.18` |
 
@@ -977,6 +993,7 @@ Tudo é recalculado a cada mudança: conclusão, reestimativa ou edição. A est
 - **Semente e número de simulações visíveis, mas imutáveis.** São definidos na criação do espaço (pelo usuário ou com o padrão) e aparecem em "Configurar este espaço" só para leitura. Assim, qualquer pessoa ou IA pode conferir os resultados por fora, em planilha, Python ou R, e ninguém pode trocar a semente até o número "ficar bonito".
 - **Conferência por fora:** a seção 15 deve documentar, junto com o código da versão 2, o gerador de números (mulberry32), a ordem dos sorteios e o método de sorteio da beta-PERT, para permitir reproduzir os resultados **exatamente**. Uma ferramenta com outro gerador chega a resultados estatisticamente equivalentes, com diferença da ordem de meio ponto percentual na chance de cumprir o prazo.
 - **Versão do cálculo:** se um dia o método de cálculo mudar (por exemplo, a correção de um erro), a mesma semente passa a dar outro resultado. Por isso, o código tem um número de versão do cálculo, guardado em cada retrato.
+  - **Versão 2 (09/11/2026):** as ações contínuas (seção 5.9) e as dependências que apontem para elas ficam fora da simulação. Sem ações contínuas, os números são os da versão 1.
 - Ações concluídas: duração real. Ações reestimadas: a contagem começa na data da reestimativa. Regra da seção 5.5 aplicada.
 - **Resultados do espaço:** datas P50, P80 e P95 da conclusão, chance de cumprir o prazo final e distribuição das datas finais (gráfico).
 - **Resultados por ação:** índice de criticidade (seção 7.1) e contribuição para a variância do prazo (seção 7.2). Fórmulas e justificativas na seção 15.
@@ -998,6 +1015,41 @@ Passo 2.10a (seção 16.8). Não é cálculo do sistema: é a ordem que a equipe
 - **Gravação:** só a ação movida (mais, na primeira vez, as que receberam chave no passo 1), cada uma com carimbo e registro no histórico ("Mudou a posição na prioridade da equipe"). Nada regrava a lista inteira, por isso duas pessoas reordenando ao mesmo tempo não apagam o trabalho uma da outra (seção 4.6).
 - **Tamanho:** cada inserção no mesmo intervalo pode alongar a chave em um caractere; na prática, poucas dezenas de caracteres mesmo com muito uso. Não há rebalanceamento.
 
+### 5.9 Ação contínua
+
+Decisões do responsável, 09/11/2026. Na tela, **"Ação contínua"**, com o termo técnico *atividade hammock* (no Primavera P6, *Level of Effort*). Serve a ações que acompanham um trecho do plano em vez de terem duração própria: apoio técnico, divulgação, monitoramento. Sem ela, essas ações entravam no plano sem estimativa (marca "Falta estimar", zero dias) e sem datas que fizessem sentido.
+
+**O que é.** Uma ação que começa com um **marco de início** e termina com um **marco de fim** (campos `comecaCom` e `terminaCom`, seção 4.2.5). É o *hammock* clássico, generalizado: em vez de só uma ação de cada lado, cada marco pode ser:
+
+| Marco | Início | Fim |
+|---|---|---|
+| Projeto | Dia 0 do espaço (a data de início) | Conclusão prevista do projeto, calculada **sem** as contínuas (não o prazo final) |
+| Fase | A liberação mais cedo das ações comuns das etapas da fase | A conclusão mais tardia dessas ações |
+| Etapa | A liberação mais cedo das ações comuns da etapa | A conclusão mais tardia dessas ações |
+| Ação | A liberação da ação | A conclusão da ação |
+
+A etapa em que a contínua está é só organização: as datas vêm dos marcos. Ao tornar uma ação contínua, a tela sugere os marcos da etapa dela (ou o projeto, sem etapa), e a pessoa troca os dois.
+
+**Só no espaço com estimativas e dependências** (o modelo "Cronograma estruturado", ou o personalizado com as duas escolhas). Nos espaços com data-limite ou sem dependências não há caminho crítico, e os marcos não são gravados; se existirem, o cálculo os ignora e a ação conta como comum.
+
+**Ligações.** A contínua "começa junto" com o marco de início e "termina junto" com o de fim (termos técnicos: início-início e término-término). Ela não tem ligações "termina e começa": não depende de nenhuma ação, nenhuma ação depende dela, e ela não é marco de outra contínua. Se uma ação dependesse dela, o fim da contínua empurraria os próprios marcos, e o cálculo andaria em círculo. Pelo mesmo motivo, as datas do projeto, das fases e das etapas são calculadas **sem** as contínuas, inclusive quando a contínua está dentro da etapa que acompanha. Dependência gravada antes da regra, ou vinda de importação, que aponte para uma contínua é ignorada no cálculo, com aviso (`dependencia-de-continua`).
+
+**Cálculo** (`caminhoCritico`, em `js/calculo.js`):
+
+1. As ações contínuas saem das duas passadas do caminho crítico (seções 5.1 a 5.5), com as dependências que apontem para elas. As ações comuns são calculadas como antes, e o fim do projeto é o delas.
+2. Depois, para cada contínua: liberação = o início do marco de início; conclusão = o fim do marco de fim, pelas datas já calculadas das ações comuns (inclusive a regra "nada termina no passado", seção 5.5: quando o marco atrasa, a contínua se estende com ele).
+3. Marco que não existe mais (fase, etapa ou ação excluída, ação que virou contínua, fase ou etapa sem ações comuns): vale o projeto, com aviso `marco-inexistente` e a indicação na janela da ação.
+4. Início depois do fim (por exemplo, começa com o início de uma ação posterior à que marca o fim): duração zero, no início, com aviso `marcos-invertidos`.
+5. Contínua concluída: vale a data registrada, como nas demais (seção 5.4).
+6. Folga: não tem (vazia). Nunca é crítica. Não entra na simulação (versão 2 do cálculo, seção 5.7), nem nas prioridades de execução e de revisão, nem na data de conclusão do plano.
+
+**Situação e carimbo** (seção 6):
+
+- **Não liberada** enquanto o marco de início não é alcançado; **Liberada** depois. O marco é alcançado quando: projeto, sempre; fase ou etapa, quando alguma ação comum dela está liberada ou concluída; ação, quando ela está liberada ou concluída.
+- **Nunca recebe o carimbo Atrasada.** O atraso aparece na ação que é marco, e a contínua se estende com ela.
+- **Não se conclui sozinha.** Quando o marco de fim está concluído (a ação concluída; todas as ações comuns da fase ou da etapa concluídas; todas as do projeto concluídas) e ela não, aparece **"Pode ser encerrada"**, e a pessoa decide. Concluir as ações não garante o resultado; quem acompanha é quem sabe se o trabalho contínuo acabou.
+- Não tem estimativa: não leva "Falta estimar" nem conta no aviso "Previsão incompleta".
+
 ## 6. Situações e carimbo
 
 ### 6.1 Situação: exatamente uma
@@ -1008,11 +1060,14 @@ Passo 2.10a (seção 16.8). Não é cálculo do sistema: é a ordem que a equipe
 | **Liberada** | Todas as anteriores concluídas (ou nenhuma anterior), e esta não concluída |
 | **Concluída** | Tem data de conclusão |
 
+Na ação contínua, a situação segue o marco de início, e não as anteriores (seção 5.9).
+
 ### 6.2 Carimbo **Atrasada**
 
 - Aplica-se à ação **liberada** cuja data prevista de conclusão (PERT da estimativa mais recente) já passou.
 - O atraso é medido contra a **estimativa mais recente**, de propósito. A reestimativa tira o carimbo. É uma "colher de chá" ao executor, que exige dele uma atitude ativa (assumir uma nova data). O histórico de reprogramações registra a dimensão do problema.
 - Uma ação não liberada nunca recebe o carimbo, porque, pela regra da seção 5.5, a previsão das anteriores não fica no passado.
+- A ação contínua nunca recebe o carimbo (seção 5.9).
 - Não existe mais o carimbo "Prioritária": a prioridade é mostrada pela barra contínua da seção 7.1.
 
 ---
@@ -1656,6 +1711,7 @@ Cada decisão de detalhe está registrada, com a data e o motivo, na seção do 
 - **Arrastar cartões como no Trello, sem puxador no quadro** (29/10/2026): o primeiro arrasto (puxador no quadro, arrastar nativo do navegador) funcionou mal e deixou a lista sem gravar. O responsável pediu o comportamento do Trello e a mesma forma de pegar o cartão dentro da coluna e entre colunas. Por isso o arrasto passou a usar eventos de ponteiro, com vaga no lugar do cartão e animação dos vizinhos; o puxador ficou só na lista. No celular, o quadro exige segurar 0,4 s para não competir com a rolagem; soltar sem mexer abre o menu do cartão.
 - **Conclusão: círculo nas tarefas, botão nos planos e projetos** (04/11/2026, pedido do responsável): no Quadro e na Lista de tarefas, concluir é só marcar (grava o momento da marcação, sem data de conclusão), e o círculo antes do nome diz isso, como no Todoist. No Plano de Ação e no Projeto, concluir pede a **data em que o trabalho terminou**, que entra nos cálculos; por isso continua o botão "Registrar conclusão", que abre o formulário com a data. Um círculo ali sugeriria uma marca instantânea e esconderia a pergunta pela data.
 - **Campos personalizados limitados, e não um construtor de bancos de dados** (04/11/2026, avaliação pedida pelo responsável; passo 3.6): o responsável considera a funcionalidade vital para a adesão das equipes, mas sem "a complicação do Notion". Por isso, seis tipos, até 8 campos em uso por espaço, tipo imutável, arquivar em vez de apagar, nenhum campo do sistema alterável e nada de fórmulas ou relações. Os valores ficam num mapa na ação, gravado um campo de cada vez (seção 4.6), e o histórico registra cada campo à parte, para a carga no Data Lakehouse seguir "um registro por campo". No PostgreSQL, uma tabela de valores com colunas tipadas (seção 4.9). Detalhes de tela escolhidos sem consulta e listados no passo 3.6, a confirmar.
+- **Ação contínua com marcos, como o *hammock* clássico** (09/11/2026, decisão do responsável; seção 5.9): a primeira proposta fazia a contínua acompanhar a etapa em que estava. O responsável preferiu marcos de início e de fim escolhidos à parte, cada um podendo ser o projeto, uma fase, uma etapa ou uma ação, porque a contínua pode estar ou não numa etapa e acompanhar outro trecho. As datas do projeto, das fases e das etapas são calculadas sem as contínuas, para não andarem em círculo; a contínua não tem dependências "termina e começa" e não é marco de outra. Fica fora do caminho crítico e da simulação; nunca é Atrasada (o atraso é do marco); e não se conclui sozinha: "Pode ser encerrada" quando o marco de fim termina, e a pessoa decide. Não é um tipo de espaço nem de ação à parte: os dois marcos preenchidos já dizem que a ação é contínua, sem um campo a mais.
 - **Importação: impedir fechar, e não só perguntar** (06/11/2026, decisão do responsável): fechar o painel no meio da importação deixou um plano real sem as fases e etapas criadas (o painel gravou por cima uma cópia antiga), e sair da página interrompe a gravação pela metade, difícil de consertar. Perguntar "Fechar mesmo assim?" ainda deixaria o erro a um clique; por isso, enquanto grava, o painel não fecha, e o progresso mostra quanto falta.
 
 ---
@@ -1794,6 +1850,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 
 - **Piloto (passo 1.21):** uso real na PI² por algumas semanas, registrando conclusões e reestimativas, para conferir previsões, avisos e telas.
 - **Manual do usuário (passo 1.22):** parado até o responsável liberar. O arquivo `docs/manual-do-usuario.md` ainda descreve a versão 1.
+- **Ação contínua, partes 2 a 4** (09/11/2026, pedido do responsável; seção 5.9): parte 2, janela da ação (escolher os marcos, "Pode ser encerrada"), selo na lista e no quadro, barra no cronograma, glossário; parte 3, a contínua na rede como caixa comum, com ligações tracejadas aos marcos e o filtro "Ocultar ações contínuas"; parte 4, colunas "Começa com" e "Termina com" na importação e na exportação por planilha.
 - **Palavra "tarefa" no Quadro de tarefas** (passo 3.1): trocada nos lugares mais à vista (quadro, lista, botões e janelas de nova tarefa e da tarefa, planilha, avisos de atrasadas); ainda dizem "ação" alguns textos secundários, como o aviso depois de excluir, as mensagens de recusa do Store, a configuração do espaço e o histórico. Ajustar quando o responsável notar algum.
 - **Mapa do Strata, lotes B e C e celular** (03/11/2026): **lote B** (mexe no banco; propor o desenho ao responsável antes de codar): perspectiva (nome e cor) e tema (nome curto) no catálogo, cada OE ligado a uma perspectiva e com o seu nome curto; dicionário de dados, testes de contrato, regras e cópia de segurança. **Lote C**: cores por perspectiva nos pontos (só os pontos; linhas neutras; herança pelo caminho; item de perspectivas diferentes fica neutro; tons de referência de noite `#E9CDB6`, `#C4D3E8`, `#D5D1B8`, `#C8DABB` e de dia `#E7C2A6`, `#AFC4E2`, `#CBC6A6`, `#B9D2A8`, a conferir nos dois temas, no celular e para daltonismo), nomes curtos no mapa e as perspectivas na legenda. **A decidir:** conferir o desempenho da acomodação num celular de verdade.
 - **Mapa do Strata, o que falta** (29/10/2026; da passagem da tarde, feitos: física do lote 5 (vizinhos que reagem e inércia), em 242, **a confirmar pelo responsável** (decisão provisória: se pedir mais liberdade, física livre como no Obsidian); tela cheia como porta de entrada, em 234 a 236; prévia do caminho ao passar o mouse, em 239; faixas em fileiras, em 240; rótulos por zoom e nomes do caminho, em 241; os temas dia e noite e o contraste já vinham de 223; da manhã, feitos: lote 2, de interação, em 217 a 219; Missão do lote 3, em 221; acabamento visual do lote 4, em 222 e 223; física do lote 5, em 226; ordem pessoal do lote 6, em 228; **a Visão ficou para depois**: seria outro item na mesma camada, que então se chamaria "Missão e Visão"). Depois: testar com o catálogo real do PEI e do PDI e conferir num celular de verdade.
@@ -1939,7 +1996,7 @@ Ações concluídas e ações de duração fixa (σᵢ = 0, em que rᵢ fica ind
 
 ### 15.6 Como reproduzir a simulação por fora
 
-Com a semente, o número de simulações e a versão do cálculo de um retrato, qualquer pessoa ou IA pode refazer a simulação, em Python, R ou outra linguagem, e obter **exatamente** os mesmos números, desde que siga estes passos (versão do cálculo 1; código em `js/simulacao.js`):
+Com a semente, o número de simulações e a versão do cálculo de um retrato, qualquer pessoa ou IA pode refazer a simulação, em Python, R ou outra linguagem, e obter **exatamente** os mesmos números, desde que siga estes passos (versão do cálculo 2; código em `js/simulacao.js`). **Antes de tudo, tire as ações contínuas** (seção 5.9) e, nas demais, as dependências que apontem para elas; sem contínuas, a versão 2 dá os mesmos números da versão 1:
 
 1. **Gerador:** mulberry32, iniciado com a semente (inteiro de 32 bits sem sinal). Cada chamada soma 0x6D2B79F5 ao estado e devolve um número em [0, 1), pelas operações de 32 bits do código.
 2. **Normal padrão:** Box-Muller, com dois sorteios (u, v), repetidos enquanto valem 0: √(−2 ln u) · cos(2πv).
@@ -2475,3 +2532,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 287 | Importação de ações: enquanto grava, "Configurar este espaço" fica travado (não fecha por nenhum caminho; sair da página pede confirmação) e mostra o progresso das ações e das dependências; no fim, o resultado fica no painel (pedido do responsável, 06/11/2026; seções 8.6 e 10). `travarPainel` em `js/telas/painel.js`; `aoAvancar` em `importarAcoes`. Testes novos em `testes/importar.test.js` e `testes/navegador/importar.test.mjs` |
 | 288 | Correção: "Configurar este espaço" só grava, ao fechar, as seções de lista (datas excluídas, fases e etapas, documentos) que a pessoa mexeu; antes, podia gravar por cima o que a importação, ou outra pessoa, tinha mudado com o painel aberto (seção 8.6) |
 | 288.1 | Importação de ações: a explicação da seção passa a listar todas as colunas que a importação reconhece, inclusive Anotações e Checklist (um item por linha), Justificativa, Local, Etiquetas, Não começa antes de e Data-limite, que já eram lidas mas não estavam na lista (seção 8.6) |
+| 289 | Ação contínua (termo técnico: atividade *hammock*), parte 1: campos `comecaCom` e `terminaCom` (marco, 4.2.5), regras do Store, cálculo das datas pelos marcos fora do caminho crítico, situação pelo marco de início, "Pode ser encerrada", sem carimbo Atrasada; fora da simulação, versão 2 do cálculo (pedido do responsável, 09/11/2026; seções 5.7, 5.9, 6 e 10). `js/continuas.js`; testes em `testes/continuas.test.js`. A tela vem na parte 2 |

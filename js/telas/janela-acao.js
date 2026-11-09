@@ -1099,6 +1099,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       acao: (n) => { const a = d.acoes.find((x) => x.numero === n); return a ? `“${nomeTexto(a)}”` : "uma ação excluída"; },
       responsavel: (id) => d.pessoas.get(id)?.nome ?? "um responsável excluído",
       etapa: (id) => etapas.get(id) ?? "etapa retirada",
+      fase: (id) => (d.espaco.estrutura ?? []).find((f) => f.id === id)?.nome ?? "fase retirada",
       situacao: (id) => personalizadasDe(d.espaco).find((x) => x.id === id)?.nome ?? "situação retirada",
       etiqueta: (id) => etiquetasDe(d.espaco).find((x) => x.id === id)?.nome ?? "etiqueta retirada",
       entrega: (id) => d.entregas?.find((x) => x.id === id)?.titulo ?? "entrega excluída",
