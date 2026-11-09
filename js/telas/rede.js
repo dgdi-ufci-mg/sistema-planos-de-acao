@@ -137,8 +137,12 @@ function animarRearranjo(caixa, { posAntes, caixasAntes }) {
 /** Raio dos círculos de início e de término (27/10/2026). */
 const RAIO = MEDIDAS.raioPonta;
 
-export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
-  inicio = null, termino = null, prazoFinal = null, edicao = null }) {
+export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
+  inicio = null, termino = null, prazoFinal = null, continuas = false, ocultarContinuas = false, aoOcultarContinuas = () => {}, edicao = null }) {
+  /* ações contínuas (seção 5.9; 09/11/2026): caixa como as outras, com ligações tracejadas aos marcos; o filtro as esconde */
+  const linhaDaAcao = new Map(linhas.map((l) => [l.acao.numero, l]));
+  const temContinuas = continuas && todas.some((a) => linhaDaAcao.get(a.numero)?.continua);
+  const acoes = temContinuas && ocultarContinuas ? todas.filter((a) => !linhaDaAcao.get(a.numero)?.continua) : todas;
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
     return;
@@ -148,8 +152,8 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
    * ganha uma cerca em volta só dos seus cartões, com o nome no alto; cada fase, uma linha vertical onde termina.
    * Início e término entram na montagem como nós, para as linhas deles seguirem as mesmas regras das setas.
    */
-  const { pos, arestas, cercas, fases, pontas, topo, largura, altura } = montarRede(acoes, caminho,
-    { pontas: true, ...(etapas ? { marcos: etapas, marcoDe: (a) => a.etapa } : {}) });
+  const { pos, arestas, cercas, fases, pontas, topo, largura, altura, ligacoesContinuas } = montarRede(acoes, caminho,
+    { pontas: true, continuas, ...(etapas ? { marcos: etapas, marcoDe: (a) => a.etapa } : {}) });
   const cercasHtml = cercas.map((c) => `<div class="rede-cerca" data-anima="cerca:${esc(c.id)}" style="left:${c.x}px;top:${c.y}px;width:${c.largura}px;height:${c.altura}px">
       <span class="rede-cerca-nome" title="${esc(c.titulo)}">${esc(c.nome)}</span></div>`).join("");
   /* fases que terminam no mesmo vão dividem a linha; os nomes ficam juntos */
@@ -165,11 +169,12 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     const { x, y } = pos.get(a.numero);
     const l = linhaDe.get(a.numero);
     const c = caminho.porAcao.get(a.numero);
-    const classe = l.situacao === "concluida" ? "concluida" : l.semEstimativa ? "sem-estimativa" : c.critica ? "critica" : "folga";
+    const classe = l.situacao === "concluida" ? "concluida" : l.continua ? "continua" : l.semEstimativa ? "sem-estimativa" : c.critica ? "critica" : "folga";
     const data = l.situacao === "concluida" ? `Concluída ${dataBr(l.conclusao)}`
       : l.semEstimativa ? "Falta estimar" : l.conclusao ? `Até ${dataBr(l.conclusao)}` : "Sem data-limite";
     /* espaço com data-limite (passo 2.4b): sem caminho crítico, sem folga */
-    const folga = l.situacao === "concluida" || l.semEstimativa || c.folga == null ? ""
+    const folga = l.continua && l.situacao !== "concluida" ? (l.podeEncerrar ? "pode ser encerrada" : "contínua")
+      : l.situacao === "concluida" || l.semEstimativa || c.folga == null ? ""
       : c.critica ? "sem folga" : `folga ${Math.round(c.folga)} ${plural(Math.round(c.folga), "dia", "dias")}`;
     return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}">
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
@@ -193,7 +198,9 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     ? `<path class="rede-ligacao" data-de="${de}" data-para="${para}" d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>`
     : `<path class="rede-seta${critica ? " critica" : ""}${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"
       d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>${edicao ? `
-      <path class="rede-seta-alvo" data-seta-de="${de}" data-seta-para="${para}" d="${caminhoDaSeta(pontos, saltos)}"><title>Clique para selecionar; Delete retira a ligação</title></path>` : ""}`)).join("");
+      <path class="rede-seta-alvo" data-seta-de="${de}" data-seta-para="${para}" d="${caminhoDaSeta(pontos, saltos)}"><title>Clique para selecionar; Delete retira a ligação</title></path>` : ""}`)).join("")
+    + ligacoesContinuas.map((g) => `<path class="rede-continua-ligacao ${g.lado}" data-continua="${g.continua}"${g.acao != null ? ` data-acao="${g.acao}"` : ""}
+      d="M${g.pontos.map(([x, y]) => `${x},${y}`).join(" L")}" marker-end="url(#rede-ponta-continua)"/>`).join("");
 
   /* inserir entre duas ações (09/11/2026): um "+" no meio do trecho mais longo de cada seta */
   const meioDaSeta = (pontos) => {
@@ -231,7 +238,9 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
         <span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
         <span class="crono-legenda"><i class="folga"></i>Com folga</span>
         <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
+        ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
       </div>
+      ${temContinuas ? `<button type="button" class="botao" data-ocultar-continuas aria-pressed="${ocultarContinuas}">${ocultarContinuas ? "Mostrar ações contínuas" : "Ocultar ações contínuas"}</button>` : ""}
       <p class="tec rede-explicacao">Da esquerda para a direita, na ordem em que as ações podem acontecer. ${edicao
         ? `Clique numa ação para selecioná-la; o <b>+</b> cria a próxima e a bolinha, arrastada até outra ação, liga as duas. O <b>+</b> no meio de uma seta insere uma ação entre as duas. Duplo clique renomeia; Enter abre. Clique numa seta e aperte Delete para desligar.`
         : `Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la.`} Ctrl + rolar o mouse aproxima e afasta; arraste o fundo para mover a rede. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
@@ -245,6 +254,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
               <defs>
                 <marker id="rede-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
                 <marker id="rede-ponta-critica" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
+                <marker id="rede-ponta-continua" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="6" markerHeight="6"><circle cx="4" cy="4" r="3"/></marker>
               </defs>
               ${setas}
             </svg>
@@ -325,6 +335,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   });
 
   alvo.querySelector(".crono-ferramentas").onclick = (e) => {
+    if (e.target.closest("[data-ocultar-continuas]")) return aoOcultarContinuas(!ocultarContinuas);
     const z = e.target.closest("[data-zoom-passo]");
     if (z) return zoomLivre(fator * (Number(z.dataset.zoomPasso) > 0 ? 1.2 : 1 / 1.2));
     const b = e.target.closest("[data-escala]");
@@ -362,6 +373,14 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     for (const n of cadeia) caixa.querySelector(`.rede-no[data-numero="${n}"]`)?.classList.add(n === numero ? "apontada" : "ligada");
     for (const s of caixa.querySelectorAll(".rede-seta")) {
       if (cadeia.has(Number(s.dataset.de)) && cadeia.has(Number(s.dataset.para))) s.classList.add("ligada");
+    }
+    /* contínua apontada: as ligações e as ações que são marcos; ação apontada: as contínuas que a têm como marco */
+    for (const g of caixa.querySelectorAll(".rede-continua-ligacao")) {
+      const da = Number(g.dataset.continua) === numero;
+      if (!da && Number(g.dataset.acao) !== numero) continue;
+      g.classList.add("ligada");
+      const outro = da ? g.dataset.acao : g.dataset.continua;
+      if (outro) caixa.querySelector(`.rede-no[data-numero="${outro}"]`)?.classList.add("ligada");
     }
   };
   caixa.addEventListener("pointerover", (e) => {

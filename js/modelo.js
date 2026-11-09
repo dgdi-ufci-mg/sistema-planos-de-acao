@@ -52,10 +52,12 @@ export const CAMPOS = Object.freeze({
   camposOpcionais: ["fasesEtapas", "descricao", "notas", "codigos", "etiquetas", "documentos", "justificativa", "local", "prioridade"],
   acao: [
     "numero", "codigo", "ordem", "etapa", "rotulo", "descricao", "justificativa", "local",
-    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "conclusaoMarcadaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "valoresPersonalizados", "posicaoPrioridade", "entregaDoPlano",
+    "dependeDe", "responsaveis", "estimativas", "dataLimite", "situacaoPersonalizada", "concluidaEm", "conclusaoMarcadaEm", "naoAntesDe", "notas", "checklist", "etiquetas", "documentos", "valoresPersonalizados", "posicaoPrioridade", "entregaDoPlano", "comecaCom", "terminaCom",
     "criadaEm", "alteradaEm", "alteradaPor", "excluidaEm", "excluidaPor",
   ],
   estimativa: ["em", "por", "o", "m", "p", "contaDe", "motivo"],
+  /** Marco de início ou de fim de uma ação contínua (seção 5.9): o projeto, uma fase, uma etapa ou uma ação. */
+  marco: ["tipo", "id", "numero"],
   /** Comentário de uma ação (passo 2.9): nunca apagado do banco; editar guarda a versão anterior. */
   comentario: ["id", "acao", "autor", "texto", "criadoEm", "editadoEm", "versoes", "apagadoEm", "apagadoPor", "apagadoComo"],
   comentarioVersao: ["texto", "em"],

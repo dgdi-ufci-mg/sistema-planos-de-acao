@@ -21,8 +21,14 @@
  * 8. Setas em ângulo reto: descidas e subidas nos vãos entre colunas, cada uma no seu trilho. Onde duas
  *    setas se cruzam, a horizontal dá um pequeno salto sobre a vertical, como no Visio.
  * 9. Nenhuma linha sobre outra: trechos que coincidiriam são afastados alguns pixels.
+ * 10. Ações contínuas (opção `continuas`; seção 5.9, 09/11/2026): caixa como as outras, na coluna do marco de
+ *    início, sem setas de dependência. Duas ligações tracejadas, desenhadas depois de tudo: "começa junto" sai da
+ *    lateral esquerda da caixa até o marco de início, e "termina junto" sai da lateral direita até o marco de fim
+ *    (a lateral direita da ação, a cerca da etapa, as cercas da fase ou o círculo do projeto). Quando o marco de
+ *    fim está noutra coluna, a ligação desce até um corredor abaixo de tudo, para não passar sobre os cartões.
  * Sem biblioteca externa.
  */
+import { ehContinua } from "./calculo.js";
 
 /** Medidas padrão do desenho, em pixels. */
 export const MEDIDAS = Object.freeze({
@@ -41,12 +47,14 @@ export const TERMINO = -2;
  * @param {object[]} acoes ações ativas, na ordem do espaço
  * @param {{porAcao: Map}} caminho resultado de caminhoCritico
  * @param {{marcos?: {id: string, nome: string, titulo?: string, fase?: string, faseNome?: string}[],
- *   marcoDe?: (acao: object) => string|null, pontas?: boolean, medidas?: Partial<typeof MEDIDAS>}} [opcoes]
- *   marcos: as etapas, na ordem; sem marcos, sem cercas. pontas: inclui os nós de início e de término
+ *   marcoDe?: (acao: object) => string|null, pontas?: boolean, continuas?: boolean, medidas?: Partial<typeof MEDIDAS>}} [opcoes]
+ *   marcos: as etapas, na ordem; sem marcos, sem cercas. pontas: inclui os nós de início e de término.
+ *   continuas: trata as ações com `comecaCom` e `terminaCom` como contínuas (item 10)
  * @returns {{colunas: number[][], coluna: Map<number, number>, pos: Map<number, {x: number, y: number}>,
  *   arestas: {de: number, para: number, critica: boolean, ligacao?: boolean, volta?: boolean, pontos: number[][], saltos: number[][]}[],
  *   cercas: {id: string, nome: string, titulo: string, fase: string|null, faseNome: string|null, x: number, y: number, largura: number, altura: number}[],
  *   fases: {id: string, nome: string, x: number}[], pontas: {inicio: {x: number, y: number}, termino: {x: number, y: number}}|null,
+ *   ligacoesContinuas: {continua: number, lado: "inicio"|"fim", acao: number|null, pontos: number[][]}[],
  *   topo: number, largura: number, altura: number}}
  *   pos: canto superior esquerdo de cada cartão; pontas: centro dos círculos; pontos: linha em ângulo reto,
  *   da saída à chegada; saltos: pontos onde a seta salta sobre outra; topo: onde começam as linhas das fases
@@ -55,7 +63,10 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   const M = { ...MEDIDAS, ...(opcoes.medidas ?? {}) };
   const R = M.raioPonta;
   const numeros = new Set(acoes.map((a) => a.numero));
-  const anteriores = new Map(acoes.map((a) => [a.numero, [...new Set((a.dependeDe ?? []).filter((d) => numeros.has(d) && d !== a.numero))]]));
+  /* ações contínuas (item 10): sem anteriores, e nenhuma ação comum depende delas */
+  const continuas = new Set(opcoes.continuas ? acoes.filter(ehContinua).map((a) => a.numero) : []);
+  const anteriores = new Map(acoes.map((a) => [a.numero, continuas.has(a.numero) ? []
+    : [...new Set((a.dependeDe ?? []).filter((d) => numeros.has(d) && d !== a.numero && !continuas.has(d)))]]));
   const seguintes = new Map(acoes.map((a) => [a.numero, []]));
   for (const [n, ds] of anteriores) for (const d of ds) seguintes.get(d).push(n);
   const comPontas = Boolean(opcoes.pontas) && acoes.length > 0;
@@ -74,6 +85,20 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     return c;
   };
   for (const a of acoes) colunaDe(a.numero);
+  /* a contínua fica na coluna do marco de início: a da ação, a primeira das ações comuns da etapa ou da fase, ou a primeira */
+  const etapaDaAcao = (a) => (opcoes.marcoDe ? opcoes.marcoDe(a) : a.etapa);
+  const porNumero = new Map(acoes.map((a) => [a.numero, a]));
+  /** Ações comuns que formam o marco; null no projeto; lista vazia se o marco não existe mais (vale o projeto). */
+  const membrosDoMarco = (m) => {
+    if (!m || m.tipo === "projeto") return null;
+    if (m.tipo === "acao") return porNumero.has(m.numero) && !continuas.has(m.numero) ? [porNumero.get(m.numero)] : [];
+    const etapas = m.tipo === "etapa" ? new Set([m.id]) : new Set((opcoes.marcos ?? []).filter((x) => x.fase === m.id).map((x) => x.id));
+    return acoes.filter((a) => !continuas.has(a.numero) && etapas.has(etapaDaAcao(a)));
+  };
+  for (const n of continuas) {
+    const ms = membrosDoMarco(porNumero.get(n).comecaCom);
+    coluna.set(n, ms?.length ? Math.min(...ms.map((a) => coluna.get(a.numero))) : desloc);
+  }
   let total = acoes.length ? Math.max(...coluna.values()) + 1 : 0;
   if (comPontas) { coluna.set(INICIO, 0); coluna.set(TERMINO, total); total += 1; }
 
@@ -101,8 +126,8 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   if (comPontas) {
     const temAntes = new Set(arestas.map((a) => a.para));
     const temDepois = new Set(arestas.map((a) => a.de));
-    for (const a of acoes) if (!temAntes.has(a.numero)) arestas.push({ de: INICIO, para: a.numero, critica: false, ligacao: true });
-    for (const a of acoes) if (!temDepois.has(a.numero)) arestas.push({ de: a.numero, para: TERMINO, critica: false, ligacao: true });
+    for (const a of acoes) if (!temAntes.has(a.numero) && !continuas.has(a.numero)) arestas.push({ de: INICIO, para: a.numero, critica: false, ligacao: true });
+    for (const a of acoes) if (!temDepois.has(a.numero) && !continuas.has(a.numero)) arestas.push({ de: a.numero, para: TERMINO, critica: false, ligacao: true });
   }
   const ehPonta = (n) => n === INICIO || n === TERMINO;
 
@@ -365,6 +390,7 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   const fimDaFase = new Map();
   if (temFases) {
     for (const a of acoes) {
+      if (continuas.has(a.numero)) continue; // a contínua não marca o fim da fase (item 10)
       const f = faseDaEtapa(etapa.get(a.numero));
       if (f != null) fimDaFase.set(f, Math.max(fimDaFase.get(f) ?? -1, coluna.get(a.numero)));
     }
@@ -477,6 +503,64 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   }
   for (const ar of arestas) ar.saltos.sort((p, q) => p[0] - q[0]);
 
+  /* ---------- 10. ligações das ações contínuas ---------- */
+  const ligacoesContinuas = [];
+  if (continuas.size) {
+    const retangulo = (lista) => {
+      const x0 = Math.min(...lista.map((r) => r.x)); const y0 = Math.min(...lista.map((r) => r.y));
+      return { x: x0, y: y0, largura: Math.max(...lista.map((r) => r.x + r.largura)) - x0, altura: Math.max(...lista.map((r) => r.y + r.altura)) - y0 };
+    };
+    const caixaDe = (n) => ({ x: pos.get(n).x, y: pos.get(n).y, largura: M.largura, altura: M.altura });
+    const comuns = acoes.filter((a) => !continuas.has(a.numero));
+    /** Onde a ligação encosta: {r: retângulo, acao, ponta} (ponta: o círculo do projeto) */
+    const alvoDoMarco = (m, lado) => {
+      const ms = membrosDoMarco(m);
+      if (ms?.length && m.tipo === "acao") return { r: caixaDe(ms[0].numero), acao: ms[0].numero };
+      if (ms?.length) {
+        const doMarco = cercas.filter((c) => (m.tipo === "etapa" ? c.id === m.id : c.fase === m.id));
+        return { r: doMarco.length ? retangulo(doMarco) : retangulo(ms.map((a) => caixaDe(a.numero))), grupo: true };
+      }
+      if (comPontas) return { ponta: lado === "inicio" ? pontas.inicio : pontas.termino };
+      return comuns.length ? { r: retangulo(comuns.map((a) => caixaDe(a.numero))), grupo: true } : null;
+    };
+    const base = Math.max(fundo, ...[...pos.values()].map((p) => p.y + M.altura), ...cercas.map((c) => c.y + c.altura));
+    let noCorredor = 0;
+    const corredor = () => { const y = base + 16 + noCorredor * M.trilha; noCorredor += 1; fundo = Math.max(fundo, y + 12); return y; };
+    const dentro = (r, b) => b.x >= r.x - 0.5 && b.x + b.largura <= r.x + r.largura + 0.5 && b.y >= r.y - 0.5 && b.y + b.altura <= r.y + r.altura + 0.5;
+    const r1 = (v) => Math.round(v * 10) / 10;
+    for (const a of acoes.filter((x) => continuas.has(x.numero))) {
+      const b = caixaDe(a.numero);
+      const by = b.y + b.altura / 2;
+      const bx = b.x;
+      const bxr = b.x + b.largura;
+      /* começa junto: da lateral esquerda até o começo do marco */
+      const ini = alvoDoMarco(a.comecaCom, "inicio");
+      if (ini) {
+        let pts;
+        if (ini.ponta) pts = [[bx, by], [bx - 10, by], [bx - 10, ini.ponta.y], [ini.ponta.x + R, ini.ponta.y]];
+        else {
+          const ay = ini.acao != null ? ini.r.y + ini.r.altura / 2 : Math.min(ini.r.y + ini.r.altura - 6, Math.max(ini.r.y + 6, by));
+          pts = Math.abs(ay - by) < 0.5 && ini.r.x < bx ? [[bx, by], [ini.r.x, by]] : [[bx, by], [Math.min(bx, ini.r.x) - 10, by], [Math.min(bx, ini.r.x) - 10, ay], [ini.r.x, ay]];
+        }
+        ligacoesContinuas.push({ continua: a.numero, lado: "inicio", acao: ini.acao ?? null, pontos: pts.map(([x, y]) => [r1(x), r1(y)]) });
+      }
+      /* termina junto: da lateral direita até o fim do marco */
+      const fim = alvoDoMarco(a.terminaCom, "fim");
+      if (fim) {
+        let pts;
+        if (fim.ponta) { const y = corredor(); pts = [[bxr, by], [bxr + 10, by], [bxr + 10, y], [fim.ponta.x, y], [fim.ponta.x, fim.ponta.y + R]]; }
+        else {
+          const ex = fim.r.x + fim.r.largura;
+          const ay = fim.acao != null ? fim.r.y + fim.r.altura / 2 : fim.r.y + fim.r.altura - 6;
+          if (fim.acao != null && Math.abs(ex - bxr) < 0.5) pts = [[bxr, by], [bxr + 10, by], [bxr + 10, ay], [ex, ay]];
+          else if (fim.grupo && dentro(fim.r, b)) pts = [[bxr, by], [bxr + 6, by], [bxr + 6, ay], [ex, ay]];
+          else { const y = corredor(); pts = [[bxr, by], [bxr + 10, by], [bxr + 10, y], [ex + 10, y], [ex + 10, ay], [ex, ay]]; }
+        }
+        ligacoesContinuas.push({ continua: a.numero, lado: "fim", acao: fim.acao ?? null, pontos: pts.map(([x, y]) => [r1(x), r1(y)]) });
+      }
+    }
+  }
+
   const alturaFinal = Math.max(fundo, comPontas ? Math.max(pontas.inicio.y, pontas.termino.y) + R + 24 : 0) + M.margem;
   return {
     colunas: camadas.map((c) => c.filter((it) => ehNo(it) && !ehPonta(it))).filter((c, i) => !(comPontas && (i === 0 || i === total - 1))),
@@ -486,6 +570,7 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     cercas,
     fases,
     pontas,
+    ligacoesContinuas,
     topo: M.margem,
     largura,
     altura: acoes.length ? alturaFinal : M.margem * 2,

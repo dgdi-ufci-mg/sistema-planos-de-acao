@@ -184,3 +184,57 @@ describe("Importação por planilha (passo 1.19b)", () => {
     assert.deepEqual(passos, ["acoes 0/3", "acoes 1/3", "acoes 2/3", "acoes 3/3", "dependencias 0/2", "dependencias 1/2", "dependencias 2/2"]);
   });
 });
+
+describe("Importação: ações contínuas (seção 5.9, 09/11/2026)", () => {
+  it("ida e volta: as colunas Começa com e Termina com saem na exportação e voltam na importação", async () => {
+    const { store, id } = await exemplo();
+    const acoes = await store.listarAcoes(id);
+    const espaco = await store.lerEspaco(id);
+    const etapa = espaco.estrutura[1].etapas[0];
+    const mod = acoes.find((a) => a.rotulo === "Modelar os dados de ensino");
+    const ing = acoes.find((a) => a.rotulo === "Ingerir os dados de ensino");
+    await store.criarAcao(id, { rotulo: "Apoio técnico", comecaCom: { tipo: "etapa", id: etapa.id }, terminaCom: { tipo: "projeto" } });
+    await store.criarAcao(id, { rotulo: "Apoio aos dados", comecaCom: { tipo: "acao", numero: mod.numero }, terminaCom: { tipo: "acao", numero: ing.numero } });
+    const texto = planilhaDoEspaco({ ...(await contexto(store, id)), geral: await store.lerCalendarioGeral() });
+    const [titulos, ...linhas] = texto.split("\n").map((l) => l.split("\t"));
+    const ci = titulos.indexOf("Começa com");
+    const ti = titulos.indexOf("Termina com");
+    assert.ok(ci > 0 && ti === ci + 1);
+    const apoio = linhas.find((l) => l.includes("Apoio técnico"));
+    assert.deepEqual([apoio[ci], apoio[ti]], [`Etapa: ${etapa.nome}`, "Projeto"]);
+    assert.equal(apoio[titulos.indexOf("Folga (dias úteis)")], "", "a contínua não tem folga");
+
+    const novo = await store.criarEspaco({ nome: "Cópia", inicio: "2026-09-01" });
+    for (const r of await store.listarResponsaveis(id)) await store.criarResponsavel(novo, { tipo: r.tipo, nome: r.nome, sigla: r.sigla });
+    const plano = planejarImportacao({ texto, ...(await contexto(store, novo)), modo: "criar" });
+    const r = await store.importarAcoes(novo, plano);
+    assert.deepEqual(r.falhas, []);
+    const copia = await store.listarAcoes(novo);
+    const ap = copia.find((a) => a.rotulo === "Apoio técnico");
+    const est = (await store.lerEspaco(novo)).estrutura;
+    assert.deepEqual(ap.comecaCom, { tipo: "etapa", id: est.flatMap((f) => f.etapas).find((e) => e.nome === etapa.nome).id });
+    assert.deepEqual(ap.terminaCom, { tipo: "projeto" });
+    const ad = copia.find((a) => a.rotulo === "Apoio aos dados");
+    const nome = (n) => copia.find((a) => a.numero === n).rotulo;
+    assert.deepEqual([nome(ad.comecaCom.numero), nome(ad.terminaCom.numero)], ["Modelar os dados de ensino", "Ingerir os dados de ensino"]);
+  });
+
+  it("importação por cima torna contínua uma ação existente; uma coluna só, numa ação comum, fica de fora", async () => {
+    const { store, id } = await exemplo();
+    const n = await store.criarAcao(id, { rotulo: "Divulgação", etiquetas: [] });
+    const fase = (await store.lerEspaco(id)).estrutura[0];
+    const texto = ["Número\tAção\tComeça com\tTermina com", `${n}\tDivulgação\tProjeto\tFase: ${fase.nome}`,
+      "\tSó um lado\tProjeto\t", "\tMarco esquisito\tMódulo: X\tProjeto"].join("\n");
+    const plano = planejarImportacao({ texto, ...(await contexto(store, id)), modo: "atualizar" });
+    assert.deepEqual(plano.linhas[0].campos.marcos, { comecaCom: { tipo: "projeto" }, terminaCom: { tipo: "fase", id: fase.id } });
+    assert.match(plano.linhas[1].avisos.join(" "), /preencha as duas colunas/);
+    assert.match(plano.linhas[2].avisos.join(" "), /não entendido/);
+    const r = await store.importarAcoes(id, plano);
+    assert.deepEqual(r.falhas, []);
+    const a = await store.lerAcao(id, n);
+    assert.deepEqual([a.comecaCom, a.terminaCom], [{ tipo: "projeto" }, { tipo: "fase", id: fase.id }]);
+    /* de novo, igual: sem mudança */
+    const outra = planejarImportacao({ texto: texto.split("\n").slice(0, 2).join("\n"), ...(await contexto(store, id)), modo: "atualizar" });
+    assert.equal(outra.linhas[0].tipo, "ignorada");
+  });
+});

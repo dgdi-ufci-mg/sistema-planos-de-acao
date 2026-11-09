@@ -92,8 +92,9 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
     const x0 = x(b.inicio);
     const x1 = x(somar(b.fim, 1));
     posicao.set(b.numero, { y: y + ALTURA / 2, x0, x1 });
-    const semEstimativa = b.duracao === 0 && b.situacao !== "concluida";
-    const classe = b.situacao === "concluida" ? "concluida" : semEstimativa ? "sem-estimativa" : b.critica ? "critica" : "folga";
+    const semEstimativa = b.duracao === 0 && b.situacao !== "concluida" && !b.continua;
+    /* ação contínua (seção 5.9): barra fina e listrada, que acompanha os marcos; concluída, como as demais */
+    const classe = b.situacao === "concluida" ? "concluida" : b.continua ? "continua" : semEstimativa ? "sem-estimativa" : b.critica ? "critica" : "folga";
     return `<div class="crono-linha" style="top:${y}px" data-numero="${a.numero}">
       <div class="crono-nome" role="button" tabindex="0" data-abrir-acao>
         ${identificador(a)}<span class="rotulo">${esc(a.rotulo)}</span>
@@ -130,6 +131,7 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
   const legenda = `<span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
     <span class="crono-legenda"><i class="folga"></i>Com folga</span>
     <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
+    ${linhas.some((l) => l.tipo === "acao" && l.barra.continua) ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
     ${base ? `<span class="crono-legenda"><i class="base"></i>No retrato</span>` : ""}`;
   const retratoEscolhido = retratos?.find((r) => r.id === comparar);
   const comparacao = retratos?.length ? `<label class="crono-comparar"><span>Comparar com</span>

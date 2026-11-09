@@ -11,7 +11,8 @@
  */
 import { normalizar } from "./acao.js";
 import { estimativaLivre } from "./acao.js";
-import { usaEstimativas, usaDependencias } from "./modelos.js";
+import { usaEstimativas, usaDependencias, usaContinuas } from "./modelos.js";
+import { ehContinua } from "./calculo.js";
 import { lerColagem, lerData, lerResponsaveis } from "./planilha.js";
 import { etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
 import { camposDe } from "./campos-personalizados.js";
@@ -36,6 +37,9 @@ const TITULOS = {
   naoAntesDe: ["nao comeca antes de", "nao antes de"],
   dataLimite: ["data-limite", "data limite", "prazo", "data de entrega"],
   etiquetas: ["etiquetas", "etiqueta", "marcadores", "tags"],
+  /* ação contínua (seção 5.9): os dois marcos */
+  comecaCom: ["comeca com", "comeca junto com", "marco de inicio"],
+  terminaCom: ["termina com", "termina junto com", "marco de fim"],
 };
 const colunaDe = (titulo) => {
   const t = normalizar(titulo).replace(/[º°.:]/g, "").replace(/\s+/g, " ").trim();
@@ -195,6 +199,8 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
       r.avisos.push("Este espaço não usa dependências: a coluna Depende de fica de fora.");
       r.dependeDeTexto = "";
     }
+    /* ação contínua (seção 5.9): os marcos são lidos na segunda passada, porque podem citar outras linhas */
+    r.marcosTexto = { comecaCom: celula(c, "comecaCom") ?? "", terminaCom: celula(c, "terminaCom") ?? "" };
     return r;
   });
 
@@ -279,7 +285,67 @@ export function planejarImportacao({ texto, espaco, acoes, responsaveis, hoje, s
     const iguais = refs.every((r) => r.numero != null) && JSON.stringify(refs.map((r) => r.numero).sort()) === JSON.stringify([...atuais].sort());
     if (!iguais) l.campos.dependeDe = refs;
   }
+  /* marcos das ações contínuas (seção 5.9): "Projeto", "Fase: nome", "Etapa: nome" ou "Ação: número, código ou nome"
+     (sem o prefixo, vale como ação). Célula vazia não muda nada; numa ação nova ou comum, as duas colunas juntas */
+  const comMarcos = usaContinuas(espaco);
+  const fasesPorNome = (nome) => (espaco.estrutura ?? []).filter((f) => normalizar(f.nome) === normalizar(nome));
+  const etapasPorNome = (nome) => etapas.filter((e) => normalizar(e.etapa) === normalizar(nome));
+  const lerMarco = (texto, l) => {
+    const t = texto.trim();
+    if (/^projeto$/i.test(normalizar(t))) return { tipo: "projeto" };
+    const m = t.match(/^([^:]+):\s*(.+)$/);
+    const prefixo = m ? normalizar(m[1]).trim() : "";
+    const resto = m ? m[2].trim() : t;
+    if (prefixo === "fase") {
+      const achadas = fasesPorNome(resto);
+      if (achadas.length === 1) return { tipo: "fase", id: achadas[0].id };
+      if (!achadas.length && etapasNovas.some((e) => normalizar(e.fase) === normalizar(resto))) return { tipo: "fase", faseNova: resto };
+      l.avisos.push(achadas.length ? `Há mais de uma fase chamada “${resto}”: o marco fica de fora.` : `Fase “${resto}” não encontrada: o marco fica de fora.`);
+      return null;
+    }
+    if (prefixo === "etapa") {
+      const achadas = etapasPorNome(resto);
+      if (achadas.length === 1) return { tipo: "etapa", ref: { id: achadas[0].id } };
+      const nova = etapasNovas.findIndex((e) => normalizar(e.etapa) === normalizar(resto));
+      if (!achadas.length && nova >= 0) return { tipo: "etapa", ref: { nova } };
+      l.avisos.push(achadas.length ? `Há mais de uma etapa chamada “${resto}”: o marco fica de fora.` : `Etapa “${resto}” não encontrada: o marco fica de fora.`);
+      return null;
+    }
+    if (m && !["acao"].includes(prefixo)) { l.avisos.push(`Marco “${t}” não entendido (use Projeto, Fase:, Etapa: ou Ação:): fica de fora.`); return null; }
+    const ref = refDe(resto);
+    if (!ref) { l.avisos.push(`“${resto}” não é número, código nem nome de uma ação: o marco fica de fora.`); return null; }
+    if ((ref.numero != null && ref.numero === l.numero) || ref.linha === l.linha) { l.avisos.push("Uma ação contínua não pode ser marco dela mesma: o marco fica de fora."); return null; }
+    return { tipo: "acao", ref };
+  };
   for (const l of linhas) {
+    if ((l.tipo !== "nova" && l.tipo !== "atualiza") || !l.marcosTexto) continue;
+    const { comecaCom, terminaCom } = l.marcosTexto;
+    if (!comecaCom && !terminaCom) continue;
+    if (!comMarcos) { l.avisos.push("Este espaço não tem ações contínuas (só com estimativas e dependências): as colunas Começa com e Termina com ficam de fora."); continue; }
+    const ja = l.existente && ehContinua(l.existente);
+    if ((!comecaCom || !terminaCom) && !ja) { l.avisos.push("Para a ação ser contínua, preencha as duas colunas, Começa com e Termina com: ficam de fora."); continue; }
+    const marcos = {};
+    for (const [campo, texto] of [["comecaCom", comecaCom], ["terminaCom", terminaCom]]) {
+      if (!texto) continue;
+      const marco = lerMarco(texto, l);
+      if (marco) marcos[campo] = marco;
+    }
+    if (!ja && (!marcos.comecaCom || !marcos.terminaCom)) continue;
+    /* sem mudança quando o marco já é o mesmo da ação */
+    const concreto = (x) => (x.tipo === "projeto" ? { tipo: "projeto" } : x.tipo === "fase" && x.id ? { tipo: "fase", id: x.id }
+      : x.tipo === "etapa" && x.ref.id ? { tipo: "etapa", id: x.ref.id } : x.tipo === "acao" && x.ref.numero != null ? { tipo: "acao", numero: x.ref.numero } : null);
+    for (const campo of Object.keys(marcos)) {
+      const c = concreto(marcos[campo]);
+      if (c && JSON.stringify(c) === JSON.stringify(l.existente?.[campo] ?? null)) delete marcos[campo];
+    }
+    if (Object.keys(marcos).length) l.campos.marcos = marcos;
+    /* a contínua não tem Depende de nem estimativa: as datas vêm dos marcos */
+    if (l.campos.dependeDe?.length) { l.avisos.push("Ação contínua não depende de outras: a coluna Depende de fica de fora."); delete l.campos.dependeDe; }
+    if (l.campos.estimativa) { l.avisos.push("Ação contínua não tem estimativa: a estimativa fica de fora."); delete l.campos.estimativa; }
+  }
+
+  for (const l of linhas) {
+    delete l.marcosTexto;
     delete l.dependeDeTexto;
     delete l.numeroPlanilha;
     delete l.codigoPlanilha;

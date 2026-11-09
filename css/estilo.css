@@ -1076,6 +1076,9 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
   transition: opacity var(--mov-rapido) var(--mov-curva), box-shadow var(--mov-rapido); }
 .crono-barra-acao:hover, .crono-barra-acao:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); outline: none; }
 .crono-barra-acao.sem-estimativa { background: transparent; border: 2px dashed var(--warn); }
+/* ação contínua (seção 5.9): fina e listrada, neutra, para não competir com as barras do caminho crítico */
+.crono-barra-acao.continua, .crono-legenda i.continua { background: repeating-linear-gradient(135deg, var(--muted) 0 3px, transparent 3px 6px); border: 1px solid var(--muted); }
+.crono-barra-acao.continua { top: calc(var(--altura) / 2 - 5px); height: 10px; }
 .crono.destacando .crono-barra-acao:not(.ligada) { opacity: .3; }
 .crono.destacando .crono-seta { opacity: .15; }
 .crono.destacando .crono-seta.ligada { opacity: 1; stroke: var(--ink); stroke-width: 1.8; }
@@ -1116,6 +1119,12 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .rede-no.critica .rede-cartao { border-left-color: var(--crit); }
 .rede-no.concluida .rede-cartao { border-left-color: var(--ok); }
 .rede-no.sem-estimativa .rede-cartao { border-left: 4px dashed var(--warn); }
+/* ação contínua na rede (seção 5.9): borda listrada neutra e ligações tracejadas aos marcos */
+.rede-no.continua .rede-cartao { border-left: 4px solid transparent; border-image: repeating-linear-gradient(180deg, var(--muted) 0 4px, transparent 4px 8px) 1; }
+.rede-continua-ligacao { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 5 4; }
+#rede-ponta-continua circle { fill: var(--muted); }
+.rede.destacando .rede-continua-ligacao:not(.ligada) { opacity: .15; }
+.rede-continua-ligacao.ligada { stroke: var(--ink); }
 .rede-cartao:hover, .rede-cartao:focus-visible { box-shadow: var(--sombra); outline: none; transform: translateY(-1px); }
 .rede-cartao:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .rede-topo { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
@@ -1589,6 +1598,9 @@ body[data-vista-atual="rede"] .conteudo { padding-bottom: 0; }
 /* ---------- situações personalizadas (passo 2.7) ---------- */
 .tag-situacao { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; font-weight: 600; color: var(--accent-ink); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px 1px 6px; }
 .tag-situacao .icone { width: 12px; height: 12px; }
+/* selo da ação contínua na lista e no quadro (seção 5.9): neutro, para não parecer alerta */
+.tag-continua { display: inline-flex; align-items: center; font-size: .78rem; font-weight: 600; color: var(--muted); border: 1px solid var(--grid); border-radius: 999px; padding: 0 8px; white-space: nowrap; }
+.tag-continua.encerrar { color: var(--accent-ink); background: var(--accent-soft); border-color: transparent; }
 .opcao.recuo { padding-left: 26px; }
 .opcao.recuo .opcao-texto { font-size: .88rem; }
 .escolha-situacao { font: inherit; font-size: .9rem; font-weight: 600; color: inherit; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 2px 2px 2px 4px; max-width: 100%; text-overflow: ellipsis; }
@@ -2869,6 +2881,10 @@ button.atributo:hover .atributo-mais { color: var(--accent-ink); }
 .bloco-prazo .janela-resumo > div { background: none; border: 0; padding: 0; }
 .bloco-prazo .botoes { margin: 0; }
 .bloco-prazo .cartao-form { margin: 0; }
+/* ação contínua (seção 5.9): o tipo no alto do bloco do prazo e o aviso "Pode ser encerrada" */
+.continua-tipo { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 600; }
+.pode-encerrar { display: flex; gap: 8px; align-items: flex-start; color: var(--ink); }
+.pode-encerrar .icone { flex: none; width: 16px; height: 16px; color: var(--ok); margin-top: 2px; }
 .janela-grade.tarefa .janela-topo > .bloco-prazo { margin-top: 6px; }
 .janela-grade.tarefa.com-circulo .janela-topo > .bloco-prazo { margin-left: 38px; }
 @media (max-width: 640px) { .janela-grade.tarefa .janela-topo > .bloco-prazo { margin-left: 0; } }

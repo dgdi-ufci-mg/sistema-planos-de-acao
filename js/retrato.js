@@ -54,7 +54,7 @@ export function montarRetrato({ espaco, acoes, responsaveis, geral, hoje }) {
         atrasada: l.atrasada,
         liberacaoPrevista: cal.data(c.liberacao),
         conclusaoPrevista: l.conclusao,
-        folga: Math.max(0, c.folga ?? 0),
+        folga: c.continua ? null : Math.max(0, c.folga ?? 0), // ação contínua: sem folga (seção 5.9)
         prioridadeExecucao: s?.prioridadeExecucao ?? null,
         prioridadeRevisao: s?.prioridadeRevisao ?? null,
       };

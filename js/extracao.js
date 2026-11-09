@@ -14,6 +14,7 @@ import { nomeDoFluxo, fluxoDe, personalizadasDe } from "./situacoes.js";
 import { etiquetasDe } from "./etiquetas.js";
 import { valoresDaAcao, campoPorId, textoDoValor } from "./campos-personalizados.js";
 import { estimativaVigente } from "./calculo.js";
+import { nomeDoMarco } from "./continuas.js";
 import { alcanceAtual, registrosDa, SITUACOES_DA_ENTREGA, TIPOS_DE_META } from "./entregas.js";
 
 const juntar = (lista) => lista.filter((x) => x != null && x !== "").join("; ");
@@ -36,6 +37,9 @@ export const CAMPOS_DA_ACAO = [
   ["local", "Local", (a) => a.local ?? null, false],
   ["responsaveis", "Responsáveis", (a, c) => juntar((a.responsaveis ?? []).map((id) => c.pessoa.get(id))), true],
   ["dependeDe", "Depende de", (a, c) => juntar((a.dependeDe ?? []).map((n) => c.referencia(n))), false],
+  /* ação contínua (seção 5.9): os dois marcos em palavras; vazios na ação comum */
+  ["comecaCom", "Começa com", (a, c) => (a.comecaCom ? nomeDoMarco(a.comecaCom, "inicio", c.espaco, c.acoes) : null), false],
+  ["terminaCom", "Termina com", (a, c) => (a.terminaCom ? nomeDoMarco(a.terminaCom, "fim", c.espaco, c.acoes) : null), false],
   ["estimativas", "Estimativa vigente (otimista · mais provável · pessimista)", (a) => { const e = estimativaVigente(a); return e ? `${e.o} · ${e.m} · ${e.p}` : null; }, false],
   ["dataLimite", "Data-limite", (a) => data(a.dataLimite), false],
   ["naoAntesDe", "Não começa antes de", (a) => data(a.naoAntesDe), false],
@@ -75,6 +79,7 @@ function contexto({ espaco, acoes, responsaveis, entregas = [] }) {
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
   return {
     espaco,
+    acoes,
     pessoa: new Map(responsaveis.map((r) => [r.id, r.sigla ? `${r.sigla} · ${r.nome}` : r.nome])),
     etapa: new Map((espaco.estrutura ?? []).flatMap((f) => (f.etapas ?? []).map((e) => [e.id, `${f.nome} › ${e.nome}`]))),
     etiqueta: new Map(etiquetasDe(espaco).map((e) => [e.id, e.nome])),
@@ -149,6 +154,7 @@ export function montarExtracao({ espacos, geral, hoje, escolha }) {
       const situacoes = new Map(personalizadasDe(e.espaco).map((s) => [s.id, s.nome]));
       const nomes = {
         acao: (n) => c.referencia(n), responsavel: (id) => c.pessoa.get(id) ?? "responsável excluído", etapa: (id) => c.etapa.get(id) ?? "etapa excluída",
+        fase: (id) => (e.espaco.estrutura ?? []).find((f) => f.id === id)?.nome ?? "fase excluída",
         etiqueta: (id) => c.etiqueta.get(id), situacao: (id) => situacoes.get(id), entrega: (id) => c.entrega.get(id),
         campoPersonalizado: (id) => { const cp = campoPorId(e.espaco, id); return cp && { nome: cp.nome, texto: (v) => textoDoValor(cp, v) }; },
       };

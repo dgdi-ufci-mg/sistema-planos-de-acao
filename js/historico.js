@@ -44,11 +44,20 @@ const dataBr = (iso) => (iso ? String(iso).slice(0, 10).split("-").reverse().joi
 const tres = (e) => `${e.o} · ${e.m} · ${e.p}`;
 const lista = (v) => (Array.isArray(v) ? v : []);
 
+/** Marco de ação contínua em palavras (seção 5.9): "o início da etapa “Diagnóstico”". */
+function textoDoMarco(m, lado, nomes) {
+  const ponta = lado === "inicio" ? "o início" : "o fim";
+  if (m.tipo === "projeto") return `${ponta} do projeto`;
+  if (m.tipo === "acao") return `${ponta} da ação ${nomes.acao(m.numero)}`;
+  if (m.tipo === "etapa") return `${ponta} da etapa “${nomes.etapa(m.id)}”`;
+  return `${ponta} da fase “${nomes.fase?.(m.id) ?? "fase retirada"}”`;
+}
+
 /**
  * Frase simples que descreve um registro do histórico, para a janela da ação.
  * @param {object} r registro (CAMPOS.historico)
- * @param {{acao: (n: number) => string, responsavel: (id: string) => string, etapa: (id: string) => string}} nomes
- *   como mostrar outra ação, um responsável e uma etapa
+ * @param {{acao: (n: number) => string, responsavel: (id: string) => string, etapa: (id: string) => string, fase?: (id: string) => string}} nomes
+ *   como mostrar outra ação, um responsável, uma etapa e uma fase
  * @returns {string} texto puro (a tela escapa)
  */
 export function descreverRegistro(r, nomes) {
@@ -128,6 +137,13 @@ export function descreverRegistro(r, nomes) {
       }
       if (d.length && a.length) return `Corrigiu a estimativa de ${tres(a.at(-1))} para ${tres(d.at(-1))} dias úteis.`;
       return "Alterou as estimativas.";
+    }
+    /* ação contínua (seção 5.9): os dois marcos; os dois vazios, a ação deixou de ser contínua */
+    case "comecaCom":
+    case "terminaCom": {
+      const lado = campo === "comecaCom" ? "inicio" : "fim";
+      const rotulo = campo === "comecaCom" ? "Começa com" : "Termina com";
+      return depois ? `“${rotulo}” passou a ser ${textoDoMarco(depois, lado, nomes)}.` : `Retirou “${rotulo}”${antes ? ` (era ${textoDoMarco(antes, lado, nomes)})` : ""}.`;
     }
     default: return `Alterou ${campo}.`;
   }

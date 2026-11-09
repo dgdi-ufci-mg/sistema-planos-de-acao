@@ -24,7 +24,7 @@ import { planilhaDoEspaco, mermaidDoEspaco } from "../exportar.js";
 import { hojeLocal } from "../dados.js";
 import { copiarTexto } from "./arquivos.js";
 import { tipoHtml, ligarTipo, lerTipo } from "./tipo-espaco.js";
-import { opcoesDoCalculo, usaSimulacao, usaDependencias } from "../modelos.js";
+import { opcoesDoCalculo, usaSimulacao, usaDependencias, usaContinuas } from "../modelos.js";
 import { nomeInicial, personalizadasDe, NOME_INICIAL_PADRAO, ehQuadro } from "../situacoes.js";
 import { resumoDoModelo } from "./modelo-espaco.js";
 import { CORES_ETIQUETA, etiquetasDe, tomDaCor, TAMANHO_DO_NOME } from "../etiquetas.js";
@@ -247,7 +247,8 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <p class="tec">Selecione as linhas no Google Planilhas ou no Excel, incluindo a linha de títulos, copie e cole abaixo.
           Colunas reconhecidas: Ação (obrigatória), Número, Código, Fase, Etapa, Descrição, Anotações, Checklist (um item por linha
           da célula), Justificativa, Local, Etiquetas, Depende de, Não começa antes de, Otimista, Mais provável, Pessimista,
-          Data-limite e Responsáveis. É o mesmo formato de "Copiar para planilha"; as demais colunas são ignoradas.</p>
+          Data-limite e Responsáveis${usaContinuas(espaco) ? `, além de Começa com e Termina com, que fazem da ação uma ação contínua
+          (“Projeto”, “Fase: nome”, “Etapa: nome” ou “Ação: número, código ou nome”)` : ""}. É o mesmo formato de "Copiar para planilha"; as demais colunas são ignoradas.</p>
         <textarea class="texto-exportado" data-importar-texto rows="6" aria-label="Linhas coladas da planilha"></textarea>
         <div class="opcoes-importar" role="radiogroup" aria-label="Ações que já existem">
           <label><input type="radio" name="modo-importar" value="criar" checked> Só criar ações novas</label>
@@ -467,7 +468,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   /* ---------- importar de planilha (passo 1.19b) ---------- */
   let plano = null;
   const NOMES_DOS_CAMPOS = { rotulo: "nome", codigo: "código", descricao: "descrição", etapa: "etapa", naoAntesDe: "“não começa antes de”",
-    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências", etiquetas: "etiquetas", justificativa: "justificativa", local: "local", dataLimite: "data-limite", notas: "anotações", checklist: "itens do checklist" };
+    responsaveis: "responsáveis", estimativa: "estimativa", dependeDe: "dependências", etiquetas: "etiquetas", justificativa: "justificativa", local: "local", dataLimite: "data-limite", notas: "anotações", checklist: "itens do checklist", marcos: "marcos da ação contínua" };
   function conferirImportacao() {
     const texto = corpo.querySelector("[data-importar-texto]").value;
     const modo = corpo.querySelector('[name="modo-importar"]:checked').value;
@@ -517,6 +518,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     const aoAvancar = ({ fase, feitas, total }) => {
       texto.textContent = fase === "acoes"
         ? `Gravando as ações: ${feitas} de ${total}`
+        : fase === "marcos" ? `Gravando os marcos das ações contínuas: ${feitas} de ${total}`
         : `Ligando as dependências: ${feitas} de ${total}`;
       barra.max = Math.max(1, total);
       barra.value = feitas;
