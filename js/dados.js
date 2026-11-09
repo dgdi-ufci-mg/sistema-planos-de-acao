@@ -1555,6 +1555,28 @@ export function criarStore(banco, opcoes = {}) {
         for (const n of desejadas.filter((x) => !atuais.includes(x))) await tentar(l.linha, () => store.acrescentarDependencia(espacoId, numero, n));
         avancar("dependencias", ++ligadas, comDependencias.length);
       }
+      /* marcos das ações contínuas (seção 5.9), depois das dependências: podem citar ações criadas agora, e a
+         contínua não pode ter anteriores. Fase ou etapa nova: o id criado acima */
+      const comMarcos = plano.linhas.filter((l) => l.campos.marcos && (l.tipo === "nova" || l.tipo === "atualiza"));
+      if (comMarcos.length) {
+        const estrutura = (await store.lerEspaco(espacoId)).estrutura ?? [];
+        const idDaFase = (nome) => estrutura.find((f) => f.nome.trim().toLowerCase() === nome.trim().toLowerCase())?.id;
+        const marcoGravado = (m) => {
+          if (m.tipo === "projeto") return { tipo: "projeto" };
+          if (m.tipo === "fase") return { tipo: "fase", id: m.id ?? idDaFase(m.faseNova) };
+          if (m.tipo === "etapa") return { tipo: "etapa", id: etapaId(m.ref) };
+          return { tipo: "acao", numero: m.ref.numero ?? numeroDaLinha.get(m.ref.linha) };
+        };
+        avancar("marcos", 0, comMarcos.length);
+        let marcados = 0;
+        for (const l of comMarcos) {
+          const numero = l.tipo === "nova" ? numeroDaLinha.get(l.linha) : l.numero;
+          if (numero != null) {
+            await tentar(l.linha, () => store.alterarAcao(espacoId, numero, Object.fromEntries(Object.entries(l.campos.marcos).map(([k, m]) => [k, marcoGravado(m)]))));
+          }
+          avancar("marcos", ++marcados, comMarcos.length);
+        }
+      }
       return { criadas, atualizadas, falhas };
     },
 

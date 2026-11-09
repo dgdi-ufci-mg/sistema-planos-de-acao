@@ -117,3 +117,23 @@ export function marcosSugeridos(acao, espaco) {
   const m = acao.etapa && etapas.has(acao.etapa) ? { tipo: "etapa", id: acao.etapa } : { tipo: "projeto" };
   return { comecaCom: { ...m }, terminaCom: { ...m } };
 }
+
+/**
+ * Marco como texto de planilha (exportação e importação; seção 8.6): "Projeto", "Fase: <nome>", "Etapa: <nome>" ou
+ * "Ação: <código ou número>". O mesmo formato volta pela importação.
+ * @param {object} marco
+ * @param {object} espaco
+ * @param {object[]} acoes
+ * @param {boolean} usaCodigos  com códigos, a ação vai pelo código; sem, pelo número
+ */
+export function marcoNaPlanilha(marco, espaco, acoes, usaCodigos) {
+  if (!marco) return "";
+  if (marco.tipo === "projeto") return "Projeto";
+  if (marco.tipo === "acao") {
+    const a = acoes.find((x) => x.numero === marco.numero);
+    return `Ação: ${a && usaCodigos && a.codigo ? a.codigo : marco.numero}`;
+  }
+  const fases = espaco.estrutura ?? [];
+  const nome = marco.tipo === "fase" ? fases.find((f) => f.id === marco.id)?.nome : fases.flatMap((f) => f.etapas).find((e) => e.id === marco.id)?.nome;
+  return `${marco.tipo === "fase" ? "Fase" : "Etapa"}: ${nome ?? marco.id}`;
+}

@@ -12,7 +12,8 @@ import { camposAtivos, textoDoValor } from "./campos-personalizados.js";
 import { posicoesDaPrioridade } from "./prioridade.js";
 import { caminhoCritico, estimativaVigente, duracaoPert } from "./calculo.js";
 import { dataBr } from "./formato.js";
-import { opcoesDoCalculo, usaDataLimite, usaDependencias } from "./modelos.js";
+import { opcoesDoCalculo, usaDataLimite, usaDependencias, usaContinuas } from "./modelos.js";
+import { ehContinua, marcoNaPlanilha } from "./continuas.js";
 import { fluxoDe, nomeDoFluxo } from "./situacoes.js";
 
 
@@ -63,10 +64,13 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
   /* colunas conforme o modelo do espaço (passo 2.4b): dependências, e estimativas ou data-limite */
   const comDependencias = usaDependencias(espaco);
   const comEstimativas = !usaDataLimite(espaco);
+  /* ação contínua (seção 5.9): as colunas dos marcos, só quando o espaço tem alguma, no formato que a importação lê */
+  const comMarcos = usaContinuas(espaco) && acoes.some(ehContinua);
   /* campos personalizados ativos (passo 3.6): uma coluna cada, com o nome do campo; a importação ainda as ignora */
   const personalizados = camposAtivos(espaco);
   const titulos = ["Número", ...(usaCodigos ? ["Código"] : []), ...(usaFases ? ["Fase", "Etapa"] : []), "Ação",
     ...(usaDescricao ? ["Descrição"] : []), ...(comJustificativa ? ["Justificativa"] : []), ...(comLocal ? ["Local"] : []), ...(comDependencias ? ["Depende de"] : []),
+    ...(comMarcos ? ["Começa com", "Termina com"] : []),
     ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
     "Responsáveis", ...(posicao ? ["Prioridade da equipe"] : []), ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), ...personalizados.map((x) => x.nome), ...(comEntrega ? ["Entrega do Plano de Ação"] : []), "Situação", "Atrasada",
     ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
@@ -78,6 +82,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
       ...(usaDescricao ? [a.descricao ?? ""] : []),
       ...(comJustificativa ? [a.justificativa ?? ""] : []), ...(comLocal ? [a.local ?? ""] : []),
       ...(comDependencias ? [(a.dependeDe ?? []).map((d) => (porNumero.has(d) ? referencia(porNumero.get(d), usaCodigos) : d)).join("; ")] : []),
+      ...(comMarcos ? [marcoNaPlanilha(a.comecaCom, espaco, acoes, usaCodigos), marcoNaPlanilha(a.terminaCom, espaco, acoes, usaCodigos)] : []),
       ...(comEstimativas ? [numero(e?.o), numero(e?.m), numero(e?.p), e ? numero(duracaoPert(e)) : ""] : [a.dataLimite ? dataBr(a.dataLimite) : ""]),
       (a.responsaveis ?? []).map((id) => pessoa.get(id)).filter(Boolean).join("; "),
       ...(posicao ? [posicao.get(a.numero) ?? ""] : []),
@@ -87,7 +92,8 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
       ...(comEntrega ? [tituloDaEntrega(a.entregaDoPlano)] : []),
       /* situação personalizada, quando houver (passo 2.7) */
       c.situacao === "liberada" ? nomeDoFluxo(espaco, fluxoDe(a, c.situacao, espaco)) : SITUACAO[c.situacao] ?? c.situacao, c.atrasada ? "sim" : "não",
-      ...(comEstimativas ? [dataBr(inicio), dataBr(fim), concluida ? "" : numero(Math.max(0, c.folga)), concluida ? "" : (c.critica ? "sim" : "não")] : []),
+      /* a contínua não tem folga (seção 5.9): as duas células ficam vazias */
+      ...(comEstimativas ? [dataBr(inicio), dataBr(fim), concluida || c.continua ? "" : numero(Math.max(0, c.folga)), concluida || c.continua ? "" : (c.critica ? "sim" : "não")] : []),
     ].map(campo).join("\t");
   });
   return [titulos.join("\t"), ...linhas].join("\n");
