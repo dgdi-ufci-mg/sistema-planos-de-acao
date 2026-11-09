@@ -1139,6 +1139,35 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .rede.destacando .rede-seta.ligada { stroke-width: 2.4; }
 .rede-no.apontada .rede-cartao { box-shadow: 0 0 0 2px var(--ink), var(--sombra); }
 @media (prefers-reduced-motion: reduce) { .rede-cartao, .rede-no, .rede-seta { transition: none; } }
+/* edição dentro da Rede (09/11/2026): seleção, "+" para a próxima ação, bolinha para ligar, setas clicáveis */
+.rede-setas { pointer-events: none; }
+.rede-seta-alvo { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: pointer; }
+.rede-seta.selecionada { stroke: var(--accent); stroke-width: 2.8; }
+.rede.destacando .rede-seta.selecionada { opacity: 1; }
+.rede:focus { outline: none; }
+.rede.editavel .rede-cartao { cursor: default; }
+.rede-no.selecionada .rede-cartao { box-shadow: 0 0 0 2px var(--accent), var(--sombra); }
+.rede-no.selecionada .rede-cartao:focus-visible { outline: none; }
+.rede .rede-no.alvo-ligacao { opacity: 1; }
+.rede .rede-no.alvo-ligacao .rede-cartao { box-shadow: 0 0 0 3px var(--accent), var(--sombra); transform: translateY(-1px); }
+.rede.editavel .rede-no::after { content: ""; position: absolute; top: -8px; right: -44px; width: 44px; height: 40px; }
+.rede-mais, .rede-alca { position: absolute; z-index: 2; opacity: 0; pointer-events: none;
+  transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
+.rede-mais { top: -6px; right: -38px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--accent-ink); box-shadow: var(--relevo); cursor: pointer; transform: scale(.85); }
+.rede-mais svg { width: 16px; height: 16px; }
+.rede-mais:hover, .rede-mais:focus-visible { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.rede-mais:disabled { opacity: .5; cursor: progress; }
+.rede-alca { top: 50%; right: -7px; width: 12px; height: 12px; margin-top: -6px; box-sizing: border-box; border-radius: 999px;
+  border: 2px solid var(--accent); background: var(--surface); cursor: crosshair; touch-action: none; }
+.rede-alca::before { content: ""; position: absolute; inset: -8px; } /* área de toque maior que o desenho */
+.rede-alca:hover { background: var(--accent); transform: scale(1.25); }
+.rede.editavel:not(.ligando) .rede-no:hover :is(.rede-mais, .rede-alca), .rede.editavel .rede-no.selecionada :is(.rede-mais, .rede-alca) { opacity: 1; pointer-events: auto; }
+.rede.editavel:not(.ligando) .rede-no:hover .rede-mais, .rede.editavel .rede-no.selecionada .rede-mais { transform: none; }
+.rede.ligando, .rede.ligando * { cursor: crosshair !important; }
+.rede-ligando { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.rede-ligando path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
+@media (prefers-reduced-motion: reduce) { .rede-mais, .rede-alca { transition: none; } }
 
 /* ---------- exportação (passo 1.19a) ---------- */
 .texto-exportado { width: 100%; box-sizing: border-box; font: .8rem var(--f-dados); padding: 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--sunk); color: var(--ink); margin-top: 8px; }

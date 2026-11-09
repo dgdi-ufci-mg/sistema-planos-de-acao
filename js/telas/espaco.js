@@ -992,7 +992,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         marcos: usaFases ? (espaco.estrutura ?? []).flatMap((f) => (f.etapas ?? []).map((e) => ({ id: e.id, nome: e.nome, titulo: `${f.nome} › ${e.nome}`, fase: f.id, faseNome: f.nome }))) : null,
         /* círculos de início e de término (27/10/2026): o início do espaço e a conclusão prevista (a data mais tardia das ações) */
         inicio: espaco.inicio ?? null, termino: linhas.map((l) => l.conclusao).filter(Boolean).sort().at(-1) ?? null, prazoFinal: espaco.prazoFinal ?? null,
-        aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); } });
+        aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); },
+        /* edição dentro da Rede (09/11/2026, pedido do responsável: fluidez de um editor de fluxo como o Bizagi) */
+        edicao: store.podeGravar !== false ? edicaoDaRede() : null });
       return;
     }
     if (ui.modo === "linha") { desenharLinhaDoTempo(lista, { espaco, cal, sim, hoje, temAcoes: acoes.length > 0 }); return; }
@@ -2185,6 +2187,37 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /* ---------- edição no lugar: Alt+clique no nome, na descrição ou nos participantes (22/10/2026) ---------- */
   /** campo de texto em edição: os redesenhos esperam o fim, para não apagar o que se digita */
+  /**
+   * Edição dentro da Rede (09/11/2026, pedido do responsável): criar a próxima ação a partir de um cartão,
+   * ligar duas ações arrastando, desligar uma seta, renomear com duplo clique e abrir com Enter.
+   * Tudo passa pelo Store; os erros (ciclo, permissão) viram aviso.
+   */
+  function edicaoDaRede() {
+    const falhar = (f) => { avisar(f.message); return null; };
+    return {
+      podeCriar: Boolean(perm.criarAcao),
+      async criarDepois(numero) {
+        const origem = acoes.find((a) => a.numero === numero);
+        const naoAntesDe = dataMinimaPadrao(espaco, hoje);
+        try {
+          return await store.criarAcao(espacoId, {
+            rotulo: `Nova ${termos(espaco).acao}`,
+            dependeDe: [numero],
+            ...(origem?.etapa ? { etapa: origem.etapa } : {}),
+            ...(naoAntesDe ? { naoAntesDe } : {}),
+          });
+        } catch (f) { return falhar(f); }
+      },
+      ligar: (de, para) => store.acrescentarDependencia(espacoId, para, de).then(() => true, falhar),
+      desligar: (de, para) => store.retirarDependencia(espacoId, para, de).then(() => {
+        avisar("Ligação retirada.", { acao: { texto: "Desfazer", fazer: () => store.acrescentarDependencia(espacoId, para, de).catch(falhar) } });
+        return true;
+      }, falhar),
+      renomear: (campo) => editarNoLugar(campo),
+      abrir: (numero) => abrirJanela(numero),
+    };
+  }
+
   let editando = false;
   let redesenharDepois = false;
   function editarNoLugar(campo) {

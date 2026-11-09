@@ -21,11 +21,21 @@ import { ICONES } from "../icones.js";
 /** Ajuste da altura ao redimensionar a janela: um só por vez, trocado a cada desenho. */
 let aoRedimensionar = null;
 
+/**
+ * Seleção na Rede (09/11/2026): sobrevive aos redesenhos que cada gravação provoca.
+ * `{tipo: "no", numero}` ou `{tipo: "seta", de, para}`. `renomearAoDesenhar` é a ação recém-criada pelo "+",
+ * que abre o nome para edição assim que aparece.
+ */
+let selecao = null;
+let renomearAoDesenhar = null;
+/** Renomear no desenho mais recente: a resposta do "+" pode chegar depois de um redesenho. */
+let renomearNoAtual = () => false;
+
 /** Raio dos círculos de início e de término (27/10/2026). */
 const RAIO = MEDIDAS.raioPonta;
 
 export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
-  inicio = null, termino = null, prazoFinal = null }) {
+  inicio = null, termino = null, prazoFinal = null, edicao = null }) {
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
     return;
@@ -64,7 +74,9 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
         <span class="rede-topo">${situacao(l)}<span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
         <span class="rede-base"><span class="donos">${donos(a)}</span>
           <span class="rede-data${l.atrasada ? " atrasada" : ""}"><span class="mono">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}${data}</span>${folga ? `<small>${folga}</small>` : ""}</span></span>
-      </div>
+      </div>${edicao ? `
+      ${edicao.podeCriar ? `<button type="button" class="rede-mais" data-rede-mais="${a.numero}" title="Criar a próxima ação, ligada a esta" aria-label="Criar a próxima ação depois de ${esc(a.rotulo)}">${ICONES.mais}</button>` : ""}
+      <span class="rede-alca" data-rede-alca="${a.numero}" title="Arraste até outra ação para ligá-las"></span>` : ""}
     </div>`;
   }).join("");
 
@@ -77,9 +89,11 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   const setas = arestas.map(({ de, para, critica, volta, ligacao, pontos, saltos }) => (ligacao
     ? `<path class="rede-ligacao" data-de="${de}" data-para="${para}" d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>`
     : `<path class="rede-seta${critica ? " critica" : ""}${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"
-      d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>`)).join("");
+      d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta${critica ? "-critica" : ""})"/>${edicao ? `
+      <path class="rede-seta-alvo" data-seta-de="${de}" data-seta-para="${para}" d="${caminhoDaSeta(pontos, saltos)}"><title>Clique para selecionar; Delete retira a ligação</title></path>` : ""}`)).join("");
 
   const anterior = alvo.querySelector("[data-rede-rolagem]");
+  const focoDentro = alvo.contains(document.activeElement);
   const rolagemAnterior = anterior ? [anterior.scrollLeft, anterior.scrollTop] : null;
   alvo.innerHTML = `
     <div class="crono-ferramentas">
@@ -96,9 +110,11 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
         <span class="crono-legenda"><i class="folga"></i>Com folga</span>
         <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
       </div>
-      <p class="tec rede-explicacao">Da esquerda para a direita, na ordem em que as ações podem acontecer. Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la. Ctrl + rolar o mouse aproxima e afasta; arraste o fundo para mover a rede. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
+      <p class="tec rede-explicacao">Da esquerda para a direita, na ordem em que as ações podem acontecer. ${edicao
+        ? `Clique numa ação para selecioná-la; o <b>+</b> cria a próxima e a bolinha, arrastada até outra ação, liga as duas. Duplo clique renomeia; Enter abre. Clique numa seta e aperte Delete para desligar.`
+        : `Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la.`} Ctrl + rolar o mouse aproxima e afasta; arraste o fundo para mover a rede. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
     </div>
-    <div class="rede" data-rede>
+    <div class="rede${edicao ? " editavel" : ""}" data-rede tabindex="-1">
       <div class="rede-rolagem" data-rede-rolagem>
         <div class="rede-tamanho" data-tamanho>
           <div class="rede-conteudo" data-conteudo style="width:${largura}px;height:${altura}px">
@@ -112,6 +128,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
             </svg>
             ${cartoes}
             ${pontosHtml}
+            ${edicao ? `<svg class="rede-ligando" width="${largura}" height="${altura}" aria-hidden="true"><path data-ligando d=""/></svg>` : ""}
           </div>
         </div>
       </div>
@@ -164,13 +181,15 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     const r = rolagem.getBoundingClientRect();
     zoomLivre(fator * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)), e.clientX - r.left, e.clientY - r.top);
   }, { passive: false });
-  /* arrastar o fundo (fora dos cartões) move a rede */
+  /* arrastar o fundo (fora dos cartões) move a rede; um arrasto não conta como clique no fundo */
+  let moveuFundo = false;
   rolagem.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || e.target.closest("[data-rede-no]")) return;
+    if (e.button !== 0 || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-alca], .rede-seta-alvo")) return;
     const inicio = { x: e.clientX, y: e.clientY, l: rolagem.scrollLeft, t: rolagem.scrollTop };
     rolagem.setPointerCapture(e.pointerId);
     rolagem.classList.add("arrastando");
-    const mover = (ev) => { rolagem.scrollLeft = inicio.l - (ev.clientX - inicio.x); rolagem.scrollTop = inicio.t - (ev.clientY - inicio.y); };
+    moveuFundo = false;
+    const mover = (ev) => { if (Math.hypot(ev.clientX - inicio.x, ev.clientY - inicio.y) > 3) moveuFundo = true; rolagem.scrollLeft = inicio.l - (ev.clientX - inicio.x); rolagem.scrollTop = inicio.t - (ev.clientY - inicio.y); };
     const soltar = () => {
       rolagem.classList.remove("arrastando");
       rolagem.removeEventListener("pointermove", mover);
@@ -234,4 +253,173 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     if (no) destacar(Number(no.dataset.redeNo));
   });
   caixa.addEventListener("focusout", limpar);
+
+  if (edicao) ativarEdicao({ caixa, rolagem, conteudo, fator: () => fator, edicao, destacar, limpar, focoDentro, moveuFundo: () => moveuFundo });
+}
+
+/**
+ * Edição dentro da Rede (09/11/2026, pedido do responsável; documentação técnica, seção 8.4).
+ * Clique seleciona (não abre); duplo clique ou F2 renomeia; Enter abre a ação; o "+" cria a próxima ação, já
+ * ligada e com o nome aberto para digitar; a bolinha, arrastada até outro cartão, cria a dependência; uma seta
+ * selecionada sai com Delete. Esc tira a seleção.
+ */
+function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpar, focoDentro, moveuFundo }) {
+  const no = (n) => caixa.querySelector(`.rede-no[data-numero="${n}"]`);
+  const seta = (de, para) => caixa.querySelector(`.rede-seta[data-de="${de}"][data-para="${para}"]`);
+  const marcar = () => {
+    for (const el of caixa.querySelectorAll(".selecionada")) el.classList.remove("selecionada");
+    if (selecao?.tipo === "no") no(selecao.numero)?.classList.add("selecionada");
+    if (selecao?.tipo === "seta") seta(selecao.de, selecao.para)?.classList.add("selecionada");
+    if (selecao && !caixa.querySelector(".selecionada")) selecao = null; // sumiu depois de uma mudança
+    caixa.classList.toggle("com-selecao", Boolean(selecao));
+  };
+  const selecionarNo = (n, focar = true) => {
+    selecao = { tipo: "no", numero: n };
+    marcar();
+    if (focar) no(n)?.querySelector("[data-rede-no]")?.focus({ preventScroll: true });
+  };
+  const selecionarSeta = (de, para) => { selecao = { tipo: "seta", de, para }; marcar(); caixa.focus({ preventScroll: true }); };
+  const desmarcar = () => { selecao = null; marcar(); };
+  /* traz o cartão para dentro da área visível, se estiver fora */
+  const mostrar = (n) => {
+    const el = no(n);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const v = rolagem.getBoundingClientRect();
+    const folga = 40;
+    if (r.right > v.right - folga) rolagem.scrollLeft += r.right - v.right + folga;
+    else if (r.left < v.left + folga) rolagem.scrollLeft -= v.left + folga - r.left;
+    if (r.bottom > v.bottom - folga) rolagem.scrollTop += r.bottom - v.bottom + folga;
+    else if (r.top < v.top + folga) rolagem.scrollTop -= v.top + folga - r.top;
+  };
+  const renomear = (n) => {
+    const campo = no(n)?.querySelector('[data-editar="rotulo"]');
+    if (!campo) return false;
+    selecionarNo(n, false);
+    mostrar(n);
+    edicao.renomear(campo);
+    return true;
+  };
+
+  renomearNoAtual = renomear;
+  marcar();
+  if (renomearAoDesenhar != null && renomear(renomearAoDesenhar)) renomearAoDesenhar = null;
+  else if (focoDentro && selecao?.tipo === "no") no(selecao.numero)?.querySelector("[data-rede-no]")?.focus({ preventScroll: true });
+  else if (focoDentro && selecao?.tipo === "seta") caixa.focus({ preventScroll: true });
+
+  /* cliques: na fase de captura, para que o clique num cartão selecione em vez de abrir a janela */
+  caixa.addEventListener("click", (e) => {
+    if (e.target.closest("[data-editando]")) return e.stopPropagation();
+    const mais = e.target.closest("[data-rede-mais]");
+    if (mais) {
+      e.stopPropagation();
+      const origem = Number(mais.dataset.redeMais);
+      mais.disabled = true;
+      edicao.criarDepois(origem).then((numero) => {
+        mais.disabled = false;
+        if (numero == null) return;
+        /* o redesenho pode chegar antes ou depois da resposta */
+        if (!renomearNoAtual(numero)) { renomearAoDesenhar = numero; selecao = { tipo: "no", numero }; }
+      });
+      return;
+    }
+    if (e.target.closest("[data-rede-alca]")) return e.stopPropagation();
+    const alvoSeta = e.target.closest(".rede-seta-alvo");
+    if (alvoSeta) { e.stopPropagation(); return selecionarSeta(Number(alvoSeta.dataset.setaDe), Number(alvoSeta.dataset.setaPara)); }
+    const cartao = e.target.closest("[data-rede-no]");
+    if (cartao) {
+      if (e.altKey) return; // Alt+clique continua editando no lugar (22/10/2026)
+      e.stopPropagation();
+      return selecionarNo(Number(cartao.dataset.redeNo));
+    }
+    if (e.target.closest(".rede-rolagem") && !moveuFundo()) desmarcar();
+  }, true);
+  caixa.addEventListener("dblclick", (e) => {
+    const cartao = e.target.closest("[data-rede-no]");
+    if (!cartao || e.target.closest("[data-editando]")) return;
+    e.preventDefault();
+    renomear(Number(cartao.dataset.redeNo));
+  });
+  caixa.addEventListener("keydown", (e) => {
+    if (e.target.closest("[data-editando]")) return;
+    if (e.key === "Escape" && selecao) { e.stopPropagation(); desmarcar(); return caixa.focus({ preventScroll: true }); }
+    if (selecao?.tipo === "seta" && (e.key === "Delete" || e.key === "Backspace")) {
+      e.preventDefault();
+      e.stopPropagation();
+      const { de, para } = selecao;
+      selecao = null;
+      edicao.desligar(de, para);
+      return;
+    }
+    const cartao = e.target.closest("[data-rede-no]");
+    if (!cartao) return;
+    const n = Number(cartao.dataset.redeNo);
+    if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); return edicao.abrir(n); }
+    if (e.key === "F2") { e.preventDefault(); e.stopPropagation(); return renomear(n); }
+  }, true);
+  /* o foco por teclado também seleciona */
+  caixa.addEventListener("focusin", (e) => {
+    const cartao = e.target.closest("[data-rede-no]");
+    if (cartao && !(selecao?.tipo === "no" && selecao.numero === Number(cartao.dataset.redeNo))) selecionarNo(Number(cartao.dataset.redeNo), false);
+  });
+
+  /* ---------- ligar arrastando a bolinha até outro cartão ---------- */
+  const linha = caixa.querySelector("[data-ligando]");
+  caixa.addEventListener("pointerdown", (e) => {
+    const alca = e.target.closest("[data-rede-alca]");
+    if (!alca || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const origem = Number(alca.dataset.redeAlca);
+    const base = conteudo.getBoundingClientRect();
+    const local = (x, y) => [(x - base.left) / fator(), (y - base.top) / fator()];
+    const r = alca.getBoundingClientRect();
+    const [x0, y0] = local(r.left + r.width / 2, r.top + r.height / 2);
+    alca.setPointerCapture(e.pointerId);
+    caixa.classList.add("ligando");
+    destacar(origem);
+    let destino = null;
+    let ultimo = { clientX: e.clientX, clientY: e.clientY };
+    /* perto da borda, a rede rola sozinha, para alcançar ações fora da tela */
+    let rolando = 0;
+    const rolarNaBorda = () => {
+      const v = rolagem.getBoundingClientRect();
+      const borda = 48;
+      const passo = (d) => (d < borda ? Math.ceil((borda - d) / 4) : 0);
+      const dx = passo(ultimo.clientX - v.left) * -1 + passo(v.right - ultimo.clientX);
+      const dy = passo(ultimo.clientY - v.top) * -1 + passo(v.bottom - ultimo.clientY);
+      if (dx || dy) { rolagem.scrollLeft += dx; rolagem.scrollTop += dy; mover(ultimo); }
+      rolando = requestAnimationFrame(rolarNaBorda);
+    };
+    rolando = requestAnimationFrame(rolarNaBorda);
+    const mover = (ev) => {
+      ultimo = { clientX: ev.clientX, clientY: ev.clientY };
+      const base = conteudo.getBoundingClientRect();
+      const local = (x, y) => [(x - base.left) / fator(), (y - base.top) / fator()];
+      const [x, y] = local(ev.clientX, ev.clientY);
+      const meio = x0 + Math.max(24, (x - x0) / 2);
+      linha.setAttribute("d", `M${x0},${y0} C${meio},${y0} ${x - Math.max(24, (x - x0) / 2)},${y} ${x},${y}`);
+      const sob = document.elementFromPoint(ev.clientX, ev.clientY)?.closest(".rede-no");
+      const n = sob ? Number(sob.dataset.numero) : null;
+      if (n !== destino) {
+        caixa.querySelector(".rede-no.alvo-ligacao")?.classList.remove("alvo-ligacao");
+        destino = n !== origem ? n : null;
+        if (destino != null) sob.classList.add("alvo-ligacao");
+      }
+    };
+    const soltar = () => {
+      cancelAnimationFrame(rolando);
+      alca.removeEventListener("pointermove", mover);
+      alca.removeEventListener("pointerup", soltar);
+      alca.removeEventListener("pointercancel", soltar);
+      caixa.classList.remove("ligando");
+      caixa.querySelector(".rede-no.alvo-ligacao")?.classList.remove("alvo-ligacao");
+      linha.setAttribute("d", "");
+      limpar();
+      if (destino != null) { selecao = { tipo: "no", numero: destino }; edicao.ligar(origem, destino); }
+    };
+    alca.addEventListener("pointermove", mover);
+    alca.addEventListener("pointerup", soltar);
+    alca.addEventListener("pointercancel", soltar);
+  });
 }
