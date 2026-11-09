@@ -110,8 +110,10 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     const [de, para] = await p.evaluate(() => {
       const v = document.querySelector("[data-rede-rolagem]").getBoundingClientRect();
       const dentro = (el) => { const r = el.getBoundingClientRect(); return r.left > v.left && r.right < v.right && r.top > v.top && r.bottom < v.bottom; };
-      const s = [...document.querySelectorAll(".rede-seta")].find((el) => dentro(el)
-        && dentro(document.querySelector(`.rede-no[data-numero="${el.dataset.de}"]`)) && dentro(document.querySelector(`.rede-no[data-numero="${el.dataset.para}"]`)));
+      const no = (n) => document.querySelector(`.rede-no[data-numero="${n}"]`);
+      /* na mesma etapa: entre etapas diferentes, a pessoa escolhe a etapa (teste próprio) */
+      const s = [...document.querySelectorAll(".rede-seta")].find((el) => dentro(el) && dentro(no(el.dataset.de)) && dentro(no(el.dataset.para))
+        && no(el.dataset.de).dataset.etapa === no(el.dataset.para).dataset.etapa);
       return [Number(s.dataset.de), Number(s.dataset.para)];
     });
     const botao = p.locator(`[data-inserir-de="${de}"][data-inserir-para="${para}"]`);
@@ -140,10 +142,116 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     const [de, para] = [Number(await s.getAttribute("data-seta-de")), Number(await s.getAttribute("data-seta-para"))];
     await s.evaluate((el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     await p.keyboard.press("Enter");
+    if (await p.locator(".rede-escolha").count()) await p.keyboard.press("Enter"); // etapas diferentes: a primeira opção
     await p.waitForSelector(".rede [data-editando]");
     await p.keyboard.press("Enter");
     await assentar(p);
     assert.equal(await p.locator(`.rede-seta[data-de="${de}"][data-para="${para}"]`).count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("entre etapas diferentes, a caixa da nova ação aparece e a pessoa escolhe a etapa", async () => {
+    const p = await abrirRede();
+    const [de, para, etapaPara] = await p.evaluate(() => {
+      const no = (n) => document.querySelector(`.rede-no[data-numero="${n}"]`);
+      const s = [...document.querySelectorAll(".rede-seta")].find((el) => no(el.dataset.de).dataset.etapa !== no(el.dataset.para).dataset.etapa);
+      return [Number(s.dataset.de), Number(s.dataset.para), no(s.dataset.para).dataset.etapa];
+    });
+    await p.locator(`[data-inserir-de="${de}"][data-inserir-para="${para}"]`).evaluate((el) => el.scrollIntoView({ block: "center", inline: "center" }));
+    await p.locator(`.rede-seta-alvo[data-seta-de="${de}"][data-seta-para="${para}"]`).dispatchEvent("pointerover");
+    await assentar(p, 250);
+    await p.locator(`[data-inserir-de="${de}"][data-inserir-para="${para}"]`).click();
+    await p.waitForSelector(".rede-escolha .rede-fantasma");
+    assert.equal(await p.locator(".rede-escolha [data-escolher-etapa]").count(), 2);
+    if (SCREENSHOTS) { await assentar(p, 250); await p.screenshot({ path: `${SCREENSHOTS}/7-escolha.png` }); }
+    await p.locator(`.rede-escolha [data-escolher-etapa="${etapaPara}"]`).click();
+    await p.waitForSelector(".rede [data-editando]");
+    await p.keyboard.type("Na etapa de chegada");
+    await p.keyboard.press("Enter");
+    await p.waitForSelector(".rede-estimar"); // a caixinha de prazos abre em seguida
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    const nova = p.locator(".rede-no", { hasText: "Na etapa de chegada" });
+    assert.equal(await nova.getAttribute("data-etapa"), etapaPara);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("a ação nova nasce no ponto do + e desliza até o lugar; as outras deslizam também", async () => {
+    const p = await abrirRede();
+    await p.evaluate(() => {
+      window.__movimento = { nasceu: false, deslizou: false };
+      new MutationObserver((ms) => {
+        for (const m of ms) {
+          const el = m.target;
+          if (!(el instanceof HTMLElement) || !el.classList.contains("rede-no")) continue;
+          if (/scale\(/.test(el.style.transform)) window.__movimento.nasceu = true;
+          else if (/translate\(/.test(el.style.transform)) window.__movimento.deslizou = true;
+        }
+      }).observe(document.querySelector("[data-lista]") ?? document.body, { subtree: true, attributes: true, attributeFilter: ["style"], childList: true });
+    });
+    const origem = p.locator(".rede-no").first();
+    await origem.locator(".rede-cartao").click();
+    await origem.locator(".rede-mais").click();
+    await p.waitForSelector(".rede [data-editando]");
+    const mov = await p.evaluate(() => window.__movimento);
+    assert.ok(mov.nasceu, "a nova começa pequena no ponto do +");
+    assert.ok(mov.deslizou, "as que mudaram de lugar deslizam");
+    await assentar(p, 1100);
+    assert.equal(await p.locator(".rede-no[style*='transform']").count(), 0, "no fim, ninguém fica deslocado");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("caixinha de prazos ao lado do cartão, logo depois do nome", async () => {
+    const p = await abrirRede();
+    const origem = p.locator(".rede-no").first();
+    await origem.locator(".rede-cartao").click();
+    await origem.locator(".rede-mais").click();
+    await p.waitForSelector(".rede [data-editando]");
+    await p.keyboard.type("Com prazo");
+    await p.keyboard.press("Enter");
+    await p.waitForSelector(".rede-estimar input[name=o]:focus");
+    await assentar(p, 300); // fim da entrada da caixa
+    const [caixa, cartao] = await Promise.all([p.locator(".rede-estimar").boundingBox(), p.locator(".rede-no", { hasText: "Com prazo" }).boundingBox()]);
+    assert.ok(Math.abs(caixa.x - cartao.x) < 2 && (caixa.y >= cartao.y + cartao.height || caixa.y + caixa.height <= cartao.y), "encostada ao cartão");
+    if (SCREENSHOTS) await p.screenshot({ path: `${SCREENSHOTS}/8-prazo.png` });
+    /* fora de ordem: erro na própria caixa */
+    await p.keyboard.type("5");
+    await p.keyboard.press("Tab");
+    await p.keyboard.type("3");
+    await p.keyboard.press("Tab");
+    await p.keyboard.type("8");
+    await p.keyboard.press("Enter");
+    await p.waitForSelector(".rede-estimar-erro:not([hidden])");
+    await p.locator(".rede-estimar input[name=o]").fill("2");
+    await p.locator(".rede-estimar input[name=p]").press("Enter");
+    await p.waitForFunction(() => !document.querySelector(".rede-estimar"));
+    await assentar(p);
+    const texto = await p.locator(".rede-no", { hasText: "Com prazo" }).innerText();
+    assert.doesNotMatch(texto, /Falta estimar/);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("botão direito: menu no cartão e na seta", async () => {
+    const p = await abrirRede();
+    const no = p.locator(".rede-no").nth(1);
+    const numero = await no.getAttribute("data-numero");
+    await no.locator(".rede-cartao").click({ button: "right" });
+    await p.waitForSelector(".rede-menu");
+    const itens = await p.locator(".rede-menu [role=menuitem]").allInnerTexts();
+    assert.ok(itens.some((t) => /Abrir/.test(t)) && itens.some((t) => /Renomear/.test(t)) && itens.some((t) => /depois desta/.test(t)));
+    if (SCREENSHOTS) { await assentar(p, 250); await p.screenshot({ path: `${SCREENSHOTS}/9-menu.png` }); }
+    await p.locator(".rede-menu [role=menuitem]", { hasText: "Renomear" }).click();
+    await p.waitForSelector(`.rede-no[data-numero="${numero}"] [data-editando]`);
+    await p.keyboard.press("Escape");
+    /* na seta */
+    const s = p.locator(".rede-seta-alvo").first();
+    const [de, para] = [await s.getAttribute("data-seta-de"), await s.getAttribute("data-seta-para")];
+    await s.dispatchEvent("contextmenu", { clientX: 400, clientY: 400, button: 2 });
+    await p.waitForSelector(".rede-menu");
+    assert.ok((await p.locator(".rede-menu").innerText()).includes("Inserir"));
+    await p.locator(".rede-menu [role=menuitem]", { hasText: "Retirar a ligação" }).click();
+    await p.waitForFunction(([a, b]) => !document.querySelector(`.rede-seta[data-de="${a}"][data-para="${b}"]`), [de, para]);
+    /* no fundo, fica o menu do navegador */
     assert.deepEqual(p.erros, []);
   });
 

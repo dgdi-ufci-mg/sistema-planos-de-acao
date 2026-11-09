@@ -23,6 +23,8 @@ import { GLOSSARIO } from "../glossario.js";
 import { editarTexto, escolherParticipantes } from "./edicao-no-lugar.js";
 import { abrirAcao } from "./janela-acao.js";
 import { abrirNovaAcao, dataMinimaPadrao } from "./nova-acao.js";
+import { estimativaLivre } from "../acao.js";
+import { excluirAcao } from "./exclusao.js";
 import { criarPlanilha, colunasDaPlanilha } from "./editar-planilha.js";
 import { desenharLinhaDoTempo } from "./linha-do-tempo.js";
 import { desenharCronograma } from "./cronograma.js";
@@ -2210,16 +2212,18 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       },
       /*
        * Inserir entre duas ações (09/11/2026, pedido do responsável): cria a nova dependente da de origem e troca,
-       * na de chegada, a dependência da de origem pela da nova (A → B vira A → nova → B). A etapa é a de origem.
+       * na de chegada, a dependência da de origem pela da nova (A → B vira A → nova → B). A etapa vem de quem chama
+       * (a pessoa escolhe quando as duas ações estão em etapas diferentes); sem ela, é a da de origem.
        */
-      async inserirEntre(de, para) {
+      async inserirEntre(de, para, etapa) {
         const origem = acoes.find((a) => a.numero === de);
         const naoAntesDe = dataMinimaPadrao(espaco, hoje);
+        const destino = etapa !== undefined ? etapa : origem?.etapa;
         try {
           const numero = await store.criarAcao(espacoId, {
             rotulo: `Nova ${termos(espaco).acao}`,
             dependeDe: [de],
-            ...(origem?.etapa ? { etapa: origem.etapa } : {}),
+            ...(destino ? { etapa: destino } : {}),
             ...(naoAntesDe ? { naoAntesDe } : {}),
           });
           await store.acrescentarDependencia(espacoId, para, numero);
@@ -2233,6 +2237,21 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         return true;
       }, falhar),
       renomear: (campo) => editarNoLugar(campo),
+      /* caixinha de prazos junto ao cartão (09/11/2026): só onde o espaço usa estimativas e a estimativa ainda é livre */
+      usaEstimativas: usaEstimativas(espaco),
+      estimativaDe: (numero) => acoes.find((a) => a.numero === numero)?.estimativas?.at(-1) ?? null,
+      podeEstimar(numero) {
+        const l = linhas?.find((x) => x.acao.numero === numero);
+        return Boolean(l && perm.atualizar(l.acao) && estimativaLivre(l.acao, l.situacao, hoje));
+      },
+      estimar: (numero, tres) => store.corrigirEstimativa(espacoId, numero, tres).then(() => null, (f) => f.message),
+      /* menu do botão direito (09/11/2026) */
+      nomeAcao: termos(espaco).acao,
+      podeExcluir: Boolean(perm.excluirAcao),
+      excluir(numero) {
+        const acao = acoes.find((a) => a.numero === numero);
+        if (acao) excluirAcao({ store, espacoId, acao, acoes }).catch(falhar);
+      },
       abrir: (numero) => abrirJanela(numero),
     };
   }

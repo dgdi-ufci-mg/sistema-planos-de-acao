@@ -30,6 +30,109 @@ let selecao = null;
 let renomearAoDesenhar = null;
 /** Renomear no desenho mais recente: a resposta do "+" pode chegar depois de um redesenho. */
 let renomearNoAtual = () => false;
+/** Depois do nome da ação recém-criada, abrir a caixinha de prazos (09/11/2026). */
+let estimarDepois = false;
+let abrirEstimativaNoAtual = () => {};
+/**
+ * Animação do rearranjo (09/11/2026): onde a próxima ação criada aparece (ponto do "+", nas coordenadas do desenho)
+ * antes de deslizar até o lugar que a montagem lhe deu.
+ */
+let nascerEm = null;
+const DURACAO = 420;
+const CURVA = "cubic-bezier(.2, 0, 0, 1)";
+const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Caixa solta sobre a página (menu do botão direito, caixinha de prazos, escolha da etapa): uma por vez, fora do
+ * desenho, para sobreviver aos redesenhos. Fecha com Esc, com clique fora ou quando a Rede some.
+ * @type {{el: HTMLElement, fechar: (motivo?: string) => void, posicionar: (el: HTMLElement) => void, rolagem: boolean}|null}
+ */
+let flutuante = null;
+function abrirFlutuante(html, { classe, posicionar, aoFechar = null, rotulo = "", papel = "dialog", fechaAoRolar = false }) {
+  flutuante?.fechar("outra");
+  const el = document.createElement("div");
+  el.className = `rede-flutuante ${classe}`;
+  el.setAttribute("role", papel);
+  if (rotulo) el.setAttribute("aria-label", rotulo);
+  el.innerHTML = html;
+  document.body.append(el);
+  const fora = (e) => { if (!el.contains(e.target)) fechar("fora"); };
+  const tecla = (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fechar("esc"); } };
+  const fechar = (motivo) => {
+    if (flutuante?.el !== el) return;
+    flutuante = null;
+    el.remove();
+    document.removeEventListener("pointerdown", fora, true);
+    document.removeEventListener("keydown", tecla, true);
+    aoFechar?.(motivo);
+  };
+  document.addEventListener("pointerdown", fora, true);
+  document.addEventListener("keydown", tecla, true);
+  flutuante = { el, fechar, posicionar, rolagem: fechaAoRolar };
+  posicionar(el);
+  return el;
+}
+/** Põe a caixa no ponto (x, y) da tela, sem sair dela. */
+function colocar(el, x, y) {
+  const r = el.getBoundingClientRect();
+  el.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
+  el.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;
+}
+
+/**
+ * Animação do rearranjo (09/11/2026, pedido do responsável: o reposicionamento automático precisa ser visível):
+ * cada cartão desliza da posição anterior para a nova; a ação recém-criada nasce pequena no ponto do "+" e cresce
+ * até o seu lugar; cercas e círculos de início e término acompanham; setas e linhas das fases somem durante o
+ * movimento e voltam no fim, já no traçado novo. Sem desenho anterior, ou com "Reduzir movimento", nada se anima.
+ */
+function animarRearranjo(caixa, { posAntes, caixasAntes }) {
+  const nascer = nascerEm;
+  nascerEm = null;
+  if (!posAntes.size || reduzirMovimento()) return;
+  const mexem = [];
+  for (const el of caixa.querySelectorAll(".rede-no")) {
+    const x = parseFloat(el.style.left);
+    const y = parseFloat(el.style.top);
+    const antes = posAntes.get(el.dataset.numero);
+    if (antes) {
+      const [dx, dy] = [antes[0] - x, antes[1] - y];
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) continue;
+      el.style.transform = `translate(${dx}px, ${dy}px)`;
+    } else {
+      el.style.opacity = "0";
+      if (nascer) el.style.transform = `translate(${nascer.x - x - el.offsetWidth / 2}px, ${nascer.y - y - el.offsetHeight / 2}px) scale(.3)`;
+    }
+    mexem.push(el);
+  }
+  for (const el of caixa.querySelectorAll("[data-anima]")) {
+    const antes = caixasAntes.get(el.dataset.anima);
+    if (!antes) { el.style.opacity = "0"; mexem.push(el); continue; }
+    const novo = el.getAttribute("style");
+    if (antes === novo) continue;
+    el.dataset.estiloNovo = novo;
+    el.setAttribute("style", antes);
+    mexem.push(el);
+  }
+  if (!mexem.length) return;
+  const linhas = [...caixa.querySelectorAll(".rede-setas, .rede-fase-marco")];
+  for (const el of linhas) el.style.opacity = "0";
+  void caixa.offsetWidth; // fixa o estado inicial antes da transição
+  const trans = ["transform", "opacity", "left", "top", "width", "height"].map((p) => `${p} ${DURACAO}ms ${CURVA}`).join(", ");
+  requestAnimationFrame(() => {
+    for (const el of mexem) {
+      if (el.dataset.estiloNovo != null) {
+        el.setAttribute("style", `${el.dataset.estiloNovo};transition:${trans}`);
+        delete el.dataset.estiloNovo;
+      } else {
+        el.style.transition = trans;
+        el.style.transform = "";
+        el.style.opacity = "";
+      }
+    }
+    for (const el of linhas) { el.style.transition = `opacity 220ms ${CURVA} ${Math.round(DURACAO * 0.75)}ms`; el.style.opacity = ""; }
+    setTimeout(() => { for (const el of [...mexem, ...linhas]) el.style.transition = ""; }, DURACAO + 320);
+  });
+}
 
 /** Raio dos círculos de início e de término (27/10/2026). */
 const RAIO = MEDIDAS.raioPonta;
@@ -47,7 +150,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
    */
   const { pos, arestas, cercas, fases, pontas, topo, largura, altura } = montarRede(acoes, caminho,
     { pontas: true, ...(etapas ? { marcos: etapas, marcoDe: (a) => a.etapa } : {}) });
-  const cercasHtml = cercas.map((c) => `<div class="rede-cerca" style="left:${c.x}px;top:${c.y}px;width:${c.largura}px;height:${c.altura}px">
+  const cercasHtml = cercas.map((c) => `<div class="rede-cerca" data-anima="cerca:${esc(c.id)}" style="left:${c.x}px;top:${c.y}px;width:${c.largura}px;height:${c.altura}px">
       <span class="rede-cerca-nome" title="${esc(c.titulo)}">${esc(c.nome)}</span></div>`).join("");
   /* fases que terminam no mesmo vão dividem a linha; os nomes ficam juntos */
   const porX = new Map();
@@ -68,7 +171,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
     /* espaço com data-limite (passo 2.4b): sem caminho crítico, sem folga */
     const folga = l.situacao === "concluida" || l.semEstimativa || c.folga == null ? ""
       : c.critica ? "sem folga" : `folga ${Math.round(c.folga)} ${plural(Math.round(c.folga), "dia", "dias")}`;
-    return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}">
+    return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}">
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         title="${esc(etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo)}">
         <span class="rede-topo">${situacao(l)}<span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
@@ -81,7 +184,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   }).join("");
 
   /* início e término (27/10/2026, pedido do responsável): círculos verdes e vermelhos com as datas */
-  const circulo = (classe, { x: cx, y: cy }, rotulo, data, extra = "") => `<div class="rede-ponto ${classe}" style="left:${cx - RAIO}px;top:${cy - RAIO}px;width:${RAIO * 2}px;height:${RAIO * 2}px">
+  const circulo = (classe, { x: cx, y: cy }, rotulo, data, extra = "") => `<div class="rede-ponto ${classe}" data-anima="ponto:${classe}" style="left:${cx - RAIO}px;top:${cy - RAIO}px;width:${RAIO * 2}px;height:${RAIO * 2}px">
       <span class="rede-ponto-rotulo">${rotulo}</span><span class="rede-ponto-data mono">${data ? dataBr(data) : "—"}</span>${extra}</div>`;
   const pontosHtml = circulo("inicio", pontas.inicio, "Início", inicio)
     + circulo("termino", pontas.termino, "Término", termino, prazoFinal ? `<span class="rede-ponto-prazo">prazo ${dataBr(prazoFinal)}</span>` : "");
@@ -110,6 +213,9 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
 
   const anterior = alvo.querySelector("[data-rede-rolagem]");
   const focoDentro = alvo.contains(document.activeElement);
+  /* posições do desenho anterior, para animar o rearranjo (09/11/2026) */
+  const posAntes = new Map([...alvo.querySelectorAll(".rede-no")].map((el) => [el.dataset.numero, [parseFloat(el.style.left), parseFloat(el.style.top)]]));
+  const caixasAntes = new Map([...alvo.querySelectorAll("[data-anima]")].map((el) => [el.dataset.anima, el.getAttribute("style")]));
   const rolagemAnterior = anterior ? [anterior.scrollLeft, anterior.scrollTop] : null;
   alvo.innerHTML = `
     <div class="crono-ferramentas">
@@ -271,7 +377,9 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
   });
   caixa.addEventListener("focusout", limpar);
 
-  if (edicao) ativarEdicao({ caixa, rolagem, conteudo, fator: () => fator, edicao, destacar, limpar, focoDentro, moveuFundo: () => moveuFundo });
+  animarRearranjo(caixa, { posAntes, caixasAntes });
+  if (!edicao) flutuante?.fechar("redesenho");
+  if (edicao) ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator: () => fator, edicao, destacar, limpar, focoDentro, moveuFundo: () => moveuFundo });
 }
 
 /**
@@ -280,7 +388,7 @@ export function desenharRede(alvo, { acoes, caminho, linhas, etapaDe, identifica
  * ligada e com o nome aberto para digitar; a bolinha, arrastada até outro cartão, cria a dependência; uma seta
  * selecionada sai com Delete. Esc tira a seleção.
  */
-function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpar, focoDentro, moveuFundo }) {
+function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, destacar, limpar, focoDentro, moveuFundo }) {
   const no = (n) => caixa.querySelector(`.rede-no[data-numero="${n}"]`);
   const seta = (de, para) => caixa.querySelector(`.rede-seta[data-de="${de}"][data-para="${para}"]`);
   const inserir = (de, para) => caixa.querySelector(`[data-inserir-de="${de}"][data-inserir-para="${para}"]`);
@@ -313,28 +421,42 @@ function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpa
     if (r.bottom > v.bottom - folga) rolagem.scrollTop += r.bottom - v.bottom + folga;
     else if (r.top < v.top + folga) rolagem.scrollTop -= v.top + folga - r.top;
   };
-  const renomear = (n) => {
+  /* com `depois`, abre a caixinha de prazos quando o nome termina (menos com Esc, que desiste) */
+  const renomear = (n, depois = false) => {
     const campo = no(n)?.querySelector('[data-editar="rotulo"]');
     if (!campo) return false;
     selecionarNo(n, false);
-    mostrar(n);
+    setTimeout(() => mostrar(n), reduzirMovimento() ? 0 : DURACAO + 40); // depois do deslize
     edicao.renomear(campo);
+    if (depois && edicao.usaEstimativas) {
+      let desistiu = false;
+      campo.addEventListener("keydown", (e) => { if (e.key === "Escape") desistiu = true; });
+      campo.addEventListener("focusout", () => { if (!desistiu) setTimeout(() => abrirEstimativaNoAtual(n), 80); }, { once: true });
+    }
     return true;
+  };
+  /* ponto de um botão nas coordenadas do desenho: de onde a ação nova nasce */
+  const pontoDe = (botao) => {
+    const r = botao.getBoundingClientRect();
+    const b = conteudo.getBoundingClientRect();
+    return { x: (r.left + r.width / 2 - b.left) / fator(), y: (r.top + r.height / 2 - b.top) / fator() };
   };
 
   /* depois de criar pelo "+" (no cartão ou na seta): a nova fica selecionada, com o nome aberto */
-  const criarE = (botao, promessa) => {
+  const criarE = (botao, criar) => {
+    nascerEm = pontoDe(botao);
     botao.disabled = true;
-    promessa.then((numero) => {
+    criar().then((numero) => {
       botao.disabled = false;
-      if (numero == null) return;
+      if (numero == null) { nascerEm = null; return; }
       /* o redesenho pode chegar antes ou depois da resposta */
-      if (!renomearNoAtual(numero)) { renomearAoDesenhar = numero; selecao = { tipo: "no", numero }; }
+      if (!renomearNoAtual(numero, true)) { renomearAoDesenhar = numero; estimarDepois = true; selecao = { tipo: "no", numero }; }
     });
   };
   renomearNoAtual = renomear;
+  abrirEstimativaNoAtual = abrirEstimativa;
   marcar();
-  if (renomearAoDesenhar != null && renomear(renomearAoDesenhar)) renomearAoDesenhar = null;
+  if (renomearAoDesenhar != null && renomear(renomearAoDesenhar, estimarDepois)) { renomearAoDesenhar = null; estimarDepois = false; }
   else if (focoDentro && selecao?.tipo === "no") no(selecao.numero)?.querySelector("[data-rede-no]")?.focus({ preventScroll: true });
   else if (focoDentro && selecao?.tipo === "seta") caixa.focus({ preventScroll: true });
 
@@ -344,12 +466,12 @@ function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpa
     const mais = e.target.closest("[data-rede-mais]");
     if (mais) {
       e.stopPropagation();
-      return criarE(mais, edicao.criarDepois(Number(mais.dataset.redeMais)));
+      return criarE(mais, () => edicao.criarDepois(Number(mais.dataset.redeMais)));
     }
     const entre = e.target.closest("[data-inserir-de]");
     if (entre) {
       e.stopPropagation();
-      return criarE(entre, edicao.inserirEntre(Number(entre.dataset.inserirDe), Number(entre.dataset.inserirPara)));
+      return inserirEntre(entre);
     }
     if (e.target.closest("[data-rede-alca]")) return e.stopPropagation();
     const alvoSeta = e.target.closest(".rede-seta-alvo");
@@ -384,6 +506,13 @@ function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpa
       edicao.desligar(de, para);
       return;
     }
+    if (selecao && (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10"))) {
+      e.preventDefault();
+      e.stopPropagation();
+      const el = selecao.tipo === "no" ? no(selecao.numero) : inserir(selecao.de, selecao.para) ?? seta(selecao.de, selecao.para);
+      const r = el.getBoundingClientRect();
+      return abrirMenu(selecao, r.left + 12, r.top + r.height / 2);
+    }
     const cartao = e.target.closest("[data-rede-no]");
     if (!cartao) return;
     const n = Number(cartao.dataset.redeNo);
@@ -410,6 +539,147 @@ function ativarEdicao({ caixa, rolagem, conteudo, fator, edicao, destacar, limpa
     clearTimeout(esconder);
     esconder = setTimeout(() => { sobSeta?.classList.remove("visivel"); sobSeta = null; }, 350);
   });
+  /* ---------- inserir entre duas ações: em etapas diferentes, a pessoa escolhe a etapa (09/11/2026) ---------- */
+  const etapaDe = new Map(acoes.map((a) => [a.numero, a.etapa || null]));
+  const infoEtapa = new Map((etapas ?? []).map((e) => [e.id, e]));
+  const nomeEtapa = (id) => (id ? infoEtapa.get(id)?.titulo ?? infoEtapa.get(id)?.nome ?? "Etapa" : "Sem etapa");
+  function inserirEntre(botao) {
+    const de = Number(botao.dataset.inserirDe);
+    const para = Number(botao.dataset.inserirPara);
+    const [ea, eb] = [etapaDe.get(de) ?? null, etapaDe.get(para) ?? null];
+    if (!etapas || ea === eb) return criarE(botao, () => edicao.inserirEntre(de, para, ea));
+    /* como no Bizagi: a caixa da ação aparece no ponto da seta, e a pessoa diz em qual etapa ela fica */
+    const ponto = botao.getBoundingClientRect();
+    const el = abrirFlutuante(`
+      <div class="rede-fantasma" aria-hidden="true">Nova ${esc(edicao.nomeAcao)}</div>
+      <p class="rede-escolha-titulo">Em qual etapa ela fica?</p>
+      <div class="rede-escolha-opcoes">${[ea, eb].map((id) => `<button type="button" data-escolher-etapa="${esc(id ?? "")}">${esc(nomeEtapa(id))}</button>`).join("")}</div>`, {
+      classe: "rede-escolha", rotulo: `Em qual etapa fica a nova ${edicao.nomeAcao}?`, fechaAoRolar: true,
+      posicionar: (caixaEl) => colocar(caixaEl, ponto.left + ponto.width / 2 - caixaEl.offsetWidth / 2, ponto.top - 14),
+    });
+    el.querySelector("button")?.focus();
+    el.addEventListener("keydown", (e) => {
+      if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+      e.preventDefault();
+      const bs = [...el.querySelectorAll("button")];
+      bs[(bs.indexOf(document.activeElement) + 1) % bs.length].focus();
+    });
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-escolher-etapa]");
+      if (!b) return;
+      flutuante?.fechar("escolha");
+      criarE(botao, () => edicao.inserirEntre(de, para, b.dataset.escolherEtapa || null));
+    });
+  }
+
+  /* ---------- caixinha de prazos junto ao cartão (09/11/2026) ---------- */
+  function abrirEstimativa(n) {
+    if (!edicao.usaEstimativas || !edicao.podeEstimar(n) || !no(n)) return;
+    const atual = edicao.estimativaDe(n);
+    const rotulo = acoes.find((a) => a.numero === n)?.rotulo ?? "";
+    const campo = (nome, texto) => `<label><span>${texto}</span><input name="${nome}" type="number" min="0" step="1" inputmode="numeric" value="${atual?.[nome] ?? ""}"></label>`;
+    const el = abrirFlutuante(`
+      <form class="rede-estimar-forma" novalidate>
+        <p class="rede-estimar-titulo">Prazo em dias úteis</p>
+        <div class="rede-estimar-campos">${campo("o", "Otimista")}${campo("m", "Mais provável")}${campo("p", "Pessimista")}</div>
+        <p class="rede-estimar-erro" role="alert" hidden></p>
+        <p class="rede-estimar-dica">Enter grava · Esc deixa para depois</p>
+      </form>`, {
+      classe: "rede-estimar", rotulo: `Prazo de ${rotulo}`,
+      posicionar: (caixaEl) => {
+        const cartao = document.querySelector(`.rede .rede-no[data-numero="${n}"]`);
+        if (!cartao) return flutuante?.fechar("sumiu");
+        const r = cartao.getBoundingClientRect();
+        const baixo = r.bottom + 8 + caixaEl.offsetHeight < innerHeight - 8;
+        colocar(caixaEl, r.left, baixo ? r.bottom + 8 : r.top - caixaEl.offsetHeight - 8);
+      },
+      aoFechar: (motivo) => { if (motivo === "esc" || motivo === "gravou") no(n)?.querySelector("[data-rede-no]")?.focus({ preventScroll: true }); },
+    });
+    const forma = el.querySelector("form");
+    const erro = el.querySelector(".rede-estimar-erro");
+    forma.o.focus();
+    forma.o.select();
+    forma.addEventListener("focusin", (e) => e.target.select?.());
+    forma.addEventListener("keydown", async (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const valores = ["o", "m", "p"].map((k) => forma[k].value.trim());
+      if (valores.every((v) => v === "")) return flutuante?.fechar("vazio");
+      const [o, m, p] = valores.map((v) => (v === "" ? NaN : Number(v)));
+      const falha = await edicao.estimar(n, { o, m, p });
+      if (falha) { erro.textContent = falha; erro.hidden = false; flutuante?.posicionar(el); return; }
+      flutuante?.fechar("gravou");
+    });
+  }
+
+  /* ---------- menu do botão direito (09/11/2026, pedido do responsável) ---------- */
+  function itensDoMenu(alvoMenu) {
+    const t = edicao.nomeAcao;
+    if (alvoMenu.tipo === "no") {
+      const n = alvoMenu.numero;
+      const mais = no(n)?.querySelector("[data-rede-mais]");
+      return [
+        { rotulo: `Abrir a ${t}`, tecla: "Enter", fazer: () => edicao.abrir(n) },
+        { rotulo: "Renomear", tecla: "F2", fazer: () => renomear(n) },
+        edicao.usaEstimativas && edicao.podeEstimar(n) && { rotulo: "Prazo em dias úteis", fazer: () => abrirEstimativa(n) },
+        mais && { rotulo: `Nova ${t} depois desta`, fazer: () => mais.click() },
+        edicao.podeExcluir && { rotulo: `Excluir a ${t}`, perigo: true, fazer: () => edicao.excluir(n) },
+      ].filter(Boolean);
+    }
+    const { de, para } = alvoMenu;
+    const botao = inserir(de, para);
+    return [
+      botao && { rotulo: `Inserir uma ${t} no meio`, tecla: "Enter", fazer: () => inserirEntre(botao) },
+      { rotulo: "Retirar a ligação", tecla: "Delete", perigo: true, fazer: () => { selecao = null; edicao.desligar(de, para); } },
+    ].filter(Boolean);
+  }
+  function abrirMenu(alvoMenu, x, y) {
+    const itens = itensDoMenu(alvoMenu);
+    const el = abrirFlutuante(itens.map((i, k) => `<button type="button" role="menuitem" data-item="${k}"${i.perigo ? ' class="perigo"' : ""}>
+      <span>${esc(i.rotulo)}</span>${i.tecla ? `<kbd>${i.tecla}</kbd>` : ""}</button>`).join(""), {
+      classe: "menu-da-janela rede-menu", papel: "menu", rotulo: "Opções", fechaAoRolar: true,
+      posicionar: (caixaEl) => colocar(caixaEl, x, y),
+    });
+    el.querySelector("button")?.focus();
+    el.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+      const bs = [...el.querySelectorAll("button")];
+      const i = bs.indexOf(document.activeElement);
+      bs[(i + (e.key === "ArrowDown" ? 1 : bs.length - 1)) % bs.length].focus();
+    });
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-item]");
+      if (!b) return;
+      flutuante?.fechar("escolha");
+      itens[Number(b.dataset.item)].fazer();
+    });
+  }
+  caixa.addEventListener("contextmenu", (e) => {
+    if (e.target.closest("[data-editando]")) return;
+    const cartao = e.target.closest("[data-rede-no]");
+    const naSeta = e.target.closest(".rede-seta-alvo, [data-inserir-de]");
+    let alvoMenu = null;
+    if (cartao) { selecionarNo(Number(cartao.dataset.redeNo), false); alvoMenu = selecao; }
+    else if (naSeta) {
+      const de = Number(naSeta.dataset.setaDe ?? naSeta.dataset.inserirDe);
+      const para = Number(naSeta.dataset.setaPara ?? naSeta.dataset.inserirPara);
+      selecionarSeta(de, para);
+      alvoMenu = selecao;
+    }
+    if (!alvoMenu) return; // no fundo, o menu do navegador
+    e.preventDefault();
+    abrirMenu(alvoMenu, e.clientX, e.clientY);
+  });
+  /* as caixas soltas acompanham a rolagem da rede (o menu e a escolha fecham) */
+  rolagem.addEventListener("scroll", () => {
+    if (!flutuante) return;
+    if (flutuante.rolagem) flutuante.fechar("rolagem");
+    else flutuante.posicionar(flutuante.el);
+  }, { passive: true });
+  if (flutuante && !flutuante.rolagem) requestAnimationFrame(() => flutuante?.posicionar(flutuante.el));
+  else flutuante?.fechar("redesenho");
+
   /* o foco por teclado também seleciona */
   caixa.addEventListener("focusin", (e) => {
     const cartao = e.target.closest("[data-rede-no]");

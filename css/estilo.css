@@ -1176,6 +1176,33 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .rede-inserir:hover { background: var(--accent); color: var(--surface); }
 .rede.ligando .rede-inserir { opacity: 0; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .rede-mais, .rede-alca, .rede-inserir { transition: none; } }
+/* caixas soltas da Rede (09/11/2026): menu do botão direito, caixinha de prazos e escolha da etapa */
+.rede-flutuante { position: fixed; z-index: 40; animation: rede-flutuante-entra var(--mov-rapido) var(--mov-curva); }
+@keyframes rede-flutuante-entra { from { opacity: 0; transform: scale(.96); } }
+.rede-flutuante.rede-menu { top: auto; right: auto; min-width: 230px; }
+.rede-menu button { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.rede-menu kbd { font: .72rem var(--f-dados); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; background: var(--sunk); }
+.rede-menu .perigo kbd { color: inherit; }
+.rede-estimar, .rede-escolha { box-sizing: border-box; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--sombra); font: .85rem var(--f-texto); color: var(--ink); }
+.rede-estimar { width: 264px; }
+.rede-estimar-forma { display: grid; gap: 6px; margin: 0; }
+.rede-estimar-titulo, .rede-escolha-titulo { margin: 0; font-weight: 600; font-size: .8rem; color: var(--accent-ink); }
+.rede-estimar-campos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.rede-estimar-campos label { display: grid; gap: 2px; min-width: 0; }
+.rede-estimar-campos span { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rede-estimar-campos input { width: 100%; box-sizing: border-box; padding: 5px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--sunk);
+  color: var(--ink); font: .9rem var(--f-dados); text-align: right; }
+.rede-estimar-campos input:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--surface); }
+.rede-estimar-erro { margin: 0; color: var(--crit-ink); font-size: .78rem; }
+.rede-estimar-dica { margin: 0; color: var(--muted); font-size: .72rem; }
+.rede-escolha { width: 248px; display: grid; gap: 8px; }
+.rede-fantasma { height: 44px; display: grid; place-items: center; border: 2px dashed var(--accent); border-radius: 10px; color: var(--accent-ink); font-weight: 600;
+  background: var(--accent-soft); }
+.rede-escolha-opcoes { display: grid; gap: 4px; }
+.rede-escolha-opcoes button { border: 1px solid var(--line); background: var(--surface); color: var(--ink); text-align: left; padding: 7px 10px; border-radius: 6px; cursor: pointer; font: inherit; }
+.rede-escolha-opcoes button:hover, .rede-escolha-opcoes button:focus-visible { background: var(--accent-soft); border-color: var(--accent); outline: none; }
+@media (prefers-reduced-motion: reduce) { .rede-flutuante { animation: none; } }
 
 /* ---------- exportação (passo 1.19a) ---------- */
 .texto-exportado { width: 100%; box-sizing: border-box; font: .8rem var(--f-dados); padding: 8px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--sunk); color: var(--ink); margin-top: 8px; }
