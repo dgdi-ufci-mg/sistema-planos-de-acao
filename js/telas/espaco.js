@@ -11,7 +11,7 @@ import { simular, chaveDaSimulacao } from "../simulacao.js";
 import { colunasDoQuadro, nomeInicial, nomeDoFluxo, personalizadasDe, estaConcluida } from "../situacoes.js";
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
-import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo } from "../modelos.js";
+import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo, usaContinuas } from "../modelos.js";
 import { usaPrioridade } from "../prioridade.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
@@ -105,6 +105,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     retratos: null, comparar: null, base: null,
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
     escalaRede: "normal",
+    ocultarContinuas: false,
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "",
     /** entregas e registros de alcance do Plano de Ação (passo 2.6); null: ainda não lidos */
@@ -898,7 +899,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${prazoSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
-            l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a), etiquetasNota(a)].join("")}</div>
+            continuaNota(l), l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a), etiquetasNota(a)].join("")}</div>
         ${c.descricao && !ehLista() ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
         ${c.participantes && !semPessoasNaLista() ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras && !ehLista() ? barraHtml(l) : ""}
@@ -991,7 +992,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         situacao: (l) => (l.situacao === "liberada" ? "" : `<span class="${SITUACOES[l.situacao].classe}" title="${SITUACOES[l.situacao].texto}">${ICONES[SITUACOES[l.situacao].icone]}</span>`),
         marcos: usaFases ? (espaco.estrutura ?? []).flatMap((f) => (f.etapas ?? []).map((e) => ({ id: e.id, nome: e.nome, titulo: `${f.nome} › ${e.nome}`, fase: f.id, faseNome: f.nome }))) : null,
         /* círculos de início e de término (27/10/2026): o início do espaço e a conclusão prevista (a data mais tardia das ações) */
-        inicio: espaco.inicio ?? null, termino: linhas.map((l) => l.conclusao).filter(Boolean).sort().at(-1) ?? null, prazoFinal: espaco.prazoFinal ?? null,
+        inicio: espaco.inicio ?? null, termino: linhas.filter((l) => !l.continua).map((l) => l.conclusao).filter(Boolean).sort().at(-1) ?? null, prazoFinal: espaco.prazoFinal ?? null,
+        /* ações contínuas (seção 5.9): caixa como as outras; o filtro vale enquanto o espaço está aberto */
+        continuas: usaContinuas(espaco), ocultarContinuas: ui.ocultarContinuas, aoOcultarContinuas: (v) => { ui.ocultarContinuas = v; desenharLista(); },
         aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); } });
       return;
     }
@@ -1078,6 +1081,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["liberada", "Liberadas", "icone-liberada", "Arraste para Concluídas ao terminar."],
     ["concluida", "Concluídas", "icone-concluida", "Arraste de volta para Liberadas para desfazer a conclusão."],
   ];
+  /** Selo da ação contínua (seção 5.9) sob o nome: "Contínua" ou, com o marco de fim concluído, "Pode ser encerrada". */
+  function continuaNota(l) {
+    if (!l.continua || l.situacao === "concluida") return "";
+    return l.podeEncerrar ? `<span class="tag-continua encerrar" title="Ação contínua: o marco de fim foi concluído">Pode ser encerrada</span>`
+      : `<span class="tag-continua" title="Ação contínua: as datas vêm dos marcos de início e de fim">Contínua</span>`;
+  }
   /* cartão do quadro no estilo enxuto da lista (22/10/2026): sem data nem carimbo; a coluna diz a situação e a barra, o prazo */
   function cartaoHtml(l) {
     const a = l.acao;
@@ -1085,7 +1094,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `<article class="item cartao-quadro${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}"${podeArrastarCartao(l) ? " data-arrasta" : ""}>
       <div class="linha" role="button" tabindex="0" data-abrir-acao>
         <div class="acao-nome"><span class="nome-linha">${deTarefas() ? caixaHtml(l) : ""}${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
-          l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${checklistNota(a)}${etiquetasNota(a)}</div>
+          l.semEstimativa && ui.barra !== "tempo" ? FALTA_ESTIMAR : ""}${continuaNota(l)}${checklistNota(a)}${etiquetasNota(a)}</div>
         <div class="cartao-base"><div class="donos" data-editar="responsaveis">${donos}</div></div>
         ${l.situacao === "concluida" ? "" : barraHtml(l)}
       </div>

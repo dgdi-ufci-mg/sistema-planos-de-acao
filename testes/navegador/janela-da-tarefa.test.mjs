@@ -372,12 +372,12 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     await assentar(p);
     assert.equal(await p.locator(".camada.aberta").count(), 0);
     assert.match(await p.locator(".aviso-curto").innerText(), /excluída/);
-    /* no plano, sem Duplicar (estimativas e dependências não se copiam) */
+    /* no plano, sem Duplicar (estimativas e dependências não se copiam); com "Tornar ação contínua" (seção 5.9, 09/11/2026) */
     const plano = await sessao.abrir({ largura: 1280 });
     await plano.locator(".linha[data-abrir-acao]").first().click();
     await plano.waitForSelector(".camada.aberta .janela-grade");
     await janela(plano).locator("header [data-menu-janela]").click();
-    assert.deepEqual(await janela(plano).locator(".menu-da-janela button").allInnerTexts(), ["Copiar link", "Histórico de alterações", "Excluir ação"]);
+    assert.deepEqual(await janela(plano).locator(".menu-da-janela button").allInnerTexts(), ["Copiar link", "Histórico de alterações", "Tornar ação contínua", "Excluir ação"]);
     assert.deepEqual([...p.erros, ...plano.erros], []);
   });
 

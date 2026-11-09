@@ -16,7 +16,8 @@ import { seloHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 import { descreverRegistro } from "../historico.js";
 import { editarTexto } from "./edicao-no-lugar.js";
-import { usaEstimativas, usaDependencias } from "../modelos.js";
+import { usaEstimativas, usaDependencias, usaContinuas } from "../modelos.js";
+import { ehContinua, marcosPossiveis, marcosSugeridos, nomeDoMarco, mesmoMarco } from "../continuas.js";
 import { termos } from "../vocabulario.js";
 import { esqueletoHtml } from "./esqueleto.js";
 import { nomeInicial, nomeDoFluxo, personalizadasDe } from "../situacoes.js";
@@ -49,7 +50,7 @@ const DO_CONTEUDO = new Set(["descricao", "checklist", "notas", "justificativa",
 /** Ícone de cada atributo na linha do celular (05/11/2026). */
 const ICONE_DO_ATRIBUTO = {
   situacao: "colunas", marcada: "concluida", dataLimite: "calendario", naoAntesDe: "inicio", responsaveis: "pessoa",
-  etiquetas: "etiqueta", dependeDe: "elo", etapa: "legenda", local: "local", codigo: "codigo", entregaDoPlano: "modoEntregas",
+  etiquetas: "etiqueta", dependeDe: "elo", comecaCom: "inicio", terminaCom: "concluida", etapa: "legenda", local: "local", codigo: "codigo", entregaDoPlano: "modoEntregas",
 };
 
 export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null, vizinha = null }) {
@@ -97,6 +98,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let menuAberto = false;
   const podeDuplicar = () => ehDeTarefas(d.espaco) && store.podeGravar && d.perm.criarAcao;
   const podeExcluir = () => store.podeGravar && d.perm.excluirAcao;
+  /* ação contínua (seção 5.9): só no espaço com estimativas e dependências, para quem pode alterar a ação */
+  const podeTornarContinua = () => usaContinuas(d.espaco) && !somenteLeitura();
   function menuHtml() {
     const acao = acaoAtual();
     const t = termos(d.espaco);
@@ -108,6 +111,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <button type="button" role="menuitem" data-copiar-link>Copiar link</button>
       <button type="button" role="menuitem" data-ver-historico>Histórico de alterações</button>
       ${podeDuplicar() ? `<button type="button" role="menuitem" data-duplicar>Duplicar</button>` : ""}
+      ${podeTornarContinua() ? `<button type="button" role="menuitem" data-continua="${!ehContinua(acao)}">${ehContinua(acao) ? "Tornar ação comum" : "Tornar ação contínua"}</button>` : ""}
       ${podeExcluir() ? `<button type="button" role="menuitem" class="perigo" data-excluir-acao>Excluir ${t.acao}</button>` : ""}
     </div>`;
   }
@@ -157,6 +161,17 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     surgir(secao);
     secao?.scrollIntoView({ block: "start", behavior: reduzirMovimento() ? "auto" : "smooth" });
     secao?.querySelector("summary")?.focus({ preventScroll: true });
+  }
+  /**
+   * Ação contínua (seção 5.9): ao tornar contínua, os marcos sugeridos são os da etapa da ação (ou o projeto); a pessoa
+   * troca os dois na coluna de atributos. Ao tornar comum, os dois marcos saem. Recusas do Store (ação com anteriores
+   * ou com seguintes, ou usada como marco) aparecem no aviso.
+   */
+  async function tornarContinua(continua) {
+    const acao = acaoAtual();
+    const campos = continua ? marcosSugeridos(acao, d.espaco) : { comecaCom: null, terminaCom: null };
+    await executar(() => store.alterarAcao(espacoId, numero, campos),
+      continua ? "Ação contínua: escolha com o que ela começa e com o que termina." : "A ação voltou a ser comum.");
   }
   async function excluir() {
     try {
@@ -212,6 +227,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (item.matches("[data-copiar-link]")) copiarLink();
     else if (item.matches("[data-duplicar]")) duplicar();
     else if (item.matches("[data-ver-historico]")) verHistorico();
+    else if (item.matches("[data-continua]")) tornarContinua(item.dataset.continua === "true");
     else if (item.matches("[data-excluir-acao]")) excluir();
   });
   /* Esc fecha o menu sem fechar a janela; setas andam pelos itens */
@@ -407,6 +423,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
    */
   function blocoDoPrazoHtml(acao, l, c, resumoEst, revisao, comEstimativas) {
     if (ehDeTarefas(d.espaco)) return "";
+    if (l.continua) return blocoDaContinuaHtml(acao, l, c);
     const itens = [];
     if (l.situacao === "concluida") itens.push(`<div><dt>Concluída em</dt><dd class="mono">${dataBr(l.conclusao)}</dd></div>`);
     else if (comEstimativas) {
@@ -427,6 +444,25 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       editando === "concluir" ? conclusaoHtml(acao) : "",
     ].filter(Boolean);
     return partes.length ? `<section class="bloco-prazo" aria-label="Prazo">${partes.join("")}</section>` : "";
+  }
+
+  /**
+   * Bloco do prazo da ação contínua (seção 5.9): sem estimativa, Reestimar nem índices; as datas vêm dos marcos.
+   * "Pode ser encerrada" quando o marco de fim termina: a ação não se conclui sozinha, a pessoa decide.
+   */
+  function blocoDaContinuaHtml(acao, l, c) {
+    const itens = l.situacao === "concluida"
+      ? [`<div><dt>Concluída em</dt><dd class="mono">${dataBr(l.conclusao)}</dd></div>`]
+      : [`<div><dt>Começa</dt><dd class="mono">${dataBr(d.cal.data(c.liberacao))}</dd></div>`, `<div><dt>Termina</dt><dd class="mono">${dataBr(l.conclusao)}</dd></div>`];
+    const problema = l.problemaDosMarcos === "inexistente"
+      ? `<p class="alerta">${ICONES.atrasada}<span><b>Marco que não existe mais:</b> no lugar dele, o cálculo usa o projeto. Escolha outro marco na coluna ao lado.</span></p>`
+      : l.problemaDosMarcos === "invertidos"
+        ? `<p class="alerta">${ICONES.atrasada}<span><b>Marcos invertidos:</b> o marco de início vem depois do de fim. Confira “Começa com” e “Termina com”.</span></p>` : "";
+    const encerrar = l.podeEncerrar
+      ? `<p class="nota-janela pode-encerrar">${ICONES.concluida}<span><b>Pode ser encerrada:</b> o marco de fim foi concluído. Se o trabalho contínuo acabou, registre a conclusão.</span></p>` : "";
+    return `<section class="bloco-prazo" aria-label="Prazo">
+      <p class="continua-tipo">Ação contínua <small class="tec">Termo técnico: atividade <i>hammock</i></small> <a href="#" class="oque" data-termo="continua" aria-label="O que é uma ação contínua?" title="O que é?">${ICONES.ajuda}</a></p>
+      <dl class="janela-resumo">${itens.join("")}</dl>${problema}${encerrar}${botoesHtml(l, c)}${editando === "concluir" ? conclusaoHtml(acao) : ""}</section>`;
   }
 
   /** Estimativa em três pontos: editável enquanto livre (seção 5.3); depois, só leitura, mudando por Reestimar. */
@@ -453,6 +489,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       pend.anteriores.length ? `quando ${plural(pend.anteriores.length, `for concluída a ${t.acao}`, `forem concluídas as ${t.acoes}`)} ${pend.anteriores.map((n) => `“${esc(nomeTexto(d.acoes.find((a) => a.numero === n)))}”`).join(", ")}` : "",
       pend.dataMinima ? `a partir de ${dataBr(pend.dataMinima)}` : "",
     ].filter(Boolean).join(", e ")}.</p>` : "";
+    const notaDaContinua = l.continua && l.situacao === "naoLiberada"
+      ? `<p class="nota-janela">Será liberada com o ${esc(nomeDoMarco(acao.comecaCom, "inicio", d.espaco, d.acoes).replace(/^Início/, "início"))}.</p>` : "";
     return `<div class="janela-grade tarefa${caixa ? " com-circulo" : ""}" data-aba-atual="detalhes">
       <div class="janela-principal">
         <div class="janela-topo">
@@ -466,11 +504,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
           ${blocoDoPrazo}
         </div>
         <div class="janela-resto">
-          ${nota}
+          ${nota}${notaDaContinua}
           <div class="janela-campos">${conteudoDaTarefaHtml(acao)}</div>
           ${maisCamposHtml(acao)}
           ${comComentarios() ? `<div data-comentarios>${comentariosHtml()}</div>` : ""}
-          ${comEstimativas ? historicoHtml(acao, resumoDasEstimativas(acao, d.caminho.porAcao.get(numero))) : ""}
+          ${comEstimativas && !(l.continua && !acao.estimativas?.length) ? historicoHtml(acao, resumoDasEstimativas(acao, d.caminho.porAcao.get(numero))) : ""}
           ${historicoVisivel ? historicoAlteracoes : ""}
         </div>
       </div>
@@ -515,12 +553,21 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       incluir({ campo: "marcada", nome: "Marcada como concluída", tipo: "fixo", vazio: false,
         valor: `<span class="mono">${quando}</span><small class="tec">Momento da marcação, e não a data em que o trabalho terminou.</small>` });
     }
+    /* ação contínua (seção 5.9): os dois marcos no lugar de "Não começa antes de" e de "Depende de" */
+    const continua = usaContinuas(d.espaco) && ehContinua(acao);
+    if (continua) {
+      for (const [campo, nome, lado] of [["comecaCom", "Começa com", "inicio"], ["terminaCom", "Termina com", "fim"]]) {
+        incluir({ campo, nome, tipo: "unica", termo: "continua", vazio: false, valor: esc(nomeDoMarco(acao[campo], lado, d.espaco, d.acoes)) });
+      }
+    }
     if (!usaEstimativas(d.espaco)) {
       incluir({ campo: "dataLimite", nome: "Data-limite", tipo: "data", termo: "dataLimite", vazio: !acao.dataLimite,
         valor: acao.dataLimite ? `<span${l.atrasada ? ' class="atrasada"' : ""}>${esc(rotuloDaData(acao.dataLimite, hoje))}</span>${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}` : "" });
     }
-    incluir({ campo: "naoAntesDe", nome: "Não começa antes de", tipo: "data", termo: "naoAntesDe", vazio: !acao.naoAntesDe,
-      valor: acao.naoAntesDe ? esc(rotuloDaData(acao.naoAntesDe, hoje)) : "" });
+    if (!continua) {
+      incluir({ campo: "naoAntesDe", nome: "Não começa antes de", tipo: "data", termo: "naoAntesDe", vazio: !acao.naoAntesDe,
+        valor: acao.naoAntesDe ? esc(rotuloDaData(acao.naoAntesDe, hoje)) : "" });
+    }
     const donos = acao.responsaveis.map((id) => d.pessoas.get(id)).filter(Boolean);
     incluir({ campo: "responsaveis", nome: "Responsáveis", tipo: "multipla", vazio: !donos.length,
       valor: donos.map((r) => `<span class="atributo-pessoa">${seloHtml(r, contexto)}${esc(r.nome)}</span>`).join("") });
@@ -528,7 +575,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       const etq = etiquetasDaAcao(d.espaco, acao);
       incluir({ campo: "etiquetas", nome: "Etiquetas", tipo: "multipla", vazio: !etq.length, valor: etq.map((x) => etiquetaHtml(x)).join("") });
     }
-    if (usaDependencias(d.espaco)) {
+    if (usaDependencias(d.espaco) && !continua) {
       const deps = (acao.dependeDe ?? []).map((n) => d.acoes.find((x) => x.numero === n));
       incluir({ campo: "dependeDe", nome: "Depende de", tipo: "multipla", vazio: !deps.length,
         valor: deps.map((a) => `<span class="atributo-item">${a ? nomeHtml(a) : "(tarefa excluída)"}</span>`).join("") });
@@ -641,6 +688,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       return [op("", "Sem fase nem etapa", !acao.etapa), ...(d.espaco.estrutura ?? []).flatMap((f) => [{ grupo: f.nome }, ...f.etapas.map((e) => op(e.id, e.nome, e.id === acao.etapa))])];
     }
     if (campo === "entregaDoPlano") return [op("", "Nenhuma", !acao.entregaDoPlano), ...d.entregas.map((x) => op(x.id, x.titulo, x.id === acao.entregaDoPlano))];
+    /* marcos da ação contínua (seção 5.9): projeto, fases, etapas e ações comuns, em grupos; o valor é o marco em JSON */
+    if (campo === "comecaCom" || campo === "terminaCom") {
+      const lista = [];
+      let grupo = null;
+      for (const m of marcosPossiveis(d.espaco, d.acoes, numero)) {
+        if (m.grupo !== grupo) { grupo = m.grupo; lista.push({ grupo }); }
+        lista.push(op(JSON.stringify(m.marco), m.nome, mesmoMarco(m.marco, acao[campo])));
+      }
+      return lista;
+    }
     const c = personalizadoDe(campo);
     const v = acao.valoresPersonalizados?.[c.id];
     if (c.tipo === "simNao") return [op("", "Sem resposta", v == null), op("sim", "Sim", v === true), op("nao", "Não", v === false)];
@@ -652,6 +709,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     fecharPopover();
     if (campo === "situacao") return executar(() => store.mudarSituacao(espacoId, numero, valor || null), `Situação: ${nome}.`);
     if (campo === "etapa" || campo === "entregaDoPlano") return executar(() => store.alterarAcao(espacoId, numero, { [campo]: valor || null }));
+    if (campo === "comecaCom" || campo === "terminaCom") return executar(() => store.alterarAcao(espacoId, numero, { [campo]: JSON.parse(valor) }));
     const c = personalizadoDe(campo);
     const entrada = c.tipo === "simNao" ? (valor === "sim" ? true : valor === "nao" ? false : null) : valor || null;
     return executar(() => store.definirValorPersonalizado(espacoId, numero, c.id, entrada));
@@ -923,8 +981,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
     if (l.situacao !== "liberada" || editando === "reestimar" || editando === "concluir") return "";
     return `<div class="botoes">
-      ${usaEstimativas(d.espaco) ? `<button class="botao${l.atrasada || c.regraDoPassado ? " principal" : ""}" type="button" data-abrir-form="reestimar">Reestimar</button>` : ""}
-      <button class="botao${l.atrasada && usaEstimativas(d.espaco) ? "" : " principal"}" type="button" data-abrir-form="concluir">${ICONES.concluida}Registrar conclusão</button>
+      ${usaEstimativas(d.espaco) && !l.continua ? `<button class="botao${l.atrasada || c.regraDoPassado ? " principal" : ""}" type="button" data-abrir-form="reestimar">Reestimar</button>` : ""}
+      <button class="botao${l.atrasada && usaEstimativas(d.espaco) || l.continua && !l.podeEncerrar ? "" : " principal"}" type="button" data-abrir-form="concluir">${ICONES.concluida}Registrar conclusão</button>
     </div>`;
   }
 

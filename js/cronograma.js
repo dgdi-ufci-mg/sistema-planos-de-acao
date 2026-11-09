@@ -27,7 +27,9 @@ function barraDe(acao, c, cal) {
     folga: Math.max(0, Math.round(c.folga ?? 0)),
     situacao: c.situacao,
     atrasada: Boolean(c.atrasada),
-    dependeDe: acao.dependeDe ?? [],
+    /** ação contínua (seção 5.9): barra própria, sem setas de dependência */
+    continua: Boolean(c.continua),
+    dependeDe: c.continua ? [] : acao.dependeDe ?? [],
   };
 }
 
@@ -41,9 +43,15 @@ function barraDe(acao, c, cal) {
  */
 export function montarCronograma(acoes, caminho, cal, { estrutura = [], usaFases = false } = {}) {
   const barras = acoes.map((a) => barraDe(a, caminho.porAcao.get(a.numero), cal));
-  const extremos = (bs) => bs.length
-    ? { inicio: bs.map((b) => b.inicio).sort()[0], fim: bs.map((b) => b.fim).sort().at(-1) }
-    : { inicio: null, fim: null };
+  /* as ações contínuas não entram nas datas dos grupos, como no cálculo dos marcos (seção 5.9); só um grupo apenas
+     com contínuas usa as delas, para não ficar sem barra de resumo */
+  const extremos = (todas) => {
+    const comuns = todas.filter((b) => !b.continua);
+    const bs = comuns.length ? comuns : todas;
+    return bs.length
+      ? { inicio: bs.map((b) => b.inicio).sort()[0], fim: bs.map((b) => b.fim).sort().at(-1) }
+      : { inicio: null, fim: null };
+  };
   const linhas = [];
   if (usaFases && estrutura.length) {
     const daEtapa = new Map();

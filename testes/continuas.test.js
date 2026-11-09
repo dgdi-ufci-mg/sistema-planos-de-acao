@@ -8,6 +8,8 @@ import { acoesParaCalculo } from "../js/modelos.js";
 import { montarLinhas } from "../js/lista.js";
 import { problemaDosMarcos, marcosPossiveis, nomeDoMarco, marcosSugeridos, normalizarMarco } from "../js/continuas.js";
 import { descreverRegistro } from "../js/historico.js";
+import { montarRede, INICIO, TERMINO } from "../js/rede.js";
+import { montarCronograma } from "../js/cronograma.js";
 import { criarBancoLocal } from "../js/banco/local.js";
 import { criarStore } from "../js/dados.js";
 
@@ -129,6 +131,44 @@ describe("Ação contínua: situação, atraso e encerramento", () => {
     const acoes = [...rede(), continua(9, P, P, { concluidaEm: "2026-10-09" })];
     const r = calcular(acoes, { hoje });
     assert.deepEqual([r.porAcao.get(9).situacao, r.porAcao.get(9).conclusao, r.porAcao.get(9).podeEncerrar], ["concluida", 5, false]);
+  });
+});
+
+describe("Ação contínua na rede e no cronograma", () => {
+  const marcos = estrutura.flatMap((f) => f.etapas.map((e) => ({ id: e.id, nome: e.nome, fase: f.id, faseNome: f.nome })));
+  const acoes = [...rede(), continua(9, A(2), A(4), { etapa: "e1" }), continua(10, P, P), continua(11, E("e3"), E("e3"), { etapa: "e3" })];
+  const caminho = calcular(acoes);
+  const r = montarRede(acoes, caminho, { pontas: true, continuas: true, marcos, marcoDe: (a) => a.etapa });
+  it("na coluna do marco de início, sem setas de dependência nem ligações aos círculos", () => {
+    assert.equal(r.coluna.get(9), r.coluna.get(2));
+    assert.equal(r.coluna.get(10), 1); // a primeira coluna de ações (a 0 é a do círculo de início)
+    assert.equal(r.coluna.get(11), r.coluna.get(4));
+    assert.ok(!r.arestas.some((ar) => [9, 10, 11].includes(ar.de) || [9, 10, 11].includes(ar.para)));
+    assert.ok(r.arestas.some((ar) => ar.de === INICIO && ar.para === 1) && r.arestas.some((ar) => ar.de === 4 && ar.para === TERMINO));
+  });
+  it("duas ligações por contínua: começa junto e termina junto, encostadas nos marcos", () => {
+    assert.equal(r.ligacoesContinuas.length, 6);
+    const de9 = r.ligacoesContinuas.filter((g) => g.continua === 9);
+    assert.deepEqual(de9.map((g) => [g.lado, g.acao]), [["inicio", 2], ["fim", 4]]);
+    const fim = de9[1].pontos.at(-1);
+    assert.equal(fim[0], r.pos.get(4).x + 240, "termina na lateral direita da ação 4");
+    const ini = de9[0].pontos.at(-1);
+    assert.equal(ini[0], r.pos.get(2).x, "começa na lateral esquerda da ação 2");
+    const de10 = r.ligacoesContinuas.filter((g) => g.continua === 10);
+    assert.deepEqual(de10.map((g) => g.acao), [null, null]);
+    assert.deepEqual(de10[1].pontos.at(-1), [r.pontas.termino.x, r.pontas.termino.y + 40], "chega por baixo do círculo de término");
+  });
+  it("a contínua não muda as colunas das ações comuns nem a linha das fases", () => {
+    const sem = montarRede(rede(), calcular(rede()), { pontas: true, continuas: true, marcos, marcoDe: (a) => a.etapa });
+    for (const n of [1, 2, 3, 4]) assert.equal(r.coluna.get(n), sem.coluna.get(n));
+    assert.deepEqual(r.fases.map((f) => f.id), sem.fases.map((f) => f.id));
+  });
+  it("cronograma: barra contínua sem setas e fora das datas dos grupos", () => {
+    const { linhas } = montarCronograma(acoes, calcular(acoes, { hoje: "2026-10-05" }), cal, { estrutura, usaFases: true });
+    const grupoE1 = linhas.find((l) => l.tipo === "grupo" && l.id === "e1");
+    assert.deepEqual([grupoE1.inicio, grupoE1.fim], [cal.data(0), cal.dataDeConclusao(5, 3)]);
+    const b9 = linhas.find((l) => l.tipo === "acao" && l.barra.numero === 9).barra;
+    assert.deepEqual([b9.continua, b9.dependeDe], [true, []]);
   });
 });
 
