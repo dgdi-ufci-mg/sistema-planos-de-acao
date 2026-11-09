@@ -2888,3 +2888,34 @@ button.atributo:hover .atributo-mais { color: var(--accent-ink); }
 .janela-grade.tarefa .janela-topo > .bloco-prazo { margin-top: 6px; }
 .janela-grade.tarefa.com-circulo .janela-topo > .bloco-prazo { margin-left: 38px; }
 @media (max-width: 640px) { .janela-grade.tarefa .janela-topo > .bloco-prazo { margin-left: 0; } }
+
+/* ---------- Rede em tela cheia, como um mapa (09/11/2026, pedido do responsável): a rede é o fundo da área à
+   direita do menu lateral, por trás da barra do topo; título, legenda e botões flutuam sobre ela ---------- */
+body[data-vista-atual="rede"] { overflow: hidden; }
+body[data-vista-atual="rede"] .rede {
+  position: fixed; inset: 0; z-index: 1; margin: 0; border: 0; border-radius: 0; box-shadow: none; background: var(--bg);
+  transition: left var(--mov) var(--mov-curva);
+}
+@media (min-width: 900px) { body[data-vista-atual="rede"]:not(.lateral-recolhida) .rede { left: var(--largura-lateral); } }
+body[data-vista-atual="rede"] .rede-rolagem { height: 100% !important; border-radius: 0; scrollbar-width: none; }
+body[data-vista-atual="rede"] .rede-rolagem::-webkit-scrollbar { display: none; }
+body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual="rede"] .cabeca-espaco {
+  position: relative; z-index: 2; width: fit-content; max-width: min(720px, 100%); padding: 2px 12px; margin-left: -12px; border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+body[data-vista-atual="rede"] #principal .titulo-conteudo { font-size: 1.35rem; }
+.rede-flutuante { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sombra); }
+.rede-legenda { position: absolute; left: 16px; bottom: 16px; z-index: 3; display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 12px; font-size: .8rem; }
+.rede-controles { position: absolute; right: 16px; bottom: 16px; z-index: 3; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.rede-controles-grupo { display: flex; flex-direction: column; overflow: hidden; }
+.rede-controle { width: 40px; height: 40px; border: 0; padding: 0; background: transparent; color: var(--ink); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.rede-controle.rede-flutuante { background: var(--surface); }
+.rede-controle.redondo { border-radius: 50%; }
+.rede-controle:hover { background: var(--sunk); }
+.rede-controle .icone { width: 20px; height: 20px; }
+.rede-zoom-valor { height: 26px; font-size: .7rem; color: var(--muted); border-block: 1px solid var(--line); }
+.rede-ajuda { position: absolute; right: 72px; bottom: 16px; z-index: 3; width: min(380px, calc(100% - 120px)); padding: 12px 14px; font-size: .84rem; line-height: 1.45; }
+.rede-ajuda p { margin: 0 0 8px; }
+.rede-ajuda p:last-child { margin: 0; }
+.rede-legenda-botao { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }

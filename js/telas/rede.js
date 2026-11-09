@@ -3,12 +3,13 @@
  * Cada ação é um cartão; as setas ligam cada ação às que dependem dela. Colunas da esquerda
  * para a direita, na ordem em que as ações podem acontecer (regras em `js/rede.js`).
  * Interativa: passar o mouse num cartão destaca tudo o que vem antes e depois dele; clicar abre
- * a ação; "Ver tudo" reduz o desenho para caber na largura da tela.
+ * a ação; em tela cheia, navegada como um mapa (rolar dá zoom em volta do ponteiro; arrastar o fundo move).
  * Só no computador (o seletor esconde o modo no celular).
  */
 import { montarRede, caminhoDaSeta, MEDIDAS } from "../rede.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
+import { surgir, DURACAO as MOV_DURACAO, CURVA as MOV_CURVA } from "./movimento.js";
 
 /**
  * @param {HTMLElement} alvo
@@ -224,27 +225,12 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   const posAntes = new Map([...alvo.querySelectorAll(".rede-no")].map((el) => [el.dataset.numero, [parseFloat(el.style.left), parseFloat(el.style.top)]]));
   const caixasAntes = new Map([...alvo.querySelectorAll("[data-anima]")].map((el) => [el.dataset.anima, el.getAttribute("style")]));
   const rolagemAnterior = anterior ? [anterior.scrollLeft, anterior.scrollTop] : null;
+  const explicacao = `Da esquerda para a direita, na ordem em que as ações podem acontecer. ${edicao
+    ? `Clique numa ação para selecioná-la; o <b>+</b> cria a próxima e a bolinha, arrastada até outra ação, liga as duas. O <b>+</b> no meio de uma seta insere uma ação entre as duas. Duplo clique renomeia; Enter abre. Clique numa seta e aperte Delete para desligar.`
+    : `Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la.`}`;
+  /* Rede em tela cheia, como um mapa (09/11/2026, pedido do responsável): os controles flutuam sobre ela */
+  const ajudaAberta = alvo.dataset.redeAjudaAberta === "1";
   alvo.innerHTML = `
-    <div class="crono-ferramentas">
-      <div class="alternador" role="group" aria-label="Tamanho">
-        ${[["normal", "Normal"], ["tudo", "Ver tudo"]].map(([v, nome]) => `<button type="button" data-escala="${v}" aria-pressed="${v === escala && !alvo.dataset.redeZoom}">${nome}</button>`).join("")}
-      </div>
-      <div class="zoom-rede" role="group" aria-label="Zoom">
-        <button type="button" class="icone-barra" data-zoom-passo="-1" title="Afastar (Ctrl + rolar)" aria-label="Afastar">−</button>
-        <span class="zoom-valor" data-zoom-valor aria-live="polite"></span>
-        <button type="button" class="icone-barra" data-zoom-passo="1" title="Aproximar (Ctrl + rolar)" aria-label="Aproximar">+</button>
-      </div>
-      <div class="crono-legendas">
-        <span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
-        <span class="crono-legenda"><i class="folga"></i>Com folga</span>
-        <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
-        ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
-      </div>
-      ${temContinuas ? `<button type="button" class="botao" data-ocultar-continuas aria-pressed="${ocultarContinuas}">${ocultarContinuas ? "Mostrar ações contínuas" : "Ocultar ações contínuas"}</button>` : ""}
-      <p class="tec rede-explicacao">Da esquerda para a direita, na ordem em que as ações podem acontecer. ${edicao
-        ? `Clique numa ação para selecioná-la; o <b>+</b> cria a próxima e a bolinha, arrastada até outra ação, liga as duas. O <b>+</b> no meio de uma seta insere uma ação entre as duas. Duplo clique renomeia; Enter abre. Clique numa seta e aperte Delete para desligar.`
-        : `Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la.`} Ctrl + rolar o mouse aproxima e afasta; arraste o fundo para mover a rede. Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
-    </div>
     <div class="rede${edicao ? " editavel" : ""}" data-rede tabindex="-1">
       <div class="rede-rolagem" data-rede-rolagem>
         <div class="rede-tamanho" data-tamanho>
@@ -265,59 +251,115 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
           </div>
         </div>
       </div>
+      <div class="rede-legenda rede-flutuante">
+        <span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
+        <span class="crono-legenda"><i class="folga"></i>Com folga</span>
+        <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
+        ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
+        ${temContinuas ? `<button type="button" class="rede-legenda-botao" data-ocultar-continuas aria-pressed="${ocultarContinuas}">${ocultarContinuas ? "Mostrar ações contínuas" : "Ocultar ações contínuas"}</button>` : ""}
+      </div>
+      <div class="rede-ajuda rede-flutuante" data-rede-ajuda-cartao${ajudaAberta ? "" : " hidden"}>
+        <p>${explicacao}</p>
+        <p><b>Navegar:</b> role o mouse para aproximar e afastar, em volta do ponteiro; arraste o fundo para mover a rede.</p>
+        <p class="tec">Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
+      </div>
+      <div class="rede-controles" data-rede-controles>
+        <button type="button" class="rede-controle rede-flutuante redondo" data-rede-ajuda aria-expanded="${ajudaAberta}" title="Como usar a rede" aria-label="Como usar a rede">${ICONES.ajuda}</button>
+        <div class="rede-controles-grupo rede-flutuante" role="group" aria-label="Zoom">
+          <button type="button" class="rede-controle" data-zoom-passo="1" title="Aproximar (role o mouse)" aria-label="Aproximar">${ICONES.mais}</button>
+          <button type="button" class="rede-controle rede-zoom-valor mono" data-escala="normal" data-zoom-valor title="Voltar ao tamanho normal (100%)"></button>
+          <button type="button" class="rede-controle" data-zoom-passo="-1" title="Afastar (role o mouse)" aria-label="Afastar">${ICONES.menos}</button>
+        </div>
+        <button type="button" class="rede-controle rede-flutuante" data-escala="tudo" title="Ajustar à tela: ver a rede inteira" aria-label="Ajustar à tela">${ICONES.enquadrar}</button>
+      </div>
     </div>`;
 
-  /* ---------- tamanho e zoom (22/10/2026): Ctrl + rolar aproxima e afasta, em volta do cursor, como
-     nos quadros infinitos; arrastar o fundo move a rede. "Normal" é 100%; "Ver tudo" cabe na área ---------- */
+  /* ---------- navegação como num mapa (09/11/2026, pedido do responsável; antes, 22/10/2026, Ctrl + rolar):
+     a Rede ocupa a tela inteira, por trás da barra do topo; rolar o mouse aproxima e afasta em volta do ponteiro;
+     arrastar o fundo move a vista. Em volta do desenho há uma margem livre (70% da área visível de cada lado),
+     para que qualquer parte da rede possa ser trazida para o meio da tela, longe dos controles flutuantes.
+     "Ajustar à tela" cabe o desenho na área que os controles deixam livre; o valor em % volta a 100% ---------- */
   const rolagem = alvo.querySelector("[data-rede-rolagem]");
   const tamanho = alvo.querySelector("[data-tamanho]");
   const conteudo = alvo.querySelector("[data-conteudo]");
   const valor = alvo.querySelector("[data-zoom-valor]");
-  const MIN = 0.2;
   const MAX = 2.5;
-  /* a rede vai até o fim da tela (23/10/2026): a altura é o que sobra abaixo dela, com uma margem */
-  const ajustarAltura = () => {
-    if (!rolagem.isConnected) return removeEventListener("resize", ajustarAltura);
-    rolagem.style.height = `${Math.max(320, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 16))}px`;
-  };
-  ajustarAltura();
   if (aoRedimensionar) removeEventListener("resize", aoRedimensionar);
-  aoRedimensionar = ajustarAltura;
-  addEventListener("resize", ajustarAltura);
-  const alturaUtil = rolagem.clientHeight;
-  const caber = () => Math.min(1, (rolagem.clientWidth - 2) / largura, (alturaUtil - 2) / altura);
-  let fator = alvo.dataset.redeZoom ? Number(alvo.dataset.redeZoom) : escala === "tudo" ? caber() : 1;
+  aoRedimensionar = null;
+  let mx = 0;
+  let my = 0;
+  /* área livre: o que sobra da tela tirando a barra do topo, o título, a legenda e os botões */
+  const areaLivre = () => {
+    const v = rolagem.getBoundingClientRect();
+    let topo = 0;
+    for (const el of [document.querySelector(".topo"), document.querySelector("#principal .titulo-conteudo"), document.querySelector("#principal .cabeca-espaco")]) {
+      if (!el || !el.offsetParent) continue;
+      const r = el.getBoundingClientRect();
+      if (r.height) topo = Math.max(topo, r.bottom - v.top);
+    }
+    const legenda = alvo.querySelector(".rede-legenda").getBoundingClientRect();
+    const controles = alvo.querySelector("[data-rede-controles]").getBoundingClientRect();
+    const folga = 24;
+    return { l: folga, t: topo + folga, r: v.right - controles.left + folga, b: v.bottom - legenda.top + folga, w: v.width, h: v.height };
+  };
+  const caber = () => {
+    const a = areaLivre();
+    return Math.min(1, (a.w - a.l - a.r) / largura, (a.h - a.t - a.b) / altura);
+  };
+  const MIN = Math.min(0.2, caber());
+  const medir = () => {
+    mx = Math.round(rolagem.clientWidth * 0.7);
+    my = Math.round(rolagem.clientHeight * 0.7);
+    conteudo.style.left = `${mx}px`;
+    conteudo.style.top = `${my}px`;
+  };
+  let fator = alvo.dataset.redeZoom ? Number(alvo.dataset.redeZoom) : 1;
   const aplicar = (novo, cx = rolagem.clientWidth / 2, cy = rolagem.clientHeight / 2) => {
     novo = Math.min(MAX, Math.max(MIN, novo));
-    const px = (rolagem.scrollLeft + cx) / fator; // ponto da rede sob o cursor
-    const py = (rolagem.scrollTop + cy) / fator;
+    const px = (rolagem.scrollLeft + cx - mx) / fator; // ponto da rede sob o ponteiro
+    const py = (rolagem.scrollTop + cy - my) / fator;
     fator = novo;
     conteudo.style.transform = fator !== 1 ? `scale(${fator})` : "";
-    tamanho.style.width = `${largura * fator}px`;
-    tamanho.style.height = `${altura * fator}px`;
-    rolagem.scrollLeft = px * fator - cx;
-    rolagem.scrollTop = py * fator - cy;
+    tamanho.style.width = `${largura * fator + mx * 2}px`;
+    tamanho.style.height = `${altura * fator + my * 2}px`;
+    rolagem.scrollLeft = mx + px * fator - cx;
+    rolagem.scrollTop = my + py * fator - cy;
     valor.textContent = `${Math.round(fator * 100)}%`;
+  };
+  /* põe o desenho na área livre: centrado (ajustar) ou encostado no canto de cima, à esquerda (100%) */
+  const enquadrar = (centrar) => {
+    const a = areaLivre();
+    rolagem.scrollLeft = centrar ? mx + (largura * fator) / 2 - (a.l + (a.w - a.l - a.r) / 2) : mx - a.l;
+    rolagem.scrollTop = centrar ? my + (altura * fator) / 2 - (a.t + (a.h - a.t - a.b) / 2) : my - a.t;
   };
   const zoomLivre = (novo, cx, cy) => {
     aplicar(novo, cx, cy);
     alvo.dataset.redeZoom = String(fator);
-    for (const b of alvo.querySelectorAll("[data-escala]")) b.setAttribute("aria-pressed", "false");
   };
-  aplicar(fator, 0, 0);
-  if (rolagemAnterior && escala === alvo.dataset.redeEscala) [rolagem.scrollLeft, rolagem.scrollTop] = rolagemAnterior;
+  medir();
+  if (rolagemAnterior && alvo.dataset.redeZoom) {
+    aplicar(fator, 0, 0);
+    [rolagem.scrollLeft, rolagem.scrollTop] = rolagemAnterior;
+  } else {
+    if (escala === "tudo") fator = caber();
+    aplicar(fator, 0, 0);
+    enquadrar(escala === "tudo");
+    alvo.dataset.redeZoom = String(fator);
+  }
   alvo.dataset.redeEscala = escala;
 
+  /* rolar o mouse (ou a pinça do touchpad) aproxima e afasta, sem Ctrl; a página não rola nesta visualização */
   rolagem.addEventListener("wheel", (e) => {
-    if (!e.ctrlKey && !e.metaKey) return; // sem Ctrl, rola normalmente
     e.preventDefault();
     const r = rolagem.getBoundingClientRect();
-    zoomLivre(fator * Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0018)), e.clientX - r.left, e.clientY - r.top);
+    const passo = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 800 : e.deltaY;
+    zoomLivre(fator * Math.exp(-passo * (e.ctrlKey ? 0.01 : 0.002)), e.clientX - r.left, e.clientY - r.top);
   }, { passive: false });
   /* arrastar o fundo (fora dos cartões) move a rede; um arrasto não conta como clique no fundo */
   let moveuFundo = false;
   rolagem.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-alca], .rede-seta-alvo, [data-inserir-de]")) return;
+    if ((e.button !== 0 && e.button !== 1) || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-alca], .rede-seta-alvo, [data-inserir-de]")) return;
+    if (e.button === 1) e.preventDefault(); // botão do meio também arrasta, sem a rolagem automática do navegador
     const inicio = { x: e.clientX, y: e.clientY, l: rolagem.scrollLeft, t: rolagem.scrollTop };
     rolagem.setPointerCapture(e.pointerId);
     rolagem.classList.add("arrastando");
@@ -334,18 +376,35 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     rolagem.addEventListener("pointercancel", soltar);
   });
 
-  alvo.querySelector(".crono-ferramentas").onclick = (e) => {
-    if (e.target.closest("[data-ocultar-continuas]")) return aoOcultarContinuas(!ocultarContinuas);
+  /* legenda flutuante: mostrar ou ocultar as ações contínuas */
+  alvo.querySelector(".rede-legenda").onclick = (e) => {
+    if (e.target.closest("[data-ocultar-continuas]")) aoOcultarContinuas(!ocultarContinuas);
+  };
+  /* botões flutuantes: + e − em volta do centro da área livre; % volta a 100%; os cantos ajustam à tela; ? explica */
+  alvo.querySelector("[data-rede-controles]").onclick = (e) => {
     const z = e.target.closest("[data-zoom-passo]");
-    if (z) return zoomLivre(fator * (Number(z.dataset.zoomPasso) > 0 ? 1.2 : 1 / 1.2));
+    if (z) {
+      const a = areaLivre();
+      return zoomLivre(fator * (Number(z.dataset.zoomPasso) > 0 ? 1.25 : 1 / 1.25), a.l + (a.w - a.l - a.r) / 2, a.t + (a.h - a.t - a.b) / 2);
+    }
+    const ajuda = e.target.closest("[data-rede-ajuda]");
+    if (ajuda) {
+      const cartao = alvo.querySelector("[data-rede-ajuda-cartao]");
+      const abrir = cartao.hidden;
+      if (abrir) { cartao.hidden = false; surgir(cartao); }
+      else if (reduzirMovimento()) cartao.hidden = true;
+      else cartao.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(3px)" }], { duration: MOV_DURACAO, easing: MOV_CURVA }).finished.then(() => { cartao.hidden = true; }, () => {});
+      ajuda.setAttribute("aria-expanded", String(abrir));
+      alvo.dataset.redeAjudaAberta = abrir ? "1" : "";
+      return;
+    }
     const b = e.target.closest("[data-escala]");
     if (!b) return;
-    delete alvo.dataset.redeZoom;
-    if (b.dataset.escala !== escala) return aoMudarEscala(b.dataset.escala);
-    aplicar(escala === "tudo" ? caber() : 1);
-    for (const x of alvo.querySelectorAll("[data-escala]")) x.setAttribute("aria-pressed", String(x === b));
+    const centrar = b.dataset.escala === "tudo";
+    aplicar(centrar ? caber() : 1, 0, 0);
+    enquadrar(centrar);
+    alvo.dataset.redeZoom = String(fator);
   };
-
   /* ---------- destaque: tudo o que vem antes e depois da ação apontada ---------- */
   const antes = new Map(acoes.map((a) => [a.numero, []]));
   const depois = new Map(acoes.map((a) => [a.numero, []]));

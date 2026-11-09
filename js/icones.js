@@ -57,6 +57,8 @@ export const ICONES = Object.freeze({
   /** Novo: sinal de mais. */
   mais: svg('<path d="M12 5v14M5 12h14"/>'),
   menos: svg('<path d="M5 12h14"/>'),
+  /** Enquadrar (Rede, 09/11/2026): quatro cantos, "ajustar à tela". */
+  enquadrar: svg('<path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/>'),
   /** Pessoa: menu do usuário sem login. */
   pessoa: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'),
   /** Marcado: item escolhido numa lista. */
