@@ -24,6 +24,8 @@ export const ICONES = Object.freeze({
   instalar: svg('<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3M10.5 18.5h3"/>'),
   /** Entregas do Plano de Ação (passo 2.6): alvo com seta. */
   modoEntregas: svg('<circle cx="11" cy="13" r="8"/><circle cx="11" cy="13" r="4"/><path d="M11 13 19 5M16 5h3v3"/>'),
+  /** Responsáveis: uma pessoa e, ao lado, as barras das ações dela. */
+  modoResponsaveis: svg('<circle cx="7" cy="8" r="3"/><path d="M2 19a5 5 0 0 1 10 0"/><path d="M15 7h6M15 12h4M15 17h6"/>'),
   /** Linha do tempo: eixo com a curva da chance de terminar. */
   modoLinha: svg('<path d="M3 4v16h18"/><path d="M6 17c5 0 6-10 14-11"/>'),
   /** Barra do tempo restante: cronômetro (22/10/2026). */
