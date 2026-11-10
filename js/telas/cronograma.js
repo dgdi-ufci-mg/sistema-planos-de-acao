@@ -156,7 +156,7 @@ export function desenharCronograma(alvo, { espaco, acoes, caminho, cal, hoje, us
     <div class="crono" style="--altura:${ALTURA}px">
       <div class="crono-rolagem" data-rolagem>
         <div class="crono-conteudo" style="width:calc(var(--nomes) + ${largura}px)">
-          <div class="crono-topo"><div class="crono-nome topo">Ação</div><div class="crono-escala" style="width:${largura}px">${marcasTopo.join("")}</div></div>
+          <div class="crono-topo"><div class="crono-nome crono-cabeca">Ação</div><div class="crono-escala" style="width:${largura}px">${marcasTopo.join("")}</div></div>
           <div class="crono-corpo" style="height:${altura}px">
             <div class="crono-trilho" style="width:${largura}px">
               ${guias.join("")}

@@ -66,3 +66,23 @@ describe("Cronograma: zoom", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 });
+
+describe("Cronograma: escala das datas alinhada às barras (10/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  test("a escala do cabeçalho e a área das barras começam no mesmo ponto", async () => {
+    const p = await sessao.abrir({ largura: 1280, altura: 760 });
+    await p.click('.menu-topo[data-pop="modo"]');
+    await p.locator('[data-modo="cronograma"]').first().click();
+    await p.waitForSelector(".crono-trilho");
+    await assentar(p, 300);
+    const m = await p.evaluate(() => ({
+      escala: document.querySelector(".crono-escala").getBoundingClientRect().left,
+      trilho: document.querySelector(".crono-trilho").getBoundingClientRect().left,
+    }));
+    assert.ok(Math.abs(m.escala - m.trilho) < 1, `escala em ${m.escala}, barras em ${m.trilho}`);
+    assert.deepEqual(p.erros, []);
+  });
+});
