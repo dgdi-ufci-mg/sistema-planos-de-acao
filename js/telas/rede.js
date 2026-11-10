@@ -4,7 +4,8 @@
  * para a direita, na ordem em que as ações podem acontecer (regras em `js/rede.js`).
  * Interativa: passar o mouse num cartão destaca tudo o que vem antes e depois dele; clicar abre
  * a ação; em tela cheia, navegada como um mapa (rolar dá zoom em volta do ponteiro; arrastar o fundo move).
- * Só no computador (o seletor esconde o modo no celular).
+ * No celular (10/11/2026), só para consulta: arrastar move, a pinça aproxima e afasta, tocar numa ação a abre.
+ * Níveis de detalhe (10/11/2026): afastando, o cartão mostra só o nome, em letra maior; mais longe, vira um bloco de cor.
  */
 import { montarRede, caminhoDaSeta, MEDIDAS } from "../rede.js";
 import { esc, dataBr, plural } from "../formato.js";
@@ -21,6 +22,17 @@ import { surgir, DURACAO as MOV_DURACAO, CURVA as MOV_CURVA } from "./movimento.
  */
 /** Ajuste da altura ao redimensionar a janela: um só por vez, trocado a cada desenho. */
 let aoRedimensionar = null;
+/** Ctrl+Z na Rede (10/11/2026): um só ouvinte no documento, trocado a cada desenho. */
+let aoTeclarDesfazer = null;
+/**
+ * Níveis de detalhe do cartão conforme o zoom (10/11/2026): "completo" de 60% para cima; "nome" de 35% a 60%
+ * (só o nome, em letra maior); "cor" abaixo de 35% (bloco preenchido com a cor da situação, nome onde couber).
+ */
+export const DETALHE = Object.freeze({ nome: 0.6, cor: 0.35 });
+export const nivelDeDetalhe = (fator) => (fator >= DETALHE.nome ? "completo" : fator >= DETALHE.cor ? "nome" : "cor");
+/** Letra do nome nos níveis reduzidos: cerca de 10,5 px na tela, sem passar de 30 px no desenho. */
+const LETRA_NA_TELA = 10.5;
+const LETRA_MAXIMA = 30;
 
 /**
  * Seleção na Rede (09/11/2026): sobrevive aos redesenhos que cada gravação provoca.
@@ -139,7 +151,7 @@ function animarRearranjo(caixa, { posAntes, caixasAntes }) {
 const RAIO = MEDIDAS.raioPonta;
 
 export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
-  inicio = null, termino = null, prazoFinal = null, continuas = false, ocultarContinuas = false, aoOcultarContinuas = () => {}, edicao = null }) {
+  inicio = null, termino = null, prazoFinal = null, continuas = false, ocultarContinuas = false, aoOcultarContinuas = () => {}, edicao = null, nomeDaSituacao = () => "", nomeLiberada = "Liberada", toque = false }) {
   /* ações contínuas (seção 5.9; 09/11/2026): caixa como as outras, com ligações tracejadas aos marcos; o filtro as esconde */
   const linhaDaAcao = new Map(linhas.map((l) => [l.acao.numero, l]));
   const temContinuas = continuas && todas.some((a) => linhaDaAcao.get(a.numero)?.continua);
@@ -177,13 +189,17 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     const folga = l.continua && l.situacao !== "concluida" ? (l.podeEncerrar ? "pode ser encerrada" : "contínua")
       : l.situacao === "concluida" || l.semEstimativa || c.folga == null ? ""
       : c.critica ? "sem folga" : `folga ${Math.round(c.folga)} ${plural(Math.round(c.folga), "dia", "dias")}`;
-    return `<div class="rede-no ${classe}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}">
+    /* "agora" (10/11/2026): a ação liberada e ainda não concluída é a que pode ser feita neste momento */
+    const agora = l.situacao === "liberada";
+    const pilula = agora ? nomeDaSituacao(l) : "";
+    return `<div class="rede-no ${classe}${agora ? " agora" : ""}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}">
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         title="${esc(etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo)}">
         <span class="rede-topo">${situacao(l)}<span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
         <span class="rede-base"><span class="donos">${donos(a)}</span>
           <span class="rede-data${l.atrasada ? " atrasada" : ""}"><span class="mono">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}${data}</span>${folga ? `<small>${folga}</small>` : ""}</span></span>
-      </div>${edicao ? `
+      </div>${pilula ? `<span class="rede-agora" aria-hidden="true">${esc(pilula)}</span>` : ""}${edicao ? `
+      <button type="button" class="rede-abrir" data-rede-abrir="${a.numero}" title="Abrir a ${esc(edicao.nomeAcao)} (Enter)" aria-label="Abrir ${esc(a.rotulo)}">${ICONES.expandir}</button>
       ${edicao.podeCriar ? `<button type="button" class="rede-mais" data-rede-mais="${a.numero}" title="Criar a próxima ação, ligada a esta" aria-label="Criar a próxima ação depois de ${esc(a.rotulo)}">${ICONES.mais}</button>` : ""}
       <span class="rede-alca" data-rede-alca="${a.numero}" title="Arraste até outra ação para ligá-las"></span>` : ""}
     </div>`;
@@ -225,9 +241,28 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   const posAntes = new Map([...alvo.querySelectorAll(".rede-no")].map((el) => [el.dataset.numero, [parseFloat(el.style.left), parseFloat(el.style.top)]]));
   const caixasAntes = new Map([...alvo.querySelectorAll("[data-anima]")].map((el) => [el.dataset.anima, el.getAttribute("style")]));
   const rolagemAnterior = anterior ? [anterior.scrollLeft, anterior.scrollTop] : null;
-  const explicacao = `Da esquerda para a direita, na ordem em que as ações podem acontecer. ${edicao
-    ? `Clique numa ação para selecioná-la; o <b>+</b> cria a próxima e a bolinha, arrastada até outra ação, liga as duas. O <b>+</b> no meio de uma seta insere uma ação entre as duas. Duplo clique renomeia; Enter abre. Clique numa seta e aperte Delete para desligar.`
-    : `Passe o mouse numa ação para destacar o que vem antes e depois dela; clique para abri-la.`}`;
+  /* ajuda em lista, um gesto por linha (10/11/2026) */
+  const gestos = toque ? [
+    ["Arraste", "move a rede"],
+    ["Pinça com dois dedos", "aproxima e afasta"],
+    ["Toque numa ação", "abre a ação"],
+  ] : [
+    ["Role o mouse", "aproxima e afasta, em volta do ponteiro"],
+    ["Arraste o fundo", "move a rede"],
+    ["Passe o mouse numa ação", "destaca o que vem antes e depois dela"],
+    ...(edicao ? [
+      ["Clique numa ação", "seleciona; aparecem os botões ao lado dela"],
+      ["Botão de abrir, ou Enter", "abre a ação"],
+      ...(edicao.podeCriar ? [["+ ao lado da ação", "cria a próxima, já ligada"], ["+ no meio de uma seta", "insere uma ação entre as duas"]] : []),
+      ["Bolinha, arrastada até outra ação", "liga as duas"],
+      ["Duplo clique", "muda o nome"],
+      ["Clique numa seta e Delete", "retira a ligação"],
+      ["Ctrl+Z", "desfaz a última mudança feita aqui"],
+      ["Botão direito", "mostra as opções"],
+    ] : [["Clique numa ação", "abre a ação"]]),
+  ];
+  const explicacao = `<p>Da esquerda para a direita, na ordem em que as ações podem acontecer.</p>
+    <ul class="rede-gestos">${gestos.map(([g, r]) => `<li><b>${g}</b><span>${r}</span></li>`).join("")}</ul>`;
   /* Rede em tela cheia, como um mapa (09/11/2026, pedido do responsável): os controles flutuam sobre ela */
   const ajudaAberta = alvo.dataset.redeAjudaAberta === "1";
   alvo.innerHTML = `
@@ -255,15 +290,19 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
         <span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
         <span class="crono-legenda"><i class="folga"></i>Com folga</span>
         <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
+        <span class="crono-legenda"><i class="rede-leg-agora"></i>${esc(nomeLiberada)}: pode ser feita agora</span>
+        <span class="crono-legenda rede-leg-icone">${ICONES.naoLiberada}Espera outra ação</span>
+        ${cercas.length ? `<span class="crono-legenda"><i class="rede-leg-etapa"></i>Etapa</span>` : ""}
+        ${fases.length ? `<span class="crono-legenda"><i class="rede-leg-fase"></i>Fim da fase</span>` : ""}
         ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
         ${temContinuas ? `<button type="button" class="rede-legenda-botao" data-ocultar-continuas aria-pressed="${ocultarContinuas}">${ocultarContinuas ? "Mostrar ações contínuas" : "Ocultar ações contínuas"}</button>` : ""}
       </div>
       <div class="rede-ajuda rede-sobre" data-rede-ajuda-cartao${ajudaAberta ? "" : " hidden"}>
-        <p>${explicacao}</p>
-        <p><b>Navegar:</b> role o mouse para aproximar e afastar, em volta do ponteiro; arraste o fundo para mover a rede.</p>
+        ${explicacao}
         <p class="tec">Termo técnico: diagrama de rede PERT/CPM (<a href="#" class="oque" data-termo="rede">o que é?</a>).</p>
       </div>
       <div class="rede-controles" data-rede-controles>
+        ${edicao ? `<button type="button" class="rede-controle rede-sobre redondo" data-rede-desfazer title="Desfazer a última mudança (Ctrl+Z)" aria-label="Desfazer a última mudança"${edicao.podeDesfazer() ? "" : " hidden"}>${ICONES.desfazer}</button>` : ""}
         <button type="button" class="rede-controle rede-sobre redondo" data-rede-ajuda aria-expanded="${ajudaAberta}" title="Como usar a rede" aria-label="Como usar a rede">${ICONES.ajuda}</button>
         <div class="rede-controles-grupo rede-sobre" role="group" aria-label="Zoom">
           <button type="button" class="rede-controle" data-zoom-passo="1" title="Aproximar (role o mouse)" aria-label="Aproximar">${ICONES.mais}</button>
@@ -325,6 +364,15 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     rolagem.scrollLeft = mx + px * fator - cx;
     rolagem.scrollTop = my + py * fator - cy;
     valor.textContent = `${Math.round(fator * 100)}%`;
+    /* nível de detalhe (10/11/2026): a letra do nome cresce no desenho para ficar legível na tela */
+    const nivel = nivelDeDetalhe(fator);
+    const redeEl = alvo.querySelector("[data-rede]");
+    redeEl.dataset.detalhe = nivel;
+    const letra = Math.min(LETRA_MAXIMA, LETRA_NA_TELA / fator);
+    redeEl.style.setProperty("--rede-letra", `${letra.toFixed(1)}px`);
+    redeEl.style.setProperty("--rede-linhas", String(Math.max(1, Math.floor((MEDIDAS.altura - 12) / (letra * 1.15)))));
+    /* botões do cartão (abrir, +, bolinha, + da seta) não encolhem junto: até 1,8 vez no desenho */
+    redeEl.style.setProperty("--rede-inv", String(Math.min(1.8, Math.max(1, 1 / fator)).toFixed(3)));
   };
   /* põe o desenho na área livre: centrado (ajustar) ou encostado no canto de cima, à esquerda (100%) */
   const enquadrar = (centrar) => {
@@ -341,9 +389,12 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     aplicar(fator, 0, 0);
     [rolagem.scrollLeft, rolagem.scrollTop] = rolagemAnterior;
   } else {
-    if (escala === "tudo") fator = caber();
+    /* a Rede abre com o plano inteiro na tela (10/11/2026); no celular, sem descer de 50%, a partir do início */
+    const inteiro = escala === "tudo" && !(toque && caber() < 0.5);
+    if (escala === "tudo") fator = toque ? Math.max(0.5, caber()) : caber();
     aplicar(fator, 0, 0);
-    enquadrar(escala === "tudo");
+    enquadrar(inteiro);
+    if (escala === "tudo" && !inteiro) { const a = areaLivre(); rolagem.scrollTop = my + (altura * fator) / 2 - (a.t + (a.h - a.t - a.b) / 2); }
     alvo.dataset.redeZoom = String(fator);
   }
   alvo.dataset.redeEscala = escala;
@@ -358,7 +409,8 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   /* arrastar o fundo (fora dos cartões) move a rede; um arrasto não conta como clique no fundo */
   let moveuFundo = false;
   rolagem.addEventListener("pointerdown", (e) => {
-    if ((e.button !== 0 && e.button !== 1) || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-alca], .rede-seta-alvo, [data-inserir-de]")) return;
+    if (e.pointerType === "touch") return; // no toque, o próprio navegador rola a rede
+    if ((e.button !== 0 && e.button !== 1) || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-abrir], [data-rede-alca], .rede-seta-alvo, [data-inserir-de]")) return;
     if (e.button === 1) e.preventDefault(); // botão do meio também arrasta, sem a rolagem automática do navegador
     const inicio = { x: e.clientX, y: e.clientY, l: rolagem.scrollLeft, t: rolagem.scrollTop };
     rolagem.setPointerCapture(e.pointerId);
@@ -376,6 +428,22 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     rolagem.addEventListener("pointercancel", soltar);
   });
 
+  /* pinça com dois dedos (10/11/2026): aproxima e afasta em volta do meio dos dedos */
+  let pinca = null;
+  const dedos = (e) => {
+    const [a, b] = e.touches;
+    const r = rolagem.getBoundingClientRect();
+    return { d: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY), x: (a.clientX + b.clientX) / 2 - r.left, y: (a.clientY + b.clientY) / 2 - r.top };
+  };
+  rolagem.addEventListener("touchstart", (e) => { pinca = e.touches.length === 2 ? { ...dedos(e), fator } : null; }, { passive: true });
+  rolagem.addEventListener("touchmove", (e) => {
+    if (!pinca || e.touches.length !== 2) return;
+    e.preventDefault();
+    const agora = dedos(e);
+    zoomLivre(pinca.fator * (agora.d / pinca.d), agora.x, agora.y);
+  }, { passive: false });
+  rolagem.addEventListener("touchend", () => { pinca = null; }, { passive: true });
+
   /* legenda flutuante: mostrar ou ocultar as ações contínuas */
   alvo.querySelector(".rede-legenda").onclick = (e) => {
     if (e.target.closest("[data-ocultar-continuas]")) aoOcultarContinuas(!ocultarContinuas);
@@ -387,6 +455,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
       const a = areaLivre();
       return zoomLivre(fator * (Number(z.dataset.zoomPasso) > 0 ? 1.25 : 1 / 1.25), a.l + (a.w - a.l - a.r) / 2, a.t + (a.h - a.t - a.b) / 2);
     }
+    if (e.target.closest("[data-rede-desfazer]")) return edicao?.desfazer();
     const ajuda = e.target.closest("[data-rede-ajuda]");
     if (ajuda) {
       const cartao = alvo.querySelector("[data-rede-ajuda-cartao]");
@@ -454,6 +523,18 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     if (no) destacar(Number(no.dataset.redeNo));
   });
   caixa.addEventListener("focusout", limpar);
+
+  /* Ctrl+Z (ou Cmd+Z) desfaz a última mudança feita na Rede (10/11/2026); fora de campos de texto e de janelas abertas */
+  if (aoTeclarDesfazer) document.removeEventListener("keydown", aoTeclarDesfazer);
+  aoTeclarDesfazer = edicao ? (e) => {
+    if (!document.body.contains(caixa)) { document.removeEventListener("keydown", aoTeclarDesfazer); aoTeclarDesfazer = null; return; }
+    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== "z") return;
+    if (e.target.closest?.("input, textarea, select, [contenteditable], [data-editando], .camada, .rede-flutuante")) return;
+    if (!edicao.podeDesfazer()) return;
+    e.preventDefault();
+    edicao.desfazer();
+  } : null;
+  if (aoTeclarDesfazer) document.addEventListener("keydown", aoTeclarDesfazer);
 
   animarRearranjo(caixa, { posAntes, caixasAntes });
   if (!edicao) flutuante?.fechar("redesenho");
@@ -545,6 +626,11 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
     if (mais) {
       e.stopPropagation();
       return criarE(mais, () => edicao.criarDepois(Number(mais.dataset.redeMais)));
+    }
+    const abrir = e.target.closest("[data-rede-abrir]");
+    if (abrir) {
+      e.stopPropagation();
+      return edicao.abrir(Number(abrir.dataset.redeAbrir));
     }
     const entre = e.target.closest("[data-inserir-de]");
     if (entre) {

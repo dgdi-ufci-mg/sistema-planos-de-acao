@@ -203,6 +203,9 @@ describe("Rede: edição fluida", { skip: pular }, () => {
 
   test("caixinha de prazos ao lado do cartão, logo depois do nome", async () => {
     const p = await abrirRede();
+    /* a 100%: com o plano inteiro na tela (abertura desde 10/11/2026), a ação nova pode nascer junto à borda, e a caixa é trazida para dentro da tela */
+    await p.click('[data-escala="normal"]');
+    await assentar(p);
     const origem = p.locator(".rede-no").first();
     await origem.locator(".rede-cartao").click();
     await origem.locator(".rede-mais").click();
@@ -276,6 +279,63 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     await assentar(p);
     if (SCREENSHOTS) await p.screenshot({ path: `${SCREENSHOTS}/4-escuro.png` });
     assert.ok(await p.locator(".rede-no.selecionada .rede-alca").isVisible());
+    assert.deepEqual(p.erros, []);
+  });
+  /* ---------- ajustes da avaliação de 10/11/2026 ---------- */
+  test("o botão de abrir, ao lado do cartão selecionado, abre a ação com o mouse", async () => {
+    const p = await abrirRede();
+    const no = p.locator(".rede-no").nth(1);
+    await no.locator(".rede-cartao").click();
+    await assentar(p);
+    assert.ok(await no.locator(".rede-abrir").isVisible());
+    await no.locator(".rede-abrir").click();
+    await assentar(p);
+    assert.ok(await p.locator(".camada.aberta").count() >= 1, "abriu a janela da ação");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("Ctrl+Z desfaz, em ordem, o nome e a criação; o botão de desfazer aparece só quando há o que desfazer", async () => {
+    const p = await abrirRede();
+    const antes = await p.locator(".rede-no").count();
+    assert.ok(!(await p.locator("[data-rede-desfazer]").isVisible()), "sem nada a desfazer, sem botão");
+    const origem = p.locator(".rede-no").nth(1);
+    await origem.locator(".rede-cartao").click();
+    await origem.locator(".rede-mais").click();
+    await p.waitForSelector(".rede [data-editando]");
+    await p.keyboard.type("Ação a desfazer");
+    await p.keyboard.press("Enter");
+    await assentar(p, 700);
+    await p.keyboard.press("Escape"); // fecha a caixinha de prazos
+    await assentar(p);
+    assert.equal(await p.locator(".rede-no").count(), antes + 1);
+    assert.ok(await p.locator("[data-rede-desfazer]").isVisible());
+    await p.keyboard.press("Control+z");
+    await assentar(p, 700);
+    assert.equal(await p.locator(".rede-no", { hasText: "Ação a desfazer" }).count(), 0, "o nome voltou ao anterior");
+    assert.equal(await p.locator(".rede-no").count(), antes + 1, "a ação ainda existe");
+    await p.click("[data-rede-desfazer]");
+    await assentar(p, 700);
+    assert.equal(await p.locator(".rede-no").count(), antes, "a ação criada saiu");
+    assert.match(await p.locator(".aviso-curto").textContent(), /Desfeito/);
+    assert.ok(!(await p.locator("[data-rede-desfazer]").isVisible()));
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("Ctrl+Z desfaz a ligação criada e a ligação retirada", async () => {
+    const p = await abrirRede();
+    await p.click('[data-escala="normal"]');
+    await assentar(p);
+    const antes = await setas(p);
+    const alvo = p.locator(".rede-seta-alvo").first();
+    const [de, para] = [await alvo.getAttribute("data-seta-de"), await alvo.getAttribute("data-seta-para")];
+    await alvo.evaluate((el) => el.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await p.keyboard.press("Delete");
+    await assentar(p, 700);
+    assert.equal(await p.locator(`.rede-seta[data-de="${de}"][data-para="${para}"]`).count(), 0, "ligação retirada");
+    await p.keyboard.press("Control+z");
+    await assentar(p, 700);
+    assert.equal(await p.locator(`.rede-seta[data-de="${de}"][data-para="${para}"]`).count(), 1, "ligação de volta");
+    assert.equal(await setas(p), antes);
     assert.deepEqual(p.erros, []);
   });
 });

@@ -58,6 +58,10 @@ export const ICONES = Object.freeze({
   abrir: svg('<path d="m6 9 6 6 6-6"/>'),
   /** Novo: sinal de mais. */
   mais: svg('<path d="M12 5v14M5 12h14"/>'),
+  /** Abrir a ação a partir do cartão da Rede (10/11/2026): duas setas para os cantos, de "ampliar". */
+  expandir: svg('<path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/>'),
+  /** Desfazer a última mudança (Rede, 10/11/2026): seta que volta. */
+  desfazer: svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
   menos: svg('<path d="M5 12h14"/>'),
   /** Enquadrar (Rede, 09/11/2026): quatro cantos, "ajustar à tela". */
   enquadrar: svg('<path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/>'),

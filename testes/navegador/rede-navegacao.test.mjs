@@ -36,6 +36,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
 
   test("rolar o mouse aproxima e afasta, sem Ctrl, mantendo o ponto sob o ponteiro", async () => {
     const p = await abrirRede();
+    await p.click('[data-escala="normal"]');
     assert.equal(await zoom(p), 100);
     const antes = await caixa(p, ".rede-no");
     const [ax, ay] = [antes.x + 30, antes.y + 20];
@@ -90,6 +91,59 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     await p.click("[data-rede-ajuda]");
     await p.waitForTimeout(400);
     assert.equal(await cartao.isVisible(), false);
+    assert.deepEqual(p.erros, []);
+  });
+  /* ---------- ajustes da avaliação de 10/11/2026 ---------- */
+  test("abre com o plano inteiro na tela e com o nome legível; os níveis de detalhe seguem o zoom", async () => {
+    const p = await abrirRede();
+    assert.ok(await zoom(p) < 100, "abre ajustada à tela");
+    const v = await caixa(p, ".rede");
+    const cantos = await p.locator(".rede-no, .rede-ponto").evaluateAll((els) => els.map((e) => { const r = e.getBoundingClientRect(); return [r.left, r.right, r.top, r.bottom]; }));
+    for (const [l, r, t, b] of cantos) assert.ok(l >= v.x && r <= v.x + v.width && t >= v.y && b <= v.y + v.height, "tudo dentro da tela");
+    const rede = p.locator("[data-rede]");
+    assert.equal(await rede.getAttribute("data-detalhe"), "nome");
+    assert.ok(!(await p.locator(".rede-base").first().isVisible()), "sem responsáveis e datas no nível do nome");
+    const letra = await p.locator(".rede-rotulo").first().evaluate((el) => parseFloat(getComputedStyle(el).fontSize) * el.getBoundingClientRect().width / el.offsetWidth);
+    assert.ok(letra >= 10, `nome legível na tela (${letra.toFixed(1)} px)`);
+    await p.click('[data-escala="normal"]');
+    assert.equal(await rede.getAttribute("data-detalhe"), "completo");
+    assert.ok(await p.locator(".rede-base").first().isVisible());
+    for (let i = 0; i < 6; i++) await p.click('[data-zoom-passo="-1"]');
+    assert.equal(await rede.getAttribute("data-detalhe"), "cor");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("cores e legenda: término sem o vermelho de sem folga; ação liberada com a pílula da situação; ajuda em lista", async () => {
+    const p = await abrirRede();
+    await p.click('[data-escala="normal"]');
+    const cores = await p.evaluate(() => ({
+      termino: getComputedStyle(document.querySelector(".rede-ponto.termino")).backgroundColor,
+      critica: getComputedStyle(document.querySelector(".rede-seta.critica")).stroke,
+    }));
+    assert.notEqual(cores.termino, cores.critica);
+    assert.ok(await p.locator(".rede-no.agora .rede-agora").count() >= 1, "pílula nas ações liberadas");
+    assert.equal(await p.locator(".rede-no.concluida .rede-agora").count(), 0);
+    assert.match(await p.locator(".rede-legenda").innerText(), /pode ser feita agora[\s\S]*Etapa[\s\S]*Fim da fase/);
+    await p.click("[data-rede-ajuda]");
+    assert.ok(await p.locator(".rede-gestos li").count() >= 8, "um gesto por linha");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("no celular, a Rede é só de consulta: sem edição, e tocar numa ação a abre", async () => {
+    const p = await sessao.abrir({ largura: 390, altura: 800 });
+    await p.locator('.barra-inferior button:has-text("Filtros")').click();
+    await p.waitForTimeout(450);
+    await p.locator('[data-modo="rede"]').last().click();
+    await p.waitForSelector(".rede-no");
+    await p.keyboard.press("Escape");
+    await p.waitForTimeout(600);
+    assert.equal(await p.locator(".rede.editavel").count(), 0, "sem edição no celular");
+    assert.ok(await zoom(p) >= 50, "abre legível, a partir do início");
+    const [controles, barra] = await Promise.all([caixa(p, "[data-rede-controles]"), caixa(p, ".barra-inferior")]);
+    assert.ok(controles.y + controles.height <= barra.y, "botões acima da barra de baixo");
+    await p.locator(".rede-no .rede-cartao").first().tap();
+    await p.waitForTimeout(600);
+    assert.ok(await p.locator(".camada.aberta").count() >= 1, "tocar abre a ação");
     assert.deepEqual(p.erros, []);
   });
 });
