@@ -107,7 +107,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /** comparação do cronograma com um retrato (passo 1.18): lista (null: a carregar), escolhido e datas dele */
     retratos: null, comparar: null, base: null,
     /** tamanho da rede: "normal" ou "tudo" (reduzida para caber na largura) */
-    escalaRede: "normal",
+    escalaRede: "tudo", /* a Rede abre com o plano inteiro na tela (10/11/2026) */
     ocultarContinuas: false,
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "",
@@ -300,7 +300,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ui.ordem = ordemPadrao(); // tarefas abrem por prioridade da equipe (29/10/2026)
       /* o espaço abre na última visualização usada nele, neste aparelho (pedido do responsável, 27/10/2026) */
       const salvo = lembrado(`sextante.modo.${espacoId}`, "");
-      /* no celular, rede, cronograma e planilha não existem: vale a padrão */
+      /* no celular, cronograma e planilha não existem: vale a padrão */
       const pode = modos().find(([v]) => v === salvo);
       if (pode && !(pode[3] === "so-computador" && matchMedia("(max-width: 899px)").matches)) ui.modo = salvo;
     }
@@ -317,10 +317,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   /* ---------- ferramentas: filtros de situação, controles e Nova ação ---------- */
   /**
    * Seletor de modo: só ícones; o modo ativo mostra também o nome, e os demais o mostram ao
-   * passar o mouse (decisão do responsável, 21/10/2026). No celular, só Lista e Quadro.
+   * passar o mouse (decisão do responsável, 21/10/2026). No celular, sem Cronograma nem Planilha (a Rede, só para consulta, desde 10/11/2026).
    */
   const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""],
-    ["rede", "Rede", "modoRede", "so-computador"],
+    ["rede", "Rede", "modoRede", ""], /* no celular, só para consulta (10/11/2026) */
     ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
     ["planilha", "Planilha", "modoPlanilha", "so-computador"],
     ["linha", "Linha do tempo", "modoLinha", ""], /* também no celular desde 25/10/2026 (item 2 da avaliação de celular) */
@@ -1002,8 +1002,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         /* ações contínuas (seção 5.9): caixa como as outras; o filtro vale enquanto o espaço está aberto */
         continuas: usaContinuas(espaco), ocultarContinuas: ui.ocultarContinuas, aoOcultarContinuas: (v) => { ui.ocultarContinuas = v; desenharLista(); },
         aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); },
-        /* edição dentro da Rede (09/11/2026, pedido do responsável: fluidez de um editor de fluxo como o Bizagi) */
-        edicao: store.podeGravar !== false ? edicaoDaRede() : null });
+        /* "agora" (10/11/2026): nome da situação das ações liberadas, como nas colunas do quadro */
+        nomeDaSituacao: (l) => nomeDoFluxo(espaco, l.fluxo), nomeLiberada: nomeInicial(espaco),
+        /* edição dentro da Rede (09/11/2026, pedido do responsável: fluidez de um editor de fluxo como o Bizagi);
+           no celular, a Rede é só para consulta (10/11/2026) */
+        toque: redeNoCelular(),
+        edicao: store.podeGravar !== false && !redeNoCelular() ? edicaoDaRede() : null });
       return;
     }
     if (ui.modo === "responsaveis") {
@@ -2211,20 +2215,52 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * ligar duas ações arrastando, desligar uma seta, renomear com duplo clique e abrir com Enter.
    * Tudo passa pelo Store; os erros (ciclo, permissão) viram aviso.
    */
+  /** Rede no celular (10/11/2026): tela estreita, a mesma medida que esconde as visualizações só de computador. */
+  const redeNoCelular = () => matchMedia("(max-width: 899px)").matches;
+  /**
+   * Desfazer na Rede (10/11/2026): pilha das últimas mudanças feitas pela Rede neste espaço, enquanto ele está aberto
+   * (ligar, desligar, criar a próxima, inserir entre duas e renomear). Cada item guarda o texto e a operação inversa,
+   * feita pelo Store. Não é gravada: some ao sair do espaço. Limite de 30 itens.
+   */
+  const pilhaDaRede = [];
+  const botaoDesfazer = () => document.querySelector("[data-rede-desfazer]")?.toggleAttribute("hidden", pilhaDaRede.length === 0);
+  function desfazivel(texto, fazer) {
+    const item = { texto, fazer };
+    pilhaDaRede.push(item);
+    if (pilhaDaRede.length > 30) pilhaDaRede.shift();
+    botaoDesfazer();
+    return item;
+  }
+  async function desfazerNaRede(item = pilhaDaRede.at(-1)) {
+    const i = pilhaDaRede.indexOf(item);
+    if (i < 0) return;
+    pilhaDaRede.splice(i, 1);
+    botaoDesfazer();
+    try {
+      await item.fazer();
+      avisar(`Desfeito: ${item.texto}.`);
+    } catch (f) { avisar(`Não foi possível desfazer: ${f.message}`); }
+  }
   function edicaoDaRede() {
     const falhar = (f) => { avisar(f.message); return null; };
+    const nomeDe = (n) => acoes.find((a) => a.numero === n)?.rotulo ?? `ação ${n}`;
     return {
+      podeDesfazer: () => pilhaDaRede.length > 0,
+      desfazer: () => desfazerNaRede(),
       podeCriar: Boolean(perm.criarAcao),
       async criarDepois(numero) {
         const origem = acoes.find((a) => a.numero === numero);
         const naoAntesDe = dataMinimaPadrao(espaco, hoje);
         try {
-          return await store.criarAcao(espacoId, {
+          const nova = await store.criarAcao(espacoId, {
             rotulo: `Nova ${termos(espaco).acao}`,
             dependeDe: [numero],
             ...(origem?.etapa ? { etapa: origem.etapa } : {}),
             ...(naoAntesDe ? { naoAntesDe } : {}),
           });
+          /* desfazer: a ação criada vai para a lixeira */
+          desfazivel(`criação da ${termos(espaco).acao}`, () => store.excluirAcao(espacoId, nova));
+          return nova;
         } catch (f) { return falhar(f); }
       },
       /*
@@ -2245,12 +2281,21 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           });
           await store.acrescentarDependencia(espacoId, para, numero);
           await store.retirarDependencia(espacoId, para, de);
+          /* desfazer: a ligação direta volta e a ação inserida vai para a lixeira */
+          desfazivel(`inserção da ${termos(espaco).acao}`, async () => {
+            await store.acrescentarDependencia(espacoId, para, de);
+            await store.excluirAcao(espacoId, numero);
+          });
           return numero;
         } catch (f) { return falhar(f); }
       },
-      ligar: (de, para) => store.acrescentarDependencia(espacoId, para, de).then(() => true, falhar),
+      ligar: (de, para) => store.acrescentarDependencia(espacoId, para, de).then(() => {
+        desfazivel(`ligação entre "${nomeDe(de)}" e "${nomeDe(para)}"`, () => store.retirarDependencia(espacoId, para, de));
+        return true;
+      }, falhar),
       desligar: (de, para) => store.retirarDependencia(espacoId, para, de).then(() => {
-        avisar("Ligação retirada.", { acao: { texto: "Desfazer", fazer: () => store.acrescentarDependencia(espacoId, para, de).catch(falhar) } });
+        const item = desfazivel(`retirada da ligação entre "${nomeDe(de)}" e "${nomeDe(para)}"`, () => store.acrescentarDependencia(espacoId, para, de));
+        avisar("Ligação retirada.", { acao: { texto: "Desfazer", fazer: () => desfazerNaRede(item) } });
         return true;
       }, falhar),
       renomear: (campo) => editarNoLugar(campo),
@@ -2294,7 +2339,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       multilinha: tipo === "descricao",
       aoGravar: (novo) => {
         if (tipo === "rotulo" && !novo) throw new Error("Informe o nome da ação.");
-        return store.alterarAcao(espacoId, numero, { [tipo]: novo });
+        const antes = acao.rotulo;
+        /* na Rede, a troca de nome entra no desfazer (10/11/2026) */
+        const naRede = tipo === "rotulo" && ui.modo === "rede" && novo !== antes;
+        return Promise.resolve(store.alterarAcao(espacoId, numero, { [tipo]: novo })).then((r) => {
+          if (naRede) desfazivel(`mudança do nome de "${antes}"`, () => store.alterarAcao(espacoId, numero, { rotulo: antes }));
+          return r;
+        });
       },
       aoTerminar: () => {
         editando = false;

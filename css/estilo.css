@@ -2991,3 +2991,75 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
   .carga-linha.acao .carga-barra { top: 14px; }
   .carga-linha.acao .carga-barra.continua { top: 17px; }
 }
+
+/* ---------- Rede: ajustes da avaliação de 10/11/2026 (documentação técnica, seção 8.4) ---------- */
+/* cores: término em cor neutra (vermelho fica só para "sem folga" e "atrasada"); linha da fase discreta, para o
+   caminho sem folga ser o traço mais forte; ação concluída com o cartão esmaecido, além da faixa verde */
+.rede-ponto.termino { background: var(--ink); color: var(--bg); }
+.rede-fase-marco { border-left: 1.5px solid color-mix(in srgb, var(--ink) 26%, transparent); }
+.rede-no.concluida .rede-cartao { background: var(--sunk); box-shadow: none; }
+.rede-no.concluida .rede-rotulo { color: var(--muted); }
+/* "agora": a ação liberada, que pode ser feita neste momento, ganha contorno e uma pílula com o nome da situação */
+.rede-no.agora .rede-cartao { border-top-color: var(--accent); border-right-color: var(--accent); border-bottom-color: var(--accent); }
+.rede-agora { position: absolute; top: -9px; right: 10px; z-index: 1; max-width: 60%; box-sizing: border-box; padding: 1px 8px; border-radius: 999px;
+  background: var(--accent); color: var(--texto-sobre-destaque); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
+/* botão de abrir a ação, abaixo do "+", com o mesmo desenho */
+.rede.editavel .rede-no::after { height: 72px; }
+.rede-abrir { position: absolute; z-index: 2; top: 26px; right: -38px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--accent-ink); box-shadow: var(--relevo); cursor: pointer;
+  opacity: 0; pointer-events: none; transform: scale(.85); transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
+.rede-abrir svg { width: 15px; height: 15px; }
+.rede-abrir:hover, .rede-abrir:focus-visible { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.rede.editavel:not(.ligando) .rede-no:hover .rede-abrir, .rede.editavel .rede-no.selecionada .rede-abrir { opacity: 1; pointer-events: auto; transform: none; }
+/* os botões do cartão não encolhem com o zoom (até 1,8 vez no desenho; js/telas/rede.js) */
+.rede-mais { scale: var(--rede-inv, 1); transform-origin: 0 100%; }
+.rede-abrir { scale: var(--rede-inv, 1); transform-origin: 0 0; }
+.rede-alca, .rede-inserir { scale: var(--rede-inv, 1); }
+/* níveis de detalhe conforme o zoom: "nome" (35% a 60%) mostra só o nome, em letra maior; "cor" (abaixo de 35%)
+   preenche o cartão com a cor da situação */
+.rede:not([data-detalhe="completo"]) :is(.rede-base, .rede-agora) { display: none; }
+.rede:not([data-detalhe="completo"]) .rede-cartao { justify-content: center; padding: 5px 9px 5px 10px; }
+.rede:not([data-detalhe="completo"]) .rede-rotulo { font-size: var(--rede-letra, 1rem); line-height: 1.15; -webkit-line-clamp: var(--rede-linhas, 3); overflow-wrap: anywhere; }
+.rede:not([data-detalhe="completo"]) .rede-rotulo .codigo { font-size: .8em; }
+.rede:not([data-detalhe="completo"]) .rede-topo > span:first-child:not(.rede-rotulo) svg { width: var(--rede-letra, 16px); height: var(--rede-letra, 16px); }
+.rede:not([data-detalhe="completo"]) .rede-cerca-nome { top: 1px; font-size: min(var(--rede-letra, 1rem), 20px); }
+.rede:not([data-detalhe="completo"]) .rede-fase-nome { font-size: min(var(--rede-letra, 1rem), 22px); max-width: 420px; }
+.rede:not([data-detalhe="completo"]) .rede-ponto-rotulo { font-size: 15px; }
+.rede:not([data-detalhe="completo"]) .rede-ponto-data { font-size: 12.5px; }
+.rede:not([data-detalhe="completo"]) .rede-ponto-prazo { font-size: min(var(--rede-letra, 1rem), 20px); }
+.rede:not([data-detalhe="completo"]) .rede-no.agora .rede-cartao { border-top-width: 3px; border-right-width: 3px; border-bottom-width: 3px; }
+.rede[data-detalhe="cor"] .rede-cartao { border-left-width: 10px; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.rede[data-detalhe="cor"] .rede-no.critica .rede-cartao { background: color-mix(in srgb, var(--crit) 16%, var(--surface)); }
+.rede[data-detalhe="cor"] .rede-no.concluida .rede-cartao { background: var(--sunk); }
+.rede[data-detalhe="cor"] .rede-no.sem-estimativa .rede-cartao { background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
+.rede[data-detalhe="cor"] .rede-no.continua .rede-cartao { background: var(--surface); }
+/* ajuda em lista: um gesto por linha */
+.rede-ajuda { z-index: 4; max-height: calc(100% - 150px); overflow: auto; }
+.rede-gestos { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 5px; }
+.rede-gestos li { display: grid; grid-template-columns: minmax(0, 11.5em) minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.rede-gestos b { font-weight: 600; }
+.rede-gestos span { color: var(--muted); }
+/* legenda completa: situação "agora", cadeado, etapa e fim da fase */
+.rede-legenda { max-width: calc(100% - 104px); box-sizing: border-box; }
+.crono-legenda i.rede-leg-agora { box-sizing: border-box; height: 12px; border: 1.5px solid var(--accent); border-radius: 3px; background: var(--surface); }
+.crono-legenda i.rede-leg-etapa { box-sizing: border-box; height: 12px; border: 1.5px dashed color-mix(in srgb, var(--accent) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.crono-legenda i.rede-leg-fase { width: 0; height: 14px; margin: 0 6px; border-radius: 0; background: none; border-left: 1.5px solid color-mix(in srgb, var(--ink) 45%, transparent); }
+.rede-leg-icone .icone { width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; color: var(--muted); }
+/* celular: só consulta; o navegador rola a rede com um dedo, e a pinça é tratada em js/telas/rede.js */
+.rede-rolagem { touch-action: pan-x pan-y; overscroll-behavior: contain; }
+@media (max-width: 899px) {
+  .rede-legenda { font-size: .72rem; gap: 2px 12px; padding: 5px 9px; left: 10px; bottom: 10px; max-width: calc(100% - 72px);
+    flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+  .rede-legenda::-webkit-scrollbar { display: none; }
+  .rede-legenda .crono-legenda { flex: none; }
+  .rede-controles { right: 10px; bottom: 10px; gap: 8px; }
+  .rede-ajuda { right: 10px; left: 10px; bottom: 216px; width: auto; }
+  .rede-gestos li { grid-template-columns: minmax(0, 9.5em) minmax(0, 1fr); }
+}
+/* com a barra de baixo do celular, legenda, botões e ajuda sobem para não ficar atrás dela */
+@media (max-width: 640px) {
+  .rede-legenda, .rede-controles { bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  .rede-ajuda { bottom: calc(278px + env(safe-area-inset-bottom, 0px)); max-height: calc(100% - 360px); }
+}
+@media (prefers-reduced-motion: reduce) { .rede-abrir, .rede-agora { transition: none; } }
