@@ -28,6 +28,7 @@ import { excluirAcao } from "./exclusao.js";
 import { criarPlanilha, colunasDaPlanilha } from "./editar-planilha.js";
 import { desenharLinhaDoTempo } from "./linha-do-tempo.js";
 import { desenharCronograma } from "./cronograma.js";
+import { desenharCarga } from "./carga.js";
 import { desenharRede } from "./rede.js";
 import { criarTelaDeEntregas } from "./entregas.js";
 import { esqueletoHtml } from "./esqueleto.js";
@@ -111,7 +112,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /** linha de criação rápida com o cursor (chave) e o texto digitado, preservados entre redesenhos */
     rapida: null, rapidaTexto: "",
     /** entregas e registros de alcance do Plano de Ação (passo 2.6); null: ainda não lidos */
-    entregas: null, alcances: [] };
+    entregas: null, alcances: [],
+    /** visualização "Responsáveis" (seção 8.4): responsáveis com as ações à vista, enquanto o espaço está aberto */
+    cargaAbertos: new Set() };
   if (!["tempo", "execucao", "revisao"].includes(ui.barra)) ui.barra = "tempo";
   let chaveSim = null;
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
@@ -321,16 +324,17 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
     ["planilha", "Planilha", "modoPlanilha", "so-computador"],
     ["linha", "Linha do tempo", "modoLinha", ""], /* também no celular desde 25/10/2026 (item 2 da avaliação de celular) */
+    ["responsaveis", "Responsáveis", "modoResponsaveis", ""], /* quem tem quantas ações ao mesmo tempo (seção 5.10) */
     ["entregas", "Entregas", "modoEntregas", ""]];
   /**
    * Visualizações que o modelo do espaço permite (passo 2.4b): a rede pede dependências; o
    * cronograma, estimativas; a linha do tempo, simulação. Lista, quadro e planilha valem sempre.
    */
   /* Quadro de tarefas: só o Quadro (revisão de 27/10/2026, decisão do responsável) */
-  const modos = () => MODOS.filter(([v]) => (ehQuadro() ? v === "quadro" : ehLista() ? v === "lista" : v === "rede" ? usaDependencias(espaco) : v === "cronograma" ? usaEstimativas(espaco)
+  const modos = () => MODOS.filter(([v]) => (ehQuadro() ? v === "quadro" : ehLista() ? v === "lista" : v === "rede" ? usaDependencias(espaco) : v === "cronograma" || v === "responsaveis" ? usaEstimativas(espaco)
     : v === "linha" ? usaSimulacao(espaco) : v === "entregas" ? ehPlano() : true));
   /** Modos sem filtros nem ordem: mostram o espaço inteiro (no cronograma, as setas ligariam ações escondidas). */
-  const semFiltros = () => ["planilha", "cronograma", "rede", "linha", "entregas"].includes(ui.modo);
+  const semFiltros = () => ["planilha", "cronograma", "rede", "linha", "responsaveis", "entregas"].includes(ui.modo);
   let modoDesenhado = null;
   function modosHtml() {
     const trocou = modoDesenhado !== null && modoDesenhado !== ui.modo;
@@ -1000,6 +1004,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         aoMudarEscala: (escala) => { ui.escalaRede = escala; desenharLista(); },
         /* edição dentro da Rede (09/11/2026, pedido do responsável: fluidez de um editor de fluxo como o Bizagi) */
         edicao: store.podeGravar !== false ? edicaoDaRede() : null });
+      return;
+    }
+    if (ui.modo === "responsaveis") {
+      desenharCarga(lista, { acoes, caminho, cal, hoje, responsaveis, tons: espaco.tons, meus, identificador: idHtml, abertos: ui.cargaAbertos });
       return;
     }
     if (ui.modo === "linha") { desenharLinhaDoTempo(lista, { espaco, cal, sim, hoje, temAcoes: acoes.length > 0 }); return; }
