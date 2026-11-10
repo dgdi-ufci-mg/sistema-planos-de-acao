@@ -988,7 +988,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           try { localStorage.setItem("sextante.zoomCronograma", escala); } catch { /* sem armazenamento */ }
           desenharLista();
         },
-        retratos: ui.retratos, comparar: ui.comparar, base: ui.base, aoComparar: compararCom });
+        retratos: ui.retratos, comparar: ui.comparar, base: ui.base, aoComparar: compararCom,
+        /* edição dentro do Cronograma (10/11/2026, pedido do responsável: facilidade de editar o plano nesta tela) */
+        edicao: store.podeGravar !== false ? edicaoDoCronograma() : null });
       if (ui.retratos === null) carregarRetratos();
       return;
     }
@@ -2318,9 +2320,157 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     };
   }
 
+  /* ---------- edição dentro do Cronograma (10/11/2026) e o Desfazer dela ---------- */
+  /**
+   * Pilha do Desfazer do Cronograma: cada edição feita na tela guarda como voltar atrás. Vale enquanto o espaço está
+   * aberto, guarda as 30 últimas e desfaz da mais recente para a mais antiga (botão "Desfazer", Ctrl+Z ou o botão do aviso).
+   * @type {{texto: string, voltar: () => Promise<void>}[]}
+   */
+  const desfazeres = [];
+  let ouvirDesfazer = () => {};
+  function guardarDesfazer(texto, voltar) {
+    desfazeres.push({ texto, voltar });
+    if (desfazeres.length > 30) desfazeres.shift();
+    ouvirDesfazer(true);
+    avisar(texto, { acao: { texto: "Desfazer", fazer: desfazerUltima } });
+  }
+  async function desfazerUltima() {
+    const ultima = desfazeres.pop();
+    ouvirDesfazer(desfazeres.length > 0);
+    if (!ultima) return;
+    try { await ultima.voltar(); avisar(`Desfeito: ${ultima.texto.replace(/\.$/, "").toLowerCase()}.`); }
+    catch (f) { avisar(`Não deu para desfazer. ${f.message}`); }
+  }
+  /** Ligações de todas as ações, para repor depois de desfazer uma criação ou uma exclusão. */
+  const fotoDasLigacoes = () => new Map(acoes.map((a) => [a.numero, [...(a.dependeDe ?? [])]]));
+  /** Deixa as ligações das ações ativas como na foto: primeiro retira as que sobraram, depois repõe as que faltam. */
+  async function reporLigacoes(foto) {
+    const atuais = await store.listarAcoes(espacoId);
+    const vivas = new Set(atuais.map((a) => a.numero));
+    for (const a of atuais) {
+      if (!foto.has(a.numero)) continue;
+      for (const n of (a.dependeDe ?? []).filter((x) => !foto.get(a.numero).includes(x))) await store.retirarDependencia(espacoId, a.numero, n);
+    }
+    for (const a of atuais) {
+      if (!foto.has(a.numero)) continue;
+      for (const n of foto.get(a.numero).filter((x) => vivas.has(x) && !(a.dependeDe ?? []).includes(x))) await store.acrescentarDependencia(espacoId, a.numero, n);
+    }
+  }
+  function edicaoDoCronograma() {
+    const falhar = (f) => { avisar(f.message); return null; };
+    const t = termos(espaco).acao;
+    const Nova = `Nova ${t}`;
+    /** Cria a ação e guarda como desfazer: excluí-la e repor as ligações de antes. */
+    async function criar(dados, depois = null) {
+      const foto = fotoDasLigacoes();
+      const naoAntesDe = dataMinimaPadrao(espaco, hoje);
+      try {
+        const numero = await store.criarAcao(espacoId, { rotulo: Nova, ...dados, ...(naoAntesDe ? { naoAntesDe } : {}) });
+        if (depois) await depois(numero);
+        guardarDesfazer(`${Nova} criada.`, async () => { await store.excluirAcao(espacoId, numero); await reporLigacoes(foto); });
+        return numero;
+      } catch (f) { return falhar(f); }
+    }
+    const etapaDaAcao = (numero) => { const e = acoes.find((a) => a.numero === numero)?.etapa; return e ? { etapa: e } : {}; };
+    return {
+      podeCriar: Boolean(perm.criarAcao),
+      podeExcluir: Boolean(perm.excluirAcao),
+      usaEstimativas: usaEstimativas(espaco),
+      usaDependencias: usaDependencias(espaco),
+      nomeAcao: t,
+      podeAlterar: (numero) => { const a = acoes.find((x) => x.numero === numero); return Boolean(a && perm.atualizar(a)); },
+      /** Nova ação no fim da etapa (ou sem etapa). */
+      criarEm: (etapa) => criar(etapa ? { etapa } : {}),
+      criarDepois: (numero) => criar({ dependeDe: [numero], ...etapaDaAcao(numero) }),
+      /** Nova ação antes desta: herda as anteriores dela, e esta passa a depender só da nova. */
+      criarAntes(numero) {
+        const anteriores = [...(acoes.find((a) => a.numero === numero)?.dependeDe ?? [])];
+        return criar({ dependeDe: anteriores, ...etapaDaAcao(numero) }, async (nova) => {
+          await store.acrescentarDependencia(espacoId, numero, nova);
+          for (const n of anteriores) await store.retirarDependencia(espacoId, numero, n);
+        });
+      },
+      /** A → B vira A → nova → B, na etapa de A. */
+      inserirEntre: (de, para) => criar({ dependeDe: [de], ...etapaDaAcao(de) }, async (nova) => {
+        await store.acrescentarDependencia(espacoId, para, nova);
+        await store.retirarDependencia(espacoId, para, de);
+      }),
+      ligar: (de, para) => store.acrescentarDependencia(espacoId, para, de).then(() => {
+        guardarDesfazer("Ações ligadas.", () => store.retirarDependencia(espacoId, para, de));
+        return true;
+      }, falhar),
+      desligar: (de, para) => store.retirarDependencia(espacoId, para, de).then(() => {
+        guardarDesfazer("Ligação retirada.", () => store.acrescentarDependencia(espacoId, para, de));
+        return true;
+      }, falhar),
+      renomear: (campo) => editarNoLugar(campo, { aoGravar: (numero, antes) => guardarDesfazer("Nome alterado.", () => store.alterarAcao(espacoId, numero, { rotulo: antes })) }),
+      estimativaDe: (numero) => acoes.find((a) => a.numero === numero)?.estimativas?.at(-1) ?? null,
+      podeEstimar(numero) {
+        const l = linhas?.find((x) => x.acao.numero === numero);
+        return Boolean(l && !l.continua && perm.atualizar(l.acao) && estimativaLivre(l.acao, l.situacao, hoje));
+      },
+      /** Grava os três prazos; devolve null ou a mensagem de erro. Só dá para desfazer quando já havia estimativa. */
+      estimar(numero, tres) {
+        const antes = acoes.find((a) => a.numero === numero)?.estimativas?.at(-1);
+        return store.corrigirEstimativa(espacoId, numero, tres).then(() => {
+          if (antes) guardarDesfazer("Prazo alterado.", () => store.corrigirEstimativa(espacoId, numero, { o: antes.o, m: antes.m, p: antes.p }));
+          return null;
+        }, (f) => f.message);
+      },
+      podeConcluir(numero) {
+        const l = linhas?.find((x) => x.acao.numero === numero);
+        return Boolean(l && !l.continua && l.situacao === "liberada" && perm.atualizar(l.acao));
+      },
+      concluir: (numero) => abrirJanela(numero, "concluir"),
+      async excluir(numero) {
+        const acao = acoes.find((a) => a.numero === numero);
+        if (!acao) return;
+        const foto = fotoDasLigacoes();
+        try {
+          if (!await excluirAcao({ store, espacoId, acao, acoes })) return;
+          guardarDesfazer(`${t[0].toUpperCase()}${t.slice(1)} excluída: ${acao.rotulo}.`, async () => { await store.restaurarAcao(espacoId, numero); await reporLigacoes(foto); });
+        } catch (f) { falhar(f); }
+      },
+      /**
+       * Muda a ação de lugar na ordem do espaço e, se for o caso, de etapa (arrastar a linha no Cronograma).
+       * `alvo`: {etapa?, antesDe?, depoisDe?, primeira?}; sem `etapa` (undefined), a etapa não muda. As ações trocam
+       * entre si os números de ordem que já existem; só as que mudam são gravadas.
+       */
+      async mover(numero, alvo) {
+        const lista = [...acoes].sort((a, b) => a.ordem - b.ordem);
+        const acao = lista.find((a) => a.numero === numero);
+        if (!acao) return;
+        const ordens = lista.map((a) => a.ordem);
+        const etapa = alvo.etapa === undefined ? acao.etapa ?? null : alvo.etapa;
+        const outras = lista.filter((a) => a !== acao);
+        let i = alvo.antesDe != null ? outras.findIndex((a) => a.numero === alvo.antesDe)
+          : alvo.depoisDe != null ? outras.findIndex((a) => a.numero === alvo.depoisDe) + 1
+          : outras.findIndex((a) => (a.etapa ?? null) === etapa);
+        if (i < 0 || (alvo.depoisDe != null && i === 0)) i = outras.length;
+        outras.splice(i, 0, acao);
+        const mudouEtapa = (acao.etapa ?? null) !== etapa;
+        const mudancas = outras.map((a, k) => ({ a, antes: { ordem: a.ordem }, depois: { ordem: ordens[k] } })).filter((m) => m.antes.ordem !== m.depois.ordem || m.a === acao);
+        const dela = mudancas.find((m) => m.a === acao);
+        if (mudouEtapa) { dela.antes.etapa = acao.etapa ?? null; dela.depois.etapa = etapa; }
+        const reais = mudancas.filter((m) => m.antes.ordem !== m.depois.ordem || "etapa" in m.depois);
+        if (!reais.length) return;
+        try {
+          for (const m of reais) await store.alterarAcao(espacoId, m.a.numero, m.depois);
+          guardarDesfazer(mudouEtapa ? `${t[0].toUpperCase()}${t.slice(1)} levada para outra etapa.` : "Ordem alterada.", async () => {
+            for (const m of reais) await store.alterarAcao(espacoId, m.a.numero, m.antes);
+          });
+        } catch (f) { falhar(f); }
+      },
+      abrir: (numero) => abrirJanela(numero),
+      temDesfazer: () => desfazeres.length > 0,
+      desfazer: desfazerUltima,
+      ouvirDesfazer: (f) => { ouvirDesfazer = f; },
+    };
+  }
+
   let editando = false;
   let redesenharDepois = false;
-  function editarNoLugar(campo) {
+  function editarNoLugar(campo, { aoGravar: depoisDeGravar = null } = {}) {
     const no = campo.closest("[data-numero]");
     const numero = Number(no.dataset.numero);
     const acao = acoes.find((a) => a.numero === numero);
@@ -2340,10 +2490,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       aoGravar: (novo) => {
         if (tipo === "rotulo" && !novo) throw new Error("Informe o nome da ação.");
         const antes = acao.rotulo;
+        const valorDeAntes = acao[tipo] ?? "";
         /* na Rede, a troca de nome entra no desfazer (10/11/2026) */
         const naRede = tipo === "rotulo" && ui.modo === "rede" && novo !== antes;
         return Promise.resolve(store.alterarAcao(espacoId, numero, { [tipo]: novo })).then((r) => {
           if (naRede) desfazivel(`mudança do nome de "${antes}"`, () => store.alterarAcao(espacoId, numero, { rotulo: antes }));
+          depoisDeGravar?.(numero, valorDeAntes); /* quem chamou guarda o desfazer dele (Cronograma) */
           return r;
         });
       },

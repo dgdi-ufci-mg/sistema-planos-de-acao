@@ -58,10 +58,13 @@ const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").ma
 /**
  * Caixa solta sobre a página (menu do botão direito, caixinha de prazos, escolha da etapa): uma por vez, fora do
  * desenho, para sobreviver aos redesenhos. Fecha com Esc, com clique fora ou quando a Rede some.
+ * Usada também pelo Cronograma (10/11/2026), que é outro modo do mesmo espaço: só um dos dois está na tela.
  * @type {{el: HTMLElement, fechar: (motivo?: string) => void, posicionar: (el: HTMLElement) => void, rolagem: boolean}|null}
  */
 let flutuante = null;
-function abrirFlutuante(html, { classe, posicionar, aoFechar = null, rotulo = "", papel = "dialog", fechaAoRolar = false }) {
+/** A caixa solta aberta, se houver (para quem a abriu de fora deste arquivo reposicioná-la ou fechá-la). */
+export const flutuanteAberto = () => flutuante;
+export function abrirFlutuante(html, { classe, posicionar, aoFechar = null, rotulo = "", papel = "dialog", fechaAoRolar = false }) {
   flutuante?.fechar("outra");
   const el = document.createElement("div");
   el.className = `rede-flutuante ${classe}`;
@@ -86,7 +89,7 @@ function abrirFlutuante(html, { classe, posicionar, aoFechar = null, rotulo = ""
   return el;
 }
 /** Põe a caixa no ponto (x, y) da tela, sem sair dela. */
-function colocar(el, x, y) {
+export function colocar(el, x, y) {
   const r = el.getBoundingClientRect();
   el.style.left = `${Math.max(8, Math.min(x, innerWidth - r.width - 8))}px`;
   el.style.top = `${Math.max(8, Math.min(y, innerHeight - r.height - 8))}px`;

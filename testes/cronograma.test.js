@@ -7,7 +7,8 @@ import { criarCalendario } from "../js/calendario.js";
 import { caminhoCritico } from "../js/calculo.js";
 import { montarLinhas } from "../js/lista.js";
 import { simular } from "../js/simulacao.js";
-import { montarCronograma } from "../js/cronograma.js";
+import { montarCronograma, zoomQueCabe, estimativaParaTerminarEm } from "../js/cronograma.js";
+import { duracaoPert } from "../js/calculo.js";
 
 const HOJE = "2026-10-20";
 async function exemplo() {
@@ -64,5 +65,53 @@ describe("Cronograma (passo 1.17b)", () => {
     const doCaminho = [...caminho.porAcao.entries()].filter(([, c]) => c.critica).map(([n]) => n).sort();
     assert.deepEqual(criticas, doCaminho);
     assert.ok(criticas.length > 0);
+  });
+});
+
+describe("Cronograma: navegação e edição na tela (10/11/2026)", () => {
+  it("fase ou etapa recolhida esconde as linhas de dentro, mas mantém a linha do grupo, a contagem e as datas", async () => {
+    const { espaco, acoes, cal, caminho } = await exemplo();
+    const aberto = montarCronograma(acoes, caminho, cal, { estrutura: espaco.estrutura, usaFases: true });
+    const fase = espaco.estrutura[0];
+    const etapa = espaco.estrutura[1].etapas[0];
+    const fechado = montarCronograma(acoes, caminho, cal, { estrutura: espaco.estrutura, usaFases: true, recolhidos: new Set([fase.id, etapa.id]) });
+    const daFase = acoes.filter((a) => fase.etapas.some((e) => e.id === a.etapa));
+    const daEtapa = acoes.filter((a) => a.etapa === etapa.id);
+    const etapasDaFase = fase.etapas.filter((e) => acoes.some((a) => a.etapa === e.id)).length;
+    assert.equal(fechado.linhas.length, aberto.linhas.length - daFase.length - etapasDaFase - daEtapa.length);
+    const linhaDaFase = fechado.linhas.find((l) => l.tipo === "grupo" && l.id === fase.id);
+    const linhaAberta = aberto.linhas.find((l) => l.tipo === "grupo" && l.id === fase.id);
+    assert.equal(linhaDaFase.recolhido, true);
+    assert.equal(linhaDaFase.acoes, daFase.length);
+    assert.deepEqual([linhaDaFase.inicio, linhaDaFase.fim], [linhaAberta.inicio, linhaAberta.fim]);
+    assert.equal(fechado.linhas.find((l) => l.tipo === "grupo" && l.id === etapa.id).acoes, daEtapa.length);
+    assert.ok(!fechado.linhas.some((l) => l.tipo === "acao" && l.barra.acao.etapa === etapa.id));
+    assert.deepEqual([fechado.inicio, fechado.fim], [aberto.inicio, aberto.fim], "as datas do cronograma não mudam");
+  });
+
+  it("zoomQueCabe: o cronograma inteiro cabe na largura, entre 1 e 40 px por dia", () => {
+    assert.equal(zoomQueCabe(100, 832), 8.32);
+    assert.ok(Math.ceil(137 * zoomQueCabe(137, 832)) <= 832);
+    assert.equal(zoomQueCabe(5, 2000), 40);
+    assert.equal(zoomQueCabe(5000, 800), 1);
+    assert.equal(zoomQueCabe(0, 800), 1);
+  });
+
+  it("estimativaParaTerminarEm: três prazos inteiros, em ordem, que terminam no dia pedido, perto da proporção", () => {
+    const tres = { o: 8, m: 10, p: 18 };
+    for (const base of [0, 3.4, 12.75]) {
+      for (let dia = Math.ceil(base); dia < base + 40; dia++) {
+        const nova = estimativaParaTerminarEm(tres, base, dia);
+        assert.ok(nova, `base ${base}, dia ${dia}`);
+        assert.ok(Number.isInteger(nova.o) && Number.isInteger(nova.m) && Number.isInteger(nova.p));
+        assert.ok(nova.o <= nova.m && nova.m <= nova.p && nova.p > 0);
+        assert.equal(Math.ceil(base + duracaoPert(nova)) - 1, dia, `base ${base}, dia ${dia}: ${JSON.stringify(nova)}`);
+      }
+    }
+    /* o dobro do prazo mantém a proporção */
+    const dobro = estimativaParaTerminarEm(tres, 0, Math.ceil(2 * duracaoPert(tres)) - 1);
+    assert.ok(Math.abs(dobro.m / dobro.o - tres.m / tres.o) < 0.3 && Math.abs(dobro.p / dobro.m - tres.p / tres.m) < 0.3);
+    assert.equal(estimativaParaTerminarEm(tres, 10, 8), null, "terminar antes de começar não dá");
+    assert.equal(estimativaParaTerminarEm({ o: 0, m: 0, p: 0 }, 0, 5), null, "sem estimativa, não há proporção");
   });
 });

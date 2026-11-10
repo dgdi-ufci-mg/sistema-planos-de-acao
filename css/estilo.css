@@ -1036,7 +1036,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-legenda i.critica, .crono-barra-acao.critica { background: var(--crit); }
 .crono-legenda i.folga, .crono-barra-acao.folga { background: var(--accent); }
 .crono-legenda i.concluida, .crono-barra-acao.concluida { background: var(--ok); }
-.crono { --nomes: 260px; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
+.crono { --nomes: 300px; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
 .crono-rolagem { overflow: auto; overscroll-behavior: contain; border-radius: var(--raio); }
 .crono-conteudo { position: relative; }
 .crono-topo { display: flex; height: 40px; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 4; background: var(--surface); }
@@ -1052,7 +1052,9 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-nome > span.codigo:first-child { flex: none; overflow: visible; font-family: var(--f-dados); font-size: .8rem; color: var(--muted); }
 .crono-nome .icone-atrasada svg { width: 15px; height: 15px; }
 .crono-escala { position: relative; flex: none; }
-.crono-mes { position: absolute; top: 4px; padding-left: 4px; font: 600 .78rem var(--f-texto); color: var(--ink); white-space: nowrap; }
+/* o nome do mês acompanha a rolagem: fica à vista enquanto o mês estiver na tela (10/11/2026) */
+.crono-mes { position: absolute; top: 4px; box-sizing: border-box; padding-left: 4px; font: 600 .78rem var(--f-texto); color: var(--ink); white-space: nowrap; }
+.crono-mes span { position: sticky; left: calc(var(--nomes) + 6px); display: inline-block; background: var(--surface); padding-right: 6px; }
 .crono-dia { position: absolute; bottom: 4px; padding-left: 3px; font: .7rem var(--f-dados); color: var(--muted); }
 .crono-corpo { position: relative; }
 .crono-trilho { position: absolute; top: 0; bottom: 0; left: var(--nomes); }
@@ -1085,6 +1087,58 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono.destacando .crono-seta { opacity: .15; }
 .crono.destacando .crono-seta.ligada { opacity: 1; stroke: var(--ink); stroke-width: 1.8; }
 .crono .tempo-dica { white-space: normal; max-width: 320px; line-height: 1.35; z-index: 5; }
+/* ---------- cronograma: navegação e edição na tela (10/11/2026, pedido do responsável) ---------- */
+.crono-ir { display: inline-flex; align-items: center; gap: 6px; }
+.crono-ferramentas .botao[disabled] { opacity: .45; cursor: default; }
+.crono:focus { outline: none; }
+/* fases e etapas que se recolhem */
+.crono-nome[data-recolher] { cursor: pointer; }
+.crono-recolher { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; margin-left: -4px; padding: 0; border: 0; border-radius: 4px; background: none; color: var(--muted); cursor: pointer; }
+.crono-recolher .icone { width: 14px; height: 14px; transition: transform var(--mov-rapido) var(--mov-curva); }
+.crono-linha.recolhido .crono-recolher .icone { transform: rotate(-90deg); }
+.crono-recolher:focus-visible, .crono-mais:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.crono-grupo-nome { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.crono-nome.crono-cabeca > span { flex: 1 1 auto; }
+.crono-conta { flex: none; min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--sunk); border: 1px solid var(--line); color: var(--muted); font: .72rem var(--f-dados); text-align: center; }
+.crono-linha.grupo.etapa .crono-nome { padding-left: 16px; }
+.crono-linha.recolhido .crono-resumo { top: calc(50% - 5px); height: 10px; border-radius: 3px; }
+.crono-mais { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; border: 1px solid transparent; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+.crono-mais .icone { width: 15px; height: 15px; }
+.crono-mais:hover { background: var(--accent-soft); color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+.crono-mais[disabled] { opacity: .4; cursor: default; }
+/* andamento e atraso na barra: a que ainda espera fica mais clara, com o contorno na cor; a atrasada, listrada e contornada */
+.crono-barra-acao.critica, .crono-legenda i.critica { --cor: var(--crit); }
+.crono-barra-acao.folga, .crono-legenda i.folga { --cor: var(--accent); }
+.crono-barra-acao.aguardando, .crono-legenda i.aguardando { background: color-mix(in srgb, var(--cor) 30%, var(--surface)); box-shadow: inset 0 0 0 1.5px var(--cor); }
+.crono-barra-acao.atrasada, .crono-legenda i.atrasada { background-image: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--surface) 60%, transparent) 4px 7px); outline: 2px solid var(--crit-ink); outline-offset: 1px; }
+.crono-legenda i.atrasada { outline-width: 1.5px; }
+/* edição: borda que estica, bolinha que liga, seta que se seleciona */
+.crono.editavel .crono-barra-acao[data-prazo] { cursor: pointer; }
+.crono-borda { position: absolute; top: 6px; width: 10px; height: calc(var(--altura) - 12px); z-index: 3; cursor: ew-resize; touch-action: none; }
+.crono-borda::after { content: ""; position: absolute; top: 5px; bottom: 5px; left: 3px; width: 2px; border-radius: 1px; background: var(--surface); opacity: 0; transition: opacity var(--mov-rapido) var(--mov-curva); }
+.crono-linha:hover .crono-borda::after, .crono-linha:focus-within .crono-borda::after, .crono.arrastando-borda .crono-borda::after { opacity: .85; }
+.crono-barra-acao.esticando { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); transition: none; }
+.crono-alca { position: absolute; top: calc(var(--altura) / 2 - 6px); width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%; border: 2px solid var(--accent); background: var(--surface); z-index: 3; cursor: crosshair; touch-action: none;
+  opacity: 0; transform: scale(.6); transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
+.crono-alca::before { content: ""; position: absolute; inset: -8px -10px -8px -2px; } /* área de pegar maior que o desenho, sem cobrir a borda da barra */
+.crono-linha:hover .crono-alca, .crono-linha:focus-within .crono-alca, .crono.ligando .crono-alca { opacity: 1; transform: none; }
+.crono-alca:hover { background: var(--accent); }
+.crono-seta-alvo { fill: none; stroke: transparent; stroke-width: 12; pointer-events: stroke; cursor: pointer; }
+.crono-seta-alvo:hover + .crono-seta, .crono-seta:has(+ .crono-seta-alvo:hover) { stroke: var(--ink); stroke-width: 1.8; }
+.crono-seta.selecionada { stroke: var(--accent); stroke-width: 2.4; opacity: 1 !important; }
+.crono-fio { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; pointer-events: none; }
+.crono-linha.alvo-da-ligacao { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.crono-linha.alvo-da-ligacao .crono-barra-acao { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent); }
+.crono.ligando, .crono.arrastando-borda { user-select: none; }
+.crono.arrastando-borda { cursor: ew-resize; }
+.crono-nome .rotulo.editando-no-lugar { flex: 1 1 auto; white-space: nowrap; text-overflow: clip; outline-offset: 1px; padding: 1px 3px; }
+/* arrastar o fundo desloca; arrastar o nome muda a ordem ou a etapa */
+.crono-corpo { cursor: grab; }
+.crono.deslocando, .crono.deslocando * { cursor: grabbing !important; user-select: none; }
+.crono.movendo, .crono.movendo * { cursor: grabbing !important; user-select: none; }
+.crono-linha.sendo-movida { opacity: .45; }
+.crono-insercao { position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--accent); z-index: 4; pointer-events: none; }
+.crono-abrir-acao { border: 0; background: none; padding: 0; font: inherit; color: var(--accent-ink); text-decoration: underline; cursor: pointer; }
 .alternador button { position: relative; z-index: 1; padding: 5px 16px; border: 0; background: none; border-radius: 999px; cursor: pointer; font: 600 .88rem var(--f-texto); color: var(--muted); }
 .alternador button[aria-pressed="true"] { color: var(--accent-ink); }
 .alternador:has(button:nth-child(2)[aria-pressed="true"])::before { transform: translateX(100%); }
