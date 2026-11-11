@@ -115,7 +115,7 @@ export function desenharCarga(alvo, dados) {
     <div class="carga" style="--semana:${SEMANA}px">
       <div class="carga-rolagem" data-rolagem>
         <div class="carga-conteudo" style="width:calc(var(--nomes) + ${largura}px)">
-          <div class="carga-linha topo"><div class="carga-nome">Responsável</div><div class="carga-trilho escala" style="width:${largura}px">${topo}</div></div>
+          <div class="carga-linha carga-cabeca"><div class="carga-nome">Responsável</div><div class="carga-trilho escala" style="width:${largura}px">${topo}</div></div>
           ${carga.linhas.map(grupoHtml).join("")}
           ${hoje >= de && hoje < ate ? `<i class="carga-hoje" style="left:calc(var(--nomes) + ${x(hoje)}px)" title="Hoje"></i>` : ""}
         </div>

@@ -3051,11 +3051,13 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo { font-size: 1.35rem; 
 .carga-linha { display: flex; align-items: stretch; border-bottom: 1px solid var(--grid); }
 .carga-linha.dono { min-height: 52px; }
 .carga-linha.acao { min-height: 34px; background: var(--sunk); }
-.carga-linha.topo { height: 40px; border-bottom-color: var(--line); }
+/* "carga-cabeca", e não "topo": "topo" é a classe da barra do alto da página, e o cabeçalho herdava dela margens, posição
+   e fundo (corrigido em 11/11/2026, como no Cronograma). O fundo é o mesmo que ele mostrava, agora declarado aqui */
+.carga-linha.carga-cabeca { height: 40px; border-bottom-color: var(--line); background: var(--bg); }
 .carga-grupo:last-of-type > .carga-linha:last-child, .carga-grupo:last-of-type > .carga-acoes > .carga-linha:last-child { border-bottom: 0; }
 .carga-nome { position: sticky; left: 0; z-index: 3; width: var(--nomes); flex: none; box-sizing: border-box; display: flex; align-items: center; gap: 8px;
   padding: 0 10px; background: var(--surface); border: 0; border-right: 1px solid var(--line); font: inherit; color: var(--ink); text-align: left; min-width: 0; }
-.carga-linha.topo .carga-nome { color: var(--muted); font-size: .8rem; }
+.carga-linha.carga-cabeca .carga-nome { color: var(--muted); font-size: .8rem; }
 .carga-linha.acao .carga-nome { background: var(--sunk); padding-left: 34px; font-size: .88rem; cursor: pointer; }
 .carga-linha.acao .carga-nome .rotulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .carga-linha.acao .carga-nome:hover .rotulo { text-decoration: underline; }

@@ -18,8 +18,20 @@ describe("Visualização Responsáveis", { skip: pular }, () => {
     await p.waitForSelector(".carga");
     const linhas = await p.locator(".carga-grupo").count();
     assert.ok(linhas >= 4, "uma linha por responsável com ação em aberto");
-    const semanas = await p.locator(".carga-linha.topo .carga-sem").count();
+    const semanas = await p.locator(".carga-linha.carga-cabeca .carga-sem").count();
     assert.equal(await p.locator(".carga-grupo").first().locator(".carga-cel").count(), semanas, "uma célula por semana");
+    /* o cabeçalho não herda nada da barra do alto da página (11/11/2026): mesma largura das linhas, semanas sobre as células */
+    const alinhado = await p.evaluate(() => {
+      const cab = document.querySelector(".carga-linha.carga-cabeca");
+      const linha = document.querySelector(".carga-linha.dono");
+      const R = (e) => e.getBoundingClientRect();
+      return { cabeca: [R(cab).left, R(cab).width], linha: [R(linha).left, R(linha).width], margem: getComputedStyle(cab).marginLeft, posicao: getComputedStyle(cab).position,
+        semana: R(cab.querySelector(".carga-sem")).left, celula: R(linha.querySelector(".carga-cel")).left, trilhoCab: R(cab.querySelector(".carga-trilho")).left, trilho: R(linha.querySelector(".carga-trilho")).left };
+    });
+    assert.deepEqual(alinhado.cabeca, alinhado.linha, "o cabeçalho tem a largura das linhas");
+    assert.equal(alinhado.margem, "0px");
+    assert.equal(alinhado.posicao, "static");
+    assert.equal(alinhado.trilhoCab, alinhado.trilho, "as semanas começam onde começam as células");
     assert.equal(await p.locator(".carga-acoes").count(), 0, "as ações começam recolhidas");
     const botao = p.locator("[data-carga-abrir]").first();
     await botao.click();
