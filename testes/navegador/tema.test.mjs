@@ -100,8 +100,8 @@ describe("Tema deste aparelho", { skip: pular }, () => {
       assert.equal(await varCss(p, "--ink"), "#142C46");
       await comConta(p);
       await p.click("[data-abrir-conta]");
-      assert.equal(await p.locator('[data-paleta="ufcimg"]').getAttribute("aria-pressed"), "true");
-      await p.click('[data-paleta="original"]');
+      assert.equal(await p.locator('button[data-paleta="ufcimg"]').getAttribute("aria-pressed"), "true");
+      await p.click('button[data-paleta="original"]');
       assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "original");
       assert.equal(await varCss(p, "--ink"), "#163F3A");
       assert.deepEqual(await cor(p), ["#F5F3EF", "#F5F3EF"]);

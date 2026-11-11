@@ -168,10 +168,10 @@ function ligar() {
       return;
     }
     /* paleta deste aparelho (11/11/2026, em teste): troca na hora, sem fechar o menu */
-    const paleta = e.target.closest("[data-paleta]");
+    const paleta = e.target.closest("button[data-paleta]");
     if (paleta) {
       const escolhida = escolherPaleta(paleta.dataset.paleta);
-      for (const b of lateral.querySelectorAll("[data-paleta]")) b.setAttribute("aria-pressed", String(b.dataset.paleta === escolhida));
+      for (const b of lateral.querySelectorAll("button[data-paleta]")) b.setAttribute("aria-pressed", String(b.dataset.paleta === escolhida));
       return;
     }
     const espaco = e.target.closest("[data-espaco]");
