@@ -994,7 +994,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }
     if (ui.modo === "rede") {
       desenharRede(lista, { acoes, caminho, linhas, etapaDe, identificador: idHtml, escala: ui.escalaRede,
-        donos: (a) => donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus }),
+        /* todos os responsáveis vão para o cartão; os que não cabem viram "+N" (11/11/2026) */
+        donos: (a) => donosHtml(a.responsaveis.map((id) => pessoas.get(id)).filter(Boolean), { tons: espaco.tons, meus, todos: true }),
         situacao: (l) => (l.situacao === "liberada" ? "" : `<span class="${SITUACOES[l.situacao].classe}" title="${SITUACOES[l.situacao].texto}">${ICONES[SITUACOES[l.situacao].icone]}</span>`),
         marcos: usaFases ? (espaco.estrutura ?? []).flatMap((f) => (f.etapas ?? []).map((e) => ({ id: e.id, nome: e.nome, titulo: `${f.nome} › ${e.nome}`, fase: f.id, faseNome: f.nome }))) : null,
         /* círculos de início e de término (27/10/2026): o início do espaço e a conclusão prevista (a data mais tardia das ações) */
@@ -1007,6 +1008,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         /* edição dentro da Rede (09/11/2026, pedido do responsável: fluidez de um editor de fluxo como o Bizagi);
            no celular, a Rede é só para consulta (10/11/2026) */
         toque: redeNoCelular(),
+        /* cores pelo índice de criticidade onde há simulação (11/11/2026); sem ela, pela folga zero */
+        porCriticidade: usaSimulacao(espaco),
+        /* botão "Arrumar" (11/11/2026): redesenha com a arrumação completa */
+        aoArrumar: () => desenharLista(),
         edicao: store.podeGravar !== false && !redeNoCelular() ? edicaoDaRede() : null });
       return;
     }
@@ -2307,6 +2312,72 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         return Boolean(l && perm.atualizar(l.acao) && estimativaLivre(l.acao, l.situacao, hoje));
       },
       estimar: (numero, tres) => store.corrigirEstimativa(espacoId, numero, tres).then(() => null, (f) => f.message),
+      /* caixinha de prazos (11/11/2026): quando a ação terminaria com estes três prazos; null se não der para calcular */
+      previsaoCom(numero, tres) {
+        const { o, m, p } = tres;
+        if (![o, m, p].every((v) => Number.isFinite(v) && v >= 0) || o > m || m > p) return null;
+        try {
+          const copia = acoes.map((a) => (a.numero === numero ? { ...a, estimativas: [...(a.estimativas ?? []), { o, m, p }] } : a));
+          const c = caminhoCritico(copia, cal, { hoje, ...opcoesDoCalculo(espaco) });
+          return montarLinhas(copia, c, null, cal, hoje, { prazos: modeloDe(espaco).prazos, espaco }).find((l) => l.acao.numero === numero)?.conclusao ?? null;
+        } catch { return null; }
+      },
+      /* caixinhas de um campo só (11/11/2026, pedido do responsável): responsáveis, situação, etapa e data-limite */
+      podeAlterar(numero) {
+        const acao = acoes.find((a) => a.numero === numero);
+        return Boolean(acao && perm.atualizar(acao));
+      },
+      responsaveis(ancora, numero) {
+        const acao = acoes.find((a) => a.numero === numero);
+        if (!acao) return;
+        escolherParticipantes(ancora, {
+          responsaveis, marcados: acao.responsaveis, tons: espaco.tons, fechaAoRolar: false,
+          aoMudar: (id, ligado) => (ligado ? store.acrescentarResponsavelNaAcao(espacoId, numero, id) : store.retirarResponsavelDaAcao(espacoId, numero, id)),
+        });
+      },
+      /* situações possíveis da ação: as do espaço, para a liberada; concluir ou desfazer a conclusão */
+      situacoesDe(numero) {
+        const l = linhas?.find((x) => x.acao.numero === numero);
+        if (!l || l.continua) return [];
+        if (l.situacao === "concluida") return [{ id: "desfazer", nome: "Desfazer a conclusão" }];
+        const lista = l.situacao === "liberada"
+          ? [{ id: "inicial", nome: nomeInicial(espaco), atual: !l.acao.situacaoPersonalizada },
+            ...personalizadasDe(espaco).map((s) => ({ id: s.id, nome: s.nome, atual: l.acao.situacaoPersonalizada === s.id }))]
+          : [];
+        return [...lista, { id: "concluida", nome: "Concluída…" }];
+      },
+      async mudarSituacao(numero, id) {
+        const acao = acoes.find((a) => a.numero === numero);
+        if (!acao) return;
+        if (id === "concluida") return abrirJanela(numero, "concluir");
+        try {
+          if (id === "desfazer") { await store.desfazerConclusao(espacoId, numero); return; }
+          const antes = acao.situacaoPersonalizada ?? null;
+          await store.mudarSituacao(espacoId, numero, id === "inicial" ? null : id);
+          desfazivel(`mudança da situação de "${acao.rotulo}"`, () => store.mudarSituacao(espacoId, numero, antes));
+        } catch (f) { falhar(f); }
+      },
+      etapas: usaFases ? (espaco.estrutura ?? []).flatMap((f) => (f.etapas ?? []).map((e) => ({ id: e.id, nome: `${f.nome} › ${e.nome}` }))) : [],
+      etapaDe: (numero) => acoes.find((a) => a.numero === numero)?.etapa ?? null,
+      async mudarEtapa(numero, id) {
+        const acao = acoes.find((a) => a.numero === numero);
+        if (!acao || (acao.etapa ?? null) === (id ?? null)) return;
+        const antes = acao.etapa ?? null;
+        try {
+          await store.alterarAcao(espacoId, numero, { etapa: id ?? null });
+          desfazivel(`mudança da etapa de "${acao.rotulo}"`, () => store.alterarAcao(espacoId, numero, { etapa: antes }));
+        } catch (f) { falhar(f); }
+      },
+      usaDataLimite: usaDataLimite(espaco),
+      dataLimiteDe: (numero) => acoes.find((a) => a.numero === numero)?.dataLimite ?? null,
+      mudarDataLimite(numero, data) {
+        const acao = acoes.find((a) => a.numero === numero);
+        const antes = acao?.dataLimite ?? null;
+        return store.alterarAcao(espacoId, numero, { dataLimite: data || null }).then(() => {
+          desfazivel(`mudança da data-limite de "${acao?.rotulo ?? ""}"`, () => store.alterarAcao(espacoId, numero, { dataLimite: antes }));
+          return null;
+        }, (f) => f.message);
+      },
       /* menu do botão direito (09/11/2026) */
       nomeAcao: termos(espaco).acao,
       podeExcluir: Boolean(perm.excluirAcao),

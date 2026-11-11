@@ -6,7 +6,7 @@ import { carregarExemplo } from "../js/exemplo.js";
 import { criarCalendario } from "../js/calendario.js";
 import { caminhoCritico } from "../js/calculo.js";
 import { readFileSync } from "node:fs";
-import { montarRede, caminhoDaSeta, MEDIDAS } from "../js/rede.js";
+import { montarRede, abrirEspaco, caminhoDaSeta, MEDIDAS } from "../js/rede.js";
 
 const HOJE = "2026-10-20";
 async function exemplo() {
@@ -172,5 +172,124 @@ describe("Rede (passo 1.17c)", () => {
       for (const p of xs) assert.ok(f.x < p.x || f.x > p.x + MEDIDAS.largura);
       for (const c of r.cercas) assert.ok(f.x <= c.x || f.x >= c.x + c.largura, `linha da ${f.nome} na cerca ${c.id}`);
     }
+  });
+
+  /* ---------- 11/11/2026: fases em faixas, compactação e posições mantidas ---------- */
+  const duasFases = [
+    { id: "E11", nome: "1.1", fase: "F1", faseNome: "Fase 1" }, { id: "E21", nome: "2.1", fase: "F2", faseNome: "Fase 2" },
+    { id: "E22", nome: "2.2", fase: "F2", faseNome: "Fase 2" },
+  ];
+  const op = { pontas: true, marcos: duasFases, marcoDe: (a) => a.etapa };
+
+  it("fases em faixas: a ação da fase 2 que só depende do começo fica depois do fim da fase 1", () => {
+    /* 1 → 2 → 3 na fase 1; a 4 (fase 2) depende só da 1: antes, ficava na segunda coluna, dentro da fase 1 */
+    const acoes = [
+      { numero: 1, etapa: "E11", dependeDe: [] }, { numero: 2, etapa: "E11", dependeDe: [1] }, { numero: 3, etapa: "E11", dependeDe: [2] },
+      { numero: 4, etapa: "E21", dependeDe: [1] }, { numero: 5, etapa: "E21", dependeDe: [4] },
+    ];
+    const r = montarRede(acoes, { porAcao: new Map() }, op);
+    assert.equal(r.coluna.get(4), r.coluna.get(3) + 1);
+    const [f1, f2] = r.fases;
+    assert.deepEqual([f1.nome, f2.nome], ["Fase 1", "Fase 2"]);
+    assert.equal(f2.x0, f1.x1, "a fase seguinte começa onde a anterior termina");
+    for (const a of acoes) {
+      const f = a.etapa === "E11" ? f1 : f2;
+      const x = r.pos.get(a.numero).x;
+      assert.ok(x >= f.x0 && x + MEDIDAS.largura <= f.x1, `ação ${a.numero} dentro da faixa da ${f.nome}`);
+    }
+    assert.ok(r.arestas.every((a) => !a.volta));
+  });
+
+  it("fases em faixas: quem depende de uma ação de fase posterior acompanha a fase dela", () => {
+    const acoes = [{ numero: 1, etapa: "E21", dependeDe: [] }, { numero: 2, etapa: "E11", dependeDe: [1] }, { numero: 3, etapa: "E11", dependeDe: [] }];
+    const r = montarRede(acoes, { porAcao: new Map() }, op);
+    assert.ok(r.coluna.get(2) > r.coluna.get(1) && r.coluna.get(1) > r.coluna.get(3));
+    assert.ok(r.arestas.every((a) => !a.volta), "nenhuma seta para trás");
+  });
+
+  it("compactação: a etapa sobe até encostar no que há acima dela, nas suas colunas", () => {
+    /* fase 1: uma etapa alta (três ações em paralelo); fase 2: duas etapas em paralelo, uma acima da outra.
+       Sem compactar, a segunda etapa da fase 2 ficaria abaixo da altura da etapa da fase 1. */
+    const acoes = [
+      { numero: 1, etapa: "E11", dependeDe: [] }, { numero: 2, etapa: "E11", dependeDe: [] }, { numero: 3, etapa: "E11", dependeDe: [] }, { numero: 4, etapa: "E11", dependeDe: [] },
+      { numero: 5, etapa: "E21", dependeDe: [1] }, { numero: 6, etapa: "E22", dependeDe: [1] },
+    ];
+    const r = montarRede(acoes, { porAcao: new Map() }, op);
+    const [c21, c22] = ["E21", "E22"].map((id) => r.cercas.find((c) => c.id === id));
+    const acima = c21.y < c22.y ? c21 : c22;
+    const abaixo = acima === c21 ? c22 : c21;
+    assert.ok(abaixo.y - (acima.y + acima.altura) < 40, "a etapa de baixo encosta na de cima");
+    assert.ok(abaixo.y < r.cercas.find((c) => c.id === "E11").y + r.cercas.find((c) => c.id === "E11").altura, "sem esperar o fim da etapa alta da outra fase");
+    for (const a of r.cercas) for (const b of r.cercas) {
+      if (a === b) continue;
+      const separadas = a.x + a.largura <= b.x || b.x + b.largura <= a.x || a.y + a.altura <= b.y || b.y + b.altura <= a.y;
+      assert.ok(separadas, `cercas ${a.id} e ${b.id} não se sobrepõem`);
+    }
+  });
+
+  describe("posições mantidas (abrirEspaco)", () => {
+    const base = [
+      { numero: 1, etapa: "E11", dependeDe: [] }, { numero: 2, etapa: "E11", dependeDe: [1] },
+      { numero: 3, etapa: "E11", dependeDe: [1] }, { numero: 4, etapa: "E21", dependeDe: [2, 3] },
+    ];
+    const antes = () => { const r = montarRede(base, { porAcao: new Map() }, op); return { r, anterior: { coluna: r.coluna, pos: r.pos, etapas: new Map(base.map((a) => [a.numero, a.etapa])) } }; };
+    const centro = (r, n) => r.pos.get(n).y + MEDIDAS.altura / 2;
+
+    it("inserir entre duas ações abre uma coluna: o que está à direita desliza, e nada sobe nem desce", () => {
+      const { r, anterior } = antes();
+      const acoes = [...base.map((a) => (a.numero === 4 ? { ...a, dependeDe: [5, 3] } : a)), { numero: 5, etapa: "E11", dependeDe: [2] }];
+      const fixos = abrirEspaco(anterior, acoes, op);
+      assert.ok(fixos);
+      assert.equal(fixos.get(5).coluna, r.coluna.get(2) + 1);
+      assert.equal(fixos.get(5).y, centro(r, 2), "a nova fica na altura da vizinha da mesma etapa");
+      assert.equal(fixos.get(4).coluna, r.coluna.get(4) + 1, "a seguinte deslizou uma coluna");
+      for (const n of [1, 2, 3]) assert.equal(fixos.get(n).coluna, r.coluna.get(n));
+      for (const n of [1, 2, 3, 4]) assert.equal(fixos.get(n).y, centro(r, n), `a ação ${n} não subiu nem desceu`);
+      const novo = montarRede(acoes, { porAcao: new Map() }, { ...op, fixos });
+      for (const n of [1, 2, 3, 4]) assert.equal(centro(novo, n), centro(r, n));
+      assert.ok(novo.pos.get(4).x > r.pos.get(4).x);
+      assert.ok(novo.arestas.every((a) => !a.volta));
+      /* as setas retraçadas não passam por cima de cartões */
+      for (const ar of novo.arestas) for (let k = 0; k + 1 < ar.pontos.length; k++) {
+        const [[x0, y0], [x1, y1]] = [ar.pontos[k], ar.pontos[k + 1]];
+        for (const [n, c] of novo.pos) {
+          const dentroX = Math.max(x0, x1) > c.x + 0.5 && Math.min(x0, x1) < c.x + MEDIDAS.largura - 0.5;
+          const dentroY = Math.max(y0, y1) > c.y + 0.5 && Math.min(y0, y1) < c.y + MEDIDAS.altura - 0.5;
+          assert.ok(!(dentroX && dentroY), `seta ${ar.de}→${ar.para} passa pelo cartão ${n}`);
+        }
+      }
+    });
+
+    it("criar a próxima num lugar livre não desloca ninguém", () => {
+      const { r, anterior } = antes();
+      const acoes = [...base, { numero: 5, etapa: "E21", dependeDe: [4] }];
+      const fixos = abrirEspaco(anterior, acoes, op);
+      for (const a of base) assert.equal(fixos.get(a.numero).coluna, r.coluna.get(a.numero));
+      assert.deepEqual(fixos.get(5), { coluna: r.coluna.get(4) + 1, y: centro(r, 4) });
+    });
+
+    it("criar a próxima num lugar ocupado abre uma coluna", () => {
+      const { r, anterior } = antes();
+      const acoes = [...base, { numero: 5, etapa: "E11", dependeDe: [1] }];
+      const fixos = abrirEspaco(anterior, acoes, op);
+      assert.equal(fixos.get(5).coluna, r.coluna.get(1) + 1);
+      for (const n of [2, 3, 4]) assert.equal(fixos.get(n).coluna, r.coluna.get(n) + 1);
+    });
+
+    it("sem ação nova (ligar, desligar, renomear), tudo fica onde estava", () => {
+      const { r, anterior } = antes();
+      const acoes = base.map((a) => (a.numero === 4 ? { ...a, dependeDe: [2] } : a));
+      const fixos = abrirEspaco(anterior, acoes, op);
+      for (const a of base) assert.deepEqual(fixos.get(a.numero), { coluna: r.coluna.get(a.numero), y: centro(r, a.numero) });
+    });
+
+    it("pede a arrumação completa quando não dá para manter", () => {
+      const { anterior } = antes();
+      assert.equal(abrirEspaco(anterior, base.map((a) => (a.numero === 2 ? { ...a, dependeDe: [1, 4] } : a)), op), null, "seta para trás");
+      assert.equal(abrirEspaco(anterior, base.map((a) => (a.numero === 3 ? { ...a, etapa: "E22" } : a)), op), null, "mudança de etapa");
+      assert.equal(abrirEspaco(anterior, [...base, { numero: 5, etapa: "E11", dependeDe: [] }], op), null, "ação nova sem anteriores");
+      assert.equal(abrirEspaco(anterior, [...base, { numero: 5, etapa: "E11", dependeDe: [1] }, { numero: 6, etapa: "E11", dependeDe: [1] }], op), null, "duas ações novas");
+      assert.equal(abrirEspaco(null, base, op), null, "sem desenho anterior");
+    });
   });
 });

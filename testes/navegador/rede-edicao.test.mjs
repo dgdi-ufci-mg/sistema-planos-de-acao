@@ -338,4 +338,177 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     assert.equal(await setas(p), antes);
     assert.deepEqual(p.erros, []);
   });
+
+  /* ---------- 11/11/2026: posições mantidas, botão Arrumar e caixinhas de um campo só ---------- */
+  const posicoes = (p) => p.locator(".rede-no").evaluateAll((els) => Object.fromEntries(els.map((e) => [e.dataset.numero, [parseFloat(e.style.left), parseFloat(e.style.top)]])));
+  /* espera a transição do zoom (320 ms) e a rolagem assentarem: o menu do botão direito fecha quando a rede rola */
+  const aCem = async (p) => { await p.click('[data-escala="normal"]'); await p.waitForTimeout(800); };
+
+  test("criar num lugar ocupado só abre espaço: o que está à direita desliza, nada sobe nem desce; Arrumar reorganiza", async () => {
+    const p = await abrirRede();
+    await aCem(p);
+    assert.equal(await p.locator("[data-rede-arrumar]").isVisible(), false, "rede recém-aberta: nada a arrumar");
+    const antes = await posicoes(p);
+    /* a primeira ação tem três seguintes na coluna ao lado: o lugar da nova está ocupado */
+    const origem = p.locator(".rede-no").first();
+    const n = await origem.getAttribute("data-numero");
+    await origem.locator(".rede-cartao").click();
+    await origem.locator(".rede-mais").click();
+    await p.waitForSelector(".rede [data-editando]");
+    await p.keyboard.type("No meio do caminho");
+    await p.keyboard.press("Enter");
+    await p.keyboard.press("Escape"); // deixa os prazos para depois
+    await assentar(p, 900);
+    const depois = await posicoes(p);
+    const nova = await p.locator(".rede-no", { hasText: "No meio do caminho" }).getAttribute("data-numero");
+    for (const k of Object.keys(antes)) assert.equal(depois[k][1], antes[k][1], `a ação ${k} não subiu nem desceu`);
+    assert.equal(depois[n][0], antes[n][0], "a de origem ficou onde estava");
+    assert.equal(depois[nova][1], antes[n][1], "a nova fica na altura da de origem");
+    assert.ok(depois[nova][0] > antes[n][0]);
+    const aDireita = Object.keys(antes).filter((k) => antes[k][0] > antes[n][0]);
+    assert.ok(aDireita.length >= 3 && aDireita.every((k) => depois[k][0] > antes[k][0]), "o que estava à direita deslizou");
+    const arrumar = p.locator("[data-rede-arrumar]");
+    assert.ok(await arrumar.isVisible(), "há o que arrumar");
+    if (SCREENSHOTS) await p.screenshot({ path: `${SCREENSHOTS}/15-espaco-aberto.png` });
+    await arrumar.click();
+    await assentar(p, 900);
+    const arrumada = await posicoes(p);
+    assert.ok(Object.keys(antes).some((k) => arrumada[k][1] !== depois[k][1] || arrumada[k][0] !== depois[k][0]), "a arrumação mexeu no desenho");
+    assert.equal(await arrumar.isVisible(), false, "depois de arrumar, o botão some");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("caixinha de prazos: sempre abaixo do cartão, campos brancos e a data em que a ação terminaria", async () => {
+    const p = await abrirRede();
+    await aCem(p);
+    /* uma ação que ainda espera outra: a estimativa dela pode ser corrigida sem histórico (js/acao.js) */
+    const alvo = p.locator(".rede-no.indice:not(.agora)").first();
+    await alvo.locator(".rede-cartao").click();
+    await alvo.locator(".rede-data").click();
+    await p.waitForSelector(".rede-estimar input[name=o]");
+    await assentar(p, 300);
+    const [caixa, cartao] = await Promise.all([p.locator(".rede-estimar").boundingBox(), alvo.boundingBox()]);
+    assert.ok(caixa.y >= cartao.y + cartao.height, "abaixo do cartão");
+    const fundos = await p.locator(".rede-estimar input").evaluateAll((els) => els.map((e) => getComputedStyle(e).backgroundColor));
+    assert.deepEqual([...new Set(fundos)], ["rgb(255, 255, 255)"], "os três campos com fundo branco");
+    const previsao = p.locator(".rede-estimar [data-previsao]");
+    assert.match(await previsao.innerText(), /termina em \d{2}\/\d{2}\/\d{4}/, "com os prazos atuais, já mostra a data");
+    const antes = await previsao.innerText();
+    await p.locator(".rede-estimar input[name=o]").fill("40");
+    await p.locator(".rede-estimar input[name=m]").fill("60");
+    await p.locator(".rede-estimar input[name=p]").fill("90");
+    assert.notEqual(await previsao.innerText(), antes, "a data acompanha o que se digita");
+    await p.locator(".rede-estimar input[name=m]").fill("10");
+    assert.equal(await previsao.isVisible(), false, "prazos fora de ordem: sem data");
+    await p.keyboard.press("Escape");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("perto do fim da tela, a caixinha continua abaixo: a rede sobe o que falta", async () => {
+    const p = await abrirRede();
+    await aCem(p);
+    /* uma ação que ainda espera outra (estimativa livre), levada para junto da borda de baixo, no meio da largura */
+    const alvo = p.locator(".rede-no.indice:not(.agora)").first();
+    const r = await alvo.boundingBox();
+    await p.mouse.move(700, 300);
+    await p.mouse.wheel(r.x - 600, -(760 - r.y - r.height));
+    await p.waitForTimeout(800);
+    /* clique direto do mouse: o clique do Playwright poderia rolar a rede, e o menu fecha quando ela rola */
+    const c = await alvo.boundingBox();
+    assert.ok(c.y + c.height > 700, "o cartão está junto da borda de baixo");
+    await p.mouse.click(c.x + c.width / 2, c.y + 30, { button: "right" });
+    await p.locator('.rede-menu button:has-text("Prazo")').click();
+    await p.waitForSelector(".rede-estimar");
+    await assentar(p, 300);
+    const [caixa, cartao] = await Promise.all([p.locator(".rede-estimar").boundingBox(), alvo.boundingBox()]);
+    assert.ok(caixa.y >= cartao.y + cartao.height - 1 && caixa.y + caixa.height <= 860, "abaixo do cartão e dentro da tela");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("menu do botão direito: situação e etapa numa caixinha; Ctrl+Z desfaz", async () => {
+    const p = await abrirRede();
+    await aCem(p);
+    const alvo = p.locator(".rede-no.agora").first();
+    const n = await alvo.getAttribute("data-numero");
+    const no = p.locator(`.rede-no[data-numero="${n}"]`);
+    const menu = async (item) => { await assentar(p, 400); await no.locator(".rede-cartao").click({ button: "right" }); await p.locator(`.rede-menu button:has-text("${item}")`).click(); await assentar(p, 250); };
+    assert.deepEqual(await (async () => { await no.locator(".rede-cartao").click({ button: "right" }); const t = await p.locator(".rede-menu button").allInnerTexts(); await p.keyboard.press("Escape"); return ["Responsáveis", "Situação", "Etapa"].map((x) => t.some((y) => y.startsWith(x))); })(), [true, true, true]);
+    /* situação: a lista do espaço, com a atual marcada, e "Concluída…" */
+    await menu("Situação");
+    const opcoes = await p.locator(".rede-campo-situacao [role=option]").allInnerTexts();
+    assert.equal(opcoes[0], "Liberada");
+    assert.equal(opcoes.at(-1), "Concluída…");
+    assert.equal(await p.locator('.rede-campo-situacao [aria-selected="true"]').innerText(), "Liberada");
+    const [caixa, cartao] = await Promise.all([p.locator(".rede-campo-situacao").boundingBox(), no.boundingBox()]);
+    assert.ok(caixa.y >= cartao.y + cartao.height, "abaixo do cartão");
+    await p.keyboard.press("Escape");
+    assert.equal(await p.locator(".rede-campo").count(), 0);
+    await assentar(p, 300); // o foco volta ao cartão, e a rede pode rolar para mostrá-lo
+    /* etapa: muda a etapa da ação; a rede é arrumada de novo, porque a cerca muda */
+    const etapaAntes = await no.getAttribute("data-etapa");
+    await menu("Etapa");
+    const atual = await p.locator('.rede-campo-etapa [aria-selected="true"]').innerText();
+    const outra = p.locator('.rede-campo-etapa [role=option][aria-selected="false"]').first();
+    const nomeDaOutra = await outra.innerText();
+    assert.notEqual(nomeDaOutra, atual);
+    await outra.click();
+    await assentar(p, 900);
+    assert.notEqual(await no.getAttribute("data-etapa"), etapaAntes, "a etapa mudou");
+    assert.equal(await p.locator("[data-rede-arrumar]").isVisible(), false, "mudança de etapa já vem arrumada");
+    await p.locator(".rede").focus();
+    await p.keyboard.press("Control+z");
+    await assentar(p, 900);
+    assert.equal(await no.getAttribute("data-etapa"), etapaAntes, "Ctrl+Z devolve a etapa");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("a pílula da situação abre a caixinha da situação", async () => {
+    const p = await abrirRede();
+    await aCem(p);
+    await p.locator(".rede-no.agora .rede-agora").first().click();
+    await p.waitForSelector(".rede-campo-situacao");
+    assert.ok(await p.locator(".rede-no.agora").first().evaluate((el) => el.classList.contains("selecionada")));
+    await p.keyboard.press("Escape");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("clique nos responsáveis da ação selecionada abre a escolha; quem não cabe vira +N, sem cobrir a data", async () => {
+    const p = await abrirRede();
+    await aCem(p);
+    const alvo = p.locator(".rede-no.agora").first();
+    const n = await alvo.getAttribute("data-numero");
+    const no = p.locator(`.rede-no[data-numero="${n}"]`);
+    /* o primeiro clique só seleciona */
+    await no.locator(".donos").click();
+    await assentar(p, 200);
+    assert.equal(await p.locator(".escolher-participantes").count(), 0);
+    await no.locator(".donos").click();
+    await p.waitForSelector(".escolher-participantes");
+    assert.equal(await p.locator(".rede [data-editando]").count(), 0, "o duplo clique nos responsáveis não abre o nome");
+    /* marca todos os responsáveis do espaço */
+    const caixas = p.locator(".escolher-participantes input[type=checkbox]");
+    const total = await caixas.count();
+    assert.ok(total >= 5);
+    for (let i = 0; i < total; i++) {
+      const c = p.locator(".escolher-participantes input[type=checkbox]").nth(i);
+      if (!(await c.isChecked())) { await c.check(); await assentar(p, 250); }
+    }
+    await p.keyboard.press("Escape");
+    await p.mouse.click(700, 820);
+    await assentar(p, 500);
+    const medido = await no.evaluate((el) => {
+      const donos = el.querySelector(".donos");
+      const [d, data] = [donos.getBoundingClientRect(), el.querySelector(".rede-data").getBoundingClientRect()];
+      const visiveis = [...donos.querySelectorAll(".avatar:not(.mais), .unidade")].filter((s) => !s.hidden).length;
+      return { mais: donos.querySelector(".rede-mais-donos")?.textContent ?? "", visiveis, total: donos.querySelectorAll(".avatar:not(.mais), .unidade").length,
+        cabe: donos.scrollWidth <= donos.clientWidth + 1, semCobrir: d.right <= data.left + 1, dica: donos.querySelector(".rede-mais-donos")?.title ?? "" };
+    });
+    assert.equal(medido.total, total, "todos os responsáveis estão no cartão");
+    assert.match(medido.mais, /^\+\d+$/);
+    assert.equal(medido.visiveis + Number(medido.mais.slice(1)), total);
+    assert.ok(medido.cabe && medido.semCobrir, "nada cortado, e a data livre");
+    assert.ok(medido.dica.length > 5, "os nomes de quem ficou de fora estão na dica");
+    if (SCREENSHOTS) await no.screenshot({ path: `${SCREENSHOTS}/16-responsaveis.png` });
+    assert.deepEqual(p.erros, []);
+  });
 });

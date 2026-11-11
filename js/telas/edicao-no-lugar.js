@@ -64,11 +64,12 @@ export function editarTexto(el, { valor, multilinha = false, aoGravar, aoTermina
 
 /**
  * Lista curta, presa ao campo, para marcar e desmarcar os participantes; cada marca grava na hora.
- * Fecha com Esc, com clique fora ou ao rolar a página.
+ * Fecha com Esc, com clique fora ou ao rolar a página (`fechaAoRolar: false` mantém a lista aberta ao rolar: é o
+ * caso da Rede, que refaz o desenho e repõe a rolagem a cada marca gravada; 11/11/2026).
  * @param {HTMLElement} ancora
- * @param {{responsaveis: object[], marcados: string[], tons?: object, aoMudar: (id: string, ligado: boolean) => Promise<void>}} opcoes
+ * @param {{responsaveis: object[], marcados: string[], tons?: object, fechaAoRolar?: boolean, aoMudar: (id: string, ligado: boolean) => Promise<void>}} opcoes
  */
-export function escolherParticipantes(ancora, { responsaveis, marcados, tons, aoMudar }) {
+export function escolherParticipantes(ancora, { responsaveis, marcados, tons, aoMudar, fechaAoRolar = true }) {
   document.querySelector(".escolher-participantes")?.remove();
   const ordenados = [...responsaveis].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
   const caixa = document.createElement("div");
@@ -113,7 +114,7 @@ export function escolherParticipantes(ancora, { responsaveis, marcados, tons, ao
   };
   const fora = (e) => { if (!caixa.contains(e.target)) fechar(); };
   const tecla = (e) => { if (e.key === "Escape") { e.stopPropagation(); fechar(); ancora.closest("[data-abrir-acao]")?.focus(); } };
-  const rolou = (e) => { if (!caixa.contains(e.target)) fechar(); };
+  const rolou = (e) => { if (fechaAoRolar && !caixa.contains(e.target)) fechar(); };
   setTimeout(() => {
     document.addEventListener("pointerdown", fora, true);
     document.addEventListener("keydown", tecla, true);

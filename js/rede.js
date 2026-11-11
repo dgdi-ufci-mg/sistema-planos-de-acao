@@ -26,6 +26,14 @@
  *    lateral esquerda da caixa até o marco de início, e "termina junto" sai da lateral direita até o marco de fim
  *    (a lateral direita da ação, a cerca da etapa, as cercas da fase ou o círculo do projeto). Quando o marco de
  *    fim está noutra coluna, a ligação desce até um corredor abaixo de tudo, para não passar sobre os cartões.
+ * 11. Fases em faixas (11/11/2026, pedido do responsável: como os milestones do Bizagi): cada fase ocupa um
+ *    trecho próprio de colunas, na ordem das fases; nenhuma ação é desenhada no trecho de outra fase. A ação
+ *    que depende de outra de fase posterior acompanha a fase dessa outra (fase efetiva). Só o desenho muda.
+ * 12. Compactação (11/11/2026): cada etapa (com a sua cerca) sobe até encostar no que estiver acima dela nas
+ *    mesmas colunas, em vez de ocupar uma faixa da largura do plano inteiro.
+ * 13. Posições mantidas (opção `fixos`, 11/11/2026): com a coluna e a altura de cada ação dadas por quem chama
+ *    (`abrirEspaco`), os itens 1, 4, 6, 7, 11 e 12 não se aplicam: as ações ficam onde estavam e só as setas
+ *    são retraçadas, desviando dos cartões e das cercas das outras etapas.
  * Sem biblioteca externa.
  */
 import { ehContinua } from "./calculo.js";
@@ -35,7 +43,7 @@ export const MEDIDAS = Object.freeze({
   largura: 240, altura: 100, vaoX: 64, vaoY: 20, vaoSeta: 14, margem: 16,
   trilha: 10, folgaRaia: 18, salto: 4,
   /* cercas e marcos (27/10/2026) */
-  cerca: 12, rotuloCerca: 24, folgaCercaTopo: 46, folgaCercaBase: 24, cabecaFase: 30, vaoFase: 48,
+  cerca: 12, rotuloCerca: 24, folgaCercaTopo: 46, folgaCercaBase: 24, cabecaFase: 4, vaoFase: 48,
   raioPonta: 40,
 });
 
@@ -71,38 +79,7 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   for (const [n, ds] of anteriores) for (const d of ds) seguintes.get(d).push(n);
   const comPontas = Boolean(opcoes.pontas) && acoes.length > 0;
 
-  /* ---------- 1. colunas pelas dependências ---------- */
-  const desloc = comPontas ? 1 : 0;
-  const coluna = new Map();
-  const visitando = new Set();
-  const colunaDe = (n) => {
-    if (coluna.has(n)) return coluna.get(n);
-    if (visitando.has(n)) return desloc; // dependência circular: a seta vira uma que volta
-    visitando.add(n);
-    const c = Math.max(desloc, ...anteriores.get(n).map((d) => colunaDe(d) + 1));
-    visitando.delete(n);
-    coluna.set(n, c);
-    return c;
-  };
-  for (const a of acoes) colunaDe(a.numero);
-  /* a contínua fica na coluna do marco de início: a da ação, a primeira das ações comuns da etapa ou da fase, ou a primeira */
-  const etapaDaAcao = (a) => (opcoes.marcoDe ? opcoes.marcoDe(a) : a.etapa);
-  const porNumero = new Map(acoes.map((a) => [a.numero, a]));
-  /** Ações comuns que formam o marco; null no projeto; lista vazia se o marco não existe mais (vale o projeto). */
-  const membrosDoMarco = (m) => {
-    if (!m || m.tipo === "projeto") return null;
-    if (m.tipo === "acao") return porNumero.has(m.numero) && !continuas.has(m.numero) ? [porNumero.get(m.numero)] : [];
-    const etapas = m.tipo === "etapa" ? new Set([m.id]) : new Set((opcoes.marcos ?? []).filter((x) => x.fase === m.id).map((x) => x.id));
-    return acoes.filter((a) => !continuas.has(a.numero) && etapas.has(etapaDaAcao(a)));
-  };
-  for (const n of continuas) {
-    const ms = membrosDoMarco(porNumero.get(n).comecaCom);
-    coluna.set(n, ms?.length ? Math.min(...ms.map((a) => coluna.get(a.numero))) : desloc);
-  }
-  let total = acoes.length ? Math.max(...coluna.values()) + 1 : 0;
-  if (comPontas) { coluna.set(INICIO, 0); coluna.set(TERMINO, total); total += 1; }
-
-  /* ---------- 2. etapas (as cercas) ---------- */
+  /* ---------- etapas (as cercas) e fases ---------- */
   const comMarcos = Array.isArray(opcoes.marcos);
   const pedidos = comMarcos ? opcoes.marcos : [];
   const indiceDoMarco = new Map(pedidos.map((m, i) => [m.id, i]));
@@ -111,6 +88,56 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     const id = comMarcos ? opcoes.marcoDe?.(a) : null;
     return [a.numero, comMarcos && indiceDoMarco.has(id) ? indiceDoMarco.get(id) : comMarcos ? SEM_MARCO : 0];
   }));
+  const temFases = comMarcos && pedidos.some((m) => m.fase);
+  const faseEfetiva = temFases ? fasesEfetivas(acoes, anteriores, pedidos, opcoes.marcoDe) : new Map();
+  const ordemDasFases = [...new Set(pedidos.map((m) => m.fase).filter((f) => f != null))];
+
+  /* ---------- 1. colunas pelas dependências, fase por fase (item 11) ---------- */
+  const desloc = comPontas ? 1 : 0;
+  const coluna = new Map();
+  const fixos = opcoes.fixos && acoes.every((a) => opcoes.fixos.has(a.numero)) ? opcoes.fixos : null;
+  const porNumero = new Map(acoes.map((a) => [a.numero, a]));
+  const etapaDaAcao = (a) => (opcoes.marcoDe ? opcoes.marcoDe(a) : a.etapa);
+  /** Ações comuns que formam o marco; null no projeto; lista vazia se o marco não existe mais (vale o projeto). */
+  const membrosDoMarco = (m) => {
+    if (!m || m.tipo === "projeto") return null;
+    if (m.tipo === "acao") return porNumero.has(m.numero) && !continuas.has(m.numero) ? [porNumero.get(m.numero)] : [];
+    const etapas = m.tipo === "etapa" ? new Set([m.id]) : new Set((opcoes.marcos ?? []).filter((x) => x.fase === m.id).map((x) => x.id));
+    return acoes.filter((a) => !continuas.has(a.numero) && etapas.has(etapaDaAcao(a)));
+  };
+  if (fixos) {
+    for (const a of acoes) coluna.set(a.numero, fixos.get(a.numero).coluna);
+  } else {
+    const base = new Map([[-1, desloc]]);
+    const visitando = new Set();
+    const colunaDe = (n) => {
+      if (coluna.has(n)) return coluna.get(n);
+      if (visitando.has(n)) return desloc; // dependência circular: a seta vira uma que volta
+      visitando.add(n);
+      const c = Math.max(base.get(faseEfetiva.get(n) ?? -1) ?? desloc, ...anteriores.get(n).map((d) => colunaDe(d) + 1));
+      visitando.delete(n);
+      coluna.set(n, c);
+      return c;
+    };
+    /* cada fase começa na coluna seguinte à última das fases anteriores; as ações sem fase não empurram ninguém */
+    let ultima = desloc - 1;
+    for (let f = 0; f < ordemDasFases.length; f++) {
+      base.set(f, ultima + 1);
+      for (const a of acoes) {
+        if (faseEfetiva.get(a.numero) !== f) continue;
+        const c = colunaDe(a.numero);
+        if (!continuas.has(a.numero)) ultima = Math.max(ultima, c);
+      }
+    }
+    for (const a of acoes) colunaDe(a.numero);
+    /* a contínua fica na coluna do marco de início: a da ação, a primeira das ações comuns da etapa ou da fase, ou a primeira */
+    for (const n of continuas) {
+      const ms = membrosDoMarco(porNumero.get(n).comecaCom);
+      coluna.set(n, ms?.length ? Math.min(...ms.map((a) => coluna.get(a.numero))) : desloc);
+    }
+  }
+  let total = acoes.length ? Math.max(...coluna.values()) + 1 : 0;
+  if (comPontas) { coluna.set(INICIO, 0); coluna.set(TERMINO, total); total += 1; }
 
   /* ---------- 3. setas ---------- */
   const arestas = [];
@@ -131,8 +158,9 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   }
   const ehPonta = (n) => n === INICIO || n === TERMINO;
 
-  /* ---------- 4. faixas: cada etapa ocupa um trecho de colunas; etapas sem colunas em comum dividem a faixa ---------- */
   const etapasUsadas = [...new Set(acoes.map((a) => etapa.get(a.numero)))].sort((p, q) => p - q);
+  const disporPorFaixas = () => {
+  /* ---------- 4. faixas: cada etapa ocupa um trecho de colunas; etapas sem colunas em comum dividem a faixa ---------- */
   const trecho = new Map(etapasUsadas.map((e) => [e, [Infinity, -Infinity]]));
   const alargar = (e, a, b) => { const t = trecho.get(e); t[0] = Math.min(t[0], a); t[1] = Math.max(t[1], b); };
   for (const a of acoes) alargar(etapa.get(a.numero), coluna.get(a.numero), coluna.get(a.numero));
@@ -162,7 +190,6 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   const raiaDoItem = new Map();
   for (const a of acoes) raiaDoItem.set(a.numero, faixaDaEtapa.get(etapa.get(a.numero)));
   if (comPontas) { raiaDoItem.set(INICIO, -1); raiaDoItem.set(TERMINO, -1); }
-  const camadas = Array.from({ length: total }, () => []);
   const ordemDoEspaco = new Map(acoes.map((a, i) => [a.numero, i]));
   if (comPontas) { ordemDoEspaco.set(INICIO, -1); ordemDoEspaco.set(TERMINO, acoes.length); }
   for (const n of coluna.keys()) camadas[coluna.get(n)].push(n);
@@ -191,7 +218,6 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     ar.cadeia.push(ar.para);
     for (let k = 0; k + 1 < ar.cadeia.length; k++) { direita.get(ar.cadeia[k]).push(ar.cadeia[k + 1]); esquerda.get(ar.cadeia[k + 1]).push(ar.cadeia[k]); }
   });
-  const ehNo = (it) => typeof it === "number";
   const raia = (it) => raiaDoItem.get(it);
 
   /* ---------- 6. ordem dentro das colunas (faixa primeiro) ---------- */
@@ -244,8 +270,6 @@ export function montarRede(acoes, caminho, opcoes = {}) {
   melhor.forEach((c, i) => { camadas[i] = c; });
 
   /* ---------- 7. altura de cada item, faixa por faixa ---------- */
-  const alturaDe = (it) => (ehPonta(it) ? 2 * R : ehNo(it) ? M.altura : 0);
-  const larguraDe = (it) => (ehPonta(it) ? 2 * R : ehNo(it) ? M.largura : 0);
   const separacao = (p, q) => (alturaDe(p) + alturaDe(q)) / 2 + (ehNo(p) && ehNo(q) ? M.vaoY : M.vaoSeta);
   const nRaias = nFaixas + 1;
   const daRaia = (c, r) => camadas[c].filter((it) => raia(it) === r);
@@ -312,26 +336,135 @@ export function montarRede(acoes, caminho, opcoes = {}) {
       for (const p of pontos) centro.set(p, y);
     }
   }
-  /* empilha as faixas; com cercas, a folga de cima cabe o nome da etapa */
-  const temFases = comMarcos && pedidos.some((m) => m.fase);
-  const topoDoDesenho = M.margem + (temFases ? M.cabecaFase : 0);
-  const topoDaRaia = [];
-  let yRaia = topoDoDesenho;
-  for (let r = 0; r < nRaias; r++) {
-    const itens = [...centro].filter(([it]) => raia(it) === r);
-    if (!itens.length) continue;
-    const [fCima, fBaixo] = r === CORREDOR ? [10, 16] : comMarcos ? [M.folgaCercaTopo, M.folgaCercaBase] : [M.folgaRaia, M.folgaRaia];
-    const topo = Math.min(...itens.map(([it, y]) => y - alturaDe(it) / 2));
-    const base = Math.max(...itens.map(([it, y]) => y + alturaDe(it) / 2));
-    topoDaRaia[r] = yRaia + fCima - topo;
-    yRaia += base - topo + fCima + fBaixo;
+  /* ---------- 12. compactação: cada bloco sobe até encostar no que há acima dele, nas suas colunas ----------
+     bloco: uma etapa (os cartões e os pontos de passagem dentro do seu trecho de colunas, com a folga da cerca)
+     ou um trecho de seta que passa por colunas livres */
+  const blocos = new Map();
+  const noBloco = (id, r, ehEtapa) => blocos.get(id) ?? blocos.set(id, { id, r, etapa: ehEtapa, itens: [], cols: new Set() }).get(id);
+  for (const a of acoes) noBloco(`e${etapa.get(a.numero)}`, raia(a.numero), true).itens.push(a.numero);
+  for (const e of etapasUsadas) { const [a, b] = trecho.get(e); for (let c = a; c <= b; c++) blocos.get(`e${e}`).cols.add(c); }
+  arestas.forEach((ar, i) => {
+    let corrida = 0;
+    let solto = false;
+    for (const p of ar.cadeia.slice(1, -1)) {
+      const c = Number(p.split(":")[1]);
+      const r = raia(p);
+      const dona = r === CORREDOR ? null : ocupadas[r].find((o) => o.a <= c && o.b >= c);
+      if (dona) { blocos.get(`e${dona.e}`).itens.push(p); solto = false; continue; }
+      if (!solto) corrida += 1;
+      solto = true;
+      const b = noBloco(`s${i}:${corrida}`, r, false);
+      b.itens.push(p);
+      b.cols.add(c);
+      /* o trecho solto acompanha a etapa da ação de onde a seta sai (ou a de chegada), se ela estiver na mesma faixa */
+      b.guias = [ar.de, ar.para].filter((n) => !ehPonta(n) && raia(n) === r).map((n) => `e${etapa.get(n)}`);
+    }
+  });
+  const [folgaTopo, folgaBase] = comMarcos ? [M.folgaCercaTopo, M.folgaCercaBase] : [M.folgaRaia, M.folgaRaia];
+  const horizonte = Array.from({ length: total }, () => topoDoDesenho);
+  const desvio = new Map();
+  const blocoDe = new Map();
+  for (const b of blocos.values()) {
+    b.topo = Math.min(...b.itens.map((it) => centro.get(it) - alturaDe(it) / 2)) - (b.etapa ? folgaTopo : 10);
+    b.base = Math.max(...b.itens.map((it) => centro.get(it) + alturaDe(it) / 2)) + (b.etapa ? folgaBase : 16);
+    b.ordem = Math.min(...b.itens.map((it) => centro.get(it)));
   }
+  /* em cada faixa, primeiro as etapas; depois os trechos soltos, que ficam na altura da sua etapa-guia quando cabem
+     (a seta sai reta, em vez de subir até o alto da coluna livre) */
+  for (const b of [...blocos.values()].sort((p, q) => p.r - q.r || Number(q.etapa) - Number(p.etapa) || p.ordem - q.ordem)) {
+    const guia = b.etapa ? null : (b.guias ?? []).find((g) => desvio.has(g));
+    const y0 = Math.max(...[...b.cols].map((c) => horizonte[c]), guia ? b.topo + desvio.get(guia) : -Infinity);
+    desvio.set(b.id, y0 - b.topo);
+    for (const c of b.cols) horizonte[c] = y0 + b.base - b.topo;
+    for (const it of b.itens) blocoDe.set(it, b.id);
+  }
+  yRaia = Math.max(topoDoDesenho, ...horizonte);
+  yDe = (it) => (yFixo.has(it) ? yFixo.get(it) : desvio.get(blocoDe.get(it)) + centro.get(it));
+  };
+
+  /* ---------- 13. posições mantidas: as ações ficam onde estavam; só as setas são retraçadas ---------- */
+  const disporFixos = () => {
+    for (const a of acoes) { yFixo.set(a.numero, fixos.get(a.numero).y); camadas[coluna.get(a.numero)].push(a.numero); }
+    /* cercas, em colunas e alturas: as setas das outras etapas desviam delas */
+    const caixaDaEtapa = new Map();
+    if (comMarcos) {
+      for (const a of acoes) {
+        const e = etapa.get(a.numero);
+        const c = coluna.get(a.numero);
+        const y = yFixo.get(a.numero);
+        const b = caixaDaEtapa.get(e) ?? caixaDaEtapa.set(e, { a: c, b: c, y0: Infinity, y1: -Infinity }).get(e);
+        b.a = Math.min(b.a, c); b.b = Math.max(b.b, c);
+        b.y0 = Math.min(b.y0, y - M.altura / 2 - M.cerca - M.rotuloCerca);
+        b.y1 = Math.max(b.y1, y + M.altura / 2 + M.cerca);
+      }
+    }
+    if (comPontas) {
+      camadas[0].push(INICIO); camadas[total - 1].push(TERMINO);
+      for (const p of [INICIO, TERMINO]) {
+        const vs = arestas.filter((ar) => (p === INICIO ? ar.de : ar.para) === p).map((ar) => yFixo.get(p === INICIO ? ar.para : ar.de));
+        yFixo.set(p, Math.max(topoDoDesenho + R, vs.length ? vs.reduce((s, v) => s + v, 0) / vs.length : topoDoDesenho + R));
+      }
+    }
+    const postos = Array.from({ length: total }, () => []);
+    /* trechos de altura proibidos para uma seta na coluna c: cartões, cercas das outras etapas e setas já postas */
+    const proibidos = (c, ar) => {
+      const dela = new Set([ar.de, ar.para].filter((n) => !ehPonta(n)).map((n) => etapa.get(n)));
+      const lista = camadas[c].filter(ehNo).map((n) => [yFixo.get(n) - alturaDe(n) / 2 - M.vaoSeta, yFixo.get(n) + alturaDe(n) / 2 + M.vaoSeta]);
+      for (const [e, b] of caixaDaEtapa) if (!dela.has(e) && b.a <= c && b.b >= c) lista.push([b.y0 - 8, b.y1 + 8]);
+      for (const y of postos[c]) lista.push([y - M.trilha, y + M.trilha]);
+      lista.sort((p, q) => p[0] - q[0]);
+      const juntos = [];
+      for (const [a, b] of lista) {
+        if (juntos.length && a <= juntos.at(-1)[1]) juntos.at(-1)[1] = Math.max(juntos.at(-1)[1], b);
+        else juntos.push([a, b]);
+      }
+      return juntos;
+    };
+    const piso = topoDoDesenho + 6;
+    const maisPerto = (c, ar, alvo) => {
+      const y = Math.max(piso, alvo);
+      for (const [a, b] of proibidos(c, ar)) {
+        if (y <= a || y >= b) continue;
+        return a >= piso && y - a <= b - y ? a : b;
+      }
+      return y;
+    };
+    let fundoFixo = Math.max(topoDoDesenho, ...acoes.map((a) => yFixo.get(a.numero) + M.altura / 2 + (comMarcos ? M.folgaCercaBase : M.folgaRaia)));
+    arestas.forEach((ar, i) => {
+      ar.cadeia = [ar.de];
+      const cols = [];
+      for (let c = coluna.get(ar.de) + 1; c < coluna.get(ar.para); c++) cols.push(c);
+      /* reta, na altura da saída ou da chegada, quando o caminho está livre; senão, o mais perto possível, coluna a coluna */
+      const reto = [yFixo.get(ar.de), yFixo.get(ar.para)].find((y) => cols.length && cols.every((c) => maisPerto(c, ar, y) === y));
+      let y = yFixo.get(ar.de);
+      for (const c of cols) {
+        y = reto ?? maisPerto(c, ar, y);
+        const p = `${i}:${c}`;
+        yFixo.set(p, y);
+        postos[c].push(y);
+        camadas[c].push(p);
+        ar.cadeia.push(p);
+        fundoFixo = Math.max(fundoFixo, y + 16);
+      }
+      ar.cadeia.push(ar.para);
+    });
+    yRaia = fundoFixo;
+    yDe = (it) => yFixo.get(it);
+  };
+
+  const ehNo = (it) => typeof it === "number";
+  const alturaDe = (it) => (ehPonta(it) ? 2 * R : ehNo(it) ? M.altura : 0);
+  const larguraDe = (it) => (ehPonta(it) ? 2 * R : ehNo(it) ? M.largura : 0);
+  const camadas = Array.from({ length: total }, () => []);
+  const topoDoDesenho = M.margem + (temFases ? M.cabecaFase : 0);
   const yFixo = new Map();
-  const yDe = (it) => (yFixo.has(it) ? yFixo.get(it) : topoDaRaia[raia(it)] + centro.get(it));
-  /* início e término: na altura média das ações ligadas a eles */
+  let yDe = () => 0;
+  let yRaia = topoDoDesenho;
+  if (fixos) disporFixos(); else disporPorFaixas();
+  /* início e término: na altura média do que está ligado a eles */
   for (const p of [INICIO, TERMINO]) {
-    if (!comPontas) break;
-    const vs = [...esquerda.get(p), ...direita.get(p)];
+    if (!comPontas || yFixo.has(p)) continue;
+    const vs = arestas.filter((ar) => (p === INICIO ? ar.de : ar.para) === p).map((ar) => (p === INICIO ? ar.cadeia[1] : ar.cadeia.at(-2)));
     const media = vs.length ? vs.reduce((s, v) => s + yDe(v), 0) / vs.length : topoDoDesenho + R;
     yFixo.set(p, Math.max(topoDoDesenho + R, media));
   }
@@ -385,14 +518,16 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     }
     return ordem;
   };
-  /* marcos das fases: a última coluna com ações de cada fase; o vão logo depois fica mais largo */
-  const faseDaEtapa = (e) => (e < SEM_MARCO ? pedidos[e].fase ?? null : null);
+  /* fases (item 11): o trecho de colunas de cada uma, pelas fases efetivas; o vão logo depois da última fica mais largo */
   const fimDaFase = new Map();
+  const inicioDaFase = new Map();
   if (temFases) {
     for (const a of acoes) {
       if (continuas.has(a.numero)) continue; // a contínua não marca o fim da fase (item 10)
-      const f = faseDaEtapa(etapa.get(a.numero));
-      if (f != null) fimDaFase.set(f, Math.max(fimDaFase.get(f) ?? -1, coluna.get(a.numero)));
+      const f = ordemDasFases[faseEfetiva.get(a.numero)];
+      if (f == null) continue;
+      fimDaFase.set(f, Math.max(fimDaFase.get(f) ?? -1, coluna.get(a.numero)));
+      inicioDaFase.set(f, Math.min(inicioDaFase.get(f) ?? Infinity, coluna.get(a.numero)));
     }
   }
   const colunasComMarco = new Set(fimDaFase.values());
@@ -477,11 +612,16 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     return { id: info.id, nome: info.nome, titulo: info.titulo ?? info.nome, fase: info.fase ?? null, faseNome: info.faseNome ?? null,
       x: x0, y: y0, largura: x1 - x0, altura: y1 - y0 };
   }) : [];
+  /* cada fase vai de x0 a x1 (a linha do fim, no meio do vão); a seguinte começa onde a anterior termina */
   const fases = [];
   for (const m of pedidos) {
     if (!m.fase || !fimDaFase.has(m.fase) || fases.some((f) => f.id === m.fase)) continue;
     const c = fimDaFase.get(m.fase);
-    fases.push({ id: m.fase, nome: m.faseNome ?? m.fase, x: Math.round((fimDaColuna(c) + (baseDoVao[c] ?? 0) + extra(c) / 2) * 10) / 10 });
+    const ci = inicioDaFase.get(m.fase);
+    const x1 = Math.round((fimDaColuna(c) + (baseDoVao[c] ?? 0) + extra(c) / 2) * 10) / 10;
+    const antes = fases.filter((f) => f.x1 <= xDaColuna[ci]).at(-1);
+    const x0 = antes ? antes.x1 : Math.round((xDaColuna[ci] - (ci > 0 ? (baseDoVao[ci - 1] ?? M.vaoX) / 2 : M.margem / 2)) * 10) / 10;
+    fases.push({ id: m.fase, nome: m.faseNome ?? m.fase, x: x1, x0, x1 });
   }
 
   /* ---------- saltos: a horizontal salta sobre a vertical que a cruza ---------- */
@@ -575,6 +715,95 @@ export function montarRede(acoes, caminho, opcoes = {}) {
     largura,
     altura: acoes.length ? alturaFinal : M.margem * 2,
   };
+}
+
+/**
+ * Fase efetiva de cada ação (item 11): a posição, na ordem das fases, da fase da sua etapa ou, se for mais adiante,
+ * a da fase mais adiantada entre as ações de que depende. Assim nenhuma seta volta para uma fase anterior.
+ * As ações sem fase (sem etapa, ou em etapa sem fase) e sem anteriores com fase ficam fora do mapa.
+ * @returns {Map<number, number>}
+ */
+function fasesEfetivas(acoes, anteriores, marcos, marcoDe) {
+  const ordem = [...new Set(marcos.map((m) => m.fase).filter((f) => f != null))];
+  const faseDoMarco = new Map(marcos.map((m) => [m.id, m.fase != null ? ordem.indexOf(m.fase) : -1]));
+  const propria = new Map(acoes.map((a) => [a.numero, faseDoMarco.get(marcoDe?.(a)) ?? -1]));
+  const efetiva = new Map();
+  const visitando = new Set();
+  const de = (n) => {
+    if (efetiva.has(n)) return efetiva.get(n);
+    if (visitando.has(n)) return -1; // dependência circular
+    visitando.add(n);
+    const f = Math.max(propria.get(n) ?? -1, ...(anteriores.get(n) ?? []).map(de));
+    visitando.delete(n);
+    efetiva.set(n, f);
+    return f;
+  };
+  for (const a of acoes) de(a.numero);
+  for (const [n, f] of efetiva) if (f < 0) efetiva.delete(n);
+  return efetiva;
+}
+
+/**
+ * Posições mantidas depois de uma mudança feita na Rede (item 13; 11/11/2026, pedido do responsável: inserir só
+ * abre espaço; a arrumação completa fica para o botão "Arrumar"). Recebe o arranjo que estava na tela e as ações de
+ * agora, e devolve a coluna e a altura (centro) de cada ação, para a opção `fixos` de `montarRede`:
+ * - as ações que já estavam ficam onde estavam;
+ * - uma ação nova entra na coluna seguinte à da sua anterior mais adiantada, na altura da vizinha da mesma etapa
+ *   (a seguinte, se houver; senão, a anterior). Se o lugar estiver ocupado, ou não houver coluna livre antes da
+ *   seguinte, abre-se uma coluna: tudo dali para a direita desliza uma coluna, sem subir nem descer.
+ * Devolve null quando o arranjo não pode ser mantido e a rede precisa ser arrumada de novo: mais de uma ação nova,
+ * ação nova sem anteriores ou contínua, ação que mudou de etapa ou seta que passaria a apontar para trás.
+ * @param {{coluna: Map<number, number>, pos: Map<number, {x: number, y: number}>, etapas?: Map<number, string|null>}} anterior
+ * @param {object[]} acoes ações de agora
+ * @param {{marcoDe?: (acao: object) => string|null, continuas?: boolean, medidas?: Partial<typeof MEDIDAS>}} [opcoes]
+ * @returns {Map<number, {coluna: number, y: number}>|null}
+ */
+export function abrirEspaco(anterior, acoes, opcoes = {}) {
+  if (!anterior?.pos?.size || !acoes.length) return null;
+  const M = { ...MEDIDAS, ...(opcoes.medidas ?? {}) };
+  const etapaDe = (a) => (opcoes.marcoDe ? opcoes.marcoDe(a) : a.etapa) ?? null;
+  const numeros = new Set(acoes.map((a) => a.numero));
+  const continua = (a) => Boolean(opcoes.continuas) && ehContinua(a);
+  const fixos = new Map();
+  const novas = [];
+  for (const a of acoes) {
+    const p = anterior.pos.get(a.numero);
+    if (!p) { novas.push(a); continue; }
+    if (anterior.etapas && (anterior.etapas.get(a.numero) ?? null) !== etapaDe(a)) return null;
+    fixos.set(a.numero, { coluna: anterior.coluna.get(a.numero), y: p.y + M.altura / 2 });
+  }
+  if (novas.length > 1 || !fixos.size) return null;
+  const dependencias = (a) => (continua(a) ? [] : (a.dependeDe ?? []).filter((d) => numeros.has(d) && d !== a.numero));
+  if (novas.length) {
+    const nova = novas[0];
+    if (continua(nova)) return null;
+    const antes = dependencias(nova).filter((d) => fixos.has(d));
+    const depois = acoes.filter((a) => a !== nova && dependencias(a).includes(nova.numero)).map((a) => a.numero);
+    if (!antes.length) return null;
+    const maisAdiantada = antes.reduce((m, d) => (fixos.get(d).coluna > fixos.get(m).coluna ? d : m));
+    const c = fixos.get(maisAdiantada).coluna + 1;
+    const porEtapa = (lista) => lista.find((n) => etapaDe(acoes.find((a) => a.numero === n)) === etapaDe(nova));
+    const ancora = (depois.length ? porEtapa(depois) : undefined) ?? porEtapa([maisAdiantada]) ?? depois[0] ?? maisAdiantada;
+    const y = fixos.get(ancora).y;
+    const semColuna = depois.some((n) => fixos.get(n).coluna <= c);
+    /* lugar ocupado: um cartão na mesma coluna e altura, ou a cerca de outra etapa passando por ali */
+    const cercas = new Map();
+    for (const a of acoes) {
+      const f = fixos.get(a.numero);
+      if (!f) continue;
+      const e = etapaDe(a);
+      const b = cercas.get(e) ?? cercas.set(e, { a: f.coluna, b: f.coluna, y0: f.y, y1: f.y }).get(e);
+      b.a = Math.min(b.a, f.coluna); b.b = Math.max(b.b, f.coluna); b.y0 = Math.min(b.y0, f.y); b.y1 = Math.max(b.y1, f.y);
+    }
+    const alcance = M.altura + M.vaoY;
+    const ocupado = [...fixos.values()].some((f) => f.coluna === c && Math.abs(f.y - y) < alcance)
+      || [...cercas].some(([e, b]) => e !== etapaDe(nova) && b.a <= c && b.b >= c && y > b.y0 - alcance && y < b.y1 + alcance);
+    if (semColuna || ocupado) for (const f of fixos.values()) if (f.coluna >= c) f.coluna += 1;
+    fixos.set(nova.numero, { coluna: c, y });
+  }
+  /* nenhuma seta para trás: senão, só arrumando de novo */
+  for (const a of acoes) for (const d of dependencias(a)) if (fixos.get(d).coluna >= fixos.get(a.numero).coluna) return null;
+  return fixos;
 }
 
 /**

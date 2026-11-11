@@ -61,6 +61,7 @@ export const ICONES = Object.freeze({
   /** Abrir a ação a partir do cartão da Rede (10/11/2026): duas setas para os cantos, de "ampliar". */
   expandir: svg('<path d="M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7"/>'),
   /** Desfazer a última mudança (Rede, 10/11/2026): seta que volta. */
+  arrumar: svg('<rect x="3" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="4" width="7" height="6" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/><path d="M10 7h4M17.5 10v4"/>'),
   desfazer: svg('<path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>'),
   menos: svg('<path d="M5 12h14"/>'),
   /** Enquadrar (Rede, 09/11/2026): quatro cantos, "ajustar à tela". */
