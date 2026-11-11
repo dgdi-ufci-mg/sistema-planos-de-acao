@@ -93,6 +93,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     pop: null,
     /** zoom do cronograma: px por dia (ver ZOOM em js/telas/cronograma.js; aceita os nomes antigos "semanas" e "meses") */
     escalaCrono: lembrado("sextante.zoomCronograma", "semanas"), /* zoom do cronograma, em px por dia (27/10/2026), lembrado no aparelho */
+    /** cronograma, menu "Exibir" (11/11/2026), lembrado no aparelho: responsável ao lado da barra (ligado de início), esconder concluídas e contínuas */
+    cronoResponsavel: lembrado("sextante.cronoResponsavel", "1") === "1",
+    cronoSemConcluidas: lembrado("sextante.cronoSemConcluidas", "0") === "1",
+    cronoSemContinuas: lembrado("sextante.cronoSemContinuas", "0") === "1",
     /** barra mostrada nos cartões: "tempo", "execucao" ou "revisao" (lembrada neste aparelho) */
     barra: lembrado("sextante.barra", "tempo"),
     /** colunas opcionais da lista (22/10/2026), lembradas neste aparelho; nome e situação são fixos */
@@ -300,7 +304,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ui.ordem = ordemPadrao(); // tarefas abrem por prioridade da equipe (29/10/2026)
       /* o espaço abre na última visualização usada nele, neste aparelho (pedido do responsável, 27/10/2026) */
       const salvo = lembrado(`sextante.modo.${espacoId}`, "");
-      /* no celular, cronograma e planilha não existem: vale a padrão */
+      /* no celular, a planilha não existe: vale a padrão */
       const pode = modos().find(([v]) => v === salvo);
       if (pode && !(pode[3] === "so-computador" && matchMedia("(max-width: 899px)").matches)) ui.modo = salvo;
     }
@@ -321,7 +325,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    */
   const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""],
     ["rede", "Rede", "modoRede", ""], /* no celular, só para consulta (10/11/2026) */
-    ["cronograma", "Cronograma", "modoCronograma", "so-computador"],
+    ["cronograma", "Cronograma", "modoCronograma", ""], /* no celular, só para consulta (11/11/2026) */
     ["planilha", "Planilha", "modoPlanilha", "so-computador"],
     ["linha", "Linha do tempo", "modoLinha", ""], /* também no celular desde 25/10/2026 (item 2 da avaliação de celular) */
     ["responsaveis", "Responsáveis", "modoResponsaveis", ""], /* quem tem quantas ações ao mesmo tempo (seção 5.10) */
@@ -575,6 +579,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
         <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
         ${OPCOES_COLUNAS.filter(([v]) => (v !== "descricao" || (usaDescricao() && !ehLista())) && (v !== "barras" || !ehLista())).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
+      ${ui.modo === "cronograma" ? `<h3>No cronograma</h3><div class="opcoes-lista">
+        ${opcao("data-crono-op", "cronoResponsavel", "Responsável ao lado da barra", ui.cronoResponsavel, ICONES.pessoa)}
+        ${opcao("data-crono-op", "cronoSemConcluidas", "Esconder as concluídas", ui.cronoSemConcluidas, ICONES.concluida)}
+        ${usaContinuas(espaco) && acoes.some((a) => caminho.porAcao.get(a.numero)?.continua) ? opcao("data-crono-op", "cronoSemContinuas", "Esconder as contínuas", ui.cronoSemContinuas, ICONES.olho) : ""}</div>` : ""}
       ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${opcao("data-legenda-op", "1", "Legenda dos símbolos", ui.legenda, ICONES.legenda)}</div>`}`;
   }
 
@@ -710,6 +718,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const id = t.closest("[data-identificador-op]");
     if (id) return mudarIdentificador(id.dataset.identificadorOp);
     if (t.closest("[data-legenda-op]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
+    const crono = t.closest("[data-crono-op]");
+    if (crono) return mudarCrono(crono.dataset.cronoOp);
+  }
+  /** Liga ou desliga uma opção do cronograma em "Exibir" (11/11/2026) e a lembra neste aparelho. */
+  function mudarCrono(chave, valor = !ui[chave]) {
+    ui[chave] = valor;
+    try { localStorage.setItem(`sextante.${chave}`, valor ? "1" : "0"); } catch { /* sem armazenamento */ }
+    desenharFerramentas();
+    if (painelOpcoes?.isConnected) preencherOpcoes();
+    desenharLista();
   }
   /* clique fora do painel aberto, ou Esc, fecha o painel */
   const fecharPop = (e) => {
@@ -989,8 +1007,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           desenharLista();
         },
         retratos: ui.retratos, comparar: ui.comparar, base: ui.base, aoComparar: compararCom,
-        /* edição dentro do Cronograma (10/11/2026, pedido do responsável: facilidade de editar o plano nesta tela) */
-        edicao: store.podeGravar !== false ? edicaoDoCronograma() : null });
+        /* menu "Exibir" (11/11/2026): responsável ao lado da barra, esconder concluídas e contínuas */
+        exibir: { responsavel: ui.cronoResponsavel, semConcluidas: ui.cronoSemConcluidas, semContinuas: ui.cronoSemContinuas },
+        nomesDe: (a) => a.responsaveis.map((id) => pessoas.get(id)?.nome).filter(Boolean),
+        aoMostrarTodas: () => { mudarCrono("cronoSemConcluidas", false); mudarCrono("cronoSemContinuas", false); },
+        /* edição dentro do Cronograma (10/11/2026, pedido do responsável: facilidade de editar o plano nesta tela);
+           no celular, o cronograma é só de consulta (11/11/2026) */
+        edicao: store.podeGravar !== false && !matchMedia("(max-width: 640px)").matches ? edicaoDoCronograma() : null });
       if (ui.retratos === null) carregarRetratos();
       return;
     }
@@ -2040,6 +2063,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       else if (b.dataset.tempoNum) mudarTempoNumero(b.dataset.tempoNum);
       else if (b.dataset.identificadorOp) mudarIdentificador(b.dataset.identificadorOp);
       else if (b.dataset.legendaOp != null) { ui.legenda = !ui.legenda; desenharFerramentas(); }
+      else if (b.dataset.cronoOp) return mudarCrono(b.dataset.cronoOp);
       else return;
       preencherOpcoes();
     });

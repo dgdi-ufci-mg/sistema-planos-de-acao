@@ -254,3 +254,196 @@ describe("Cronograma: navegação e edição na tela (10/11/2026)", { skip: pula
     assert.deepEqual(p.erros, []);
   });
 });
+
+describe("Cronograma: responsável, filtros, legenda, setas de borda, teclado, impressão e celular (11/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  async function abrir() {
+    const p = await sessao.abrir({ largura: 1440, altura: 860 });
+    await p.click('.menu-topo[data-pop="modo"]');
+    await p.locator('[data-modo="cronograma"]').first().click();
+    await p.waitForSelector(".crono-trilho");
+    await assentar(p, 400);
+    return p;
+  }
+  const linha = (p, nome) => p.locator(`.crono-linha[data-numero]:has-text("${nome}")`);
+  const exibir = async (p, opcao) => {
+    await p.locator('.menu-topo[data-pop="exibir"]').click();
+    await assentar(p, 250);
+    await p.locator(`[data-crono-op="${opcao}"]`).click();
+    await assentar(p, 500);
+    await p.keyboard.press("Escape");
+    await assentar(p, 250);
+  };
+
+  test("o responsável aparece ao lado da barra, fora dela, e sai pelo menu Exibir", async () => {
+    const p = await abrir();
+    const quem = linha(p, "Contratar licenças").locator(".crono-quem");
+    assert.match(await quem.textContent(), /^\S.* \+1$/, "primeiro nome da lista e +1");
+    const m = await p.evaluate(() => {
+      const l = [...document.querySelectorAll(".crono-linha[data-numero]")].find((x) => x.textContent.includes("Contratar licenças"));
+      return { barra: l.querySelector("[data-barra]").getBoundingClientRect().right, nome: l.querySelector(".crono-quem").getBoundingClientRect().left };
+    });
+    assert.ok(m.nome >= m.barra, "o nome começa depois do fim da barra");
+    await exibir(p, "cronoResponsavel");
+    assert.equal(await p.locator(".crono-quem").count(), 0);
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.cronoResponsavel")), "0", "a escolha fica lembrada");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("esconder as concluídas: as linhas saem, a etapa avisa, e \"Mostrar\" traz de volta", async () => {
+    const p = await abrir();
+    const n = await p.locator(".crono-linha[data-numero]").count();
+    const grupos = await p.locator(".crono-linha.grupo").count();
+    await exibir(p, "cronoSemConcluidas");
+    assert.equal(await p.locator(".crono-linha[data-numero]").count(), n - 2);
+    assert.equal(await p.locator("[data-barra].concluida").count(), 0);
+    assert.equal(await p.locator(".crono-linha.grupo").count(), grupos, "fases e etapas continuam todas");
+    assert.match(await p.locator("[data-ocultas]").textContent(), /Escondidas: 2 concluídas/);
+    assert.equal(await p.locator('.crono-linha.grupo.etapa:has-text("Etapa 1.1") .crono-ocultas').textContent(), "2 ocultas");
+    await p.click("[data-mostrar-todas]");
+    await assentar(p, 500);
+    assert.equal(await p.locator(".crono-linha[data-numero]").count(), n);
+    assert.equal(await p.locator("[data-ocultas]").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("legenda completa sob o cronograma; Hoje e Prazo final escritos no cabeçalho", async () => {
+    const p = await abrir();
+    const itens = await p.evaluate(() => [...document.querySelectorAll(".crono + .crono-legendas .crono-legenda")].map((e) => e.textContent.replace("o que é?", "").trim()));
+    for (const item of ["Sem folga", "Com folga", "Ainda não liberada", "Atrasada", "Concluída", "Fase ou etapa, do começo ao fim", "Ligação: só começa quando a anterior termina", "Hoje", "Dias que já passaram", "Prazo final"]) {
+      assert.ok(itens.includes(item), `falta na legenda: ${item} (${itens.join(" | ")})`);
+    }
+    assert.equal(await p.locator(".crono-ferramentas .crono-legenda").count(), 0, "a legenda saiu da barra de ferramentas");
+    assert.equal(await p.locator(".crono-escala .crono-pino.hoje").textContent(), "Hoje");
+    assert.equal(await p.locator(".crono-escala .crono-pino.prazo").textContent(), "Prazo final");
+    const x = await p.evaluate(() => ({ pino: document.querySelector(".crono-pino.hoje").getBoundingClientRect(), linha: document.querySelector(".crono-marca.hoje").getBoundingClientRect().left }));
+    assert.ok(Math.abs(x.pino.left + x.pino.width / 2 - x.linha) < 2, "o nome fica em cima da linha de hoje");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("barra fora do trecho à vista: a linha ganha uma seta, e clicar leva até a barra", async () => {
+    const p = await abrir();
+    /* a tela abre perto de hoje: as duas concluídas ficaram para trás */
+    assert.equal(await p.locator(".crono-fora.antes").count(), 2);
+    const alvo = await p.evaluate(() => {
+      const b = document.querySelector(".crono-fora.antes");
+      const l = document.querySelector(`.crono-linha[data-numero="${b.dataset.fora}"]`).getBoundingClientRect();
+      const r = b.getBoundingClientRect();
+      return { numero: b.dataset.fora, naLinha: r.top >= l.top && r.bottom <= l.bottom };
+    });
+    assert.ok(alvo.naLinha, "a seta fica na altura da linha da ação");
+    await p.locator(".crono-fora.antes").first().click();
+    await assentar(p, 900);
+    const v = await p.evaluate((n) => {
+      const b = document.querySelector(`[data-barra="${n}"]`).getBoundingClientRect();
+      const t = document.querySelector(".crono-nome.crono-cabeca").getBoundingClientRect().right;
+      const r = document.querySelector("[data-rolagem]").getBoundingClientRect();
+      return b.left >= t && b.left < r.right;
+    }, alvo.numero);
+    assert.ok(v, "a barra ficou à vista");
+    assert.equal(await p.locator(`.crono-fora[data-fora="${alvo.numero}"]`).count(), 0, "a seta dela some");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("a dica da barra aparece também pelo teclado, com o responsável", async () => {
+    const p = await abrir();
+    await linha(p, "Ingerir os dados").locator(".crono-nome").focus();
+    await p.keyboard.press("Tab");
+    await assentar(p, 200);
+    const dica = p.locator(".crono [data-dica]");
+    assert.equal(await dica.isVisible(), true);
+    const texto = await dica.innerText();
+    assert.match(texto, /Ingerir os dados/);
+    assert.match(texto, /Responsáve(l|is): \S/);
+    await p.keyboard.press("Tab");
+    await assentar(p, 200);
+    assert.doesNotMatch(await dica.isVisible() ? await dica.innerText() : "", /Ingerir os dados/, "sai ao deixar a barra");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("impressão: páginas deitadas com cabeçalho e legenda, tema claro, e tudo volta depois", async () => {
+    const p = await sessao.abrir({ largura: 1440, altura: 860, tema: "dark" });
+    await p.click('.menu-topo[data-pop="modo"]');
+    await p.locator('[data-modo="cronograma"]').first().click();
+    await p.waitForSelector(".crono-trilho");
+    await assentar(p, 400);
+    const temaAntes = await p.evaluate(() => document.documentElement.getAttribute("data-theme"));
+    await p.evaluate(() => dispatchEvent(new Event("beforeprint")));
+    await p.emulateMedia({ media: "print" });
+    const m = await p.evaluate(() => {
+      const paginas = [...document.querySelectorAll(".crono-impressao .crono-pagina")];
+      return {
+        paginas: paginas.length,
+        linhasPorPagina: paginas.map((pg) => Math.round(pg.querySelector(".crono-recorte").getBoundingClientRect().height / 34)),
+        largura: Math.max(...paginas.map((pg) => pg.querySelector(".crono-conteudo").getBoundingClientRect().width)),
+        altura: Math.max(...paginas.map((pg) => pg.getBoundingClientRect().height)),
+        cabecalhos: document.querySelectorAll(".crono-impressao .crono-topo").length,
+        legendas: document.querySelectorAll(".crono-impressao .crono-legendas").length,
+        titulo: paginas[0].querySelector(".crono-pagina-titulo").textContent,
+        restoEscondido: [...document.body.children].filter((el) => !el.classList.contains("crono-impressao") && getComputedStyle(el).display !== "none").length,
+        tema: document.documentElement.getAttribute("data-theme"),
+        barraPintada: getComputedStyle(document.querySelector(".crono-impressao [data-barra].critica")).backgroundColor,
+        botoes: [...document.querySelectorAll(".crono-impressao .crono-mais, .crono-impressao .crono-borda, .crono-impressao .crono-alca")].filter((el) => getComputedStyle(el).display !== "none").length,
+        total: document.querySelectorAll(".crono:not(.impresso) .crono-linha").length,
+      };
+    });
+    assert.equal(m.paginas, Math.ceil(m.total / 18));
+    assert.equal(m.linhasPorPagina.reduce((s, n) => s + n, 0), m.total, "todas as linhas, uma vez cada");
+    assert.ok(m.linhasPorPagina.every((n) => n <= 18));
+    assert.ok(m.largura <= 1047, `cabe na largura da folha A4 deitada (${m.largura})`);
+    assert.ok(m.altura <= 718, `cada página cabe na altura da folha (${m.altura})`);
+    assert.equal(m.cabecalhos, m.paginas);
+    assert.equal(m.legendas, m.paginas);
+    assert.match(m.titulo, /Exemplo: repositório de dados acadêmicos/);
+    assert.match(m.titulo, /página 1 de 2/);
+    assert.equal(m.restoEscondido, 0, "só a folha aparece na impressão");
+    assert.equal(m.tema, "light");
+    assert.notEqual(m.barraPintada, "rgba(0, 0, 0, 0)");
+    assert.equal(m.botoes, 0, "sem botões de edição no papel");
+    await p.emulateMedia({ media: "screen" });
+    await p.evaluate(() => dispatchEvent(new Event("afterprint")));
+    assert.equal(await p.locator(".crono-impressao").count(), 0);
+    assert.equal(await p.evaluate(() => document.documentElement.getAttribute("data-theme")), temaAntes);
+    assert.equal(await p.evaluate(() => document.body.classList.contains("imprimindo-cronograma")), false);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("celular: cronograma só para consulta, sem rolar a página de lado; tocar abre a ação e a pinça muda o zoom", async () => {
+    const p = await sessao.abrir({ largura: 390, altura: 800 });
+    await p.click('[data-inferior="filtros"]');
+    await assentar(p, 500);
+    await p.locator('.camada.aberta [data-modo="cronograma"]').click();
+    await assentar(p, 400);
+    await p.locator('.camada.aberta button:has-text("Pronto")').click();
+    await assentar(p, 600);
+    const m = await p.evaluate(() => {
+      const r = document.querySelector("[data-rolagem]").getBoundingClientRect();
+      const hoje = document.querySelector(".crono-marca.hoje").getBoundingClientRect().left;
+      return { editavel: document.querySelectorAll(".crono.editavel, .crono-mais, [data-alca], [data-borda]").length, pagina: document.documentElement.scrollWidth, tela: innerWidth,
+        nomes: document.querySelector(".crono-nome.crono-cabeca").getBoundingClientRect().width, hojeAVista: hoje > r.left + 132 && hoje < r.right, altura: r.height };
+    });
+    assert.equal(m.editavel, 0, "nada de edição no celular");
+    assert.ok(m.pagina <= m.tela, "a página não rola de lado");
+    assert.equal(Math.round(m.nomes), 132, "a coluna dos nomes encolhe");
+    assert.ok(m.hojeAVista, "abre com o dia de hoje à vista");
+    assert.ok(m.altura >= 320);
+    /* pinça fechando: um nível de zoom a menos (de 18 para 12 px por dia) */
+    const r = await p.locator("[data-rolagem]").boundingBox();
+    const cdp = await p.context().newCDPSession(p);
+    const dedos = (type, pontos) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: pontos.map(([x, y], id) => ({ x, y, id })) });
+    const cx = r.x + 260;
+    const cy = r.y + 200;
+    await dedos("touchStart", [[cx - 60, cy], [cx + 60, cy]]);
+    for (let i = 1; i <= 8; i++) { await dedos("touchMove", [[cx - 60 + i * 5, cy], [cx + 60 - i * 5, cy]]); await p.waitForTimeout(16); }
+    await dedos("touchEnd", []);
+    await assentar(p, 400);
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.zoomCronograma")), "12");
+    await p.locator(".crono-linha[data-numero] .crono-nome").first().tap();
+    await assentar(p, 700);
+    assert.equal(await p.locator(".camada.aberta").count(), 1, "tocar no nome abre a ação");
+    assert.deepEqual(p.erros, []);
+  });
+});

@@ -1061,10 +1061,8 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-guia { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--grid); }
 .crono-guia.mes { background: var(--line); }
 .crono-passado { position: absolute; top: 0; bottom: 0; left: 0; background: color-mix(in srgb, var(--sunk) 70%, transparent); }
-.crono-marca { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px dashed var(--faint); z-index: 1; }
+.crono-marca { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px dashed var(--muted); z-index: 1; }
 .crono-marca.prazo { border-left: 2px solid var(--crit); }
-.crono-marca span { position: absolute; bottom: 4px; left: 4px; font-size: .72rem; color: var(--muted); white-space: nowrap; background: var(--surface); padding: 0 3px; border-radius: 3px; }
-.crono-marca.prazo span { color: var(--crit-ink); font-weight: 600; }
 .crono-setas { position: absolute; inset: 0; overflow: visible; pointer-events: none; z-index: 1; }
 .crono-seta { fill: none; stroke: var(--faint); stroke-width: 1.2; transition: opacity var(--mov-rapido) var(--mov-curva), stroke var(--mov-rapido); }
 #crono-ponta path { fill: var(--faint); }
@@ -1138,6 +1136,69 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono.movendo, .crono.movendo * { cursor: grabbing !important; user-select: none; }
 .crono-linha.sendo-movida { opacity: .45; }
 .crono-insercao { position: absolute; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--accent); z-index: 4; pointer-events: none; }
+/* ---------- cronograma: responsável, filtros, legenda completa, setas de borda, celular e impressão (11/11/2026) ---------- */
+.crono-corpo { overflow-x: clip; } /* o nome do responsável junto do fim do eixo não alarga a rolagem */
+/* "Hoje" e "Prazo final" escritos no cabeçalho das datas, sempre à vista */
+.crono-pino { position: absolute; bottom: 2px; transform: translateX(-50%); z-index: 1; padding: 0 6px; border-radius: 999px; font: 600 .7rem/1.5 var(--f-texto); white-space: nowrap; background: var(--ink); color: var(--surface); }
+.crono-pino.prazo { background: var(--crit); color: var(--texto-sobre-destaque); }
+/* nome do responsável ao lado da barra */
+.crono-quem { position: absolute; top: 0; height: var(--altura); line-height: var(--altura); max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; z-index: 2; pointer-events: none;
+  font-size: .78rem; color: var(--muted); text-shadow: 0 0 3px var(--surface), 0 0 3px var(--surface), 0 0 3px var(--surface); transition: transform var(--mov-rapido) var(--mov-curva); }
+.crono-quem.antes { transform: translateX(-100%); }
+/* no computador, a bolinha de ligar aparece ao passar o mouse: o nome dá lugar a ela */
+.crono.editavel .crono-linha:hover .crono-quem:not(.antes), .crono.editavel .crono-linha:focus-within .crono-quem:not(.antes), .crono.ligando .crono-quem:not(.antes) { transform: translateX(16px); }
+.crono.destacando .crono-quem { opacity: .45; }
+/* ações escondidas pelo menu Exibir */
+.crono-ocultas { flex: none; font-size: .72rem; font-weight: 400; font-style: italic; color: var(--muted); white-space: nowrap; }
+.crono-oculto-aviso { font-size: .85rem; color: var(--muted); }
+/* legenda completa, sob o cronograma */
+.crono + .crono-legendas { margin-top: 10px; }
+.crono-legenda i.sem-estimativa { background: transparent; border: 2px dashed var(--warn); width: 12px; box-sizing: border-box; }
+.crono-legenda i.resumo { height: 6px; border-radius: 1px; background: var(--ink); opacity: .55; }
+.crono-legenda i.seta { height: 0; border-radius: 0; border-top: 1.5px solid var(--faint); position: relative; }
+.crono-legenda i.seta::after { content: ""; position: absolute; right: -1px; top: -4.5px; border: 4px solid transparent; border-left: 6px solid var(--faint); border-right: 0; }
+.crono-legenda i.linha-hoje, .crono-legenda i.linha-prazo { width: 0; height: 14px; border-radius: 0; margin: 0 6px; border-left: 1.5px dashed var(--muted); }
+.crono-legenda i.linha-prazo { border-left: 2px solid var(--crit); }
+.crono-legenda i.passado { height: 12px; border-radius: 2px; background: var(--sunk); border: 1px solid var(--line); box-sizing: border-box; }
+/* seta na borda, quando a barra da linha está antes ou depois do trecho à vista */
+.crono-foras { position: absolute; inset: 0; pointer-events: none; overflow: hidden; border-radius: var(--raio); }
+.crono-fora { position: absolute; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--muted);
+  box-shadow: var(--relevo); cursor: pointer; pointer-events: auto; z-index: 3; }
+.crono-fora .icone { width: 13px; height: 13px; }
+.crono-fora.antes .icone { transform: rotate(180deg); }
+.crono-fora:hover, .crono-fora:focus-visible { color: var(--accent-ink); border-color: var(--accent); outline: none; }
+/* celular: só consulta; a coluna dos nomes encolhe, e a pinça dá zoom no cronograma, não na página */
+.crono-rolagem { touch-action: pan-x pan-y; }
+@media (max-width: 640px) {
+  .crono { --nomes: 132px; }
+  .crono-nome { padding-left: 8px; padding-right: 6px; gap: 4px; font-size: .82rem; }
+  .crono-linha:not(.grupo) .crono-nome { padding-left: 10px; }
+  .crono-linha.grupo.etapa .crono-nome { padding-left: 8px; }
+  .crono-ocultas, .crono-nome .icone-atrasada { display: none; }
+  .crono-ferramentas { gap: 8px 12px; }
+  .crono-zoom-nome { min-width: 0; }
+  .crono-corpo { cursor: auto; }
+}
+/* impressão: a folha só existe enquanto o navegador imprime (js/telas/cronograma.js) */
+.crono-impressao { display: none; }
+@media print {
+  body.imprimindo-cronograma { padding: 0 !important; background: #fff; }
+  body.imprimindo-cronograma > *:not(.crono-impressao) { display: none !important; }
+  body.imprimindo-cronograma::before { display: none; }
+  .crono-impressao { display: block; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .crono-pagina { break-after: page; break-inside: avoid; }
+  .crono-pagina:last-child { break-after: auto; }
+  .crono-pagina-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin: 0 0 6px; font: 10pt var(--f-texto); }
+  .crono-pagina-titulo b { font: 600 12pt var(--f-titulo); }
+  .crono-pagina-titulo span { color: var(--muted); font-size: 8.5pt; white-space: nowrap; }
+  .crono.impresso { box-shadow: none; border-radius: 0; width: max-content; }
+  .crono.impresso .crono-topo, .crono.impresso .crono-nome, .crono.impresso .crono-mes span { position: static; }
+  .crono-recorte { overflow: hidden; }
+  .crono.impresso .crono-corpo { cursor: auto; }
+  .crono.impresso .crono-recolher, .crono.impresso .crono-mais { display: none; }
+  .crono-pagina .crono-legendas { margin-top: 6px; font-size: 7.5pt; gap: 3px 12px; }
+  .crono-pagina .oque { display: none; }
+}
 .crono-abrir-acao { border: 0; background: none; padding: 0; font: inherit; color: var(--accent-ink); text-decoration: underline; cursor: pointer; }
 .alternador button { position: relative; z-index: 1; padding: 5px 16px; border: 0; background: none; border-radius: 999px; cursor: pointer; font: 600 .88rem var(--f-texto); color: var(--muted); }
 .alternador button[aria-pressed="true"] { color: var(--accent-ink); }

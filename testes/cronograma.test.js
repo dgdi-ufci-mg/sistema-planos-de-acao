@@ -7,7 +7,7 @@ import { criarCalendario } from "../js/calendario.js";
 import { caminhoCritico } from "../js/calculo.js";
 import { montarLinhas } from "../js/lista.js";
 import { simular } from "../js/simulacao.js";
-import { montarCronograma, zoomQueCabe, estimativaParaTerminarEm } from "../js/cronograma.js";
+import { montarCronograma, zoomQueCabe, estimativaParaTerminarEm, paginasDoCronograma } from "../js/cronograma.js";
 import { duracaoPert } from "../js/calculo.js";
 
 const HOJE = "2026-10-20";
@@ -113,5 +113,53 @@ describe("Cronograma: navegação e edição na tela (10/11/2026)", () => {
     assert.ok(Math.abs(dobro.m / dobro.o - tres.m / tres.o) < 0.3 && Math.abs(dobro.p / dobro.m - tres.p / tres.m) < 0.3);
     assert.equal(estimativaParaTerminarEm(tres, 10, 8), null, "terminar antes de começar não dá");
     assert.equal(estimativaParaTerminarEm({ o: 0, m: 0, p: 0 }, 0, 5), null, "sem estimativa, não há proporção");
+  });
+});
+
+describe("Cronograma: esconder concluídas e contínuas; páginas da impressão (11/11/2026)", () => {
+  it("esconder as concluídas tira as linhas delas, conta as escondidas e não muda as datas", async () => {
+    const { espaco, acoes, cal, caminho } = await exemplo();
+    const opcoes = { estrutura: espaco.estrutura, usaFases: true };
+    const tudo = montarCronograma(acoes, caminho, cal, opcoes);
+    const sem = montarCronograma(acoes, caminho, cal, { ...opcoes, ocultar: { concluidas: true } });
+    const concluidas = acoes.filter((a) => caminho.porAcao.get(a.numero).situacao === "concluida");
+    assert.ok(concluidas.length > 0, "o exemplo tem ações concluídas");
+    assert.deepEqual(tudo.ocultas, { concluidas: 0, continuas: 0 });
+    assert.deepEqual(sem.ocultas, { concluidas: concluidas.length, continuas: 0 });
+    assert.equal(sem.linhas.filter((l) => l.tipo === "acao").length, acoes.length - concluidas.length);
+    assert.ok(!sem.linhas.some((l) => l.tipo === "acao" && l.barra.situacao === "concluida"));
+    assert.deepEqual([sem.inicio, sem.fim], [tudo.inicio, tudo.fim], "as datas do cronograma não mudam");
+    /* os grupos continuam todos, com as mesmas datas de resumo, e dizem quantas ficaram escondidas */
+    const grupos = (r) => r.linhas.filter((l) => l.tipo === "grupo");
+    assert.deepEqual(grupos(sem).map((g) => [g.id, g.inicio, g.fim]), grupos(tudo).map((g) => [g.id, g.inicio, g.fim]));
+    for (const g of grupos(sem)) {
+      const antes = grupos(tudo).find((x) => x.id === g.id);
+      assert.equal(g.acoes + g.ocultas, antes.acoes, g.nome);
+    }
+    assert.equal(grupos(sem).filter((g) => g.nivel === "etapa").reduce((s, g) => s + g.ocultas, 0), concluidas.length);
+  });
+
+  it("esconder as contínuas: a contínua concluída conta como concluída; sem fases, vale igual", async () => {
+    const { acoes, cal, caminho } = await exemplo();
+    /* marca duas ações como contínuas no resultado do cálculo: uma em aberto e uma concluída */
+    const porAcao = new Map(caminho.porAcao);
+    const aberta = acoes.find((a) => porAcao.get(a.numero).situacao !== "concluida");
+    const concluida = acoes.find((a) => porAcao.get(a.numero).situacao === "concluida");
+    porAcao.set(aberta.numero, { ...porAcao.get(aberta.numero), continua: true });
+    porAcao.set(concluida.numero, { ...porAcao.get(concluida.numero), continua: true });
+    const r = montarCronograma(acoes, { ...caminho, porAcao }, cal, { ocultar: { continuas: true } });
+    assert.deepEqual(r.ocultas, { concluidas: 0, continuas: 1 });
+    assert.ok(!r.linhas.some((l) => l.barra.numero === aberta.numero));
+    assert.ok(r.linhas.some((l) => l.barra.numero === concluida.numero), "a contínua concluída só sai com as concluídas");
+    const dois = montarCronograma(acoes, { ...caminho, porAcao }, cal, { ocultar: { continuas: true, concluidas: true } });
+    assert.equal(dois.ocultas.continuas, 1);
+    assert.equal(dois.linhas.length, acoes.length - 1 - dois.ocultas.concluidas);
+  });
+
+  it("paginasDoCronograma: páginas cheias e a última com o resto; sempre ao menos uma", () => {
+    assert.deepEqual(paginasDoCronograma(40, 18), [{ de: 0, quantas: 18 }, { de: 18, quantas: 18 }, { de: 36, quantas: 4 }]);
+    assert.deepEqual(paginasDoCronograma(18, 18), [{ de: 0, quantas: 18 }]);
+    assert.deepEqual(paginasDoCronograma(0, 18), [{ de: 0, quantas: 1 }]);
+    assert.equal(paginasDoCronograma(5, 0).length, 5, "nunca menos de uma linha por página");
   });
 });

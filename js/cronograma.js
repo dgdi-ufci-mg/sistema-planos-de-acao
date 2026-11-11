@@ -5,6 +5,7 @@
  * Agrupa por fase e etapa quando o espaço as usa.
  * Desde 10/11/2026 (edição no cronograma): grupos recolhidos, encaixe do zoom na tela e a estimativa que faz a
  * ação terminar no dia em que a borda da barra foi solta.
+ * Desde 11/11/2026: esconder as concluídas e as contínuas (as linhas saem; as datas e as fases e etapas ficam).
  */
 import { duracaoPert } from "./calculo.js";
 
@@ -42,14 +43,26 @@ function barraDe(acao, c, cal) {
  * @param {object[]} acoes ações ativas, na ordem do espaço
  * @param {{porAcao: Map}} caminho resultado de caminhoCritico
  * @param {object} cal calendário do espaço
- * @param {{estrutura?: object[], usaFases?: boolean, recolhidos?: Set<string>}} [opcoes]
+ * @param {{estrutura?: object[], usaFases?: boolean, recolhidos?: Set<string>, ocultar?: {concluidas?: boolean, continuas?: boolean}}} [opcoes]
  *   recolhidos: ids das fases e etapas recolhidas (10/11/2026); as linhas de dentro não entram, mas a linha do
- *   grupo continua, com `recolhido: true`, e as datas de resumo não mudam
+ *   grupo continua, com `recolhido: true`, e as datas de resumo não mudam;
+ *   ocultar (11/11/2026): esconde as linhas das ações concluídas e das contínuas (a contínua concluída conta como
+ *   concluída). As datas do cronograma e as de resumo de cada grupo não mudam, e o grupo que ficar sem linhas
+ *   continua aparecendo, com `ocultas` dizendo quantas ficaram escondidas
  * @returns {{linhas: ({tipo: "grupo", nivel: "fase"|"etapa", id: string, nome: string, inicio: string|null, fim: string|null,
- *   recolhido: boolean, acoes: number}|{tipo: "acao", barra: object})[], inicio: string|null, fim: string|null}}
+ *   recolhido: boolean, acoes: number, ocultas: number}|{tipo: "acao", barra: object})[], inicio: string|null, fim: string|null,
+ *   ocultas: {concluidas: number, continuas: number}}}
+ *   acoes: ações à vista no grupo (as que aparecem ao abri-lo)
  */
-export function montarCronograma(acoes, caminho, cal, { estrutura = [], usaFases = false, recolhidos = new Set() } = {}) {
+export function montarCronograma(acoes, caminho, cal, { estrutura = [], usaFases = false, recolhidos = new Set(), ocultar = {} } = {}) {
   const barras = acoes.map((a) => barraDe(a, caminho.porAcao.get(a.numero), cal));
+  const ocultas = { concluidas: 0, continuas: 0 };
+  const escondida = new Set();
+  for (const b of barras) {
+    const motivo = b.situacao === "concluida" ? "concluidas" : b.continua ? "continuas" : null;
+    if (motivo && ocultar[motivo]) { ocultas[motivo]++; escondida.add(b); }
+  }
+  const aVista = (bs) => bs.filter((b) => !escondida.has(b));
   /* as ações contínuas não entram nas datas dos grupos, como no cálculo dos marcos (seção 5.9); só um grupo apenas
      com contínuas usa as delas, para não ficar sem barra de resumo */
   const extremos = (todas) => {
@@ -71,26 +84,39 @@ export function montarCronograma(acoes, caminho, cal, { estrutura = [], usaFases
       const daFase = fase.etapas.flatMap((e) => daEtapa.get(e.id) ?? []);
       if (!daFase.length) continue;
       const faseRecolhida = recolhidos.has(fase.id);
-      linhas.push({ tipo: "grupo", nivel: "fase", id: fase.id, nome: fase.nome, recolhido: faseRecolhida, acoes: daFase.length, ...extremos(daFase) });
+      linhas.push({ tipo: "grupo", nivel: "fase", id: fase.id, nome: fase.nome, recolhido: faseRecolhida, acoes: aVista(daFase).length, ocultas: daFase.length - aVista(daFase).length, ...extremos(daFase) });
       for (const etapa of fase.etapas) {
         conhecidas.add(etapa.id);
         const bs = daEtapa.get(etapa.id) ?? [];
         if (!bs.length || faseRecolhida) continue;
         const etapaRecolhida = recolhidos.has(etapa.id);
-        linhas.push({ tipo: "grupo", nivel: "etapa", id: etapa.id, nome: etapa.nome, recolhido: etapaRecolhida, acoes: bs.length, ...extremos(bs) });
-        if (!etapaRecolhida) for (const b of bs) linhas.push({ tipo: "acao", barra: b });
+        linhas.push({ tipo: "grupo", nivel: "etapa", id: etapa.id, nome: etapa.nome, recolhido: etapaRecolhida, acoes: aVista(bs).length, ocultas: bs.length - aVista(bs).length, ...extremos(bs) });
+        if (!etapaRecolhida) for (const b of aVista(bs)) linhas.push({ tipo: "acao", barra: b });
       }
     }
     const soltas = barras.filter((b) => !conhecidas.has(b.acao.etapa));
     if (soltas.length) {
       const recolhida = recolhidos.has("sem-etapa");
-      linhas.push({ tipo: "grupo", nivel: "fase", id: "sem-etapa", nome: "Sem fase nem etapa", recolhido: recolhida, acoes: soltas.length, ...extremos(soltas) });
-      if (!recolhida) for (const b of soltas) linhas.push({ tipo: "acao", barra: b });
+      linhas.push({ tipo: "grupo", nivel: "fase", id: "sem-etapa", nome: "Sem fase nem etapa", recolhido: recolhida, acoes: aVista(soltas).length, ocultas: soltas.length - aVista(soltas).length, ...extremos(soltas) });
+      if (!recolhida) for (const b of aVista(soltas)) linhas.push({ tipo: "acao", barra: b });
     }
   } else {
-    for (const b of barras) linhas.push({ tipo: "acao", barra: b });
+    for (const b of aVista(barras)) linhas.push({ tipo: "acao", barra: b });
   }
-  return { linhas, ...extremos(barras) };
+  return { linhas, ocultas, ...extremos(barras) };
+}
+
+/**
+ * Divide as linhas em páginas para a impressão (11/11/2026): cada página leva `porPagina` linhas, e a última, o resto.
+ * @param {number} linhas total de linhas
+ * @param {number} porPagina linhas que cabem numa página
+ * @returns {{de: number, quantas: number}[]} ao menos uma página
+ */
+export function paginasDoCronograma(linhas, porPagina) {
+  const cabe = Math.max(1, Math.floor(porPagina));
+  const paginas = [];
+  for (let de = 0; de < Math.max(1, linhas); de += cabe) paginas.push({ de, quantas: Math.min(cabe, Math.max(1, linhas) - de) });
+  return paginas;
 }
 
 /**

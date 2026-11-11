@@ -15,8 +15,13 @@
  * Navegação: botões "Hoje" e "Ver tudo", nome do mês sempre à vista, fases e etapas que se recolhem e arrastar o
  * fundo para deslocar a vista.
  * Na barra: a ação ainda não liberada fica mais clara, e a atrasada, listrada.
+ *
+ * Desde 11/11/2026 (pedidos do responsável): o nome do responsável ao lado da barra; esconder as concluídas e as
+ * contínuas; legenda completa, sob o cronograma; "Hoje" e "Prazo final" escritos no cabeçalho das datas; seta na borda
+ * quando a barra da linha está fora do trecho à vista; a dica da barra também pelo teclado; consulta no celular (só
+ * leitura, com pinça para o zoom); e impressão pelo "Imprimir" do navegador, em páginas deitadas.
  */
-import { montarCronograma, zoomQueCabe, estimativaParaTerminarEm } from "../cronograma.js";
+import { montarCronograma, zoomQueCabe, estimativaParaTerminarEm, paginasDoCronograma } from "../cronograma.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { avisar } from "./painel.js";
@@ -66,24 +71,39 @@ let anterior = null;
 /** Ajuste da altura da rolagem ao redimensionar a janela e Ctrl+Z: um só por vez, trocados a cada desenho. */
 let aoRedimensionar = null;
 let aoTeclarNaPagina = null;
+/** O último cronograma desenhado na tela: é ele que a impressão refaz, em páginas. */
+let ultimo = null;
+/** Altura do cabeçalho das datas, parado no alto da área. */
+const TOPO = 41;
+/**
+ * Impressão (11/11/2026): folha A4 deitada com margens de 10 mm tem 1047 × 718 px úteis. A coluna dos nomes fica com
+ * 220 px, o eixo das datas com 820 px (o zoom se ajusta para o plano inteiro caber) e cada página leva 18 linhas.
+ */
+const IMPRESSAO = { nomes: 220, largura: 820, linhas: 18 };
 
 /**
  * @param {HTMLElement} alvo
  * @param {{espaco: object, acoes: object[], caminho: object, cal: object, hoje: string, usaFases: boolean,
  *   identificador: (acao: object) => string, escala: string, aoMudarEscala: (escala: string) => void,
  *   retratos?: object[]|null, comparar?: string|null, base?: Map<number, {inicio: string, fim: string}>|null,
- *   aoComparar?: (id: string|null) => void, edicao?: object|null}} dados
+ *   aoComparar?: (id: string|null) => void, edicao?: object|null,
+ *   exibir?: {responsavel?: boolean, semConcluidas?: boolean, semContinuas?: boolean}, nomesDe?: (acao: object) => string[],
+ *   aoMostrarTodas?: () => void, impressao?: boolean}} dados
  *   retratos: cabeçalhos dos retratos do espaço (null: ainda carregando); comparar: id do retrato escolhido;
- *   base: datas de cada ação no retrato escolhido; edicao: operações de edição (null: só leitura)
+ *   base: datas de cada ação no retrato escolhido; edicao: operações de edição (null: só leitura);
+ *   exibir: o que o menu "Exibir" liga e desliga; nomesDe: nomes dos responsáveis da ação;
+ *   aoMostrarTodas: desfaz os dois "esconder"; impressao: desenha as páginas para imprimir, sem interação
  */
 export function desenharCronograma(alvo, dados) {
   const { espaco, acoes, caminho, cal, hoje, usaFases, identificador, escala, aoMudarEscala,
-    retratos = null, comparar = null, base = null, aoComparar = () => {}, edicao = null } = dados;
+    retratos = null, comparar = null, base = null, aoComparar = () => {}, edicao = null,
+    exibir = {}, nomesDe = () => [], aoMostrarTodas = () => {}, impressao = false } = dados;
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. O cronograma aparece quando houver ações.</p>`;
     return;
   }
   const redesenhar = () => desenharCronograma(alvo, dados);
+  if (!impressao) ultimo = { alvo, dados };
   if (!recolhidosDe.has(espaco.id)) recolhidosDe.set(espaco.id, new Set());
   const recolhidos = recolhidosDe.get(espaco.id);
   /* a ação recém-criada precisa estar à vista para receber o nome: abre a fase e a etapa dela */
@@ -92,13 +112,15 @@ export function desenharCronograma(alvo, dados) {
     const fase = (espaco.estrutura ?? []).find((f) => f.etapas.some((e) => e.id === etapa));
     for (const id of [etapa, fase?.id, "sem-etapa"]) recolhidos.delete(id);
   }
-  const { linhas, inicio, fim } = montarCronograma(acoes, caminho, cal, { estrutura: espaco.estrutura, usaFases, recolhidos });
+  const { linhas, inicio, fim, ocultas } = montarCronograma(acoes, caminho, cal, { estrutura: espaco.estrutura, usaFases, recolhidos,
+    ocultar: { concluidas: Boolean(exibir.semConcluidas), continuas: Boolean(exibir.semContinuas) } });
   const prazo = espaco.prazoFinal ?? null;
   const datasBase = base ? [...base.values()].flatMap((b) => [b.inicio, b.fim]) : [];
   const de = somar([inicio, hoje, ...datasBase].sort()[0], -3);
   const ate = somar([fim, prazo ?? fim, hoje, ...datasBase].sort().at(-1), 10);
   const nivel = nivelDoZoom(escala);
-  const px = pxDoZoom(escala);
+  /* na impressão, o zoom é o que faz o plano inteiro caber na largura da folha */
+  const px = impressao ? zoomQueCabe(dias(de, ate), IMPRESSAO.largura) : pxDoZoom(escala);
   const largura = Math.ceil(dias(de, ate) * px);
   const x = (iso) => dias(de, iso) * px;
 
@@ -118,6 +140,9 @@ export function desenharCronograma(alvo, dados) {
     /* de perto, o dia de cada segunda-feira; bem de perto (28 px ou mais), todos os dias */
     if ((px >= 12 && data.getUTCDay() === 1) || (px >= 28 && data.getUTCDate() !== 1)) marcasTopo.push(`<span class="crono-dia" style="left:${x(d)}px">${data.getUTCDate()}</span>`);
   }
+  /* "Hoje" e "Prazo final" escritos no cabeçalho, sempre à vista (11/11/2026; antes, no pé da área) */
+  const pino = (iso, classe, nome) => (iso && iso >= de && iso <= ate ? `<span class="crono-pino ${classe}" style="left:${x(iso)}px">${nome}</span>` : "");
+  marcasTopo.push(pino(prazo, "prazo", "Prazo final"), pino(hoje, "hoje", "Hoje"));
   /* linhas verticais: semanas (de perto) ou meses (de longe) */
   const guias = [];
   for (let d = de; d <= ate; d = somar(d, 1)) {
@@ -140,7 +165,8 @@ export function desenharCronograma(alvo, dados) {
         <div class="crono-nome" data-recolher="${esc(l.id)}">
           <button type="button" class="crono-recolher" aria-expanded="${!l.recolhido}" aria-label="${l.recolhido ? "Abrir" : "Recolher"} ${esc(l.nome)}">${ICONES.abrir}</button>
           <span class="crono-grupo-nome">${esc(l.nome)}</span>
-          ${l.recolhido ? `<span class="crono-conta" title="${l.acoes} ${plural(l.acoes, "ação recolhida", "ações recolhidas")}">${l.acoes}</span>` : ""}
+          ${l.recolhido && l.acoes ? `<span class="crono-conta" title="${l.acoes} ${plural(l.acoes, "ação recolhida", "ações recolhidas")}">${l.acoes}</span>` : ""}
+          ${l.ocultas ? `<span class="crono-ocultas" title="${l.ocultas} ${plural(l.ocultas, "ação escondida", "ações escondidas")} aqui (concluídas ou contínuas). Para ver, use o menu Exibir.">${l.ocultas} ${plural(l.ocultas, "oculta", "ocultas")}</span>` : ""}
           ${criaAqui ? maisHtml(l.id === "sem-etapa" ? "" : l.id, l.id === "sem-etapa" ? ", sem etapa" : ` em ${l.nome}`) : ""}
         </div>
         ${l.inicio ? `<i class="crono-resumo" style="left:calc(var(--nomes) + ${x(l.inicio)}px);width:${x(somar(l.fim, 1)) - x(l.inicio)}px"></i>` : ""}
@@ -163,6 +189,14 @@ export function desenharCronograma(alvo, dados) {
     const alcas = !edicao ? "" : `
       ${estima && !semEstimativa ? `<i class="crono-borda" data-borda="${a.numero}" style="left:calc(var(--nomes) + ${x0 + largo - 5}px)" title="Arraste para encurtar ou alongar o prazo"></i>` : ""}
       ${edicao.usaDependencias && !b.continua ? `<i class="crono-alca" data-alca="${a.numero}" style="left:calc(var(--nomes) + ${x0 + largo + 7}px)" title="Arraste até outra ${esc(t)} para ligar: ela só começa quando esta terminar"></i>` : ""}`;
+    /* responsável ao lado da barra (11/11/2026): o primeiro nome da lista e "+N"; fora da barra, para não depender do
+       tamanho dela. Junto do fim do eixo, onde não caberia, vai para antes da barra */
+    const donos = exibir.responsavel ? nomesDe(a) : [];
+    const quem = donos.length ? `${donos[0]}${donos.length > 1 ? ` +${donos.length - 1}` : ""}` : "";
+    const larguraDoNome = Math.min(170, quem.length * 6.6 + 8);
+    const cabeDepois = x0 + largo + 12 + larguraDoNome <= largura;
+    /* sem lugar de nenhum dos lados (zoom muito de longe), o nome não aparece: fica na dica da barra */
+    const quemHtml = !quem || (!cabeDepois && x0 - 10 - larguraDoNome < 0) ? "" : `<span class="crono-quem${cabeDepois ? "" : " antes"}" style="left:calc(var(--nomes) + ${cabeDepois ? x0 + largo + 10 : x0 - 8}px)">${esc(quem)}</span>`;
     return `<div class="crono-linha" style="top:${y}px" data-numero="${a.numero}" data-chave="a:${a.numero}">
       <div class="crono-nome" role="button" tabindex="0" data-abrir-acao>
         ${identificador(a)}<span class="rotulo"${edicao ? ' data-editar="rotulo"' : ""}>${esc(a.rotulo)}</span>
@@ -170,7 +204,7 @@ export function desenharCronograma(alvo, dados) {
       </div>
       ${base?.has(a.numero) ? `<i class="crono-base" style="left:calc(var(--nomes) + ${x(base.get(a.numero).inicio)}px);width:${Math.max(3, x(somar(base.get(a.numero).fim, 1)) - x(base.get(a.numero).inicio))}px"></i>` : ""}
       <button type="button" class="crono-barra-acao ${classe}${estado}" ${estima ? "data-prazo" : "data-abrir-acao"} data-barra="${a.numero}" data-dica-numero="${a.numero}"
-        style="left:calc(var(--nomes) + ${x0}px);width:${largo}px" aria-label="${esc(a.rotulo)}: ${dataBr(b.inicio)} a ${dataBr(b.fim)}${b.atrasada ? ", atrasada" : ""}${estima ? ". Enter ajusta o prazo" : ""}"></button>${alcas}
+        style="left:calc(var(--nomes) + ${x0}px);width:${largo}px" aria-label="${esc(a.rotulo)}: ${dataBr(b.inicio)} a ${dataBr(b.fim)}${b.atrasada ? ", atrasada" : ""}${estima ? ". Enter ajusta o prazo" : ""}"></button>${alcas}${quemHtml}
     </div>`;
   }).join("");
 
@@ -194,17 +228,53 @@ export function desenharCronograma(alvo, dados) {
   }
   const altura = linhas.length * ALTURA;
 
-  const marcaVertical = (iso, classe, nome) => (iso >= de && iso <= ate
-    ? `<div class="crono-marca ${classe}" style="left:${x(iso)}px"><span>${nome}</span></div>` : "");
+  const marcaVertical = (iso, classe) => (iso >= de && iso <= ate ? `<div class="crono-marca ${classe}" style="left:${x(iso)}px"></div>` : "");
 
   const barrasDaTela = linhas.filter((l) => l.tipo === "acao").map((l) => l.barra);
-  const legenda = `<span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
-    <span class="crono-legenda"><i class="folga"></i>Com folga</span>
-    <span class="crono-legenda"><i class="folga aguardando"></i>Ainda não liberada</span>
-    <span class="crono-legenda"><i class="folga atrasada"></i>Atrasada</span>
-    <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
-    ${barrasDaTela.some((b) => b.continua) ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
-    ${base ? `<span class="crono-legenda"><i class="base"></i>No retrato</span>` : ""}`;
+  /* legenda completa (11/11/2026, pedido do responsável): tudo o que a tela desenha, sob o cronograma */
+  const item = (classe, texto) => `<span class="crono-legenda"><i class="${classe}"></i>${texto}</span>`;
+  const legenda = [
+    item("critica", `Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a>`),
+    item("folga", "Com folga"),
+    item("folga aguardando", "Ainda não liberada"),
+    item("folga atrasada", "Atrasada"),
+    item("concluida", "Concluída"),
+    barrasDaTela.some((b) => b.duracao === 0 && b.situacao !== "concluida" && !b.continua) ? item("sem-estimativa", "Falta estimar") : "",
+    barrasDaTela.some((b) => b.continua) ? item("continua", `Contínua <a href="#" class="oque" data-termo="continua">o que é?</a>`) : "",
+    linhas.some((l) => l.tipo === "grupo") ? item("resumo", "Fase ou etapa, do começo ao fim") : "",
+    setas.length ? item("seta", "Ligação: só começa quando a anterior termina") : "",
+    item("linha-hoje", "Hoje"),
+    hoje > de ? item("passado", "Dias que já passaram") : "",
+    prazo ? item("linha-prazo", "Prazo final") : "",
+    base ? item("base", "No retrato") : "",
+  ].join("");
+  const trilhoHtml = `${guias.join("")}
+              ${hoje > de ? `<i class="crono-passado" style="width:${x(hoje)}px"></i>` : ""}
+              ${marcaVertical(hoje, "hoje")}
+              ${prazo ? marcaVertical(prazo, "prazo") : ""}
+              <svg class="crono-setas" width="${largura}" height="${altura}">
+                <defs><marker id="crono-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z"/></marker></defs>
+                ${setas.join("")}
+              </svg>`;
+  const topoHtml = (mais) => `<div class="crono-topo"><div class="crono-nome crono-cabeca"><span>Ação</span>${mais}</div><div class="crono-escala" style="width:${largura}px">${marcasTopo.join("")}</div></div>`;
+
+  /* ---------- impressão (11/11/2026): páginas deitadas, cada uma com o cabeçalho das datas e a legenda ---------- */
+  if (impressao) {
+    const paginas = paginasDoCronograma(linhas.length, IMPRESSAO.linhas);
+    alvo.innerHTML = paginas.map((pg, k) => `<section class="crono-pagina">
+      <header class="crono-pagina-titulo"><b>${esc(espaco.nome ?? "")}</b><span>Cronograma · ${dataBr(hoje)}${paginas.length > 1 ? ` · página ${k + 1} de ${paginas.length}` : ""}</span></header>
+      <div class="crono impresso" style="--altura:${ALTURA}px;--nomes:${IMPRESSAO.nomes}px">
+        <div class="crono-conteudo" style="width:calc(var(--nomes) + ${largura}px)">
+          ${topoHtml("")}
+          <div class="crono-recorte" style="height:${pg.quantas * ALTURA}px">
+            <div class="crono-corpo" style="height:${altura}px;margin-top:-${pg.de * ALTURA}px"><div class="crono-trilho" style="width:${largura}px">${trilhoHtml}</div>${corpo}</div>
+          </div>
+        </div>
+      </div>
+      <div class="crono-legendas">${legenda}</div>
+    </section>`).join("");
+    return;
+  }
   const retratoEscolhido = retratos?.find((r) => r.id === comparar);
   const comparacao = retratos?.length ? `<label class="crono-comparar"><span>Comparar com</span>
       <select data-comparar aria-label="Comparar com um retrato"><option value="">Nenhum retrato</option>
@@ -212,7 +282,9 @@ export function desenharCronograma(alvo, dados) {
       </select></label>` : "";
   const ajuda = edicao
     ? `Clique na barra para ajustar o prazo ou arraste a borda direita dela. Arraste a bolinha da ponta até outra ${esc(t)} para ligar as duas. Arraste o nome para mudar a ordem ou a etapa. Duplo clique no nome renomeia; o botão direito abre mais opções.`
-    : "Clique numa ação para abri-la. Passe o mouse numa barra para ver as datas e as ligações.";
+    : "Toque ou clique numa ação para abri-la. No computador, passe o mouse numa barra para ver as datas e as ligações.";
+  const partes = [ocultas.concluidas ? `${ocultas.concluidas} ${plural(ocultas.concluidas, "concluída", "concluídas")}` : "", ocultas.continuas ? `${ocultas.continuas} ${plural(ocultas.continuas, "contínua", "contínuas")}` : ""].filter(Boolean);
+  const avisoOcultas = partes.length ? `<span class="crono-oculto-aviso" data-ocultas>Escondidas: ${partes.join(" e ")}. <button type="button" class="crono-abrir-acao" data-mostrar-todas>Mostrar</button></span>` : "";
 
   /* ao redesenhar (mudança nos dados ou na aproximação), mantém a rolagem; na primeira vez, abre perto de hoje */
   const antiga = alvo.querySelector("[data-rolagem]");
@@ -232,30 +304,25 @@ export function desenharCronograma(alvo, dados) {
       </div>
       ${edicao ? `<button type="button" class="botao" data-crono-desfazer title="Desfazer a última edição feita aqui (Ctrl+Z)"${edicao.temDesfazer() ? "" : " disabled"}>Desfazer</button>` : ""}
       ${comparacao}
-      <div class="crono-legendas">${legenda}</div>
+      ${avisoOcultas}
     </div>
     <div class="crono${edicao ? " editavel" : ""}" style="--altura:${ALTURA}px" tabindex="-1">
       <div class="crono-rolagem" data-rolagem>
         <div class="crono-conteudo" style="width:calc(var(--nomes) + ${largura}px)">
-          <div class="crono-topo"><div class="crono-nome crono-cabeca"><span>Ação</span>${usaFases && (espaco.estrutura ?? []).length ? "" : maisHtml("", "")}</div><div class="crono-escala" style="width:${largura}px">${marcasTopo.join("")}</div></div>
+          ${topoHtml(usaFases && (espaco.estrutura ?? []).length ? "" : maisHtml("", ""))}
           <div class="crono-corpo" style="height:${altura}px">
             <div class="crono-trilho" style="width:${largura}px">
-              ${guias.join("")}
-              ${hoje > de ? `<i class="crono-passado" style="width:${x(hoje)}px"></i>` : ""}
-              ${marcaVertical(hoje, "hoje", "Hoje")}
-              ${prazo ? marcaVertical(prazo, "prazo", "Prazo final") : ""}
-              <svg class="crono-setas" width="${largura}" height="${altura}">
-                <defs><marker id="crono-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z"/></marker></defs>
-                ${setas.join("")}
-              </svg>
+              ${trilhoHtml}
             </div>
             ${corpo}
           </div>
         </div>
       </div>
+      <div class="crono-foras" data-foras></div>
       <div class="tempo-dica" data-dica hidden></div>
     </div>
-    <p class="tec">${ajuda} Termo técnico: diagrama de Gantt (<a href="#" class="oque" data-termo="cronograma">o que é?</a>).</p>`;
+    <div class="crono-legendas" aria-label="Legenda">${legenda}</div>
+    <p class="tec">${ajuda} <span class="so-computador">Para imprimir ou salvar em PDF, use o Imprimir do navegador (Ctrl+P).</span> Termo técnico: diagrama de Gantt (<a href="#" class="oque" data-termo="cronograma">o que é?</a>).</p>`;
 
   /* ---------- interação ---------- */
   const caixa = alvo.querySelector(".crono");
@@ -273,6 +340,7 @@ export function desenharCronograma(alvo, dados) {
     if (e.target.closest("[data-ir-hoje]")) return irParaHoje();
     if (e.target.closest("[data-ver-tudo]")) return verTudo();
     if (e.target.closest("[data-crono-desfazer]")) return edicao?.desfazer();
+    if (e.target.closest("[data-mostrar-todas]")) return aoMostrarTodas();
   };
   alvo.querySelector(".crono-ferramentas").onchange = (e) => {
     if (e.target.matches("[data-comparar]")) aoComparar(e.target.value || null);
@@ -290,10 +358,8 @@ export function desenharCronograma(alvo, dados) {
     dica.style.left = `${Math.min(Math.max(0, r.left - c.left), c.width - dica.offsetWidth)}px`;
     dica.style.top = `${r.bottom - c.top + 6}px`;
   };
-  caixa.addEventListener("pointerover", (e) => {
-    if (arrastando) return;
-    const alvoBarra = e.target.closest("[data-dica-numero]");
-    if (!alvoBarra) return;
+  /** Dica da barra: datas, folga, andamento e responsáveis; destaca as ligações dela. */
+  const dicaDaBarra = (alvoBarra) => {
     const numero = Number(alvoBarra.dataset.dicaNumero);
     const b = porNumero.get(numero);
     limpar();
@@ -314,8 +380,20 @@ export function desenharCronograma(alvo, dados) {
     const noRetrato = !base ? "" : naBase
       ? `<br>No retrato “${esc(retratoEscolhido?.nome ?? "")}”: <span class="mono">${dataBr(naBase.inicio)} → ${dataBr(naBase.fim)}</span>. ${diferenca > 0 ? `Termina ${diferenca} ${plural(diferenca, "dia útil", "dias úteis")} depois` : diferenca < 0 ? `Termina ${-diferenca} ${plural(-diferenca, "dia útil", "dias úteis")} antes` : "Mesmo término"}.`
       : "<br>Ação criada depois do retrato.";
-    mostrarDica(alvoBarra, `<b>${esc(b.acao.rotulo)}</b><br><span class="mono">${dataBr(b.inicio)} → ${dataBr(b.fim)}</span><br>${situacao}${andamento}${noRetrato}`);
+    const quem = nomesDe(b.acao);
+    const responsaveis = quem.length ? `<br>${plural(quem.length, "Responsável", "Responsáveis")}: ${esc(quem.join(", "))}` : "";
+    mostrarDica(alvoBarra, `<b>${esc(b.acao.rotulo)}</b><br><span class="mono">${dataBr(b.inicio)} → ${dataBr(b.fim)}</span><br>${situacao}${andamento}${responsaveis}${noRetrato}`);
+  };
+  caixa.addEventListener("pointerover", (e) => {
+    if (arrastando) return;
+    const alvoBarra = e.target.closest("[data-dica-numero]");
+    if (alvoBarra) dicaDaBarra(alvoBarra);
   });
+  /* a mesma dica para quem chega à barra pelo teclado (11/11/2026); o clique do mouse não conta */
+  caixa.addEventListener("focusin", (e) => {
+    if (!arrastando && e.target.matches?.("[data-dica-numero]:focus-visible")) dicaDaBarra(e.target);
+  });
+  caixa.addEventListener("focusout", (e) => { if (e.target.matches?.("[data-dica-numero]")) limpar(); });
   caixa.addEventListener("pointerout", (e) => {
     if (arrastando) return;
     if (e.target.closest("[data-dica-numero]") && !e.relatedTarget?.closest?.("[data-dica-numero]")) limpar();
@@ -323,12 +401,20 @@ export function desenharCronograma(alvo, dados) {
 
   /* barras de rolagem no próprio cronograma (27/10/2026, pedido do responsável): a área vai até o fim da tela, rola nos
      dois sentidos, o cabeçalho das datas fica parado ao rolar para baixo e a barra horizontal fica sempre à vista */
+  let atualizarForas = () => {};
   const ajustarAltura = () => {
     if (!rolagem.isConnected) return removeEventListener("resize", ajustarAltura);
+    /* no celular (11/11/2026), a área vai até a barra de baixo, e a legenda e a ajuda ficam depois, rolando a página */
+    if (matchMedia("(max-width: 640px)").matches) {
+      rolagem.style.height = `${Math.max(320, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 100))}px`;
+      requestAnimationFrame(() => { if (rolagem.isConnected) atualizarForas(); });
+      return;
+    }
     rolagem.style.height = `${Math.max(320, Math.floor(innerHeight - (rolagem.getBoundingClientRect().top + scrollY) - 16))}px`;
-    /* desconta o que fica abaixo (o texto de ajuda e a margem do pé da página), para a página não rolar (27/10/2026) */
+    /* desconta o que fica abaixo (a legenda, o texto de ajuda e a margem do pé da página), para a página não rolar (27/10/2026) */
     const sobra = document.documentElement.scrollHeight - innerHeight;
     if (sobra > 0) rolagem.style.height = `${Math.max(320, rolagem.offsetHeight - sobra)}px`;
+    requestAnimationFrame(() => { if (rolagem.isConnected) atualizarForas(); });
   };
   ajustarAltura();
   if (aoRedimensionar) removeEventListener("resize", aoRedimensionar);
@@ -344,7 +430,7 @@ export function desenharCronograma(alvo, dados) {
     rolagem.scrollLeft = Math.max(0, nomes + x(ancora.data) + ancora.fracao * px - ancora.tela);
     ancora = null;
   } else {
-    rolagem.scrollLeft = rolagemAnterior?.escala === String(escala) ? rolagemAnterior.esquerda : Math.max(0, x(hoje) - 14 * px);
+    rolagem.scrollLeft = rolagemAnterior?.escala === String(escala) ? rolagemAnterior.esquerda : Math.max(0, x(hoje) - Math.min(14 * px, (rolagem.clientWidth - nomes) / 3));
   }
   /** Muda o zoom em `passo` níveis, mantendo parada a data na posição `tela` (px a partir da borda esquerda da vista). */
   function zoom(passo, tela = nomes + (rolagem.clientWidth - nomes) / 2) {
@@ -381,6 +467,57 @@ export function desenharCronograma(alvo, dados) {
     if (tela > nomes) zoom(passo, tela);
     else zoom(passo);
   }, { passive: false });
+
+  /* pinça com dois dedos, no celular (11/11/2026): um nível de zoom por gesto, em volta do meio dos dedos */
+  let pinca = 0;
+  const entreDedos = (e) => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+  rolagem.addEventListener("touchstart", (e) => { pinca = e.touches.length === 2 ? entreDedos(e) : 0; }, { passive: true });
+  rolagem.addEventListener("touchmove", (e) => {
+    if (e.touches.length !== 2 || !pinca) return;
+    e.preventDefault();
+    const razao = entreDedos(e) / pinca;
+    if (razao < 1.25 && razao > 0.8) return;
+    pinca = 0;
+    const meio = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rolagem.getBoundingClientRect().left;
+    if (meio > nomes) zoom(razao > 1 ? 1 : -1, meio);
+    else zoom(razao > 1 ? 1 : -1);
+  }, { passive: false });
+
+  /* ---------- barra fora do trecho à vista: seta na borda da linha (11/11/2026) ---------- */
+  /* a linha cuja barra ficou antes ou depois do trecho de datas na tela ganha uma seta do lado em que a barra está;
+     clicar leva a vista até ela */
+  const foras = alvo.querySelector("[data-foras]");
+  let forasHtml = "";
+  let quadroDasForas = 0;
+  atualizarForas = () => {
+    quadroDasForas = 0;
+    const esquerda = rolagem.scrollLeft;
+    const larguraVisivel = rolagem.clientWidth - nomes;
+    const barraVertical = rolagem.offsetWidth - rolagem.clientWidth;
+    const primeira = Math.max(0, Math.floor(rolagem.scrollTop / ALTURA));
+    const ultima = Math.min(linhas.length - 1, Math.ceil((rolagem.scrollTop + rolagem.clientHeight - TOPO) / ALTURA));
+    let html = "";
+    for (let i = primeira; i <= ultima; i++) {
+      if (linhas[i].tipo !== "acao") continue;
+      const n = linhas[i].barra.numero;
+      const g = geometria.barras.get(n);
+      const y = TOPO + i * ALTURA - rolagem.scrollTop;
+      if (y < TOPO || y + ALTURA > rolagem.clientHeight) continue;
+      const lado = g.x0 + g.largo <= esquerda + 2 ? "antes" : g.x0 >= esquerda + larguraVisivel - 2 ? "depois" : "";
+      if (!lado) continue;
+      const texto = `A barra está ${lado} deste trecho. Clique para ir até ela.`;
+      html += `<button type="button" class="crono-fora ${lado}" tabindex="-1" data-fora="${n}" style="top:${y + 6}px;${lado === "antes" ? `left:${nomes + 4}px` : `right:${barraVertical + 4}px`}" title="${texto}" aria-label="${esc(linhas[i].barra.acao.rotulo)}: ${texto}">${ICONES.seguir}</button>`;
+    }
+    if (html !== forasHtml) { forasHtml = html; foras.innerHTML = html; }
+  };
+  rolagem.addEventListener("scroll", () => { if (!quadroDasForas) quadroDasForas = requestAnimationFrame(atualizarForas); }, { passive: true });
+  foras.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-fora]");
+    if (!b) return;
+    const g = geometria.barras.get(Number(b.dataset.fora));
+    rolagem.scrollTo({ left: Math.max(0, g.x0 - (rolagem.clientWidth - nomes) / 3), behavior: reduzirMovimento() ? "auto" : "smooth" });
+  });
+  atualizarForas();
 
   /* ---------- arrastar o fundo desloca a vista, como na Rede (10/11/2026) ---------- */
   rolagem.addEventListener("pointerdown", (e) => {
@@ -861,4 +998,34 @@ function animarMudanca(caixa, geometria) {
   if (mexeu || antes.linhas.size !== geometria.linhas.size) {
     caixa.querySelector(".crono-setas")?.animate([{ opacity: 0 }, { opacity: 0, offset: 0.7 }, { opacity: 1 }], { duration: DURACAO + 120, easing: "linear" });
   }
+}
+
+/* ---------- impressão pelo navegador (11/11/2026): Ctrl+P ou "Imprimir", sem botão na tela ---------- */
+/* Antes de imprimir, o cronograma que está na tela é refeito numa folha à parte, em páginas deitadas, no tema claro;
+   o resto da página some na impressão (css). Depois, tudo volta ao que era. */
+let folha = null;
+function prepararImpressao() {
+  if (folha || !ultimo?.alvo.isConnected || !ultimo.alvo.querySelector(".crono")) return;
+  const raiz = document.documentElement;
+  folha = { el: document.createElement("div"), estilo: document.createElement("style"), tema: raiz.getAttribute("data-theme") };
+  folha.el.className = "crono-impressao";
+  folha.estilo.textContent = "@page { size: A4 landscape; margin: 10mm; }";
+  document.head.append(folha.estilo);
+  document.body.append(folha.el);
+  raiz.setAttribute("data-theme", "light");
+  document.body.classList.add("imprimindo-cronograma");
+  desenharCronograma(folha.el, { ...ultimo.dados, edicao: null, impressao: true });
+}
+function encerrarImpressao() {
+  if (!folha) return;
+  folha.el.remove();
+  folha.estilo.remove();
+  if (folha.tema == null) document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", folha.tema);
+  document.body.classList.remove("imprimindo-cronograma");
+  folha = null;
+}
+if (typeof addEventListener === "function") {
+  addEventListener("beforeprint", prepararImpressao);
+  addEventListener("afterprint", encerrarImpressao);
 }
