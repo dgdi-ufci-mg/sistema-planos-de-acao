@@ -5,21 +5,28 @@
  * da barra precisam ser os mesmos de lá.
  * Desde 30/10/2026, cada aplicativo tem a sua escolha: o Strata (classe "strata" no <html>) abre no escuro e o
  * Sextante, no claro, até alguém escolher outro tema naquele aplicativo.
+ * Desde 11/11/2026 (em teste), o Sextante tem também a paleta ("sextante.paleta": "ufcimg", o padrão, ou "original"),
+ * aplicada pelo atributo data-paleta; a cor da barra do navegador acompanha a paleta.
  */
 (function () {
   var raiz = document.documentElement;
   var strata = raiz.classList.contains("strata");
   var chave = strata ? "strata.tema" : "sextante.tema";
-  var barra = strata ? { claro: "#F3F5F9", escuro: "#0E1424" } : { claro: "#F5F3EF", escuro: "#0F1A19" };
+  var paleta = null;
+  if (!strata) {
+    try { paleta = localStorage.getItem("sextante.paleta"); } catch (e) { /* sem armazenamento: fica a padrão */ }
+    if (paleta !== "ufcimg" && paleta !== "original") paleta = "ufcimg";
+    raiz.dataset.paleta = paleta;
+  }
+  var barra = strata ? { claro: "#F3F5F9", escuro: "#0E1424" }
+    : paleta === "ufcimg" ? { claro: "#F4F6F8", escuro: "#1B1F27" } : { claro: "#F5F3EF", escuro: "#0F1A19" };
   var tema = null;
   try { tema = localStorage.getItem(chave); } catch (e) { /* sem armazenamento: fica o padrão */ }
   if (tema !== "automatico" && tema !== "claro" && tema !== "escuro") tema = strata ? "escuro" : "claro";
   if (tema === "claro") raiz.dataset.theme = "light";
   else if (tema === "escuro") raiz.dataset.theme = "dark";
-  if (tema === "automatico") return;
   var metas = document.querySelectorAll('meta[name="theme-color"]');
   for (var i = 0; i < metas.length; i++) {
-    metas[i].dataset.original = metas[i].content;
-    metas[i].content = barra[tema];
+    metas[i].content = tema === "automatico" ? (/dark/.test(metas[i].media) ? barra.escuro : barra.claro) : barra[tema];
   }
 })();

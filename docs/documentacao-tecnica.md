@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 13/11/2026 (versão 310 da página)
+**Última atualização deste documento:** 13/11/2026 (versão 311 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -75,7 +75,7 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `css/estilo.css` | Aparência e variáveis de cor, em três blocos de tema |
 | `config.js` | Configuração do Firebase (projeto `sextante-v2`; pública por desenho; `null` = só memória) |
 | `firestore.rules` | Regras do banco, publicadas à mão no console do Firebase |
-| `js/tema.js` e `js/tema-inicial.js` | Tema claro ou escuro escolhido em cada aparelho (27/10/2026; seção 8.0): ler, gravar e aplicar a escolha (`tema.js`, módulo) e aplicá-la antes do primeiro desenho (`tema-inicial.js`, script comum no `<head>`), com uma chave, um tema padrão e uma cor de barra para cada aplicativo (`sextante.tema` e `strata.tema`, desde 30/10/2026) |
+| `js/tema.js` e `js/tema-inicial.js` | Tema claro ou escuro escolhido em cada aparelho (27/10/2026; seção 8.0) e, em teste desde 11/11/2026, a paleta (`sextante.paleta`): ler, gravar e aplicar a escolha (`tema.js`, módulo) e aplicá-la antes do primeiro desenho (`tema-inicial.js`, script comum no `<head>`), com uma chave, um tema padrão e uma cor de barra para cada aplicativo (`sextante.tema` e `strata.tema`, desde 30/10/2026) |
 | `js/marca.js` | Marca do sistema em SVG (27/10/2026): o **símbolo** (setor de 60°, um sexto do círculo, como o sextante, com o braço indicador apontando um ponto do arco) e o **logotipo** (símbolo à esquerda e o nome em caixa alta, desenhado em traço, com o A sem travessão no mesmo ângulo de 60° do símbolo; o símbolo tem cerca de 1,6 vez a altura das letras). As cores vêm do tema, pelas classes `marca-*` de `css/estilo.css`: corpo, escala e nome em `--accent` (verde-azulado), braço e pontos em `--warn` (dourado); a escala interna com 35% de opacidade. O nome é desenhado, e não escrito com fonte, para ficar igual em todo aparelho: se `NOME` mudar em `js/identidade.js`, o desenho precisa ser refeito. Usos: logotipo nas boas-vindas (40 px de altura) e na Ajuda (32 px), com a sigla da instituição pequena embaixo. O arquivo guarda também a marca do **Strata**: o símbolo (três camadas em arco, `DESENHO_DO_STRATA`; camadas em `--accent`, a de cima em `--strata-sol`) e, desde 29/10/2026, o **logotipo do Strata** (`strataLogotipoSvg`): o símbolo à esquerda e o nome em caixa alta no mesmo traço do nome do Sextante (letras com 80 de altura e 10,5 de espessura; S, T e A sem travessão iguais aos do Sextante; o R, novo, com a barra do meio na altura da do E), nas cores do tema da página do Strata. Também desenhado, sem fonte: se o nome do Strata (`NOME_DO_MODULO`, em `js/superior/app.js`) mudar, o desenho precisa ser refeito. Uso: barra do topo do Strata (24 px de altura) |
 | `logo.png` | Símbolo em imagem, 112 px: ícone da aba do navegador. Desde a versão 202.1, como os ícones do aplicativo: quadrado de cantos arredondados (raio de 22% do lado) em verde-azulado escuro `#00594F`, com o corpo e a escala do símbolo em branco e o braço em dourado `#F2B04A`. Até 27/10/2026, era a rosa dos ventos |
 | `sextante/manifest.webmanifest`, `icones/`, `sw.js` | Aplicativo instalável pelo navegador: manifesto (nome, cores, ícones; escopo `sextante/`), ícones de 180, 192 e 512 px (um deles com margem para o recorte do Android) e o *service worker*, sem cache (seção 8, "Instalar como aplicativo") |
@@ -1170,10 +1170,41 @@ As seções 8.1 a 8.5 guardam as decisões de interface na ordem em que foram to
 
 | Aplicativo | Chave no navegador | Padrão, sem escolha guardada | Cor da barra (claro / escuro) |
 |---|---|---|---|
-| Sextante | `sextante.tema` | Claro | `#F5F3EF` / `#0F1A19` |
+| Sextante | `sextante.tema` | Claro | `#F5F3EF` / `#0F1A19` (paleta Original); `#F4F6F8` / `#1B1F27` (UFCIMG) |
 | Strata | `strata.tema` | Escuro (Noite) | `#F3F5F9` / `#0E1424` |
 
 Valores guardados: `automatico`, `claro` ou `escuro`. Como o padrão deixou de ser Automático, essa opção também é gravada; valor ausente ou inválido vale o padrão do aplicativo. Os padrões seguem o tema de cada um que o responsável acha mais bonito. Sem login não há menu da conta no Sextante, e vale o padrão (ou a escolha já guardada).
+
+**Paleta à escolha: tema UFCIMG** (pedido do responsável, 11/11/2026; **em teste**, no ramo `claude/tema-ufcimg`, ainda não aprovado para a `main`): o Sextante passa a ter duas escolhas separadas no menu da conta. **Tema** é a paleta de cores: **UFCIMG** (padrão) ou **Original** (nome provisório). **Modo** é o antigo "Tema": Automático, Claro ou Escuro. Trocar um não mexe no outro, e os dois valem só naquele aparelho e navegador.
+
+- **Regras:** o tema muda só cores; o estado nunca é indicado só pela cor (sempre com ícone ou texto); as cores são definidas por função, nas mesmas variáveis do tema original.
+- **Como funciona:** chave `sextante.paleta` no navegador (`ufcimg` ou `original`; ausente ou inválido vale `ufcimg`), aplicada pelo atributo `data-paleta` na raiz, antes do primeiro desenho (`js/tema-inicial.js`) e ao trocar (`js/tema.js`). O Strata não recebe paletas por enquanto (decisão do responsável): o atributo não é posto nele, e os blocos de cor do UFCIMG excluem a classe `strata`.
+- **Molde completo:** os três blocos do UFCIMG em `css/estilo.css` (claro, escuro do sistema e escuro escolhido) redefinem todas as variáveis de cor do tema original, com os três níveis de cada estado (forte, `-soft`, `-ink`). Têm especificidade maior que os do original, para valer em qualquer modo.
+- **Derivação:** marinho `#142C46` no texto (`--ink`) e tingindo sombras e controles da barra; verde-água `#68C0B5` no destaque (no claro, escurecido para `#1D7A70`, para o texto branco do botão ter contraste); âmbar `#F2A905` em `--warn` ("quase sem folga" e símbolo do sextante), que no original já era dourado, com o texto em `--warn-ink`; fundos da base da marca (`#F4F6F8` e `#1B1F27`). Vermelho, verde de concluída, laranja, roxo da execução e os 15 tons das pessoas ficam iguais, por serem cores de sentido.
+- **Contraste (WCAG 2):** todos os textos passam de 4,5:1, inclusive sobre os fundos suaves. Ficam abaixo, como no original, só as cores usadas como preenchimento ou traço (`--warn`, `--laranja`, `--faint` no claro).
+- **Cor da barra do navegador:** acompanha a paleta e o modo; no Automático, cada `<meta name="theme-color">` recebe a cor do modo da sua consulta de mídia.
+
+| Variável | Original claro / escuro | UFCIMG claro / escuro |
+|---|---|---|
+| `--bg` | `#F5F3EF` / `#0F1A19` | `#F4F6F8` / `#1B1F27` |
+| `--surface` | `#FFFFFF` / `#172624` | `#FFFFFF` / `#232833` |
+| `--sunk` | `#FAF8F5` / `#132120` | `#FAFBFC` / `#1F242C` |
+| `--ink` | `#163F3A` / `#ECF2F0` | `#142C46` / `#EEF1F5` |
+| `--muted` | `#5A6864` / `#9FB3AE` | `#55657A` / `#A5AFBD` |
+| `--faint` | `#8E9895` / `#86978F` | `#8A96A6` / `#8C96A4` |
+| `--line` | `#DDD6CC` / `#2A3F3C` | `#D5DCE4` / `#343B48` |
+| `--grid` | `#ECE6DD` / `#1E302D` | `#E7EBF0` / `#2A303B` |
+| `--accent` / `-ink` / `-soft` | `#00796B` `#00594F` `#D6EEE9` / `#2CC4AA` `#5FD8C2` `#103B35` | `#1D7A70` `#125A52` `#DAF0EC` / `#68C0B5` `#8FD4CB` `#173A3A` |
+| `--crit` / `-soft` / `-ink` | `#E3262D` `#FCE0DF` `#9C1116` / `#FF4D52` `#3D1618` `#FF8A8D` | iguais no claro / `#FF4D52` `#3D1A1E` `#FF8A8D` |
+| `--ok` / `-soft` / `-ink` | `#4E9A4D` `#E4F1E3` `#3B6E3A` / `#8FC68E` `#1B3320` `#A9D6A9` | iguais no claro / `#8FC68E` `#1C3324` `#A9D6A9` |
+| `--warn` / `-soft` / `-ink` | `#F2B04A` `#FEF1D8` `#8A5E10` / `#FBCA78` `#3A2B12` `#FFD58F` | `#F2A905` `#FEF3D4` `#7A5600` / `#F2A905` `#3A2E12` `#FFCF5C` |
+| `--dourado-claro` | `#FBCA78` / `#FBCA78` | `#FBD36E` / `#FBD36E` |
+| `--neutral` | `#B7B0A7` / `#55625F` | `#B3BAC4` / `#4F5866` |
+| `--laranja`, `--execucao`, `--tom-*` | (sem mudança) | iguais ao original |
+| `--texto-sobre-destaque` | `#FFFFFF` / `#062B26` | `#FFFFFF` / `#0B2A27` |
+| Sombras e barra | tingidas de `rgb(22, 63, 58)` / preto | tingidas de `rgb(20, 44, 70)` / preto |
+
+Em aberto: o nome da paleta original; se o botão principal fica verde-água ou passa a marinho; se o UFCIMG vira mesmo o padrão (o responsável vai comparar os dois no ramo de teste); e, depois, os temas Alto contraste, Neutro e Papel, no mesmo molde. A exportação Mermaid (`js/exportar.js`) continua com as cores do original.
 
 **"Configurar este espaço": como surge** (pedido do responsável, 27/10/2026): a partir de 641 px, numa janela no centro da tela, que aparece com um leve aumento e esmaecimento, como a janela da ação (com as seções em abas a partir de 900 px); no celular, sobe de baixo, como as demais janelas, com a alça para puxar e fechar. Antes, a classe da janela entrava depois de o painel começar a deslizar da direita, e o movimento não fazia sentido; o painel agora recebe a classe já na criação (`abrirPainel`, opção `classe`).
 
@@ -2649,3 +2680,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 308 | Exibir reorganizado (pedido do responsável, 12/11/2026; seção 8, barra do topo): indicador no alto, depois colunas, identificador e mostrar até; escolhas curtas numa linha de botões lado a lado; dias ou data logo abaixo de "Tempo restante"; sai a caixa travada "Nome e situação". Correção: na Rede e no Cronograma, "Legenda dos símbolos" não fazia nada; agora liga e desliga a legenda própria de cada um, ligada de início. Testes em `testes/navegador/indicador-exibir.test.mjs`. |
 | 309 | Chaves de ligar e desligar no lugar das caixinhas nos menus Exibir e Classificar e filtrar (pedido do responsável, 13/11/2026; seção 8, barra do topo), com a regra de uso de cada tipo de controle. Testes em `testes/navegador/indicador-exibir.test.mjs`. |
 | 310 | Painel único "Filtros e exibição" no computador (pedido do responsável, 13/11/2026; seção 8, barra do topo): um botão no lugar de "Classificar e filtrar" e "Exibir", abrindo um painel largo por cima do conteúdo com Filtrar, Classificar e Exibir lado a lado; em janelas estreitas, Exibir embaixo. Novo teste de navegador `testes/navegador/painel-unico.test.mjs`; os demais testes passam a abrir o painel. |
+| 311 | Tema UFCIMG, em teste (pedido do responsável, 11/11/2026; ramo `claude/tema-ufcimg`): paleta à escolha no menu da conta (UFCIMG, padrão, ou Original), separada do modo claro/escuro, com a identidade visual da UFCI-MG no molde completo do tema original (seção 8.0). Strata sem paletas. Sem mudança no banco |

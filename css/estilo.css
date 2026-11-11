@@ -100,6 +100,75 @@
   color-scheme: dark;
 }
 
+/* ---------- tema UFCIMG (em teste desde 11/11/2026; documentação técnica, seção 8.0): a paleta da identidade
+   visual da UFCI-MG, no mesmo molde do tema original, variável por variável. Marinho #142C46 no texto e nas sombras,
+   verde-água #68C0B5 no destaque, âmbar #F2A905 no "quase sem folga" e na marca. Vermelho, verde de concluída,
+   laranja, roxo da execução e os tons das pessoas ficam como no tema original. Escolhido pelo atributo
+   data-paleta="ufcimg" na raiz, à parte do modo (data-theme); o Strata não recebe os temas por enquanto.
+   Os três blocos têm especificidade maior que os do tema original, para valer sobre eles em qualquer modo ---------- */
+:root[data-paleta="ufcimg"]:not(.strata) {
+  --bg: #F4F6F8; --surface: #FFFFFF; --sunk: #FAFBFC;
+  --ink: #142C46; --muted: #55657A; --faint: #8A96A6; --line: #D5DCE4; --grid: #E7EBF0;
+  --accent: #1D7A70; --accent-ink: #125A52; --accent-soft: #DAF0EC;
+  --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
+  --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
+  --warn: #F2A905; --warn-soft: #FEF3D4; --warn-ink: #7A5600;
+  --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #B3BAC4;
+  --execucao: #6D28D9;
+  --sombra: 0 10px 30px rgba(20, 44, 70, .16);
+  --relevo: 0 1px 2px rgba(20, 44, 70, .06), 0 2px 6px rgba(20, 44, 70, .06);
+  --sombra-flutuante: 0 4px 10px rgba(20, 44, 70, .10), 0 14px 32px rgba(20, 44, 70, .16);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(20, 44, 70, .10);
+  --barra-controle: rgba(20, 44, 70, .06);
+  --barra-controle-foco: rgba(20, 44, 70, .12);
+  --texto-sobre-destaque: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-paleta="ufcimg"]:not(.strata):not([data-theme="light"]) {
+    --bg: #1B1F27; --surface: #232833; --sunk: #1F242C;
+    --ink: #EEF1F5; --muted: #A5AFBD; --faint: #8C96A4; --line: #343B48; --grid: #2A303B;
+    --accent: #68C0B5; --accent-ink: #8FD4CB; --accent-soft: #173A3A;
+    --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
+    --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
+    --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
+    --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #4F5866;
+    --execucao: #A78BFA;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+    --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+    --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+    --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+    --barra-topo: var(--bg);
+    --barra-borda: rgba(255, 255, 255, .08);
+    --barra-controle: rgba(255, 255, 255, .07);
+    --barra-controle-foco: rgba(255, 255, 255, .14);
+    --texto-sobre-destaque: #0B2A27;
+    color-scheme: dark;
+  }
+}
+:root[data-paleta="ufcimg"][data-theme="dark"]:not(.strata) {
+  --bg: #1B1F27; --surface: #232833; --sunk: #1F242C;
+  --ink: #EEF1F5; --muted: #A5AFBD; --faint: #8C96A4; --line: #343B48; --grid: #2A303B;
+  --accent: #68C0B5; --accent-ink: #8FD4CB; --accent-soft: #173A3A;
+  --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
+  --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
+  --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
+  --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #4F5866;
+  --execucao: #A78BFA;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+  --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(255, 255, 255, .08);
+  --barra-controle: rgba(255, 255, 255, .07);
+  --barra-controle-foco: rgba(255, 255, 255, .14);
+  --texto-sobre-destaque: #0B2A27;
+  color-scheme: dark;
+}
+
 /* ---------- paleta do Strata (27/10/2026, pedido do responsável): o módulo da estratégia, na página strata/, tem
    o mesmo desenho do sistema e só o símbolo e a paleta próprios, de azuis de céu com um âmbar de destaque. Os
    três blocos (claro, escuro do aparelho e escuro escolhido) seguem a regra dos temas; as cores de situação
@@ -339,13 +408,15 @@ body::before {
 @keyframes surgir-conta { from { opacity: 0; transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .conta-menu { animation: none; } }
 .conta-menu .tec { margin: 0 0 4px; }
-/* tema deste aparelho (27/10/2026): três botões lado a lado no menu da conta */
+/* tema deste aparelho (27/10/2026): três botões lado a lado no menu da conta; desde 11/11/2026, também a paleta, com dois */
 .conta-tema { display: flex; flex-direction: column; gap: 4px; padding: 4px 8px 8px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
 .conta-tema > span { font-size: .78rem; font-weight: 600; color: var(--muted); }
 .conta-tema .alternador { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; box-sizing: border-box; }
 .conta-tema .alternador::before { width: calc((100% - 6px) / 3); }
 .conta-tema .alternador:has(button:nth-child(2)[aria-pressed="true"])::before { transform: translateX(100%); }
 .conta-tema .alternador:has(button:nth-child(3)[aria-pressed="true"])::before { transform: translateX(200%); }
+.conta-tema .alternador.dois { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* tema UFCIMG ou original (11/11/2026) */
+.conta-tema .alternador.dois::before { width: calc((100% - 6px) / 2); }
 .conta-menu .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 2px; font-size: .8rem; text-align: center; }
 .conta-menu .conta-tema .alternador button:hover { background: none; }
 .conta-menu button, .lateral-acao {

@@ -2,6 +2,7 @@
  * Tema claro ou escuro escolhido em cada aparelho, no menu da conta (27/10/2026, pedido do responsável;
  * documentação técnica, seção 8.0). A escolha vale depois de recarregar e "Automático" volta a seguir o sistema.
  * Desde 30/10/2026, cada aplicativo tem a sua escolha e o seu padrão: Sextante claro, Strata escuro.
+ * Desde 11/11/2026 (em teste), o Sextante tem também a paleta: UFCIMG (padrão) ou Original, à parte do modo.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -65,7 +66,7 @@ describe("Tema deste aparelho", { skip: pular }, () => {
     test("sem escolha guardada, o Sextante abre claro e o Strata escuro, mesmo com o sistema no outro tema", async () => {
       const sextante = await sessao.abrir({ largura: 1280, altura: 760, tema: "dark", temaGuardado: null });
       assert.equal(await sextante.evaluate(() => document.documentElement.dataset.theme), "light");
-      assert.deepEqual(await cor(sextante), ["#F5F3EF", "#F5F3EF"], "a barra do navegador acompanha");
+      assert.deepEqual(await cor(sextante), ["#F4F6F8", "#F4F6F8"], "a barra do navegador acompanha (paleta UFCIMG, a padrão)");
       const strata = await sessao.abrir({ largura: 1280, altura: 760, tema: "light", temaGuardado: null, ...STRATA });
       assert.equal(await strata.evaluate(() => document.documentElement.dataset.theme), "dark");
       assert.deepEqual(await cor(strata), ["#0E1424", "#0E1424"]);
@@ -86,6 +87,49 @@ describe("Tema deste aparelho", { skip: pular }, () => {
       await p.waitForSelector(".mapa-svg .mapa-no");
       assert.equal(await p.evaluate(() => document.documentElement.dataset.theme), "light", "o Strata guardou o Dia");
       assert.equal(await p.evaluate(() => localStorage.getItem("sextante.tema")), "escuro");
+      assert.deepEqual(p.erros, []);
+    });
+  });
+  describe("paleta do Sextante (11/11/2026)", () => {
+    const cor = (p) => p.evaluate(() => [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => m.content));
+    const varCss = (p, v) => p.evaluate((v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim(), v);
+
+    test("sem escolha, abre na UFCIMG; Original troca na hora, fica guardada e não mexe no modo", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 760, tema: "light", temaGuardado: null });
+      assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "ufcimg");
+      assert.equal(await varCss(p, "--ink"), "#142C46");
+      await comConta(p);
+      await p.click("[data-abrir-conta]");
+      assert.equal(await p.locator('[data-paleta="ufcimg"]').getAttribute("aria-pressed"), "true");
+      await p.click('[data-paleta="original"]');
+      assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "original");
+      assert.equal(await varCss(p, "--ink"), "#163F3A");
+      assert.deepEqual(await cor(p), ["#F5F3EF", "#F5F3EF"]);
+      assert.ok(await p.locator("[data-menu-conta]").isVisible(), "o menu continua aberto");
+      assert.equal(await p.evaluate(() => document.documentElement.dataset.theme), "light", "o modo não mudou");
+      await p.reload();
+      await p.waitForSelector(".lateral");
+      assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "original");
+      assert.equal(await p.evaluate(() => localStorage.getItem("sextante.paleta")), "original");
+      assert.deepEqual(p.erros, []);
+    });
+
+    test("UFCIMG no modo escuro, escolhido e pelo sistema", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 760, tema: "dark", temaGuardado: null });
+      await p.evaluate(async () => { const { escolherTema } = await import("../js/tema.js"); escolherTema("escuro"); });
+      assert.equal(await varCss(p, "--bg"), "#1B1F27");
+      assert.deepEqual(await cor(p), ["#1B1F27", "#1B1F27"]);
+      await p.evaluate(async () => { const { escolherTema } = await import("../js/tema.js"); escolherTema("automatico"); });
+      assert.equal(await varCss(p, "--bg"), "#1B1F27", "o sistema escuro vale também no automático");
+      assert.deepEqual(await cor(p), ["#F4F6F8", "#1B1F27"], "no automático, cada consulta de mídia com a sua cor");
+      await p.evaluate(async () => { const { escolherTema } = await import("../js/tema.js"); escolherTema("claro"); });
+      assert.equal(await varCss(p, "--bg"), "#F4F6F8");
+      assert.deepEqual(p.erros, []);
+    });
+
+    test("o Strata não recebe a paleta", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 760, temaGuardado: null, caminho: "strata/", aguardar: ".mapa-svg .mapa-no" });
+      assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta ?? null), null);
       assert.deepEqual(p.erros, []);
     });
   });

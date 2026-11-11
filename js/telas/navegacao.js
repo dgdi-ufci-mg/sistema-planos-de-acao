@@ -14,7 +14,7 @@
  * - No computador, o menu fica ao lado do conteúdo e pode ser recolhido (lembrado neste aparelho);
  *   no celular, abre por cima, com fundo escurecido, e fecha ao escolher algo.
  */
-import { TEMAS, lerTema, escolherTema } from "../tema.js";
+import { TEMAS, lerTema, escolherTema, PALETAS, lerPaleta, escolherPaleta } from "../tema.js";
 import { ICONES } from "../icones.js";
 import { NOME } from "../identidade.js";
 import { esc } from "../formato.js";
@@ -167,6 +167,13 @@ function ligar() {
       for (const b of lateral.querySelectorAll("[data-tema]")) b.setAttribute("aria-pressed", String(b.dataset.tema === escolhido));
       return;
     }
+    /* paleta deste aparelho (11/11/2026, em teste): troca na hora, sem fechar o menu */
+    const paleta = e.target.closest("[data-paleta]");
+    if (paleta) {
+      const escolhida = escolherPaleta(paleta.dataset.paleta);
+      for (const b of lateral.querySelectorAll("[data-paleta]")) b.setAttribute("aria-pressed", String(b.dataset.paleta === escolhida));
+      return;
+    }
     const espaco = e.target.closest("[data-espaco]");
     const configurar = e.target.closest("[data-configurar]");
     const item = e.target.closest("[data-item]");
@@ -242,6 +249,8 @@ export function mostrarNavegacao(opcoes) {
       <div class="conta-menu" id="menu-conta" data-menu-conta hidden>
         ${usuario.nome ? "" : '<p class="tec">Sem responsável ligado a este e-mail neste espaço.</p>'}
         <div class="conta-tema" role="group" aria-label="Tema neste aparelho"><span>Tema</span>
+          <div class="alternador dois">${PALETAS.map(([v, nome]) => `<button type="button" data-paleta="${v}" aria-pressed="${v === lerPaleta()}">${nome}</button>`).join("")}</div></div>
+        <div class="conta-tema" role="group" aria-label="Modo claro ou escuro neste aparelho"><span>Modo</span>
           <div class="alternador">${TEMAS.map(([v, nome]) => `<button type="button" data-tema="${v}" aria-pressed="${v === lerTema()}">${nome}</button>`).join("")}</div></div>
         <button type="button" data-item="trocarSenha">Trocar senha</button>
         <button type="button" data-item="sair">Sair</button>
