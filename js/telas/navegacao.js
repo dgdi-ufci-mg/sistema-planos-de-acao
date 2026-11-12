@@ -242,16 +242,18 @@ export function mostrarNavegacao(opcoes) {
   h1.textContent = titulo || NOME;
   h1.classList.toggle("so-leitor", !titulo);
 
+  /* tema e modo deste aparelho: no menu da conta; sem login, no "Mais" (12/11/2026, em teste, pedido do responsável) */
+  const temaHtml = () => `<div class="conta-tema" role="group" aria-label="Tema neste aparelho"><span>Tema</span>
+          <div class="alternador dois">${PALETAS.map(([v, nome]) => `<button type="button" data-paleta="${v}" aria-pressed="${v === lerPaleta()}">${nome}</button>`).join("")}</div></div>
+        <div class="conta-tema" role="group" aria-label="Modo claro ou escuro neste aparelho"><span>Modo</span>
+          <div class="alternador">${TEMAS.map(([v, nome]) => `<button type="button" data-tema="${v}" aria-pressed="${v === lerTema()}">${nome}</button>`).join("")}</div></div>`;
   const contaHtml = usuario
     ? `<button class="conta" type="button" data-abrir-conta aria-expanded="false" aria-controls="menu-conta">
         <span class="selo-conta" aria-hidden="true">${esc(iniciais(usuario.nome || usuario.email.split("@")[0]))}</span>
         <span class="conta-texto">${usuario.nome ? `<b>${esc(usuario.nome)}</b>` : ""}<small>${esc(usuario.email)}</small></span>${ICONES.abrir}</button>
       <div class="conta-menu" id="menu-conta" data-menu-conta hidden>
         ${usuario.nome ? "" : '<p class="tec">Sem responsável ligado a este e-mail neste espaço.</p>'}
-        <div class="conta-tema" role="group" aria-label="Tema neste aparelho"><span>Tema</span>
-          <div class="alternador dois">${PALETAS.map(([v, nome]) => `<button type="button" data-paleta="${v}" aria-pressed="${v === lerPaleta()}">${nome}</button>`).join("")}</div></div>
-        <div class="conta-tema" role="group" aria-label="Modo claro ou escuro neste aparelho"><span>Modo</span>
-          <div class="alternador">${TEMAS.map(([v, nome]) => `<button type="button" data-tema="${v}" aria-pressed="${v === lerTema()}">${nome}</button>`).join("")}</div></div>
+        ${temaHtml()}
         <button type="button" data-item="trocarSenha">Trocar senha</button>
         <button type="button" data-item="sair">Sair</button>
       </div>`
@@ -291,6 +293,7 @@ export function mostrarNavegacao(opcoes) {
           <button type="button" class="lateral-acao" data-item="lixeira">${ICONES.lixeira}Lixeira</button>
           ${opcoes.aoExtracao ? `<button type="button" class="lateral-acao" data-item="extracao" title="Planilha ou PDF com os dados dos espaços">${ICONES.modoPlanilha}Extração de dados</button>` : ""}
           <a class="lateral-acao" href="../strata/" title="Strata: o desdobramento do PEI/PDI até os Planos de Ação">${ICONES.modoRede}Gestão da estratégia</a>
+          ${usuario ? "" : `<div class="lateral-tema">${temaHtml()}</div>`}
           ${opcoes.aoInstalar ? `<button type="button" class="lateral-acao" data-item="instalar" title="Pôr o Sextante na tela inicial, como um aplicativo">${ICONES.instalar}Instalar como aplicativo</button>` : ""}
         </div>
       </details>
