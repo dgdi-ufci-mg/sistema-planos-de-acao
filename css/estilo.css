@@ -3265,3 +3265,15 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual
   body[data-vista-atual][data-abas] .topo-centro .popover { left: auto; right: 0; translate: none; }
   body[data-vista-atual][data-abas] #principal .titulo-conteudo { display: none; }
 }
+/* nome do espaço escondido pelo botão direito na barra (12/11/2026): uma linha só, abas e controles à esquerda,
+   atrasadas e botão principal à direita */
+.popover-barra { width: 270px; }
+.popover-barra .tec { margin: 6px 6px 2px; font-size: .8rem; color: var(--muted); }
+@media (min-width: 641px) {
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-linha { grid-template-rows: auto; align-items: end; box-shadow: inset 0 -1px 0 var(--line); }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { box-shadow: none; }
+  body[data-vista-atual][data-abas][data-sem-nome] .titulo-barra { display: none; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-esquerda { grid-column: 1; grid-row: 1; width: 0; min-width: 0; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { grid-column: 1; grid-row: 1; padding-top: 6px; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-direita { grid-column: 2; grid-row: 1; align-self: center; padding-top: 6px; }
+}

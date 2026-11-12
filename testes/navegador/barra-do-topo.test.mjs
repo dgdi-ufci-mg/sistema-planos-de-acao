@@ -202,3 +202,58 @@ describe("Barra do topo em abas", { skip: pular }, () => {
     });
   }
 });
+
+/** Botão direito na barra do topo (12/11/2026, decisão do responsável): esconder o nome e deixar a barra numa linha só. */
+describe("Barra do topo: nome do espaço pelo botão direito", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  const menuDaBarra = async (p) => {
+    const b = await p.locator(".topo .aba-visao").last().boundingBox();
+    await p.mouse.click(b.x + b.width + 30, b.y + b.height / 2, { button: "right" });
+    await assentar(p);
+  };
+
+  test("o botão direito abre o menu; desmarcar deixa a barra numa linha só, e a escolha fica lembrada", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    const altura = () => p.evaluate(() => Math.round(document.querySelector(".topo").getBoundingClientRect().height));
+    const duas = await altura();
+    await menuDaBarra(p);
+    const opcao = p.locator("[data-nome-barra]");
+    assert.equal(await opcao.getAttribute("aria-pressed"), "true", "começa com o nome à vista");
+    await opcao.click();
+    await assentar(p, 600);
+    assert.equal(await p.locator(".topo .titulo-barra").isVisible(), false);
+    assert.ok(await altura() < duas - 30, `barra mais baixa (${await altura()} contra ${duas})`);
+    assert.ok(await p.locator('.aba-visao[data-modo="quadro"]').isVisible(), "as abas continuam");
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.nomeNaBarra")), "0", "lembrado no aparelho");
+    /* ao trocar de espaço e voltar, a escolha continua */
+    await p.locator(".lateral a, .lateral button").filter({ hasText: "Exemplo: tarefas da equipe" }).first().click();
+    await assentar(p, 600);
+    await p.locator(".lateral a, .lateral button").filter({ hasText: "Exemplo: repositório" }).first().click();
+    await p.waitForSelector(".aba-visao");
+    await assentar(p, 600);
+    assert.equal(await p.locator(".topo .titulo-barra").isVisible(), false, "continua numa linha só ao voltar ao espaço");
+    await menuDaBarra(p);
+    await p.locator("[data-nome-barra]").click();
+    await assentar(p, 600);
+    assert.ok(await p.locator(".topo .titulo-barra").isVisible(), "volta a mostrar");
+    assert.deepEqual(p.erros, []);
+  });
+
+  for (const largura of [720, 1024, 1366]) {
+    test(`${largura} px, numa linha só: nada se sobrepõe nem é cortado`, async () => {
+      const p = await sessao.abrir({ largura, altura: 760 });
+      await menuDaBarra(p);
+      await p.locator("[data-nome-barra]").click();
+      await assentar(p, 600);
+      for (const modo of ["lista", "cronograma", "planilha"]) {
+        await irParaVisualizacao(p, modo);
+        await assentar(p, 500);
+        assert.deepEqual(await problemas(p), [], `${modo}`);
+      }
+      assert.deepEqual(p.erros, []);
+    });
+  }
+});

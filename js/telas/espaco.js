@@ -91,6 +91,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const ui = { modo: "lista", situacao: "todas", concluidas: true, responsavel: "", minhas: false, etiqueta: "", ordem: "espaco", recolhidos: new Set(), legenda: false,
     /** painel aberto sob um botão da barra: "filtrar", "ordenar" ou null */
     pop: null,
+    /** barra em abas (12/11/2026): mostrar o nome do espaço na 1ª linha; desligado, a barra fica numa linha só. Lembrado no aparelho */
+    nomeNaBarra: lembrado("sextante.nomeNaBarra", "1") === "1",
+    /** onde o botão direito abriu o menu da barra (clientX, clientY) */
+    menuBarraEm: null,
     /** zoom do cronograma: px por dia (ver ZOOM em js/telas/cronograma.js; aceita os nomes antigos "semanas" e "meses") */
     escalaCrono: lembrado("sextante.zoomCronograma", "semanas"), /* zoom do cronograma, em px por dia (27/10/2026), lembrado no aparelho */
     /** cronograma, menu "Exibir" (11/11/2026), lembrado no aparelho: responsável ao lado da barra (ligado de início), esconder concluídas e contínuas */
@@ -279,6 +283,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* propriedades, e não addEventListener: a barra é a mesma para todos os espaços */
     ferramentas.onchange = aoMudarControle;
     ferramentas.onclick = aoClicarNaBarra;
+    /* botão direito na barra do topo (12/11/2026, decisão do responsável): menu com "Mostrar o nome do espaço",
+       para quem quer a barra numa linha só. Recurso para quem usa muito o sistema; fica registrado nos atalhos */
+    const topoEl = ferramentas.closest(".topo");
+    if (topoEl) topoEl.oncontextmenu = aoMenuDaBarra;
     ligarArraste();
     ligarSegurar();
     ligarDeslizar();
@@ -527,6 +535,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           <span class="opcao-icone">${ICONES[icone]}</span><span class="opcao-texto">${nome}</span>${ui.modo === v ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`).join("")}</div>
       </div>`;
     }
+    if (ui.pop === "barra") {
+      const [x, y] = ui.menuBarraEm ?? [0, 40];
+      return `<div class="popover popover-barra" data-popover role="dialog" aria-label="Barra do topo" style="left: ${Math.round(x)}px; top: ${Math.round(y)}px; right: auto; translate: none;">
+        <h3>Barra do topo</h3><div class="opcoes-lista">${opcao("data-nome-barra", "1", "Mostrar o nome do espaço", ui.nomeNaBarra, ICONES.olho)}</div>
+        <p class="tec">Sem o nome, a barra fica numa linha só e sobra espaço para o conteúdo.</p>
+      </div>`;
+    }
     if (ui.pop === "exibir") return exibirHtml();
     if (ui.pop === "indicador") return indicadorHtml();
     return "";
@@ -653,12 +668,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
     document.body.dataset.tipoEspaco = tipoDe(espaco); // Lista de tarefas: margem de leitura (css, 04/11/2026)
     document.body.toggleAttribute("data-abas", todas.length > 1); // barra em duas linhas só com mais de uma visualização (css, 12/11/2026)
+    document.body.toggleAttribute("data-sem-nome", !ui.nomeNaBarra); // nome escondido pelo botão direito: uma linha só (css)
     ajustarBarra();
     ajustarMais();
     const contador = inferior.filtros?.querySelector(".contador");
     if (contador) { contador.textContent = ativos() || ""; contador.hidden = !ativos(); }
     legenda.hidden = !ui.legenda || planilha;
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
+  }
+
+  /** Botão direito na barra do topo, no computador e nos espaços com abas: abre o menu da barra junto ao ponteiro. */
+  function aoMenuDaBarra(e) {
+    if (!document.body.hasAttribute("data-abas") || matchMedia("(max-width: 640px)").matches) return; // celular e espaços de uma visualização: menu do navegador
+    if (e.target.closest("[data-popover], input, textarea, select")) return;
+    e.preventDefault();
+    /* posição relativa ao grupo da esquerda (que contém o painel): a barra tem desfoque de fundo, e isso faz
+       "position: fixed" valer em relação a ela, e não à janela */
+    const base = ferramentas.querySelector(".topo-esquerda")?.getBoundingClientRect() ?? { left: 0, top: 0 };
+    ui.menuBarraEm = [Math.min(e.clientX, innerWidth - 290) - base.left, e.clientY + 4 - base.top];
+    ui.pop = "barra";
+    desenharFerramentas({ abriu: true });
   }
 
   /**
@@ -758,6 +787,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const id = t.closest("[data-identificador-op]");
     if (id) return mudarIdentificador(id.dataset.identificadorOp);
     if (t.closest("[data-legenda-op]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
+    if (t.closest("[data-nome-barra]")) {
+      ui.nomeNaBarra = !ui.nomeNaBarra;
+      try { localStorage.setItem("sextante.nomeNaBarra", ui.nomeNaBarra ? "1" : "0"); } catch { /* sem armazenamento */ }
+      ui.pop = null;
+      return desenharFerramentas();
+    }
     const crono = t.closest("[data-crono-op]");
     if (crono) return mudarCrono(crono.dataset.cronoOp);
   }
@@ -2712,6 +2747,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.body.classList.remove("alt-edicao");
     delete document.body.dataset.vistaAtual;
     document.body.removeAttribute("data-abas");
+    document.body.removeAttribute("data-sem-nome");
+    const topoEl = ferramentas?.closest(".topo");
+    if (topoEl) topoEl.oncontextmenu = null;
     delete document.body.dataset.tipoEspaco;
     document.querySelector(".escolher-participantes")?.remove();
     barra.innerHTML = "";
