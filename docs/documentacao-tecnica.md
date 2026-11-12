@@ -1200,6 +1200,7 @@ Valores guardados: `automatico`, `claro` ou `escuro`. Como o padrão deixou de s
 | `--warn` / `-soft` / `-ink` | `#F2B04A` `#FEF1D8` `#8A5E10` / `#FBCA78` `#3A2B12` `#FFD58F` | `#F2A905` `#FEF3D4` `#7A5600` / `#F2A905` `#3A2E12` `#FFCF5C` |
 | `--dourado-claro` | `#FBCA78` / `#FBCA78` | `#FBD36E` / `#FBD36E` |
 | `--neutral` | `#B7B0A7` / `#55625F` | `#B3BAC4` / `#4F5866` |
+| `--rede-fundo` / `--rede-grade` | `#FFFFFF` `#DAD5CC` / `#0F1A19` `#24403C` | `#FFFFFF` `#D5DCE4` / `#1B1F27` `#333A47` |
 | `--laranja`, `--execucao`, `--tom-*` | (sem mudança) | iguais ao original |
 | `--texto-sobre-destaque` | `#FFFFFF` / `#062B26` | `#FFFFFF` / `#0B2A27` |
 | Sombras e barra | tingidas de `rgb(22, 63, 58)` / preto | tingidas de `rgb(20, 44, 70)` / preto |
