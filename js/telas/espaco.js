@@ -97,6 +97,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     cronoResponsavel: lembrado("sextante.cronoResponsavel", "1") === "1",
     cronoSemConcluidas: lembrado("sextante.cronoSemConcluidas", "0") === "1",
     cronoSemContinuas: lembrado("sextante.cronoSemContinuas", "0") === "1",
+    /** cronograma, indicador ao lado dos nomes (12/11/2026, pedido do responsável), escolhido em "Exibir" e lembrado no
+        aparelho: "nenhum", "execucao" ou "revisao"; independente da barra das outras visualizações */
+    cronoIndicador: lembrado("sextante.cronoIndicador", "nenhum"),
     /** barra mostrada nos cartões: "tempo", "execucao" ou "revisao" (lembrada neste aparelho) */
     barra: lembrado("sextante.barra", "tempo"),
     /** colunas opcionais da lista (22/10/2026), lembradas neste aparelho; nome e situação são fixos */
@@ -120,6 +123,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /** visualização "Responsáveis" (seção 8.4): responsáveis com as ações à vista, enquanto o espaço está aberto */
     cargaAbertos: new Set() };
   if (!["tempo", "execucao", "revisao"].includes(ui.barra)) ui.barra = "tempo";
+  if (!["nenhum", "execucao", "revisao"].includes(ui.cronoIndicador)) ui.cronoIndicador = "nenhum";
   let chaveSim = null;
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
   /** o que quem está vendo pode fazer neste espaço (papéis, passo 2.1; js/papeis.js) */
@@ -544,8 +548,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     desenharFerramentas();
   }
   /* nos tipos de tarefas (Quadro e Lista), sem o menu Indicador: só há o tempo até a data-limite, já no cartão (27/10/2026) */
-  /* também na Rede e no Cronograma (12/11/2026, pedido do responsável): o mesmo indicador em todas as visualizações */
-  const comIndicador = () => !deTarefas() && (["quadro", "rede", "cronograma"].includes(ui.modo) || (ui.modo === "lista" && colunas().barras));
+  /* também na Rede (12/11/2026, pedido do responsável); no Cronograma, o indicador fica em "Exibir", com "Nenhum"
+     no lugar do tempo restante, que o próprio Gantt já mostra (12/11/2026, pedido do responsável) */
+  const comIndicador = () => !deTarefas() && (["quadro", "rede"].includes(ui.modo) || (ui.modo === "lista" && colunas().barras));
   const comExibir = () => ["lista", "quadro", "rede", "cronograma", "planilha"].includes(ui.modo);
   const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
@@ -568,6 +573,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       : `<label><input type="checkbox" data-coluna-planilha="${c.chave}"${ui.ocultasPlanilha.has(c.chave) ? "" : " checked"}> ${c.titulo}</label>`).join("")}</div>`;
     return grupo("Dados da ação", todas.filter((c) => !c.calculada)) + grupo("Calculados", todas.filter((c) => c.calculada));
   }
+  /** Indicador do Cronograma em "Exibir" (12/11/2026): nenhum ou um dos dois índices da simulação. */
+  const INDICADORES_CRONO = [["nenhum", "Nenhum", ""], ...BARRAS.filter(([v]) => v !== "tempo")];
+  function mudarCronoIndicador(v) {
+    ui.cronoIndicador = v;
+    try { localStorage.setItem("sextante.cronoIndicador", v); } catch { /* sem armazenamento */ }
+    desenharFerramentas();
+    if (painelOpcoes?.isConnected) preencherOpcoes();
+    desenharLista();
+  }
   function exibirHtml() {
     return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Exibir">${exibirConteudo()}</div>`;
   }
@@ -580,6 +594,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
         <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
         ${OPCOES_COLUNAS.filter(([v]) => (v !== "descricao" || (usaDescricao() && !ehLista())) && (v !== "barras" || !ehLista())).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
+      ${ui.modo === "cronograma" && !deTarefas() && usaSimulacao(espaco) ? `<h3>Indicador</h3><div class="opcoes-lista">${INDICADORES_CRONO.map(([v, nome, icone]) =>
+        opcao("data-crono-ind", v, nome, ui.cronoIndicador === v, icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : "")).join("")}</div>` : ""}
       ${ui.modo === "cronograma" ? `<h3>No cronograma</h3><div class="opcoes-lista">
         ${opcao("data-crono-op", "cronoResponsavel", "Responsável ao lado da barra", ui.cronoResponsavel, ICONES.pessoa)}
         ${opcao("data-crono-op", "cronoSemConcluidas", "Esconder as concluídas", ui.cronoSemConcluidas, ICONES.concluida)}
@@ -721,6 +737,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (t.closest("[data-legenda-op]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
     const crono = t.closest("[data-crono-op]");
     if (crono) return mudarCrono(crono.dataset.cronoOp);
+    const cronoInd = t.closest("[data-crono-ind]");
+    if (cronoInd) return mudarCronoIndicador(cronoInd.dataset.cronoInd);
   }
   /** Liga ou desliga uma opção do cronograma em "Exibir" (11/11/2026) e a lembra neste aparelho. */
   function mudarCrono(chave, valor = !ui[chave]) {
@@ -873,13 +891,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   }
 
   /** A barra escolhida, com o símbolo à esquerda (22/10/2026). */
-  function barraHtml(l, { tempoNumero = ui.tempoNumero } = {}) {
-    const [, nome, icone] = BARRAS.find(([v]) => v === ui.barra);
-    const simbolo = `<span class="barra-icone ${ui.barra}" title="${nome}" aria-hidden="true">${ICONES[icone]}</span>`;
+  function barraHtml(l, { tempoNumero = ui.tempoNumero, barra = ui.barra } = {}) {
+    const [, nome, icone] = BARRAS.find(([v]) => v === barra);
+    const simbolo = `<span class="barra-icone ${barra}" title="${nome}" aria-hidden="true">${ICONES[icone]}</span>`;
     if (l.situacao === "concluida") return `<div class="pr"></div>`;
     let conteudo;
-    if (ui.barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : diasDoPrazo(l) == null ? "" : prazoHtml(l, tempoNumero);
-    else if (ui.barra === "revisao") {
+    if (barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : diasDoPrazo(l) == null ? "" : prazoHtml(l, tempoNumero);
+    else if (barra === "revisao") {
       const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
       conteudo = medidor(l.revisao, `Contribuição para a incerteza: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
     } else conteudo = medidor(l.execucao, "Índice de criticidade", "var(--execucao)", l.execucao == null ? "" : `${Math.round(l.execucao * 100)}%`);
@@ -1011,11 +1029,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         /* menu "Exibir" (11/11/2026): responsável ao lado da barra, esconder concluídas e contínuas */
         exibir: { responsavel: ui.cronoResponsavel, semConcluidas: ui.cronoSemConcluidas, semContinuas: ui.cronoSemContinuas },
         nomesDe: (a) => a.responsaveis.map((id) => pessoas.get(id)?.nome).filter(Boolean),
-        /* indicador numa coluna estreita ao lado dos nomes (12/11/2026, pedido do responsável); o tempo restante não
-           entra, porque o próprio Gantt já mostra o tempo */
-        indicador: ui.barra === "tempo" ? null : {
-          titulo: `<span class="barra-icone ${ui.barra}" title="${NOMES_BARRA[ui.barra]}">${ICONES[BARRAS.find(([v]) => v === ui.barra)[2]]}</span>`,
-          de: (a) => { const l = linhas.find((x) => x.acao.numero === a.numero); return l ? barraHtml(l).replace(/^<div class="pr">|<\/div>$/g, "") : ""; } },
+        /* indicador numa coluna estreita ao lado dos nomes (12/11/2026, pedido do responsável), escolhido em "Exibir":
+           nenhum, o índice de criticidade ou a contribuição para a incerteza; o tempo restante não entra, porque o
+           próprio Gantt já mostra o tempo */
+        indicador: (() => {
+          const ind = ui.cronoIndicador;
+          if (ind === "nenhum" || deTarefas() || !usaSimulacao(espaco)) return null;
+          return { titulo: `<span class="barra-icone ${ind}" title="${NOMES_BARRA[ind]}">${ICONES[BARRAS.find(([v]) => v === ind)[2]]}</span>`,
+            de: (a) => { const l = linhas.find((x) => x.acao.numero === a.numero); return l ? barraHtml(l, { barra: ind }).replace(/^<div class="pr">|<\/div>$/g, "") : ""; } };
+        })(),
         aoMostrarTodas: () => { mudarCrono("cronoSemConcluidas", false); mudarCrono("cronoSemContinuas", false); },
         /* edição dentro do Cronograma (10/11/2026, pedido do responsável: facilidade de editar o plano nesta tela);
            no celular, o cronograma é só de consulta (11/11/2026) */
@@ -2078,6 +2100,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       else if (b.dataset.identificadorOp) mudarIdentificador(b.dataset.identificadorOp);
       else if (b.dataset.legendaOp != null) { ui.legenda = !ui.legenda; desenharFerramentas(); }
       else if (b.dataset.cronoOp) return mudarCrono(b.dataset.cronoOp);
+      else if (b.dataset.cronoInd) return mudarCronoIndicador(b.dataset.cronoInd);
       else return;
       preencherOpcoes();
     });
