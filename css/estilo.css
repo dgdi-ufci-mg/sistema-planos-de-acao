@@ -109,7 +109,7 @@
 :root[data-paleta="ufcimg"]:not(.strata) {
   --bg: #F4F6F8; --surface: #FFFFFF; --sunk: #FAFBFC;
   --ink: #142C46; --muted: #55657A; --faint: #8A96A6; --line: #D5DCE4; --grid: #E7EBF0;
-  --accent: #1D7A70; --accent-ink: #125A52; --accent-soft: #DAF0EC;
+  --accent: #142C46; --accent-ink: #142C46; --accent-soft: #E1E8F0; /* marinho da marca (12/11/2026, pedido do responsável) */
   --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
   --warn: #F2A905; --warn-soft: #FEF3D4; --warn-ink: #7A5600;
@@ -422,6 +422,10 @@ body::before {
 .conta-tema .alternador.dois::before { width: calc((100% - 6px) / 2); }
 .conta-menu .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 2px; font-size: .8rem; text-align: center; }
 .conta-menu .conta-tema .alternador button:hover { background: none; }
+/* sem login, tema e modo no "Mais" da barra lateral (12/11/2026, em teste) */
+.lateral-tema { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 6px; }
+.lateral-tema .conta-tema { padding: 4px 8px; border-bottom: 0; margin-bottom: 0; }
+.lateral-tema .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 2px; font-size: .8rem; text-align: center; }
 .conta-menu button, .lateral-acao {
   display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; padding: 7px 8px;
   border-radius: var(--raio); text-align: left; cursor: pointer; color: var(--muted); font-weight: 600;
