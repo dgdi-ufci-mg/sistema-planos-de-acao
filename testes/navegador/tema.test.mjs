@@ -145,9 +145,10 @@ describe("Tema deste aparelho", { skip: pular }, () => {
       assert.deepEqual(p.erros, []);
     });
 
-    test("UFCIMG claro: destaque em marinho", async () => {
+    test("UFCIMG claro: destaque em marinho e folga em verde-água", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 760, tema: "light", temaGuardado: null });
       assert.equal(await varCss(p, "--accent"), "#142C46");
+      assert.equal(await varCss(p, "--folga"), "#68C0B5", "ações com folga em verde-água, separadas do marinho dos botões");
     });
 
     test("o Strata não recebe a paleta", async () => {
