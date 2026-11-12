@@ -106,9 +106,9 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     const conteudo = await caixa(p, "[data-conteudo]");
     const controles = await caixa(p, "[data-rede-controles]");
     const legenda = await caixa(p, ".rede-legenda");
-    const titulo = await caixa(p, "#principal .titulo-conteudo");
+    const titulo = await caixa(p, ".topo"); // o nome do espaço fica na barra do topo desde a barra em abas (12/11/2026)
     assert.ok(conteudo.x >= 264 && conteudo.x + conteudo.width <= controles.x, "não passa por baixo dos botões");
-    assert.ok(conteudo.y >= titulo.y + titulo.height && conteudo.y + conteudo.height <= legenda.y, "nem do título, nem da legenda");
+    assert.ok(conteudo.y >= titulo.y + titulo.height && conteudo.y + conteudo.height <= legenda.y, "nem da barra do topo, nem da legenda");
     await clicar(p, '[data-escala="normal"]');
     assert.equal(await zoom(p), 100);
     await clicar(p, '[data-zoom-passo="1"]');

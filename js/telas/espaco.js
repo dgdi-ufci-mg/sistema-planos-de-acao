@@ -652,6 +652,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     modoDesenhado = ui.modo;
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
     document.body.dataset.tipoEspaco = tipoDe(espaco); // Lista de tarefas: margem de leitura (css, 04/11/2026)
+    document.body.toggleAttribute("data-abas", todas.length > 1); // barra em duas linhas só com mais de uma visualização (css, 12/11/2026)
     ajustarBarra();
     ajustarMais();
     const contador = inferior.filtros?.querySelector(".contador");
@@ -2707,9 +2708,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.removeEventListener("keyup", marcarAlt);
     removeEventListener("blur", marcarAlt);
     removeEventListener("resize", ajustarBarra);
-    ferramentas?.closest(".topo")?.classList.remove("barra-curta", "barra-icones");
+    ferramentas?.closest(".topo")?.classList.remove("barra-curta", "barra-icones", "barra-abas-icones");
     document.body.classList.remove("alt-edicao");
     delete document.body.dataset.vistaAtual;
+    document.body.removeAttribute("data-abas");
     delete document.body.dataset.tipoEspaco;
     document.querySelector(".escolher-participantes")?.remove();
     barra.innerHTML = "";
