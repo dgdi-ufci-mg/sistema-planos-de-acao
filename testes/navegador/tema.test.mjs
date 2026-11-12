@@ -149,6 +149,7 @@ describe("Tema deste aparelho", { skip: pular }, () => {
       const p = await sessao.abrir({ largura: 1280, altura: 760, tema: "light", temaGuardado: null });
       assert.equal(await varCss(p, "--accent"), "#142C46");
       assert.equal(await varCss(p, "--folga"), "#68C0B5", "ações com folga em verde-água, separadas do marinho dos botões");
+      assert.equal(await varCss(p, "--liberada"), "#68C0B5", "ação liberada em verde, não na cor dos botões");
     });
 
     test("Neutro, Papel e Alto contraste (12/11/2026): cada um com as suas cores, nos dois modos", async () => {

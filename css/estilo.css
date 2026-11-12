@@ -12,6 +12,7 @@
   --ink: #163F3A; --muted: #5A6864; /* 24/10/2026: um pouco mais escuro, para contraste de 4,5:1 (WCAG 1.4.3) também sobre o verde-claro e o cinza das células travadas */ --faint: #8E9895; --line: #DDD6CC; --grid: #ECE6DD;
   --accent: #00796B; --accent-ink: #00594F; --accent-soft: #D6EEE9;
   --folga: #00796B; /* ações com folga (barras, faixas); no tema original, igual ao destaque */
+  --liberada: #00796B; --liberada-texto: #FFFFFF; --liberada-ink: #00796B; /* ação liberada: pode ser feita agora; verde em todos os temas (12/11/2026) */
   --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
   --warn: #F2B04A; --warn-soft: #FEF1D8; --warn-ink: #8A5E10;
@@ -51,6 +52,7 @@
     --ink: #ECF2F0; --muted: #9FB3AE; --faint: #86978F; --line: #2A3F3C; --grid: #1E302D;
     --accent: #2CC4AA; --accent-ink: #5FD8C2; --accent-soft: #103B35;
     --folga: #2CC4AA;
+    --liberada: #2CC4AA; --liberada-texto: #062B26; --liberada-ink: #2CC4AA;
     --crit: #FF4D52; --crit-soft: #3D1618; --crit-ink: #FF8A8D;
     --ok: #8FC68E; --ok-soft: #1B3320; --ok-ink: #A9D6A9;
     --warn: #FBCA78; --warn-soft: #3A2B12; --warn-ink: #FFD58F;
@@ -81,6 +83,7 @@
   --ink: #ECF2F0; --muted: #9FB3AE; --faint: #86978F; --line: #2A3F3C; --grid: #1E302D;
   --accent: #2CC4AA; --accent-ink: #5FD8C2; --accent-soft: #103B35;
   --folga: #2CC4AA;
+  --liberada: #2CC4AA; --liberada-texto: #062B26; --liberada-ink: #2CC4AA;
   --crit: #FF4D52; --crit-soft: #3D1618; --crit-ink: #FF8A8D;
   --ok: #8FC68E; --ok-soft: #1B3320; --ok-ink: #A9D6A9;
   --warn: #FBCA78; --warn-soft: #3A2B12; --warn-ink: #FFD58F;
@@ -114,6 +117,7 @@
   --ink: #142C46; --muted: #55657A; --faint: #8A96A6; --line: #D5DCE4; --grid: #E7EBF0;
   --accent: #142C46; --accent-ink: #142C46; --accent-soft: #DDF1EE; /* marinho da marca; fundo suave em verde-água (12/11/2026, pedido do responsável) */
   --folga: #68C0B5; /* verde-água da marca, separado do marinho dos botões (12/11/2026) */
+  --liberada: #68C0B5; --liberada-texto: #142C46; --liberada-ink: #1F6F66;
   --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
   --warn: #F2A905; --warn-soft: #FEF3D4; --warn-ink: #7A5600;
@@ -137,6 +141,7 @@
     --ink: #EEF1F5; --muted: #A5AFBD; --faint: #8C96A4; --line: #343B48; --grid: #2A303B;
     --accent: #68C0B5; --accent-ink: #8FD4CB; --accent-soft: #173A3A;
     --folga: #68C0B5;
+    --liberada: #68C0B5; --liberada-texto: #0B2A27; --liberada-ink: #8FD4CB;
     --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
     --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
     --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
@@ -160,6 +165,7 @@
   --ink: #EEF1F5; --muted: #A5AFBD; --faint: #8C96A4; --line: #343B48; --grid: #2A303B;
   --accent: #68C0B5; --accent-ink: #8FD4CB; --accent-soft: #173A3A;
   --folga: #68C0B5;
+  --liberada: #68C0B5; --liberada-texto: #0B2A27; --liberada-ink: #8FD4CB;
   --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
   --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
   --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
@@ -184,6 +190,7 @@
   --ink: #1F2225; --muted: #5C6166; --faint: #8E9399; --line: #DCDEE1; --grid: #EAEBED;
   --accent: #3A5F8A; --accent-ink: #2C4A6E; --accent-soft: #E3EAF2;
   --folga: #68C0B5;
+  --liberada: #68C0B5; --liberada-texto: #1F2225; --liberada-ink: #1F6F66;
   --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
   --warn: #F2A905; --warn-soft: #FEF3D4; --warn-ink: #7A5600;
@@ -207,6 +214,7 @@
     --ink: #F0F1F2; --muted: #A8ACB1; --faint: #8D9197; --line: #3D4044; --grid: #2F3134;
     --accent: #9DB8DC; --accent-ink: #BACDE8; --accent-soft: #26313F;
     --folga: #68C0B5;
+    --liberada: #68C0B5; --liberada-texto: #1C1D1F; --liberada-ink: #8FD4CB;
     --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
     --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
     --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
@@ -230,6 +238,7 @@
   --ink: #F0F1F2; --muted: #A8ACB1; --faint: #8D9197; --line: #3D4044; --grid: #2F3134;
   --accent: #9DB8DC; --accent-ink: #BACDE8; --accent-soft: #26313F;
   --folga: #68C0B5;
+  --liberada: #68C0B5; --liberada-texto: #1C1D1F; --liberada-ink: #8FD4CB;
   --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
   --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
   --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
@@ -253,6 +262,7 @@
   --ink: #2B2520; --muted: #655A4E; --faint: #978A7B; --line: #E0D6C4; --grid: #ECE4D6;
   --accent: #8A4B1F; --accent-ink: #6E3A16; --accent-soft: #F2E3D3;
   --folga: #4F8F84;
+  --liberada: #3E7A70; --liberada-texto: #FFFDF8; --liberada-ink: #2F6A60;
   --crit: #B3362B; --crit-soft: #F6DFD9; --crit-ink: #8E1F17;
   --ok: #5B8A3A; --ok-soft: #E7EEDC; --ok-ink: #3B5E25;
   --warn: #D99A2B; --warn-soft: #F8EBD0; --warn-ink: #7A4F08;
@@ -276,6 +286,7 @@
     --ink: #F2EBDF; --muted: #B8AD9D; --faint: #9A8F80; --line: #4A433B; --grid: #38322B;
     --accent: #E0B07A; --accent-ink: #ECC898; --accent-soft: #4A3826;
     --folga: #7FB8AC;
+    --liberada: #7FB8AC; --liberada-texto: #24201C; --liberada-ink: #9CCFC4;
     --crit: #F07D6E; --crit-soft: #4A2520; --crit-ink: #F5A79A;
     --ok: #9FCA8A; --ok-soft: #2C3A22; --ok-ink: #B8D9A6;
     --warn: #E8B04F; --warn-soft: #45351A; --warn-ink: #F2CB85;
@@ -299,6 +310,7 @@
   --ink: #F2EBDF; --muted: #B8AD9D; --faint: #9A8F80; --line: #4A433B; --grid: #38322B;
   --accent: #E0B07A; --accent-ink: #ECC898; --accent-soft: #4A3826;
   --folga: #7FB8AC;
+  --liberada: #7FB8AC; --liberada-texto: #24201C; --liberada-ink: #9CCFC4;
   --crit: #F07D6E; --crit-soft: #4A2520; --crit-ink: #F5A79A;
   --ok: #9FCA8A; --ok-soft: #2C3A22; --ok-ink: #B8D9A6;
   --warn: #E8B04F; --warn-soft: #45351A; --warn-ink: #F2CB85;
@@ -322,6 +334,7 @@
   --ink: #000000; --muted: #2B2B2B; --faint: #4D4D4D; --line: #595959; --grid: #A6A6A6;
   --accent: #0000C2; --accent-ink: #0000A0; --accent-soft: #E0E0FF;
   --folga: #00695C;
+  --liberada: #00695C; --liberada-texto: #FFFFFF; --liberada-ink: #00695C;
   --crit: #A80000; --crit-soft: #FFE0E0; --crit-ink: #7A0000;
   --ok: #005A1E; --ok-soft: #DDF2E3; --ok-ink: #004015;
   --warn: #8A4A00; --warn-soft: #FFEBC7; --warn-ink: #5C3000;
@@ -345,6 +358,7 @@
     --ink: #FFFFFF; --muted: #E0E0E0; --faint: #BDBDBD; --line: #9E9E9E; --grid: #5C5C5C;
     --accent: #7FD4FF; --accent-ink: #A8E3FF; --accent-soft: #00334D;
     --folga: #5EE6C8;
+    --liberada: #5EE6C8; --liberada-texto: #000000; --liberada-ink: #5EE6C8;
     --crit: #FF6B6B; --crit-soft: #3D0000; --crit-ink: #FFA3A3;
     --ok: #7EE08A; --ok-soft: #003314; --ok-ink: #A8F0B0;
     --warn: #FFD500; --warn-soft: #3D3300; --warn-ink: #FFE666;
@@ -368,6 +382,7 @@
   --ink: #FFFFFF; --muted: #E0E0E0; --faint: #BDBDBD; --line: #9E9E9E; --grid: #5C5C5C;
   --accent: #7FD4FF; --accent-ink: #A8E3FF; --accent-soft: #00334D;
   --folga: #5EE6C8;
+  --liberada: #5EE6C8; --liberada-texto: #000000; --liberada-ink: #5EE6C8;
   --crit: #FF6B6B; --crit-soft: #3D0000; --crit-ink: #FFA3A3;
   --ok: #7EE08A; --ok-soft: #003314; --ok-ink: #A8F0B0;
   --warn: #FFD500; --warn-soft: #3D3300; --warn-ink: #FFE666;
@@ -488,7 +503,7 @@ a { color: var(--accent-ink); font-weight: 600; }
 /* ---------- ícones (SVG em js/icones.js, coloridos pela cor do texto) ---------- */
 .icone { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
 .icone-concluida { color: var(--ok); }
-.icone-liberada { color: var(--accent); }
+.icone-liberada { color: var(--liberada-ink); }
 .icone-nao-liberada { color: var(--muted); }
 .icone-atrasada { color: var(--crit); }
 
@@ -3475,9 +3490,9 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .rede-no.concluida .rede-cartao { background: var(--sunk); box-shadow: none; }
 .rede-no.concluida .rede-rotulo { color: var(--muted); }
 /* "agora": a ação liberada, que pode ser feita neste momento, ganha contorno e uma pílula com o nome da situação */
-.rede-no.agora .rede-cartao { border-top-color: var(--accent); border-right-color: var(--accent); border-bottom-color: var(--accent); }
+.rede-no.agora .rede-cartao { border-top-color: var(--liberada); border-right-color: var(--liberada); border-bottom-color: var(--liberada); }
 .rede-agora { position: absolute; top: -9px; right: 10px; z-index: 1; max-width: 60%; box-sizing: border-box; padding: 1px 8px; border-radius: 999px;
-  background: var(--accent); color: var(--texto-sobre-destaque); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
+  background: var(--liberada); color: var(--liberada-texto); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
 /* botão de abrir a ação, abaixo do "+", com o mesmo desenho */
 .rede.rede-editavel .rede-no::after { height: 72px; }
@@ -3517,7 +3532,7 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .rede-gestos span { color: var(--muted); }
 /* legenda completa: situação "agora", cadeado, etapa e fim da fase */
 .rede-legenda { max-width: calc(100% - 104px); box-sizing: border-box; }
-.crono-legenda i.rede-leg-agora { box-sizing: border-box; height: 12px; border: 1.5px solid var(--accent); border-radius: 3px; background: var(--surface); }
+.crono-legenda i.rede-leg-agora { box-sizing: border-box; height: 12px; border: 1.5px solid var(--liberada); border-radius: 3px; background: var(--surface); }
 .crono-legenda i.rede-leg-etapa { box-sizing: border-box; height: 12px; border: 1.5px dashed color-mix(in srgb, var(--accent) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .crono-legenda i.rede-leg-fase { width: 0; height: 14px; margin: 0 6px; border-radius: 0; background: none; border-left: 1.5px solid color-mix(in srgb, var(--ink) 45%, transparent); }
 .rede-leg-icone .icone { width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; color: var(--muted); }
@@ -3577,8 +3592,8 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
    estimar", "contínua") e o índice, na barra; menos informação repetida */
 .rede .rede-no .rede-cartao { border-left: 1px solid color-mix(in srgb, var(--ink) 16%, var(--line)); border-image: none; padding-left: 12px; }
 /* liberadas: o alvo a procurar na rede; contorno inteiro e, de longe, fundo e contorno mais fortes */
-.rede .rede-no.agora .rede-cartao { border-color: var(--accent); }
-.rede:not([data-detalhe="completo"]) .rede-no.agora .rede-cartao { border: calc(3px * var(--rede-inv, 1)) solid var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.rede .rede-no.agora .rede-cartao { border-color: var(--liberada); }
+.rede:not([data-detalhe="completo"]) .rede-no.agora .rede-cartao { border: calc(3px * var(--rede-inv, 1)) solid var(--liberada); background: color-mix(in srgb, var(--liberada) 22%, var(--surface)); }
 .rede[data-detalhe="cor"] .rede-no:not(.agora) .rede-cartao { background: var(--surface); }
 .rede[data-detalhe="cor"] .rede-no.concluida .rede-cartao { background: var(--sunk); }
 .crono-legenda i.rede-leg-seta-critica { width: 22px; height: 2px; border-radius: 1px; background: var(--crit); }
