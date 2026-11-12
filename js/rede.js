@@ -40,7 +40,7 @@ import { ehContinua } from "./calculo.js";
 
 /** Medidas padrão do desenho, em pixels. */
 export const MEDIDAS = Object.freeze({
-  largura: 240, altura: 100, vaoX: 64, vaoY: 20, vaoSeta: 14, margem: 16,
+  largura: 240, altura: 116, /* 116 desde 12/11/2026: a barra do indicador entrou na base do cartão */ vaoX: 64, vaoY: 20, vaoSeta: 14, margem: 16,
   trilha: 10, folgaRaia: 18, salto: 4,
   /* cercas e marcos (27/10/2026) */
   cerca: 12, rotuloCerca: 24, folgaCercaTopo: 46, folgaCercaBase: 24, cabecaFase: 4, vaoFase: 48,

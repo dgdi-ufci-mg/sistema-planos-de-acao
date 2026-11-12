@@ -97,7 +97,7 @@ const IMPRESSAO = { nomes: 220, largura: 820, linhas: 18 };
 export function desenharCronograma(alvo, dados) {
   const { espaco, acoes, caminho, cal, hoje, usaFases, identificador, escala, aoMudarEscala,
     retratos = null, comparar = null, base = null, aoComparar = () => {}, edicao = null,
-    exibir = {}, nomesDe = () => [], aoMostrarTodas = () => {}, impressao = false } = dados;
+    exibir = {}, nomesDe = () => [], aoMostrarTodas = () => {}, impressao = false, indicador = null } = dados;
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. O cronograma aparece quando houver ações.</p>`;
     return;
@@ -201,6 +201,7 @@ export function desenharCronograma(alvo, dados) {
       <div class="crono-nome" role="button" tabindex="0" data-abrir-acao>
         ${identificador(a)}<span class="rotulo"${edicao ? ' data-editar="rotulo"' : ""}>${esc(a.rotulo)}</span>
         ${b.atrasada ? `<span class="icone-atrasada" title="Atrasada">${ICONES.atrasada}</span>` : ""}
+        ${indicador && !impressao ? `<span class="crono-ind">${indicador.de(a)}</span>` : ""}
       </div>
       ${base?.has(a.numero) ? `<i class="crono-base" style="left:calc(var(--nomes) + ${x(base.get(a.numero).inicio)}px);width:${Math.max(3, x(somar(base.get(a.numero).fim, 1)) - x(base.get(a.numero).inicio))}px"></i>` : ""}
       <button type="button" class="crono-barra-acao ${classe}${estado}" ${estima ? "data-prazo" : "data-abrir-acao"} data-barra="${a.numero}" data-dica-numero="${a.numero}"
@@ -256,7 +257,7 @@ export function desenharCronograma(alvo, dados) {
                 <defs><marker id="crono-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z"/></marker></defs>
                 ${setas.join("")}
               </svg>`;
-  const topoHtml = (mais) => `<div class="crono-topo"><div class="crono-nome crono-cabeca"><span>Ação</span>${mais}</div><div class="crono-escala" style="width:${largura}px">${marcasTopo.join("")}</div></div>`;
+  const topoHtml = (mais) => `<div class="crono-topo"><div class="crono-nome crono-cabeca"><span>Ação</span>${mais}${indicador && !impressao ? `<span class="crono-ind crono-ind-titulo">${indicador.titulo}</span>` : ""}</div><div class="crono-escala" style="width:${largura}px">${marcasTopo.join("")}</div></div>`;
 
   /* ---------- impressão (11/11/2026): páginas deitadas, cada uma com o cabeçalho das datas e a legenda ---------- */
   if (impressao) {
@@ -306,7 +307,7 @@ export function desenharCronograma(alvo, dados) {
       ${comparacao}
       ${avisoOcultas}
     </div>
-    <div class="crono${edicao ? " editavel" : ""}" style="--altura:${ALTURA}px" tabindex="-1">
+    <div class="crono${edicao ? " editavel" : ""}${indicador ? " com-indicador" : ""}" style="--altura:${ALTURA}px" tabindex="-1">
       <div class="crono-rolagem" data-rolagem>
         <div class="crono-conteudo" style="width:calc(var(--nomes) + ${largura}px)">
           ${topoHtml(usaFases && (espaco.estrutura ?? []).length ? "" : maisHtml("", ""))}

@@ -1043,6 +1043,16 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-rolagem { overflow: auto; overscroll-behavior: contain; border-radius: var(--raio); }
 .crono-conteudo { position: relative; }
 .crono-topo { display: flex; height: 40px; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 4; background: var(--surface); }
+/* indicador numa coluna estreita ao lado dos nomes (12/11/2026): a mesma barra da lista e do quadro; no celular, não */
+.crono.com-indicador { --nomes: 404px; }
+.crono-ind { flex: none; width: 96px; margin-left: auto; display: flex; align-items: center; }
+.crono-ind .medidor { flex: 1; min-width: 0; gap: 5px; }
+.crono-ind .barra-medidor { height: 6px; min-width: 0; }
+.crono-ind .medidor .num { width: 30px; font-size: .72rem; }
+.crono-ind .falta-estimar { font-size: .7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crono-ind-titulo { justify-content: flex-end; padding-right: 2px; }
+.crono-ind-titulo .barra-icone .icone { width: 15px; height: 15px; }
+@media (max-width: 640px) { .crono.com-indicador { --nomes: 132px; } .crono-ind { display: none; } }
 .crono-nome { position: sticky; left: 0; z-index: 3; width: var(--nomes); flex: none; background: var(--surface); border-right: 1px solid var(--line);
   display: flex; align-items: center; gap: 6px; padding: 0 10px; height: 100%; min-width: 0; font-size: .9rem; }
 /* "crono-cabeca", e não "topo": "topo" é a classe da barra do alto da página, e as margens negativas dela deixavam a
@@ -3201,20 +3211,29 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
 .rede-fase-faixa .rede-fase-nome { position: absolute; top: 50%; right: auto; transform: translate(-50%, -50%); font-family: var(--f-titulo); font-size: .8rem; font-weight: 700;
   color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: auto; }
 .rede:not([data-detalhe="completo"]) .rede-fase-faixa .rede-fase-nome { font-size: .8rem; max-width: none; }
-/* cores pelo índice de criticidade (onde há simulação): do cinza ao vermelho, como na lista */
-.rede-no.indice { --cor-indice: color-mix(in oklab, var(--crit) var(--indice, 0%), var(--neutral)); }
-.rede-no.indice .rede-cartao { border-left-color: var(--cor-indice); }
-.rede[data-detalhe="cor"] .rede-no.indice .rede-cartao { background: color-mix(in srgb, var(--cor-indice) 18%, var(--surface)); }
-.rede-seta.grau-0 { stroke: var(--neutral); stroke-width: 1.3; }
-.rede-seta.grau-1 { stroke: color-mix(in oklab, var(--crit) 25%, var(--neutral)); stroke-width: 1.5; }
-.rede-seta.grau-2 { stroke: color-mix(in oklab, var(--crit) 50%, var(--neutral)); stroke-width: 1.7; }
-.rede-seta.grau-3 { stroke: color-mix(in oklab, var(--crit) 75%, var(--neutral)); stroke-width: 1.9; }
-.rede-seta.grau-4 { stroke: var(--crit); stroke-width: 2.1; }
-#rede-ponta-grau-1 path { fill: color-mix(in oklab, var(--crit) 25%, var(--neutral)); }
-#rede-ponta-grau-2 path { fill: color-mix(in oklab, var(--crit) 50%, var(--neutral)); }
-#rede-ponta-grau-3 path { fill: color-mix(in oklab, var(--crit) 75%, var(--neutral)); }
-#rede-ponta-grau-4 path { fill: var(--crit); }
-.crono-legenda i.rede-leg-indice { width: 34px; background: linear-gradient(90deg, var(--neutral), var(--crit)); }
+/* índice de criticidade na Rede (12/11/2026, pedido do responsável): a borda do cartão fica neutra (sem limiar, que
+   criaria uma fronteira que o índice não tem); a barra do indicador, igual à da lista e do quadro, diz o valor; as
+   setas variam de forma contínua num só matiz, o violeta da barra, misturado ao fundo (js/telas/rede.js) */
+.rede-no.indice .rede-cartao { border-left-color: color-mix(in srgb, var(--ink) 22%, var(--line)); }
+.rede-seta.indice { stroke: var(--seta-cor); stroke-width: var(--seta-largura); }
+.crono-legenda i.rede-leg-indice { width: 34px; height: 6px; background: linear-gradient(90deg, color-mix(in oklab, var(--execucao) 30%, var(--rede-fundo)), var(--execucao)); }
+/* barra do indicador no cartão: a mesma da lista e do quadro, na base */
+.rede-indicador { display: flex; align-items: center; gap: 6px; min-width: 0; height: 14px; }
+.rede-indicador:empty { visibility: hidden; }
+.rede-indicador .barra-icone .icone { width: 14px; height: 14px; }
+.rede-indicador .medidor, .rede-indicador .prazo-barra { flex: 1; min-width: 0; gap: 6px; }
+.rede-indicador .barra-medidor, .rede-indicador .prazo-trilho { height: 6px; }
+.rede-indicador .medidor .num, .rede-indicador .prazo-num { width: auto; min-width: 30px; font-size: .72rem; }
+.rede-indicador .falta-estimar { font-size: .72rem; }
+/* de longe, só a barra, mais grossa, para o valor continuar legível na tela */
+.rede:not([data-detalhe="completo"]) .rede-indicador { height: calc(8px * var(--rede-inv, 1)); }
+.rede:not([data-detalhe="completo"]) .rede-indicador :is(.barra-icone, .num, .prazo-num, .falta-estimar) { display: none; }
+.rede:not([data-detalhe="completo"]) .rede-indicador :is(.barra-medidor, .prazo-trilho) { height: calc(6px * var(--rede-inv, 1)); border-radius: 99px; }
+.rede[data-detalhe="cor"] .rede-no.indice .rede-cartao { background: var(--surface); }
+.crono-legenda i.rede-leg-barra { width: 34px; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
+.crono-legenda i.rede-leg-barra b { display: block; height: 100%; border-radius: 3px; }
+.crono-legenda i.rede-leg-barra.execucao b { background: var(--execucao); }
+.crono-legenda i.rede-leg-barra.revisao b { background: var(--laranja); }
 /* botão Arrumar: só aparece quando há o que arrumar */
 .rede-controle.rede-arrumar { width: auto; height: 36px; padding: 0 12px 0 10px; gap: 6px; align-self: flex-end; font: inherit; font-size: .82rem; font-weight: 600; color: var(--accent-ink); border-radius: 999px; }
 .rede-controle.rede-arrumar .icone { width: 18px; height: 18px; }

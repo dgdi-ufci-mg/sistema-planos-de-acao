@@ -447,3 +447,40 @@ describe("Cronograma: responsável, filtros, legenda, setas de borda, teclado, i
     assert.deepEqual(p.erros, []);
   });
 });
+
+describe("Cronograma: indicador ao lado dos nomes (12/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  async function abrir(largura = 1440) {
+    const p = await sessao.abrir({ largura, altura: 860 });
+    await p.click('.menu-topo[data-pop="modo"]');
+    await p.locator('[data-modo="cronograma"]').first().click();
+    await p.waitForSelector(".crono-trilho");
+    await assentar(p, 400);
+    return p;
+  }
+  const escolher = async (p, v) => {
+    if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="indicador"]');
+    await p.locator(`.popover [data-barra="${v}"]`).first().click();
+    await assentar(p, 400);
+  };
+
+  test("o menu Indicador aparece; criticidade e incerteza ganham a coluna; o tempo restante não", async () => {
+    const p = await abrir();
+    assert.equal(await p.locator('.menu-topo[data-pop="indicador"]').count(), 1);
+    await escolher(p, "execucao");
+    assert.ok(await p.locator(".crono.com-indicador").count() === 1);
+    assert.ok(await p.locator(".crono-linha .crono-ind .barra-medidor").count() >= 5, "barra nas ações não concluídas");
+    assert.equal(await p.locator(".crono-cabeca .crono-ind-titulo .barra-icone.execucao").count(), 1);
+    const largura = await p.evaluate(() => getComputedStyle(document.querySelector(".crono")).getPropertyValue("--nomes").trim());
+    assert.equal(largura, "404px");
+    await escolher(p, "revisao");
+    assert.equal(await p.locator(".crono-cabeca .barra-icone.revisao").count(), 1);
+    await escolher(p, "tempo");
+    assert.equal(await p.locator(".crono-ind").count(), 0, "o Gantt já mostra o tempo");
+    assert.equal(await p.locator(".crono.com-indicador").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+});

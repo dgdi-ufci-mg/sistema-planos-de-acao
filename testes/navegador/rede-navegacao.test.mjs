@@ -155,7 +155,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     await clicar(p, '[data-escala="normal"]');
     const cores = await p.evaluate(() => ({
       termino: getComputedStyle(document.querySelector(".rede-ponto.termino")).backgroundColor,
-      critica: getComputedStyle(document.querySelector(".rede-seta.grau-4")).stroke,
+      critica: getComputedStyle([...document.querySelectorAll(".rede-seta.indice")].sort((a, b) => b.dataset.indice - a.dataset.indice)[0]).stroke,
     }));
     assert.notEqual(cores.termino, cores.critica);
     assert.ok(await p.locator(".rede-no.agora .rede-agora").count() >= 1, "pílula nas ações liberadas");
@@ -167,19 +167,56 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
   });
 
   /* ---------- 11/11/2026: fundo branco, fases em faixas, índice de criticidade e acabamento ---------- */
-  test("cores pelo índice de criticidade: cartões do cinza ao vermelho, setas em graus, legenda com a escala", async () => {
+  /* 12/11/2026: borda neutra, barra do indicador no cartão e setas num só matiz, sem cinza e sem graus */
+  test("índice de criticidade: borda neutra, barra do indicador no cartão, setas contínuas num só matiz, legenda", async () => {
     const p = await abrirRede();
     await clicar(p, '[data-escala="normal"]');
-    const nos = await p.locator(".rede-no.indice").evaluateAll((els) => els.map((e) => ({ indice: Number(e.dataset.indice), cor: getComputedStyle(e.querySelector(".rede-cartao")).borderLeftColor })));
-    assert.ok(nos.length >= 5, "ações não concluídas coloridas pelo índice");
+    await p.click('.menu-topo[data-pop="indicador"]');
+    await p.locator('.popover [data-barra="execucao"]').first().click();
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    const nos = await p.locator(".rede-no.indice").evaluateAll((els) => els.map((e) => ({
+      indice: Number(e.dataset.indice), borda: getComputedStyle(e.querySelector(".rede-cartao")).borderLeftColor,
+      barra: e.querySelector(".rede-indicador .barra-medidor i")?.getBoundingClientRect().width ?? 0 })));
+    assert.ok(nos.length >= 5, "ações não concluídas marcadas pelo índice");
     assert.equal(await p.locator(".rede-no.critica, .rede-no.folga").count(), 0, "sem as classes da folga onde há simulação");
+    assert.equal(new Set(nos.map((n) => n.borda)).size, 1, "a borda é a mesma em todos: sem limiar");
     const [menor, maior] = [nos.reduce((a, b) => (b.indice < a.indice ? b : a)), nos.reduce((a, b) => (b.indice > a.indice ? b : a))];
-    assert.ok(maior.indice > menor.indice && maior.cor !== menor.cor, "índices diferentes, cores diferentes");
-    assert.ok(await p.locator(".rede-seta.grau-4").count() >= 1 && await p.locator(".rede-seta.critica").count() === 0);
-    assert.match(await p.locator(".rede-legenda").innerText(), /mais pesa no prazo/);
-    assert.doesNotMatch(await p.locator(".rede-legenda").innerText(), /Sem folga/);
+    assert.ok(maior.indice > menor.indice && maior.barra > menor.barra, "índice maior, barra maior");
+    const setas = await p.locator(".rede-seta.indice").evaluateAll((els) => els.map((e) => ({ v: Number(e.dataset.indice), cor: getComputedStyle(e).stroke, largura: parseFloat(getComputedStyle(e).strokeWidth) })));
+    const [fraca, forte] = [setas.reduce((a, b) => (b.v < a.v ? b : a)), setas.reduce((a, b) => (b.v > a.v ? b : a))];
+    assert.ok(forte.v > fraca.v && forte.cor !== fraca.cor && forte.largura > fraca.largura, "seta mais forte e mais grossa onde o índice é maior");
+    assert.equal(await p.locator(".rede-seta.critica, [class*='grau-']").count(), 0, "sem o vermelho e sem graus");
+    const legenda = await p.locator(".rede-legenda").innerText();
+    assert.match(legenda, /Quanto maior a barra, mais pesa no prazo/);
+    assert.match(legenda, /Quanto mais forte a seta, mais pesa no prazo/);
+    assert.doesNotMatch(legenda, /Sem folga/);
     assert.match(await p.locator(".rede-no.indice .rede-cartao").first().getAttribute("title"), /Índice de criticidade: \d+%/);
     assert.match(await p.locator(".rede-no.indice .rede-data small").first().innerText(), /folga/, "a folga em dias continua no cartão");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("a barra do cartão segue o menu Indicador; de longe, fica só a barra", async () => {
+    const p = await abrirRede();
+    await clicar(p, '[data-escala="normal"]');
+    const escolher = async (v) => {
+      if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="indicador"]');
+      await p.locator(`.popover [data-barra="${v}"]`).first().click();
+      await assentar(p);
+    };
+    await escolher("revisao");
+    assert.ok(await p.locator('.rede-indicador[data-indicador="revisao"] .barra-icone.revisao').count() >= 1);
+    assert.match(await p.locator(".rede-legenda").innerText(), /mais pesa na incerteza do prazo/);
+    await escolher("tempo");
+    assert.ok(await p.locator('.rede-indicador[data-indicador="tempo"] .prazo-barra').count() >= 1, "tempo restante, como na lista");
+    assert.doesNotMatch(await p.locator(".rede-legenda").innerText(), /Quanto maior a barra/);
+    await escolher("execucao");
+    await p.keyboard.press("Escape");
+    for (let i = 0; i < 6; i++) await p.click('[data-zoom-passo="-1"]');
+    await parar(p);
+    const longe = p.locator(".rede-no.indice .rede-indicador").first();
+    assert.ok(await longe.locator(".barra-medidor").isVisible(), "a barra continua de longe");
+    assert.ok(!(await longe.locator(".num").isVisible()), "sem o número de longe");
     assert.deepEqual(p.erros, []);
   });
 
