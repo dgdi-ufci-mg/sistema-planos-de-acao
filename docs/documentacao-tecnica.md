@@ -1205,7 +1205,46 @@ Valores guardados: `automatico`, `claro` ou `escuro`. Como o padrão deixou de s
 | `--texto-sobre-destaque` | `#FFFFFF` / `#062B26` | `#FFFFFF` / `#0B2A27` |
 | Sombras e barra | tingidas de `rgb(22, 63, 58)` / preto | tingidas de `rgb(20, 44, 70)` / preto |
 
-Em aberto: o nome da paleta original; se o UFCIMG vira mesmo o padrão (o responsável vai comparar os dois no ramo de teste); e, depois, os temas Alto contraste, Neutro e Papel, no mesmo molde. A exportação Mermaid (`js/exportar.js`) continua com as cores do original.
+**Temas Neutro, Papel e Alto contraste** (pedido do responsável em 11/11/2026, feitos em 12/11/2026 depois de ele aprovar o UFCIMG; **em teste**, no mesmo ramo): mesmo molde completo do UFCIMG, com as mesmas variáveis e a mesma derivação. Valores de `sextante.paleta`: `neutro`, `papel` e `alto-contraste`. No menu, cada tema aparece numa linha, com uma amostra redonda das suas cores no modo claro (as amostras usam cores fixas de propósito, porque mostram os outros temas, não o atual).
+
+- **Neutro:** cinzas sem matiz, destaque em azul-ardósia; as cores de situação repetem as do UFCIMG, para ninguém reaprender ao trocar de tema.
+- **Papel:** fundos de papel envelhecido e texto sépia, destaque em marrom; situações em tons terrosos (vermelho-tijolo, verde-oliva, ocre), com "com folga" em verde-acinzentado.
+- **Alto contraste:** branco e preto puros; todo texto acima de 7:1 e todo traço de situação acima de 3:1, inclusive "com folga", "quase sem folga" e as bordas. No escuro, o destaque é ciano e "quase sem folga", amarelo.
+- **Contraste:** em todos, os textos passam de 4,5:1, inclusive sobre os fundos suaves. Abaixo disso ficam, como no original e no UFCIMG, só o texto apagado (`--faint`, eixos e legendas menores) e as cores usadas como preenchimento (`--warn`, `--folga` no Neutro).
+
+| Variável | Neutro claro / escuro | Papel claro / escuro | Alto contraste claro / escuro |
+|---|---|---|---|
+| `--bg` | `#F5F5F5` / `#1C1D1F` | `#F6F1E7` / `#24201C` | `#FFFFFF` / `#000000` |
+| `--surface` | `#FFFFFF` / `#27292C` | `#FFFDF8` / `#2F2A25` | `#FFFFFF` / `#000000` |
+| `--sunk` | `#FAFAFA` / `#222326` | `#FBF7EF` / `#29251F` | `#F2F2F2` / `#141414` |
+| `--ink` | `#1F2225` / `#F0F1F2` | `#2B2520` / `#F2EBDF` | `#000000` / `#FFFFFF` |
+| `--muted` | `#5C6166` / `#A8ACB1` | `#655A4E` / `#B8AD9D` | `#2B2B2B` / `#E0E0E0` |
+| `--faint` | `#8E9399` / `#8D9197` | `#978A7B` / `#9A8F80` | `#4D4D4D` / `#BDBDBD` |
+| `--line` | `#DCDEE1` / `#3D4044` | `#E0D6C4` / `#4A433B` | `#595959` / `#9E9E9E` |
+| `--grid` | `#EAEBED` / `#2F3134` | `#ECE4D6` / `#38322B` | `#A6A6A6` / `#5C5C5C` |
+| `--accent` | `#3A5F8A` / `#9DB8DC` | `#8A4B1F` / `#E0B07A` | `#0000C2` / `#7FD4FF` |
+| `--accent-ink` | `#2C4A6E` / `#BACDE8` | `#6E3A16` / `#ECC898` | `#0000A0` / `#A8E3FF` |
+| `--accent-soft` | `#E3EAF2` / `#26313F` | `#F2E3D3` / `#4A3826` | `#E0E0FF` / `#00334D` |
+| `--folga` | `#68C0B5` / `#68C0B5` | `#4F8F84` / `#7FB8AC` | `#00695C` / `#5EE6C8` |
+| `--crit` | `#E3262D` / `#FF4D52` | `#B3362B` / `#F07D6E` | `#A80000` / `#FF6B6B` |
+| `--crit-soft` | `#FCE0DF` / `#3D1A1E` | `#F6DFD9` / `#4A2520` | `#FFE0E0` / `#3D0000` |
+| `--crit-ink` | `#9C1116` / `#FF8A8D` | `#8E1F17` / `#F5A79A` | `#7A0000` / `#FFA3A3` |
+| `--ok` | `#4E9A4D` / `#8FC68E` | `#5B8A3A` / `#9FCA8A` | `#005A1E` / `#7EE08A` |
+| `--ok-soft` | `#E4F1E3` / `#1C3324` | `#E7EEDC` / `#2C3A22` | `#DDF2E3` / `#003314` |
+| `--ok-ink` | `#3B6E3A` / `#A9D6A9` | `#3B5E25` / `#B8D9A6` | `#004015` / `#A8F0B0` |
+| `--warn` | `#F2A905` / `#F2A905` | `#D99A2B` / `#E8B04F` | `#8A4A00` / `#FFD500` |
+| `--warn-soft` | `#FEF3D4` / `#3A2E12` | `#F8EBD0` / `#45351A` | `#FFEBC7` / `#3D3300` |
+| `--warn-ink` | `#7A5600` / `#FFCF5C` | `#7A4F08` / `#F2CB85` | `#5C3000` / `#FFE666` |
+| `--laranja` | `#F47216` / `#F47216` | `#D9661A` / `#F08A3E` | `#B34700` / `#FF9E4D` |
+| `--dourado-claro` | `#FBD36E` / `#FBD36E` | `#EBC57E` / `#EBC57E` | `#8A4A00` / `#FFD500` |
+| `--neutral` | `#B5B8BC` / `#505357` | `#BFB4A3` / `#5E554A` | `#767676` / `#767676` |
+| `--execucao` | `#6D28D9` / `#A78BFA` | `#6B3FA0` / `#B49AE0` | `#5B1FB8` / `#C4A8FF` |
+| `--rede-fundo` | `#FFFFFF` / `#1C1D1F` | `#FFFDF8` / `#24201C` | `#FFFFFF` / `#000000` |
+| `--rede-grade` | `#DCDEE1` / `#3A3D41` | `#E0D6C4` / `#433C34` | `#8C8C8C` / `#4D4D4D` |
+| `--texto-sobre-destaque` | `#FFFFFF` / `#1C1D1F` | `#FFFDF8` / `#24201C` | `#FFFFFF` / `#000000` |
+| Sombras e barra | tingidas de `rgb(31, 34, 37)` / preto | tingidas de `rgb(60, 45, 30)` / preto | preto; borda da barra sólida (`#595959` / `#9E9E9E`) |
+
+Em aberto: o nome da paleta original; se o UFCIMG vira mesmo o padrão (o responsável vai comparar os dois no ramo de teste). A exportação Mermaid (`js/exportar.js`) continua com as cores do original.
 
 **"Configurar este espaço": como surge** (pedido do responsável, 27/10/2026): a partir de 641 px, numa janela no centro da tela, que aparece com um leve aumento e esmaecimento, como a janela da ação (com as seções em abas a partir de 900 px); no celular, sobe de baixo, como as demais janelas, com a alça para puxar e fechar. Antes, a classe da janela entrava depois de o painel começar a deslizar da direita, e o movimento não fazia sentido; o painel agora recebe a classe já na criação (`abrirPainel`, opção `classe`).
 
@@ -2654,4 +2693,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 300 | Rede (pedidos do responsável, 11/11/2026): rolar move a rede e Ctrl + rolar (ou a pinça) dá zoom, igual para mouse e touchpad; zoom com transição suave; inserir só abre espaço e a arrumação completa fica para o botão "Arrumar" e para a abertura da Rede; compactação das etapas; fases em faixas, com o nome numa régua fixa no alto, centralizado na faixa; fundo branco com grade de pontos; cores pelo índice de criticidade onde há simulação, mantendo a folga em dias escrita; caixinha de prazos com a data em que a ação terminaria; caixinhas de um campo só (responsáveis, situação, etapa e data-limite), pelo menu do botão direito ou pelo clique no campo; responsáveis que não cabem viram "+N"; datas na letra do cartão. Seção 8.4, itens xxii a xxxi; decisão na seção 10. *Feito no ramo `claude/rede-arrumar-e-faixas`, sobre as versões 297 a 299.1; junto à `main` em 12/11/2026.* |
 | 301 | Rede e Cronograma com o menu Indicador (pedido do responsável, 12/11/2026; seção 8.4). Na Rede: a barra do indicador escolhido na base do cartão, igual à da lista e do quadro (o cartão passa a 116 px de altura); faixa lateral neutra, sem limiar; setas pelo índice de criticidade num só matiz, o violeta da barra, com cor e espessura contínuas (saem os cinco graus e o cinza); legenda nova. No Cronograma: coluna estreita com a barra ao lado dos nomes, salvo no tempo restante, no celular e na impressão. Em branch própria (`claude/rede-barra-indicador`), para conferência antes da `main`. Sem mudança no banco |
 | 301.1 | Rede, ajustes depois da conferência do responsável (12/11/2026; seção 8.4, item xxxii): setas pelo índice só com o índice de criticidade no menu, uniformes nos demais; tempo restante sempre em dias úteis na Rede (sai a escolha da data prevista nesta visualização); sem a faixa lateral colorida nos cartões; liberadas com contorno inteiro e, de longe, fundo e contorno mais fortes. Sem mudança no banco |
-| 302 | Tema UFCIMG, em teste (pedido do responsável, 11/11/2026; ramo `claude/tema-ufcimg`): paleta à escolha no menu da conta (UFCIMG, padrão, ou Original), separada do modo claro/escuro, com a identidade visual da UFCI-MG no molde completo do tema original (seção 8.0). Strata sem paletas. Sem mudança no banco |
+| 302 | Tema UFCIMG, em teste (pedido do responsável, 11/11/2026; ramo `claude/tema-ufcimg`): paleta à escolha no menu da conta (UFCIMG, padrão, ou Original), separada do modo claro/escuro, com a identidade visual da UFCI-MG no molde completo do tema original (seção 8.0). Strata sem paletas. Sem mudança no banco. Depois da aprovação do UFCIMG (12/11/2026): temas Neutro, Papel e Alto contraste, no mesmo molde |
