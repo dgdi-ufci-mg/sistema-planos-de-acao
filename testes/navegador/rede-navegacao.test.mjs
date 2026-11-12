@@ -287,7 +287,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     await p.waitForSelector(".rede-no");
     await p.keyboard.press("Escape");
     await p.waitForTimeout(600);
-    assert.equal(await p.locator(".rede.editavel").count(), 0, "sem edição no celular");
+    assert.equal(await p.locator(".rede.rede-editavel").count(), 0, "sem edição no celular");
     assert.ok(await zoom(p) >= 50, "abre legível, a partir do início");
     const [controles, barra] = await Promise.all([caixa(p, "[data-rede-controles]"), caixa(p, ".barra-inferior")]);
     assert.ok(controles.y + controles.height <= barra.y, "botões acima da barra de baixo");

@@ -1284,12 +1284,12 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .rede-seta.selecionada { stroke: var(--accent); stroke-width: 2.8; }
 .rede.destacando .rede-seta.selecionada { opacity: 1; }
 .rede:focus { outline: none; }
-.rede.editavel .rede-cartao { cursor: default; }
+.rede.rede-editavel .rede-cartao { cursor: default; }
 .rede-no.selecionada .rede-cartao { box-shadow: 0 0 0 2px var(--accent), var(--sombra); }
 .rede-no.selecionada .rede-cartao:focus-visible { outline: none; }
 .rede .rede-no.alvo-ligacao { opacity: 1; }
 .rede .rede-no.alvo-ligacao .rede-cartao { box-shadow: 0 0 0 3px var(--accent), var(--sombra); transform: translateY(-1px); }
-.rede.editavel .rede-no::after { content: ""; position: absolute; top: -8px; right: -44px; width: 44px; height: 40px; }
+.rede.rede-editavel .rede-no::after { content: ""; position: absolute; top: -8px; right: -44px; width: 44px; height: 40px; }
 .rede-mais, .rede-alca { position: absolute; z-index: 2; opacity: 0; pointer-events: none;
   transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
 .rede-mais { top: -6px; right: -38px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 999px;
@@ -1301,8 +1301,8 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
   border: 2px solid var(--accent); background: var(--surface); cursor: crosshair; touch-action: none; }
 .rede-alca::before { content: ""; position: absolute; inset: -8px; } /* área de toque maior que o desenho */
 .rede-alca:hover { background: var(--accent); transform: scale(1.25); }
-.rede.editavel:not(.ligando) .rede-no:hover :is(.rede-mais, .rede-alca), .rede.editavel .rede-no.selecionada :is(.rede-mais, .rede-alca) { opacity: 1; pointer-events: auto; }
-.rede.editavel:not(.ligando) .rede-no:hover .rede-mais, .rede.editavel .rede-no.selecionada .rede-mais { transform: none; }
+.rede.rede-editavel:not(.ligando) .rede-no:hover :is(.rede-mais, .rede-alca), .rede.rede-editavel .rede-no.selecionada :is(.rede-mais, .rede-alca) { opacity: 1; pointer-events: auto; }
+.rede.rede-editavel:not(.ligando) .rede-no:hover .rede-mais, .rede.rede-editavel .rede-no.selecionada .rede-mais { transform: none; }
 .rede.ligando, .rede.ligando * { cursor: crosshair !important; }
 .rede-ligando { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .rede-ligando path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
@@ -3137,13 +3137,13 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
   background: var(--accent); color: var(--texto-sobre-destaque); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
 /* botão de abrir a ação, abaixo do "+", com o mesmo desenho */
-.rede.editavel .rede-no::after { height: 72px; }
+.rede.rede-editavel .rede-no::after { height: 72px; }
 .rede-abrir { position: absolute; z-index: 2; top: 26px; right: -38px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 999px;
   border: 1px solid var(--line); background: var(--surface); color: var(--accent-ink); box-shadow: var(--relevo); cursor: pointer;
   opacity: 0; pointer-events: none; transform: scale(.85); transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
 .rede-abrir svg { width: 15px; height: 15px; }
 .rede-abrir:hover, .rede-abrir:focus-visible { background: var(--accent); color: var(--surface); border-color: var(--accent); }
-.rede.editavel:not(.ligando) .rede-no:hover .rede-abrir, .rede.editavel .rede-no.selecionada .rede-abrir { opacity: 1; pointer-events: auto; transform: none; }
+.rede.rede-editavel:not(.ligando) .rede-no:hover .rede-abrir, .rede.rede-editavel .rede-no.selecionada .rede-abrir { opacity: 1; pointer-events: auto; transform: none; }
 /* os botões do cartão não encolhem com o zoom (até 1,8 vez no desenho; js/telas/rede.js) */
 .rede-mais { scale: var(--rede-inv, 1); transform-origin: 0 100%; }
 .rede-abrir { scale: var(--rede-inv, 1); transform-origin: 0 0; }
@@ -3255,10 +3255,10 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
 .rede-campo .rede-escolha-opcoes { max-height: min(280px, 46vh); overflow: auto; }
 .rede-campo .rede-escolha-opcoes button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 /* na ação selecionada, os responsáveis e a data abrem a caixinha do campo */
-.rede.editavel .rede-no.selecionada :is(.donos, .rede-data) { cursor: pointer; border-radius: 6px; outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color var(--mov-rapido); }
-.rede.editavel .rede-no.selecionada :is(.donos, .rede-data):hover { outline-color: color-mix(in srgb, var(--accent) 60%, transparent); }
-.rede.editavel .rede-no.selecionada .donos:empty { min-width: 24px; min-height: 22px; }
-.rede.editavel .rede-agora[data-rede-situacao] { cursor: pointer; pointer-events: auto; }
+.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data) { cursor: pointer; border-radius: 6px; outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color var(--mov-rapido); }
+.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data):hover { outline-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.rede.rede-editavel .rede-no.selecionada .donos:empty { min-width: 24px; min-height: 22px; }
+.rede.rede-editavel .rede-agora[data-rede-situacao] { cursor: pointer; pointer-events: auto; }
 /* acabamento: datas na letra do cartão, com algarismos alinhados */
 .rede-data .mono, .rede-ponto-data.mono { font-family: inherit; font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .rede-base .donos { align-items: center; gap: 4px; }
