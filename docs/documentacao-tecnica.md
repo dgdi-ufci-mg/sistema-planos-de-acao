@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 12/11/2026 (versão 301 da página)
+**Última atualização deste documento:** 12/11/2026 (versão 302 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -1210,7 +1210,16 @@ Regra de combinação (`js/busca.js`, com testes): sem maiúsculas e sem acentos
 
 O cartão escolhido pelo teclado mostra o contorno de foco por dentro da borda. O botão "Nova ação" mostra "(tecla N)" ao passar o mouse.
 
-**Barra do topo do espaço, no computador** (três grupos, como no Numbers do Mac; aprovada em 23/10/2026):
+**Barra do topo do espaço, no computador, em duas linhas** (proposta de 12/11/2026, em teste no ramo `claude/barra-em-abas`; substitui, se aprovada, a barra de três grupos aprovada em 23/10/2026, descrita na tabela abaixo, cujo conteúdo continua o mesmo):
+
+- **1ª linha, "o quê"** (54 px): o **nome do espaço**, grande (1,4 rem, negrito), à esquerda, e, à direita, o chip das atrasadas e o botão principal. É igual em todas as visualizações. O nome sai do alto do conteúdo (o título de nível 2 `titulo-conteudo` fica escondido a partir de 641 px).
+- **2ª linha, "como vejo"**: as visualizações em **abas**, à esquerda, com ícone e nome; a atual fica com o texto escuro e um traço de 2 px na cor de destaque embaixo. À vista: Lista, Quadro, Rede, Cronograma e Entregas (as que o espaço tiver, na ordem do menu). As demais (Planilha, Linha do tempo e Responsáveis) ficam em **"Mais"**, que abre um painel; quando a visualização atual é uma delas, "Mais" mostra o ícone e o nome dela e fica marcado. À direita das abas, os menus da visualização atual (Classificar e filtrar, Exibir, Indicador), com os painéis alinhados à direita. Uma linha fina separa a barra do conteúdo.
+- **Espaços de uma visualização só** (Quadro de tarefas, Lista de tarefas): sem abas; a 2ª linha fica só com os menus.
+- **Pouco espaço:** a ordem de encolher passa a ser: o chip das atrasadas só com o número; os menus só com o ícone; as setas dos menus somem; por fim, as **abas não escolhidas** ficam só com o ícone (o nome na dica e para o leitor de tela). A aba atual e "Mais" mantêm o nome. A medida (`ajustarBarra`) compara só controles da mesma linha.
+- **Celular:** nada muda (painel "Filtros e exibição" e barra de baixo).
+- **Fica para uma segunda etapa**, se a proposta for aprovada: trazer para a direita das abas os controles próprios do Cronograma (zoom, Hoje, Ver tudo, Desfazer) e da Rede (botões flutuantes, contínuas), pela regra "tudo o que muda o que eu vejo fica à direita das abas".
+
+Barra de três grupos, aprovada em 23/10/2026 (conteúdo que a barra em duas linhas mantém):
 
 | Grupo | Conteúdo |
 |---|---|
@@ -1787,6 +1796,8 @@ Cada decisão de detalhe está registrada, com a data e o motivo, na seção do 
 ---
 
 - **Barra do topo coerente em todas as visualizações** (decisão do responsável, 12/11/2026, a partir de um julgamento da barra nas oito visualizações): (a) nas visualizações que não filtram, o chip das atrasadas levava a um filtro que a tela não aplicava (nada mudava, e o filtro ficava ligado ao voltar à Lista); passa a levar à Lista já filtrada. (b) Nas Entregas havia dois botões principais, "Nova ação" no topo (que criava ação) e "Nova entrega" na tela, enquanto a tecla N criava entrega; fica um só, "Nova entrega", no topo. Ficam como estão, por decisão no mesmo julgamento: o centro vazio da barra na Linha do tempo, em Responsáveis e nas Entregas (essas telas não têm o que filtrar) e "Nova ação" na Linha do tempo e em Responsáveis (previsibilidade). Fica para outra vez a regra única de onde ficam os controles de exibição (hoje "Esconder as contínuas" está no Exibir do Cronograma e na legenda flutuante da Rede).
+
+- **Barra do topo em duas linhas, com as visualizações em abas** (proposta de 12/11/2026, em teste no ramo `claude/barra-em-abas`, a partir da insatisfação do responsável com a barra): o menu "Visualização" escondia a coisa mais importante da barra (onde estou e o que mais existe), os controles do centro ficavam longe do que controlavam e a barra mudava de forma a cada visualização. A proposta segue o padrão do Asana, do Notion e do Jira: nome do espaço com as ações numa linha; abas com os controles da visualização na outra. A escolha das abas à vista (Lista, Quadro, Rede, Cronograma, Entregas) e a linha de abas também sobre a Rede foram as sugeridas, à espera da confirmação do responsável.
 
 ## 11. Migração dos dados da versão 1
 
@@ -2620,3 +2631,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 299.1 | Visualização "Responsáveis": o cabeçalho da tabela usava a classe `topo`, da barra do alto da página, e herdava dela margens negativas, recuo, posição e fundo. Não havia erro na tela (medido: as semanas ficam sobre as células, porque margens e recuo se anulavam), mas uma mudança na barra do alto poderia mexer nele. Passa a usar `carga-cabeca`, com o mesmo fundo (`--bg`) declarado nele; a tela fica igual (autorizado pelo responsável, 11/11/2026). Teste de navegador: o cabeçalho tem a largura das linhas e não herda margem nem posição |
 | 300 | Rede (pedidos do responsável, 11/11/2026): rolar move a rede e Ctrl + rolar (ou a pinça) dá zoom, igual para mouse e touchpad; zoom com transição suave; inserir só abre espaço e a arrumação completa fica para o botão "Arrumar" e para a abertura da Rede; compactação das etapas; fases em faixas, com o nome numa régua fixa no alto, centralizado na faixa; fundo branco com grade de pontos; cores pelo índice de criticidade onde há simulação, mantendo a folga em dias escrita; caixinha de prazos com a data em que a ação terminaria; caixinhas de um campo só (responsáveis, situação, etapa e data-limite), pelo menu do botão direito ou pelo clique no campo; responsáveis que não cabem viram "+N"; datas na letra do cartão. Seção 8.4, itens xxii a xxxi; decisão na seção 10. *Feito no ramo `claude/rede-arrumar-e-faixas`, sobre as versões 297 a 299.1; junto à `main` em 12/11/2026.* |
 | 301 | Barra do topo (decisão do responsável, 12/11/2026): nas visualizações sem filtro, o chip das atrasadas leva à Lista já filtrada (antes ligava um filtro que a tela não aplicava); nas Entregas, o botão principal do topo é "Nova entrega" e o botão de dentro da tela sai (antes, o do topo criava ação e a tecla N, entrega). Seções 8.0, 8.4 (Entregas) e 10. Testes de navegador em `testes/navegador/barra-do-topo.test.mjs`. *Feito no ramo `claude/barra-do-topo`; o número desta linha se confirma ao juntar à `main`.* |
+| 302 | Barra do topo em duas linhas, com as visualizações em abas e "Mais" (proposta de 12/11/2026): seção 8.0 e decisão na seção 10. Testes de navegador: `testes/navegador/barra-do-topo.test.mjs` (abas, nome na barra, nada sobreposto em 720 e 1.024 px) e o auxiliar `irParaVisualizacao` em `testes/navegador/apoio.mjs`, usado pelos demais testes. *Ramo `claude/barra-em-abas`, sobre o `claude/barra-do-topo`; o número se confirma ao juntar à `main`.* |

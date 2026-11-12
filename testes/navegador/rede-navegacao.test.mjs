@@ -6,7 +6,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Rede: navegação como num mapa", { skip: pular }, () => {
   let sessao;
@@ -15,8 +15,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
 
   const abrirRede = async (o = {}) => {
     const p = await sessao.abrir({ largura: 1440, altura: 860, ...o });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="rede"]').first().click();
+    await irParaVisualizacao(p, "rede");
     await p.waitForSelector(".rede-no");
     await assentar(p);
     return p;

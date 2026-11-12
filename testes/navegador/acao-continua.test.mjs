@@ -5,7 +5,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 const janela = (p) => p.locator(".camada.aberta .painel");
 
@@ -95,8 +95,7 @@ describe("Ação contínua no navegador", { skip: pular }, () => {
     await escolherNoMenu(p, "Tornar ação contínua");
     await p.keyboard.press("Escape");
     await assentar(p);
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-barra-acao");
     await assentar(p);
     const barra = p.locator(".crono-barra-acao.continua");
@@ -119,8 +118,7 @@ describe("Ação contínua no navegador", { skip: pular }, () => {
     }
     await p.keyboard.press("Escape");
     await assentar(p);
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="rede"]').first().click();
+    await irParaVisualizacao(p, "rede");
     await p.waitForSelector(".rede-no");
     await assentar(p);
     assert.equal(await p.locator(".rede-no.continua").count(), 1);

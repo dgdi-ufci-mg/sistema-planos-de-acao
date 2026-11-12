@@ -5,7 +5,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Barra lateral", { skip: pular }, () => {
   let sessao;
@@ -78,8 +78,7 @@ describe("Visualização lembrada", { skip: pular }, () => {
 
   test("o espaço abre na última visualização usada nele, neste aparelho", async () => {
     const p = await sessao.abrir({ largura: 1280 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="quadro"]').first().click();
+    await irParaVisualizacao(p, "quadro");
     await assentar(p);
     /* outro espaço e de volta: continua no Quadro */
     await p.locator(".lateral [data-espaco]").filter({ hasText: "minhas tarefas" }).click();

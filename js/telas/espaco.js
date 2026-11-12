@@ -323,6 +323,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * Seletor de modo: só ícones; o modo ativo mostra também o nome, e os demais o mostram ao
    * passar o mouse (decisão do responsável, 21/10/2026). No celular, sem Cronograma nem Planilha (a Rede, só para consulta, desde 10/11/2026).
    */
+  /** Visualizações em abas à vista na barra do topo (proposta de 12/11/2026); as demais ficam em "Mais". */
+  const ABAS_A_VISTA = ["lista", "quadro", "rede", "cronograma", "entregas"];
   const MODOS = [["lista", "Lista", "modoLista", ""], ["quadro", "Quadro", "modoQuadro", ""],
     ["rede", "Rede", "modoRede", ""], /* no celular, só para consulta (10/11/2026) */
     ["cronograma", "Cronograma", "modoCronograma", ""], /* no celular, só para consulta (11/11/2026) */
@@ -520,8 +522,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       </div>`;
     }
     if (ui.pop === "modo") {
-      return `<div class="popover popover-modo" data-popover role="dialog" aria-label="Visualização">
-        <h3>Visualização</h3><div class="opcoes-lista">${modos().map(([v, nome, icone]) => `<button class="opcao" type="button" data-modo="${v}" aria-pressed="${ui.modo === v}">
+      return `<div class="popover popover-modo" data-popover role="dialog" aria-label="Mais visualizações">
+        <h3>Mais visualizações</h3><div class="opcoes-lista">${modos().filter(([v]) => !ABAS_A_VISTA.includes(v)).map(([v, nome, icone]) => `<button class="opcao" type="button" data-modo="${v}" aria-pressed="${ui.modo === v}">
           <span class="opcao-icone">${ICONES[icone]}</span><span class="opcao-texto">${nome}</span>${ui.modo === v ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`).join("")}</div>
       </div>`;
     }
@@ -593,7 +595,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* teste de 23/10/2026 (pedido do responsável): nome do espaço à esquerda, seguido dos menus
        Visualização, Filtrar, Ordenar e Exibir, todos abrindo para baixo; à direita, as atrasadas e Nova ação.
        No celular, continua o funil com "Filtros e exibição" e a segunda linha */
-    const [, nomeModo] = MODOS.find(([v]) => v === ui.modo);
     if (["filtrar", "ordenar"].includes(ui.pop) || (ui.pop === "classificar" && planilha)) ui.pop = null;
     if ((ui.pop === "indicador" && !comIndicador()) || (ui.pop === "exibir" && !comExibir())) ui.pop = null;
     const atrasadas = linhas.filter((l) => l.atrasada).length;
@@ -604,21 +605,38 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const doCentro = ["classificar", "exibir", "indicador"].includes(ui.pop);
     const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
     if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
+    /* barra em duas linhas, no computador (proposta de 12/11/2026, em teste no ramo claude/barra-em-abas):
+       1ª linha, "o quê": o nome do espaço e, à direita, as atrasadas e o botão principal, iguais em todas as visualizações;
+       2ª linha, "como vejo": as visualizações em abas, à vista, e, à direita delas, os controles da visualização atual.
+       Abas à vista: as de ABAS_A_VISTA que o espaço tiver; as demais ficam em "Mais" (que mostra o nome da atual, se for uma delas) */
+    const todas = modos();
+    const aVista = todas.filter(([v]) => ABAS_A_VISTA.includes(v));
+    const noMais = todas.filter(([v]) => !ABAS_A_VISTA.includes(v));
+    const atualNoMais = noMais.find(([v]) => v === ui.modo);
+    const abasHtml = todas.length < 2 ? "" /* uma visualização só (Quadro e Lista de tarefas): sem abas */ : `
+      <div class="abas-visao" role="group" aria-label="Visualização">
+        ${aVista.map(([v, nome, icone]) => `<button class="aba-visao" type="button" data-modo="${v}" title="${nome}" aria-pressed="${ui.modo === v}"${ui.modo === v ? ' aria-current="page"' : ""}>${ICONES[icone]}<span>${nome}</span></button>`).join("")}
+        ${noMais.length ? `<button class="aba-visao aba-mais" type="button" data-pop="modo" aria-expanded="${ui.pop === "modo"}" aria-haspopup="dialog" aria-pressed="${Boolean(atualNoMais)}"
+          title="${atualNoMais ? `Visualização: ${atualNoMais[1]}` : "Mais visualizações"}">${atualNoMais ? `${ICONES[atualNoMais[2]]}<span>${atualNoMais[1]}</span>` : "<span>Mais</span>"}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>` : ""}
+        ${ui.pop === "modo" ? popoverHtml() : ""}
+      </div>`;
     ferramentas.innerHTML = `
       <div class="topo-esquerda">
         <span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>
-        ${modos().length > 1 ? `<div class="menus-topo so-computador">${menu("modo", ICONES.visualizacao, nomeModo, "", `Visualização: ${nomeModo}`)}</div>` : "" /* uma visualização só (Quadro de tarefas): sem o menu */}
-        ${doCentro ? "" : popoverHtml()}
+        ${!doCentro && ui.pop !== "modo" ? popoverHtml() : ""}
       </div>
-      <div class="topo-centro so-computador">
-        <div class="menus-topo">
-          ${planilha ? "" : menu("classificar", ICONES.funil, "Classificar e filtrar",
-            (ui.ordem !== ordemPadrao() ? '<span class="ponto-menu" title="Ordem diferente da inicial" aria-label="Ordem diferente da inicial"></span>' : "")
-            + (nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : ""))}
-          ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
-          ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
+      <div class="topo-abas so-computador">
+        ${abasHtml}
+        <div class="topo-centro">
+          <div class="menus-topo">
+            ${planilha ? "" : menu("classificar", ICONES.funil, "Classificar e filtrar",
+              (ui.ordem !== ordemPadrao() ? '<span class="ponto-menu" title="Ordem diferente da inicial" aria-label="Ordem diferente da inicial"></span>' : "")
+              + (nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : ""))}
+            ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
+            ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
+          </div>
+          ${doCentro ? popoverHtml() : ""}
         </div>
-        ${doCentro ? popoverHtml() : ""}
       </div>
       <div class="topo-direita">
         ${!atrasadas ? "" : planilha
@@ -654,18 +672,28 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* mede só os controles da barra (nome do espaço, menus, chip e Nova ação), e não os grupos: um menu aberto
        (o painel que desce dele) alargava o grupo e fazia os nomes sumirem (correção de 27/10/2026) */
     const encostam = () => {
-      const els = [...ferramentas.querySelectorAll(".titulo-barra, .menu-topo, .chip-atrasadas, .botao[data-nova]")].filter((el) => el.getBoundingClientRect().width > 2); // o nome escondido (só para leitor de tela) mede 1 px
-      const grupo = (el) => el.closest(".topo-esquerda, .topo-centro, .topo-direita");
-      const r = els.map((el) => ({ g: grupo(el), ...el.getBoundingClientRect().toJSON() })).sort((a, b) => a.left - b.left);
+      const els = [...ferramentas.querySelectorAll(".titulo-barra, .aba-visao, .menu-topo, .chip-atrasadas, .botao[data-nova]")].filter((el) => el.getBoundingClientRect().width > 2); // o nome escondido (só para leitor de tela) mede 1 px
+      const grupo = (el) => el.closest(".abas-visao, .topo-esquerda, .topo-centro, .topo-direita");
+      /* barra em duas linhas (12/11/2026): compara só controles da mesma linha */
+      const rs = els.map((el) => ({ g: grupo(el), ...el.getBoundingClientRect().toJSON() }));
+      const linhas = new Map();
+      for (const r of rs) {
+        const meio = r.top + r.height / 2;
+        const chave = [...linhas.keys()].find((k) => Math.abs(k - meio) < 14) ?? meio;
+        linhas.set(chave, [...(linhas.get(chave) ?? []), r]);
+      }
       /* dentro de um grupo, os menus ficam colados de propósito; entre grupos, pede 8 px de folga; e nunca sobrepor */
-      return r.some((a, i) => i > 0 && (r[i - 1].right > a.left || (r[i - 1].g !== a.g && r[i - 1].right + 8 > a.left)))
+      return [...linhas.values()].some((l) => { const r = [...l].sort((a, b) => a.left - b.left); return r.some((a, i) => i > 0 && (r[i - 1].right > a.left || (r[i - 1].g !== a.g && r[i - 1].right + 8 > a.left))); })
         || els.some((el) => !el.matches(".titulo-barra") && el.scrollWidth > el.clientWidth + 1);
     };
-    topo.classList.remove("barra-curta", "barra-icones", "barra-sem-setas");
+    topo.classList.remove("barra-curta", "barra-icones", "barra-abas-icones", "barra-sem-setas");
     if (!encostam()) return;
     topo.classList.add("barra-curta");
     if (!encostam()) return;
     topo.classList.add("barra-icones");
+    /* barra em duas linhas (12/11/2026): depois dos menus, as abas não escolhidas ficam só com o ícone (o nome na dica) */
+    if (!encostam()) return;
+    topo.classList.add("barra-abas-icones");
     /* último degrau (correção de 27/10/2026): em janelas estreitas, como 700 px, mesmo só com os ícones o menu
        Indicador encostava no chip das atrasadas; as setas dos menus do centro saem (o menu continua abrindo igual) */
     if (encostam()) topo.classList.add("barra-sem-setas");

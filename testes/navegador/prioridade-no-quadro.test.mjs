@@ -6,7 +6,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar, dedo, centro } from "./apoio.mjs";
+import { pular, iniciar, assentar, dedo, centro, irParaVisualizacao } from "./apoio.mjs";
 
 async function abrirQuadro(sessao, opcoes = {}) {
   const p = await sessao.abrir(opcoes);
@@ -278,8 +278,7 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
     await p.click('[data-ordem="prioridade"]');
     await assentar(p);
     assert.ok(await p.locator(".linha .puxador").count() > 0, "na lista, os puxadores aparecem");
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.click('[data-popover] [data-modo="quadro"]');
+    await irParaVisualizacao(p, "quadro");
     await assentar(p);
     assert.equal(await p.locator(".cartao-quadro .puxador").count(), 0, "no quadro não há puxador");
     assert.ok(await p.locator(".cartao-quadro[data-arrasta]").count() > 0, "mas os cartões se arrastam");
