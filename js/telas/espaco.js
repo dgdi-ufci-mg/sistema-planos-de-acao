@@ -621,9 +621,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${doCentro ? popoverHtml() : ""}
       </div>
       <div class="topo-direita">
-        ${atrasadas ? `<button class="chip-atrasadas" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
-          title="${ui.situacao === "atrasada" ? "Mostrar todas as ações" : "Mostrar só as atrasadas"}">${ICONES.atrasada}${atrasadas}<span class="chip-palavra"> ${plural(atrasadas, "atrasada", "atrasadas")}</span></button>` : ""}
-        <button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>
+        ${!atrasadas ? "" : planilha
+          /* nas visualizações sem filtro (12/11/2026, decisão do responsável): o chip leva à Lista já filtrada, em vez de ligar um filtro que a tela não aplica */
+          ? `<button class="chip-atrasadas" type="button" data-atrasadas-na-lista title="Ver as atrasadas na Lista">${ICONES.atrasada}${atrasadas}<span class="chip-palavra"> ${plural(atrasadas, "atrasada", "atrasadas")}</span></button>`
+          : `<button class="chip-atrasadas" type="button" data-filtro="${ui.situacao === "atrasada" ? "todas" : "atrasada"}" aria-pressed="${ui.situacao === "atrasada"}"
+          title="${ui.situacao === "atrasada" ? "Mostrar todas as ações" : "Mostrar só as atrasadas"}">${ICONES.atrasada}${atrasadas}<span class="chip-palavra"> ${plural(atrasadas, "atrasada", "atrasadas")}</span></button>`}
+        ${ui.modo === "entregas"
+          /* nas Entregas, o botão cria entrega (12/11/2026, decisão do responsável), como o (+) do celular e a tecla N; quem não pode criar não o vê */
+          ? (telaEntregas.podeCriar(perm) ? `<button class="botao principal so-computador" type="button" data-nova title="Nova entrega (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova entrega</button>` : "")
+          : `<button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>`}
       </div>`;
     modoDesenhado = ui.modo;
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
@@ -680,7 +686,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const mais = inferior.nova;
     if (!mais) return;
     const entregas = ui.modo === "entregas";
-    mais.hidden = entregas ? !lista?.querySelector("[data-nova-entrega]") : !(store.podeGravar !== false && perm?.criarAcao);
+    mais.hidden = entregas ? !telaEntregas.podeCriar(perm) : !(store.podeGravar !== false && perm?.criarAcao);
     mais.setAttribute("aria-label", entregas ? "Nova entrega" : `Nova ${termos(espaco).acao}`);
   }
   /* barra de baixo do celular (item 7 da avaliação de celular): o (+) e "Filtros" são deste espaço */
@@ -689,7 +695,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     filtros: document.querySelector('.barra-inferior [data-inferior="filtros"]'),
   };
   if (inferior.nova) inferior.nova.onclick = () => {
-    if (ui.modo === "entregas") { lista?.querySelector("[data-nova-entrega]")?.click(); return; }
+    if (ui.modo === "entregas") { telaEntregas.novaEntrega(); return; }
     ui.pop = null;
     desenharFerramentas();
     abrirNova();
@@ -702,13 +708,18 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (pop) { ui.pop = ui.pop === pop.dataset.pop ? null : pop.dataset.pop; return desenharFerramentas({ abriu: Boolean(ui.pop) }); }
     const modo = t.closest("[data-modo]");
     if (modo) { ui.pop = null; return mudarModo(modo.dataset.modo); }
+    /* chip das atrasadas numa visualização sem filtro: vai para a Lista, só com as atrasadas (12/11/2026) */
+    if (t.closest("[data-atrasadas-na-lista]")) { ui.pop = null; ui.situacao = "atrasada"; return mudarModo("lista"); }
     const filtro = t.closest("[data-filtro]");
     if (filtro) return mudar("situacao", filtro.dataset.filtro);
     const ordem = t.closest("[data-ordem]");
     if (ordem) return mudar("ordem", ordem.dataset.ordem);
     if (t.closest("[data-limpar-filtros]")) { ui.responsavel = ""; ui.minhas = false; ui.etiqueta = ""; ui.concluidas = !ehLista(); return mudar("situacao", "todas"); }
     if (t.closest("[data-opcoes]")) return abrirOpcoes();
-    if (t.closest("[data-nova]")) { ui.pop = null; desenharFerramentas(); return abrirNova(); }
+    if (t.closest("[data-nova]")) {
+      ui.pop = null; desenharFerramentas();
+      return ui.modo === "entregas" ? telaEntregas.novaEntrega() : abrirNova();
+    }
     const barra = t.closest("[data-barra]");
     if (barra) return mostrarBarra(barra.dataset.barra);
     const nivel = t.closest("[data-nivel]");
@@ -2123,7 +2134,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (resumoColunas) { ui.colunasAberto = !resumoColunas.parentElement.open; return; }
     if (t.closest("[data-nova]")) {
       /* nas Entregas, o (+) cria uma entrega (25/10/2026, item 5 da avaliação de celular) */
-      if (ui.modo === "entregas") { lista.querySelector("[data-nova-entrega]")?.click(); return; }
+      if (ui.modo === "entregas") { telaEntregas.novaEntrega(); return; }
       return abrirNova();
     }
     /* colunas do quadro (23/10/2026) */
@@ -2625,7 +2636,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   });
   /* atalho "N": nova ação, como o botão "Nova ação" (só onde ele aparece) */
   const tirarTeclaN = registrarTecla("n", () => {
-    if (ui.modo === "entregas") { lista.querySelector("[data-nova-entrega]")?.click(); return; } // nas Entregas, nova entrega
+    if (ui.modo === "entregas") { telaEntregas.novaEntrega(); return; } // nas Entregas, nova entrega
     if (!linhas || store.podeGravar === false || !perm.criarAcao) return;
     ui.pop = null;
     desenharFerramentas();

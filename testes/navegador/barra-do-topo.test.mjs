@@ -72,3 +72,75 @@ describe("Barra do topo no computador", { skip: pular }, () => {
     }
   });
 });
+
+/**
+ * Barra do topo nas visualizações sem filtro (12/11/2026, decisão do responsável; seção 8.0): o chip das atrasadas
+ * leva à Lista já filtrada, em vez de ligar um filtro que a tela não aplica; nas Entregas, o botão principal
+ * é "Nova entrega" (e não há outro dentro da tela).
+ */
+describe("Barra do topo nas visualizações", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  const irPara = async (p, modo) => {
+    await p.click('.menu-topo[data-pop="modo"]');
+    await p.locator(`[data-modo="${modo}"]`).first().click();
+    await assentar(p, 600);
+  };
+
+  for (const modo of ["rede", "cronograma", "planilha", "linha", "responsaveis", "entregas"]) {
+    test(`${modo}: o chip das atrasadas abre a Lista só com as atrasadas`, async () => {
+      const p = await sessao.abrir({ largura: 1366, altura: 760 });
+      await irPara(p, modo);
+      const chip = p.locator(".topo .chip-atrasadas");
+      assert.equal(await chip.count(), 1, "o exemplo tem ações atrasadas");
+      assert.equal(await chip.getAttribute("aria-pressed"), null, "não finge ser um filtro desta tela");
+      assert.equal(await chip.getAttribute("title"), "Ver as atrasadas na Lista");
+      await chip.click();
+      await assentar(p, 600);
+      assert.equal(await p.evaluate(() => document.body.dataset.vistaAtual), "lista");
+      assert.equal(await p.locator(".topo .chip-atrasadas").getAttribute("aria-pressed"), "true");
+      const linhas = p.locator(".linha[data-abrir-acao]");
+      assert.ok(await linhas.count() > 0);
+      assert.deepEqual(p.erros, []);
+    });
+  }
+
+  test("lista: o chip continua ligando e desligando o filtro na própria tela", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    const chip = p.locator(".topo .chip-atrasadas");
+    assert.equal(await chip.getAttribute("aria-pressed"), "false");
+    await chip.click();
+    await assentar(p, 600);
+    assert.equal(await p.locator(".topo .chip-atrasadas").getAttribute("aria-pressed"), "true");
+    await p.locator(".topo .chip-atrasadas").click();
+    await assentar(p, 600);
+    assert.equal(await p.locator(".topo .chip-atrasadas").getAttribute("aria-pressed"), "false");
+  });
+
+  test("entregas: o botão do topo é \"Nova entrega\", único, e abre o cadastro da entrega", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irPara(p, "entregas");
+    await p.waitForSelector(".lista-entregas");
+    const botao = p.locator(".topo .botao[data-nova]");
+    assert.match((await botao.innerText()).trim(), /^Nova entrega$/);
+    assert.equal(await p.locator("main .botao.principal, .lista .botao.principal").count(), 0, "sem segundo botão principal na tela");
+    await botao.click();
+    await assentar(p);
+    assert.equal(await p.locator("[data-form-cadastro]").count(), 1, "abre o cadastro da entrega");
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    await p.keyboard.press("n");
+    await assentar(p);
+    assert.equal(await p.locator("[data-form-cadastro]").count(), 1, "a tecla N faz o mesmo");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("ao sair das Entregas, o botão volta a ser \"Nova ação\"", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irPara(p, "entregas");
+    await irPara(p, "lista");
+    assert.match((await p.locator(".topo .botao[data-nova]").innerText()).trim(), /^Nova ação$/);
+  });
+});
