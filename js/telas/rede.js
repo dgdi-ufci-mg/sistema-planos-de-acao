@@ -186,10 +186,23 @@ function ajustarResponsaveis(raiz) {
 
 /** Raio dos círculos de início e de término (27/10/2026). */
 const RAIO = MEDIDAS.raioPonta;
+/**
+ * Cor da seta pelo índice de criticidade (12/11/2026, pedido do responsável): um só matiz, o violeta da barra do
+ * índice, misturado ao fundo da Rede, sem passar pelo cinza. O piso (30%) deixa visível a seta de índice zero.
+ */
+const corDaSeta = (v) => `color-mix(in oklab, var(--execucao) ${Math.round(30 + 70 * v)}%, var(--rede-fundo))`;
+/** Pontas de seta prontas: a da seta é a mais próxima do índice dela (diferença de até 2,5%, imperceptível). */
+const PONTAS = 20;
+/** Legenda da barra, conforme o indicador escolhido (12/11/2026). */
+const amostra = (classe, largura) => `<i class="rede-leg-barra ${classe}"><b style="width:${largura}%"></b></i>`;
+const legendaDaBarra = {
+  execucao: `<span class="crono-legenda">${amostra("execucao", 70)}Quanto maior a barra, mais pesa no prazo</span>`,
+  revisao: `<span class="crono-legenda">${amostra("revisao", 70)}Quanto maior a barra, mais pesa na incerteza do prazo</span>`,
+};
 
 export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
   inicio = null, termino = null, prazoFinal = null, continuas = false, ocultarContinuas = false, aoOcultarContinuas = () => {}, edicao = null, nomeDaSituacao = () => "", nomeLiberada = "Liberada", toque = false,
-  porCriticidade = false, aoArrumar = () => {} }) {
+  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "" }) {
   /* ações contínuas (seção 5.9; 09/11/2026): caixa como as outras, com ligações tracejadas aos marcos; o filtro as esconde */
   const linhaDaAcao = new Map(linhas.map((l) => [l.acao.numero, l]));
   const temContinuas = continuas && todas.some((a) => linhaDaAcao.get(a.numero)?.continua);
@@ -253,12 +266,15 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     const agora = l.situacao === "liberada";
     const pilula = agora ? nomeDaSituacao(l) : "";
     const dica = `${etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo}${indice != null && l.execucao != null ? `\nÍndice de criticidade: ${indice}%` : ""}`;
-    return `<div class="rede-no ${classe}${agora ? " agora" : ""}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px${indice != null ? `;--indice:${indice}%` : ""}" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}"${indice != null ? ` data-indice="${indice}"` : ""}>
+    /* barra do indicador (12/11/2026, pedido do responsável): a mesma da lista e do quadro, escolhida no menu Indicador */
+    const barraHtml = barra(l);
+    return `<div class="rede-no ${classe}${agora ? " agora" : ""}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}"${indice != null ? ` data-indice="${indice}"` : ""}>
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         title="${esc(dica)}">
         <span class="rede-topo">${situacao(l)}<span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
         <span class="rede-base"><span class="donos">${donos(a)}</span>
           <span class="rede-data${l.atrasada ? " atrasada" : ""}"><span class="mono">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}${data}</span>${folga ? `<small>${folga}</small>` : ""}</span></span>
+        <span class="rede-indicador" data-indicador="${indicador}">${barraHtml.replace(/^<div class="pr">|<\/div>$/g, "")}</span>
       </div>${pilula ? `<span class="rede-agora" aria-hidden="true"${edicao ? ` data-rede-situacao="${a.numero}" title="Mudar a situação"` : ""}>${esc(pilula)}</span>` : ""}${edicao ? `
       <button type="button" class="rede-abrir" data-rede-abrir="${a.numero}" title="Abrir a ${esc(edicao.nomeAcao)} (Enter)" aria-label="Abrir ${esc(a.rotulo)}">${ICONES.expandir}</button>
       ${edicao.podeCriar ? `<button type="button" class="rede-mais" data-rede-mais="${a.numero}" title="Criar a próxima ação, ligada a esta" aria-label="Criar a próxima ação depois de ${esc(a.rotulo)}">${ICONES.mais}</button>` : ""}
@@ -272,15 +288,23 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   const pontosHtml = circulo("inicio", pontas.inicio, "Início", inicio)
     + circulo("termino", pontas.termino, "Término", termino, prazoFinal ? `<span class="rede-ponto-prazo">prazo ${dataBr(prazoFinal)}</span>` : "");
 
-  /* seta pelo índice (11/11/2026): o menor índice entre as duas ações ligadas, em cinco graus (0 a 4); é uma
-     aproximação, porque o índice é calculado por ação, e não por ligação */
+  /* seta pelo índice (11/11/2026): o menor índice entre as duas ações ligadas; é uma aproximação, porque o índice é
+     calculado por ação, e não por ligação. Desde 12/11/2026 (pedido do responsável), sem graus nem cinza: a cor e a
+     espessura variam de forma contínua, num só matiz (o violeta da barra), do claro ao forte */
   const indiceDe = (n) => { const l = linhaDe.get(n); return !l || l.situacao === "concluida" || l.continua || l.semEstimativa ? 0 : l.execucao ?? 0; };
-  const grauDaSeta = (de, para) => Math.round(Math.min(indiceDe(de), indiceDe(para)) * 4);
+  const indiceDaSeta = (de, para) => Math.min(indiceDe(de), indiceDe(para));
+  const setasPeloIndice = porCriticidade && indicador === "execucao";
   const setas = arestas.map(({ de, para, critica, volta, ligacao, pontos, saltos }) => {
     if (ligacao) return `<path class="rede-ligacao" data-de="${de}" data-para="${para}" d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>`;
-    const grau = porCriticidade ? grauDaSeta(de, para) : null;
-    const [classe, ponta] = grau != null ? [` grau-${grau}`, grau ? `-grau-${grau}` : ""] : [critica ? " critica" : "", critica ? "-critica" : ""];
-    return `<path class="rede-seta${classe}${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"
+    /* só com o índice de criticidade no menu Indicador (12/11/2026, pedido do responsável); com os outros, setas
+       uniformes: a contribuição para a incerteza é da ação e o tempo restante, da data, e não da ligação */
+    const v = setasPeloIndice ? indiceDaSeta(de, para) : null;
+    if (v == null && porCriticidade) return `<path class="rede-seta${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"
+      d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>${edicao ? `
+      <path class="rede-seta-alvo" data-seta-de="${de}" data-seta-para="${para}" d="${caminhoDaSeta(pontos, saltos)}"><title>Clique para selecionar; Delete retira a ligação</title></path>` : ""}`;
+    const [classe, ponta] = v != null ? [" indice", `-indice-${Math.round(v * PONTAS)}`] : [critica ? " critica" : "", critica ? "-critica" : ""];
+    const estilo = v != null ? ` style="--seta-cor:${corDaSeta(v)};--seta-largura:${(1.2 + 1.4 * v).toFixed(2)}" data-indice="${Math.round(v * 100)}"` : "";
+    return `<path class="rede-seta${classe}${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"${estilo}
       d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta${ponta})"/>${edicao ? `
       <path class="rede-seta-alvo" data-seta-de="${de}" data-seta-para="${para}" d="${caminhoDaSeta(pontos, saltos)}"><title>Clique para selecionar; Delete retira a ligação</title></path>` : ""}`;
   }).join("")
@@ -336,8 +360,10 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     <ul class="rede-gestos">${gestos.map(([g, r]) => `<li><b>${g}</b><span>${r}</span></li>`).join("")}</ul>`;
   /* Rede em tela cheia, como um mapa (09/11/2026, pedido do responsável): os controles flutuam sobre ela */
   const ajudaAberta = alvo.dataset.redeAjudaAberta === "1";
+  /* a classe da edição é "rede-editavel", não "editavel": a regra genérica `.editavel` (campos de texto) dava à Rede um
+     padding que empurrava o desenho 6 px e o descolava da régua das fases (12/11/2026) */
   alvo.innerHTML = `
-    <div class="rede${edicao ? " editavel" : ""}" data-rede tabindex="-1">
+    <div class="rede${edicao ? " rede-editavel" : ""}" data-rede tabindex="-1">
       <div class="rede-rolagem" data-rede-rolagem>
         <div class="rede-tamanho" data-tamanho>
           <div class="rede-conteudo" data-conteudo style="width:${largura}px;height:${altura}px">
@@ -346,7 +372,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
               <defs>
                 <marker id="rede-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
                 <marker id="rede-ponta-critica" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
-                ${[1, 2, 3, 4].map((g) => `<marker id="rede-ponta-grau-${g}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>`).join("")}
+                ${setasPeloIndice ? Array.from({ length: PONTAS + 1 }, (_, k) => `<marker id="rede-ponta-indice-${k}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:${corDaSeta(k / PONTAS)}"/></marker>`).join("") : ""}
                 <marker id="rede-ponta-continua" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="6" markerHeight="6"><circle cx="4" cy="4" r="3"/></marker>
               </defs>
               ${setas}
@@ -360,10 +386,10 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
       </div>
       ${reguaDasFases}
       <div class="rede-legenda rede-sobre">
-        ${porCriticidade ? `<span class="crono-legenda"><i class="rede-leg-indice"></i>Quanto mais vermelha, mais pesa no prazo <a href="#" class="oque" data-termo="exec">o que é?</a></span>`
-    : `<span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
-        <span class="crono-legenda"><i class="folga"></i>Com folga</span>`}
-        <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
+        ${legendaDaBarra[indicador] ?? ""}
+        ${setasPeloIndice ? `<span class="crono-legenda"><i class="rede-leg-indice"></i>Quanto mais forte a seta, mais pesa no prazo <a href="#" class="oque" data-termo="exec">o que é?</a></span>`
+    : porCriticidade ? "" : `<span class="crono-legenda"><i class="rede-leg-seta-critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>`}
+        <span class="crono-legenda rede-leg-icone">${ICONES.concluida}Concluída</span>
         <span class="crono-legenda"><i class="rede-leg-agora"></i>${esc(nomeLiberada)}: pode ser feita agora</span>
         <span class="crono-legenda rede-leg-icone">${ICONES.naoLiberada}Espera outra ação</span>
         ${cercas.length ? `<span class="crono-legenda"><i class="rede-leg-etapa"></i>Etapa</span>` : ""}
@@ -466,7 +492,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     redeEl.dataset.detalhe = nivel;
     const letra = Math.min(LETRA_MAXIMA, LETRA_NA_TELA / fator);
     redeEl.style.setProperty("--rede-letra", `${letra.toFixed(1)}px`);
-    redeEl.style.setProperty("--rede-linhas", String(Math.max(1, Math.floor((MEDIDAS.altura - 12) / (letra * 1.15)))));
+    redeEl.style.setProperty("--rede-linhas", String(Math.max(1, Math.floor((MEDIDAS.altura - 12 - 8 * Math.min(1.8, Math.max(1, 1 / fator)) - 6) / (letra * 1.15)))));
     /* botões do cartão (abrir, +, bolinha, + da seta) não encolhem junto: até 1,8 vez no desenho */
     redeEl.style.setProperty("--rede-inv", String(Math.min(1.8, Math.max(1, 1 / fator)).toFixed(3)));
     /* responsáveis que não cabem viram "+N" (11/11/2026); medido na primeira vez em que o cartão aparece completo */

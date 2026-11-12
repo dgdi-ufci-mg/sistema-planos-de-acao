@@ -207,7 +207,11 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     await assentar(p);
     const origem = p.locator(".rede-no").first();
     await origem.locator(".rede-cartao").click();
-    await origem.locator(".rede-mais").click();
+    /* "+" com o mouse, onde ele está, como faz a pessoa: o clique do Playwright rola a rede antes de clicar e, com o
+       topo por cima, tenta outras rolagens, o que mudava onde a ação nova nascia (12/11/2026) */
+    await assentar(p);
+    const mais = await centro(origem.locator(".rede-mais"));
+    await p.mouse.click(mais.x, mais.y);
     await p.waitForSelector(".rede [data-editando]");
     await p.keyboard.type("Com prazo");
     await p.keyboard.press("Enter");

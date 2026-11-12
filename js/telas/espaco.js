@@ -561,7 +561,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     desenharFerramentas();
   }
   /* nos tipos de tarefas (Quadro e Lista), sem o menu Indicador: só há o tempo até a data-limite, já no cartão (27/10/2026) */
-  const comIndicador = () => !deTarefas() && (ui.modo === "quadro" || (ui.modo === "lista" && colunas().barras));
+  /* também na Rede e no Cronograma (12/11/2026, pedido do responsável): o mesmo indicador em todas as visualizações */
+  const comIndicador = () => !deTarefas() && (["quadro", "rede", "cronograma"].includes(ui.modo) || (ui.modo === "lista" && colunas().barras));
   const comExibir = () => ["lista", "quadro", "rede", "cronograma", "planilha"].includes(ui.modo);
   const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
@@ -573,7 +574,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     return `
       <h3>Indicador</h3><div class="opcoes-lista">${barras().map(([v, nome, icone]) =>
         opcao("data-barra", v, nome, ui.barra === v, `<span class="barra-icone ${v}">${ICONES[icone]}</span>`)).join("")}</div>
-      ${ui.barra === "tempo" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
+      ${ui.barra === "tempo" && ui.modo !== "rede" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
         opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}`;
   }
   /** Colunas da planilha em "Exibir" (23/10/2026): dados da ação e calculados; a coluna Ação fica sempre. */
@@ -620,7 +621,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const doCentro = ["classificar", "exibir", "indicador"].includes(ui.pop);
     const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
     if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
-    /* barra em duas linhas, no computador (proposta de 12/11/2026, em teste no ramo claude/barra-em-abas):
+    /* barra em duas linhas, no computador (decisão do responsável, 12/11/2026):
        1ª linha, "o quê": o nome do espaço e, à direita, as atrasadas e o botão principal, iguais em todas as visualizações;
        2ª linha, "como vejo": as visualizações em abas, à vista, e, à direita delas, os controles da visualização atual.
        Abas à vista: as de ABAS_A_VISTA que o espaço tiver; as demais ficam em "Mais" (que mostra o nome da atual, se for uma delas) */
@@ -930,7 +931,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const dataDaBarra = (l) => { const n = diasDoPrazo(l); return n == null ? null : n < 0 ? l.vencidaEm : l.conclusao; };
   const comAno = () => linhas.some((l) => { const d = l.situacao !== "concluida" && !l.semEstimativa ? dataDaBarra(l) : null; return d && d.slice(0, 4) !== hoje.slice(0, 4); });
   const dataCurta = (iso, ano) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}${ano ? `/${iso.slice(2, 4)}` : ""}` : "");
-  function prazoHtml(l) {
+  function prazoHtml(l, numero = ui.tempoNumero) {
     const n = diasDoPrazo(l);
     const valores = linhas.map(diasDoPrazo).filter((x) => x != null);
     const min = Math.min(0, ...valores);
@@ -943,16 +944,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       : usaDataLimite(espaco) ? "Data-limite hoje" : "Conclusão prevista para hoje";
     return `<span class="prazo-barra ${n < 0 ? "vencido" : n > 0 ? "faltam" : "zero"}" title="${titulo}" aria-label="${titulo}">
       <span class="prazo-trilho">${min < 0 ? `<i class="prazo-zero" style="left:${zero}%"></i>` : ""}${n ? `<i class="prazo-valor" style="left:${n < 0 ? zero - largura : zero}%;width:${Math.max(1.5, largura)}%"></i>` : ""}</span>
-      ${ui.tempoNumero === "data" ? `<span class="prazo-num data">${dataCurta(n < 0 ? l.vencidaEm : l.conclusao, comAno())}</span>` : `<span class="prazo-num">${n}<small class="prazo-unidade" aria-hidden="true"><span class="unidade-curta">d</span><span class="unidade-longa"> ${plural(Math.abs(n), "dia", "dias")}</span></small></span>`}</span>`;
+      ${numero === "data" ? `<span class="prazo-num data">${dataCurta(n < 0 ? l.vencidaEm : l.conclusao, comAno())}</span>` : `<span class="prazo-num">${n}<small class="prazo-unidade" aria-hidden="true"><span class="unidade-curta">d</span><span class="unidade-longa"> ${plural(Math.abs(n), "dia", "dias")}</span></small></span>`}</span>`;
   }
 
   /** A barra escolhida, com o símbolo à esquerda (22/10/2026). */
-  function barraHtml(l) {
+  function barraHtml(l, { tempoNumero = ui.tempoNumero } = {}) {
     const [, nome, icone] = BARRAS.find(([v]) => v === ui.barra);
     const simbolo = `<span class="barra-icone ${ui.barra}" title="${nome}" aria-hidden="true">${ICONES[icone]}</span>`;
     if (l.situacao === "concluida") return `<div class="pr"></div>`;
     let conteudo;
-    if (ui.barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : diasDoPrazo(l) == null ? "" : prazoHtml(l);
+    if (ui.barra === "tempo") conteudo = l.semEstimativa ? FALTA_ESTIMAR : diasDoPrazo(l) == null ? "" : prazoHtml(l, tempoNumero);
     else if (ui.barra === "revisao") {
       const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
       conteudo = medidor(l.revisao, `Contribuição para a incerteza: responde por ${revisao} da incerteza do prazo final`, "var(--laranja)", revisao);
@@ -1085,6 +1086,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         /* menu "Exibir" (11/11/2026): responsável ao lado da barra, esconder concluídas e contínuas */
         exibir: { responsavel: ui.cronoResponsavel, semConcluidas: ui.cronoSemConcluidas, semContinuas: ui.cronoSemContinuas },
         nomesDe: (a) => a.responsaveis.map((id) => pessoas.get(id)?.nome).filter(Boolean),
+        /* indicador numa coluna estreita ao lado dos nomes (12/11/2026, pedido do responsável); o tempo restante não
+           entra, porque o próprio Gantt já mostra o tempo */
+        indicador: ui.barra === "tempo" ? null : {
+          titulo: `<span class="barra-icone ${ui.barra}" title="${NOMES_BARRA[ui.barra]}">${ICONES[BARRAS.find(([v]) => v === ui.barra)[2]]}</span>`,
+          de: (a) => { const l = linhas.find((x) => x.acao.numero === a.numero); return l ? barraHtml(l).replace(/^<div class="pr">|<\/div>$/g, "") : ""; } },
         aoMostrarTodas: () => { mudarCrono("cronoSemConcluidas", false); mudarCrono("cronoSemContinuas", false); },
         /* edição dentro do Cronograma (10/11/2026, pedido do responsável: facilidade de editar o plano nesta tela);
            no celular, o cronograma é só de consulta (11/11/2026) */
@@ -1110,6 +1116,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         toque: redeNoCelular(),
         /* cores pelo índice de criticidade onde há simulação (11/11/2026); sem ela, pela folga zero */
         porCriticidade: usaSimulacao(espaco),
+        /* barra do indicador escolhido no menu, igual à da lista e do quadro (12/11/2026) */
+        /* na Rede, o tempo restante é sempre em dias úteis: a data já está escrita no cartão (12/11/2026) */
+        indicador: ui.barra, barra: (l) => barraHtml(l, { tempoNumero: "dias" }),
         /* botão "Arrumar" (11/11/2026): redesenha com a arrumação completa */
         aoArrumar: () => desenharLista(),
         edicao: store.podeGravar !== false && !redeNoCelular() ? edicaoDaRede() : null });
