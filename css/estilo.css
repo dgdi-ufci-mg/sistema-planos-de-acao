@@ -11,6 +11,7 @@
   --rede-fundo: #FFFFFF; --rede-grade: #DAD5CC; /* fundo da Rede: branco, com grade de pontos (11/11/2026) */
   --ink: #163F3A; --muted: #5A6864; /* 24/10/2026: um pouco mais escuro, para contraste de 4,5:1 (WCAG 1.4.3) também sobre o verde-claro e o cinza das células travadas */ --faint: #8E9895; --line: #DDD6CC; --grid: #ECE6DD;
   --accent: #00796B; --accent-ink: #00594F; --accent-soft: #D6EEE9;
+  --folga: #00796B; /* ações com folga (barras, faixas); no tema original, igual ao destaque */
   --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
   --warn: #F2B04A; --warn-soft: #FEF1D8; --warn-ink: #8A5E10;
@@ -49,6 +50,7 @@
     --rede-fundo: #0F1A19; --rede-grade: #24403C;
     --ink: #ECF2F0; --muted: #9FB3AE; --faint: #86978F; --line: #2A3F3C; --grid: #1E302D;
     --accent: #2CC4AA; --accent-ink: #5FD8C2; --accent-soft: #103B35;
+    --folga: #2CC4AA;
     --crit: #FF4D52; --crit-soft: #3D1618; --crit-ink: #FF8A8D;
     --ok: #8FC68E; --ok-soft: #1B3320; --ok-ink: #A9D6A9;
     --warn: #FBCA78; --warn-soft: #3A2B12; --warn-ink: #FFD58F;
@@ -78,6 +80,7 @@
   --rede-fundo: #0F1A19; --rede-grade: #24403C;
   --ink: #ECF2F0; --muted: #9FB3AE; --faint: #86978F; --line: #2A3F3C; --grid: #1E302D;
   --accent: #2CC4AA; --accent-ink: #5FD8C2; --accent-soft: #103B35;
+  --folga: #2CC4AA;
   --crit: #FF4D52; --crit-soft: #3D1618; --crit-ink: #FF8A8D;
   --ok: #8FC68E; --ok-soft: #1B3320; --ok-ink: #A9D6A9;
   --warn: #FBCA78; --warn-soft: #3A2B12; --warn-ink: #FFD58F;
@@ -109,7 +112,8 @@
 :root[data-paleta="ufcimg"]:not(.strata) {
   --bg: #F4F6F8; --surface: #FFFFFF; --sunk: #FAFBFC;
   --ink: #142C46; --muted: #55657A; --faint: #8A96A6; --line: #D5DCE4; --grid: #E7EBF0;
-  --accent: #142C46; --accent-ink: #142C46; --accent-soft: #E1E8F0; /* marinho da marca (12/11/2026, pedido do responsável) */
+  --accent: #142C46; --accent-ink: #142C46; --accent-soft: #DDF1EE; /* marinho da marca; fundo suave em verde-água (12/11/2026, pedido do responsável) */
+  --folga: #68C0B5; /* verde-água da marca, separado do marinho dos botões (12/11/2026) */
   --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
   --warn: #F2A905; --warn-soft: #FEF3D4; --warn-ink: #7A5600;
@@ -132,6 +136,7 @@
     --bg: #1B1F27; --surface: #232833; --sunk: #1F242C;
     --ink: #EEF1F5; --muted: #A5AFBD; --faint: #8C96A4; --line: #343B48; --grid: #2A303B;
     --accent: #68C0B5; --accent-ink: #8FD4CB; --accent-soft: #173A3A;
+    --folga: #68C0B5;
     --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
     --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
     --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
@@ -154,6 +159,7 @@
   --bg: #1B1F27; --surface: #232833; --sunk: #1F242C;
   --ink: #EEF1F5; --muted: #A5AFBD; --faint: #8C96A4; --line: #343B48; --grid: #2A303B;
   --accent: #68C0B5; --accent-ink: #8FD4CB; --accent-soft: #173A3A;
+  --folga: #68C0B5;
   --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
   --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
   --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
@@ -1115,7 +1121,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-legenda { display: inline-flex; align-items: center; gap: 6px; }
 .crono-legenda i { width: 18px; height: 8px; border-radius: 3px; display: inline-block; }
 .crono-legenda i.critica, .crono-barra-acao.critica { background: var(--crit); }
-.crono-legenda i.folga, .crono-barra-acao.folga { background: var(--accent); }
+.crono-legenda i.folga, .crono-barra-acao.folga { background: var(--folga); }
 .crono-legenda i.concluida, .crono-barra-acao.concluida { background: var(--ok); }
 .crono { --nomes: 300px; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
 .crono-rolagem { overflow: auto; overscroll-behavior: contain; border-radius: var(--raio); }
@@ -1197,7 +1203,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-mais[disabled] { opacity: .4; cursor: default; }
 /* andamento e atraso na barra: a que ainda espera fica mais clara, com o contorno na cor; a atrasada, listrada e contornada */
 .crono-barra-acao.critica, .crono-legenda i.critica { --cor: var(--crit); }
-.crono-barra-acao.folga, .crono-legenda i.folga { --cor: var(--accent); }
+.crono-barra-acao.folga, .crono-legenda i.folga { --cor: var(--folga); }
 .crono-barra-acao.aguardando, .crono-legenda i.aguardando { background: color-mix(in srgb, var(--cor) 30%, var(--surface)); box-shadow: inset 0 0 0 1.5px var(--cor); }
 .crono-barra-acao.atrasada, .crono-legenda i.atrasada { background-image: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--surface) 60%, transparent) 4px 7px); outline: 2px solid var(--crit-ink); outline-offset: 1px; }
 .crono-legenda i.atrasada { outline-width: 1.5px; }
@@ -1322,7 +1328,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .rede-no { position: absolute; transition: opacity var(--mov-rapido) var(--mov-curva); }
 /* cartões no padrão do quadro (22/10/2026); a borda esquerda continua dizendo se há folga */
 .rede-cartao { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; padding: 9px 12px 9px 13px;
-  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; box-shadow: var(--relevo); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--folga); border-radius: 10px; box-shadow: var(--relevo); cursor: pointer;
   transition: box-shadow .18s, transform .18s; }
 .rede-no.critica .rede-cartao { border-left-color: var(--crit); }
 .rede-no.concluida .rede-cartao { border-left-color: var(--ok); }
@@ -3182,7 +3188,7 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .carga-cel.n3 { background: color-mix(in srgb, var(--accent) 48%, var(--surface)); }
 .carga-cel.n4 { background: var(--accent); color: var(--surface); }
 .carga-cel.pico { font-weight: 700; }
-.carga-barra { position: absolute; top: 9px; height: 16px; border: 0; border-radius: 4px; padding: 0; cursor: pointer; background: var(--accent); }
+.carga-barra { position: absolute; top: 9px; height: 16px; border: 0; border-radius: 4px; padding: 0; cursor: pointer; background: var(--folga); }
 .carga-barra.critica { background: var(--crit); }
 .carga-barra.antes { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .carga-barra.sem-estimativa { background: transparent; border: 2px dashed var(--warn); }
@@ -3239,7 +3245,7 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .rede:not([data-detalhe="completo"]) .rede-ponto-data { font-size: 12.5px; }
 .rede:not([data-detalhe="completo"]) .rede-ponto-prazo { font-size: min(var(--rede-letra, 1rem), 20px); }
 .rede:not([data-detalhe="completo"]) .rede-no.agora .rede-cartao { border-top-width: 3px; border-right-width: 3px; border-bottom-width: 3px; }
-.rede[data-detalhe="cor"] .rede-cartao { border-left-width: 10px; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.rede[data-detalhe="cor"] .rede-cartao { border-left-width: 10px; background: color-mix(in srgb, var(--folga) 16%, var(--surface)); }
 .rede[data-detalhe="cor"] .rede-no.critica .rede-cartao { background: color-mix(in srgb, var(--crit) 16%, var(--surface)); }
 .rede[data-detalhe="cor"] .rede-no.concluida .rede-cartao { background: var(--sunk); }
 .rede[data-detalhe="cor"] .rede-no.sem-estimativa .rede-cartao { background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
