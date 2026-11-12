@@ -79,4 +79,48 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
     assert.equal(await p.locator('.painel [data-barra="nenhum"]').getAttribute("aria-pressed"), "true");
     assert.deepEqual(p.erros, []);
   });
+
+  /* ---------- organização do Exibir e legenda (12/11/2026) ---------- */
+  test("Exibir da Lista: indicador no alto, escolhas curtas lado a lado e sem a caixa travada; cabe sem rolar", async () => {
+    const p = await sessao.abrir({ largura: 1280, altura: 900 });
+    await p.click('.menu-topo[data-pop="exibir"]');
+    await assentar(p, 300);
+    const titulos = await p.locator(".popover h3").allInnerTexts();
+    assert.deepEqual(titulos.map((t) => t.toLowerCase()), ["indicador", "colunas", "identificador antes do nome", "mostrar até", "ajuda na tela"]);
+    assert.equal(await p.locator(".popover .segmentos [data-identificador-op]").count() >= 2, true);
+    assert.equal(await p.locator(".popover .segmentos [data-nivel]").count(), 3);
+    assert.equal(await p.locator(".popover .segmentos.recuo [data-tempo-num]").count(), 2, "dias ou data logo abaixo de Tempo restante");
+    assert.equal(await p.locator(".popover label.fixa").count(), 0, "sem Nome e situação");
+    const pop = await p.locator(".popover").evaluate((e) => ({ rola: e.scrollHeight > e.clientHeight + 1 }));
+    assert.equal(pop.rola, false, "o menu cabe sem rolar");
+    /* os botões lado a lado funcionam como as opções em lista */
+    await p.locator('.popover [data-nivel="fases"]').click();
+    await assentar(p, 400);
+    assert.equal(await p.locator('.popover [data-nivel="fases"]').getAttribute("aria-pressed"), "true");
+    await p.locator('.popover [data-tempo-num="data"]').click();
+    await assentar(p, 300);
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.tempoNumero")), "data");
+    await escolher(p, "execucao");
+    assert.equal(await p.locator(".popover [data-tempo-num]").count(), 0, "dias ou data só com o tempo restante");
+    assert.deepEqual(p.erros, []);
+  });
+
+  for (const [modo, seletor] of [["rede", ".rede-legenda"], ["cronograma", ".crono + .crono-legendas"]]) {
+    test(`${modo}: "Legenda dos símbolos" liga e desliga a legenda própria, ligada de início`, async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800 });
+      await irPara(p, modo);
+      assert.ok(await p.locator(seletor).isVisible(), "começa ligada");
+      await p.click('.menu-topo[data-pop="exibir"]');
+      assert.equal(await p.locator(".popover [data-legenda-op]").getAttribute("aria-pressed"), "true");
+      await p.locator(".popover [data-legenda-op]").click();
+      await assentar(p, 400);
+      assert.equal(await p.locator(seletor).isVisible().catch(() => false), false, "desligada");
+      assert.equal(await p.locator("[data-legenda]").isVisible(), false, "e sem a legenda geral");
+      if (!(await p.locator(".popover [data-legenda-op]").isVisible())) await p.click('.menu-topo[data-pop="exibir"]');
+      await p.locator(".popover [data-legenda-op]").click();
+      await assentar(p, 400);
+      assert.ok(await p.locator(seletor).isVisible(), "ligada de novo");
+      assert.deepEqual(p.erros, []);
+    });
+  }
 });

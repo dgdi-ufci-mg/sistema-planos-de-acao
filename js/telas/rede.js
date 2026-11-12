@@ -202,7 +202,7 @@ const legendaDaBarra = {
 
 export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
   inicio = null, termino = null, prazoFinal = null, continuas = false, ocultarContinuas = false, aoOcultarContinuas = () => {}, edicao = null, nomeDaSituacao = () => "", nomeLiberada = "Liberada", toque = false,
-  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "" }) {
+  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "", legenda = true }) {
   /* ações contínuas (seção 5.9; 09/11/2026): caixa como as outras, com ligações tracejadas aos marcos; o filtro as esconde */
   const linhaDaAcao = new Map(linhas.map((l) => [l.acao.numero, l]));
   const temContinuas = continuas && todas.some((a) => linhaDaAcao.get(a.numero)?.continua);
@@ -383,7 +383,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
         </div>
       </div>
       ${reguaDasFases}
-      <div class="rede-legenda rede-sobre">
+      <div class="rede-legenda rede-sobre"${legenda || temContinuas ? "" : " hidden"}>${legenda ? `
         ${legendaDaBarra[indicador] ?? ""}
         ${setasPeloIndice ? `<span class="crono-legenda"><i class="rede-leg-indice"></i>Quanto mais forte a seta, mais pesa no prazo <a href="#" class="oque" data-termo="exec">o que é?</a></span>`
     : porCriticidade ? "" : `<span class="crono-legenda"><i class="rede-leg-seta-critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>`}
@@ -392,7 +392,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
         <span class="crono-legenda rede-leg-icone">${ICONES.naoLiberada}Espera outra ação</span>
         ${cercas.length ? `<span class="crono-legenda"><i class="rede-leg-etapa"></i>Etapa</span>` : ""}
         ${fases.length ? `<span class="crono-legenda"><i class="rede-leg-fase"></i>Fim da fase</span>` : ""}
-        ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
+        ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}` : "" /* legenda desligada em Exibir (12/11/2026): fica só o botão das contínuas */}
         ${temContinuas ? `<button type="button" class="rede-legenda-botao" data-ocultar-continuas aria-pressed="${ocultarContinuas}">${ocultarContinuas ? "Mostrar ações contínuas" : "Ocultar ações contínuas"}</button>` : ""}
       </div>
       <div class="rede-ajuda rede-sobre" data-rede-ajuda-cartao${ajudaAberta ? "" : " hidden"}>
@@ -438,7 +438,8 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
       const r = el.getBoundingClientRect();
       if (r.height) topo = Math.max(topo, r.bottom - v.top);
     }
-    const legenda = alvo.querySelector(".rede-legenda").getBoundingClientRect();
+    const caixaLegenda = alvo.querySelector(".rede-legenda");
+    const legenda = caixaLegenda.hidden ? { top: v.bottom } : caixaLegenda.getBoundingClientRect();
     const controles = alvo.querySelector("[data-rede-controles]").getBoundingClientRect();
     const folga = 24;
     /* a régua das fases fica logo abaixo do título e conta como área ocupada */

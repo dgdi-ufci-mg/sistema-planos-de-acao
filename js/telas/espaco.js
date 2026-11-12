@@ -97,6 +97,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     cronoResponsavel: lembrado("sextante.cronoResponsavel", "1") === "1",
     cronoSemConcluidas: lembrado("sextante.cronoSemConcluidas", "0") === "1",
     cronoSemContinuas: lembrado("sextante.cronoSemContinuas", "0") === "1",
+    /** legenda própria da Rede e do Cronograma, ligada de início (12/11/2026) */
+    legendaPropria: true,
     /** cronograma, indicador ao lado dos nomes (12/11/2026, pedido do responsável), escolhido em "Exibir" e lembrado no
         aparelho: "nenhum", "execucao" ou "revisao"; independente da barra das outras visualizações */
     cronoIndicador: lembrado("sextante.cronoIndicador", "nenhum"),
@@ -566,12 +568,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const comExibir = () => ["lista", "quadro", "rede", "cronograma", "planilha"].includes(ui.modo);
   const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
+  /**
+   * Escolha curta numa linha só de botões lado a lado (12/11/2026, pedido do responsável: o menu Exibir ficou comprido).
+   * Os botões levam o mesmo atributo das opções em lista, e os mesmos tratadores valem para os dois.
+   */
+  const segmentos = (atributo, opcoes, atual, rotulo, classe = "") => `<div class="segmentos${classe ? ` ${classe}` : ""}" role="group" aria-label="${rotulo}">${opcoes.map(([v, nome]) =>
+    `<button type="button" ${atributo}="${v}" aria-pressed="${atual === v}">${nome}</button>`).join("")}</div>`;
+  /* "Dias úteis | Data prevista" logo abaixo de "Tempo restante", só quando ele está escolhido e fora da Rede (12/11/2026) */
   function indicadorConteudo() {
     return `
       <h3>Indicador</h3><div class="opcoes-lista">${barras().map(([v, nome, icone]) =>
-        opcao("data-barra", v, nome, ui.barra === v, icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : "")).join("")}</div>
-      ${ui.barra === "tempo" && ui.modo !== "rede" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
-        opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}`;
+        opcao("data-barra", v, nome, ui.barra === v, icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : "")
+        + (v === "tempo" && ui.barra === "tempo" && ui.modo !== "rede"
+          ? segmentos("data-tempo-num", [["dias", "Dias úteis"], ["data", "Data prevista"]], ui.tempoNumero, "Ao lado da barra de tempo", "recuo") : "")).join("")}</div>`;
   }
   /** Colunas da planilha em "Exibir" (23/10/2026): dados da ação e calculados; a coluna Ação fica sempre. */
   function colunasDaPlanilhaHtml() {
@@ -590,26 +599,39 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (painelOpcoes?.isConnected) preencherOpcoes();
     desenharLista();
   }
+  /**
+   * Legenda dos símbolos (12/11/2026): na Rede e no Cronograma, a opção liga e desliga a legenda própria de cada um
+   * (ligada de início, como era); nas outras visualizações, a legenda geral, acima da lista (desligada de início).
+   */
+  const comLegendaPropria = () => ["rede", "cronograma"].includes(ui.modo);
+  const legendaLigada = () => (comLegendaPropria() ? ui.legendaPropria : ui.legenda);
+  function alternarLegenda() {
+    if (comLegendaPropria()) { ui.legendaPropria = !ui.legendaPropria; desenharFerramentas(); desenharLista(); return; }
+    ui.legenda = !ui.legenda;
+    desenharFerramentas();
+  }
   function exibirHtml() {
     return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Exibir">${exibirConteudo()}</div>`;
   }
   function exibirConteudo() {
     const nivel = agrupado() && lista ? nivelAtual() : null;
+    /* ordem (12/11/2026, pedido do responsável): o mais usado no alto (indicador e colunas); escolhas curtas numa linha só;
+       sai a caixa travada "Nome e situação", que não podia ser mudada */
+    const colunasLista = OPCOES_COLUNAS.filter(([v]) => v !== "descricao" || (usaDescricao() && !ehLista()));
     return `
-      ${agrupado() ? `<h3>Mostrar até</h3><div class="opcoes-lista">${NIVEIS.map(([v, nome]) => opcao("data-nivel", v, nome, nivel === v)).join("")}</div>` : ""}
-      ${ui.modo === "planilha" ? colunasDaPlanilhaHtml() : `<h3>Identificador antes do nome</h3><div class="opcoes-lista">${OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos)
-        .map(([v, nome]) => opcao("data-identificador-op", v, nome, identificador() === v)).join("")}</div>`}
-      ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
-        <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
-        ${OPCOES_COLUNAS.filter(([v]) => (v !== "descricao" || (usaDescricao() && !ehLista())) && (v !== "barras" || !ehLista())).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
       ${comIndicador() ? indicadorConteudo() : ""}
       ${ui.modo === "cronograma" && !deTarefas() && usaSimulacao(espaco) ? `<h3>Indicador</h3><div class="opcoes-lista">${INDICADORES_CRONO.map(([v, nome, icone]) =>
         opcao("data-crono-ind", v, nome, ui.cronoIndicador === v, icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : "")).join("")}</div>` : ""}
+      ${ui.modo === "lista" && colunasLista.length ? `<h3>Colunas</h3><div class="colunas-escolha">
+        ${colunasLista.map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
+      ${ui.modo === "planilha" ? colunasDaPlanilhaHtml() : `<h3>Identificador antes do nome</h3>${segmentos("data-identificador-op",
+        OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos).map(([v, nome]) => [v, v === "numero" ? "Número" : nome]), identificador(), "Identificador antes do nome")}`}
+      ${agrupado() ? `<h3>Mostrar até</h3>${segmentos("data-nivel", NIVEIS, nivel, "Mostrar até")}` : ""}
       ${ui.modo === "cronograma" ? `<h3>No cronograma</h3><div class="opcoes-lista">
         ${opcao("data-crono-op", "cronoResponsavel", "Responsável ao lado da barra", ui.cronoResponsavel, ICONES.pessoa)}
         ${opcao("data-crono-op", "cronoSemConcluidas", "Esconder as concluídas", ui.cronoSemConcluidas, ICONES.concluida)}
         ${usaContinuas(espaco) && acoes.some((a) => caminho.porAcao.get(a.numero)?.continua) ? opcao("data-crono-op", "cronoSemContinuas", "Esconder as contínuas", ui.cronoSemContinuas, ICONES.olho) : ""}</div>` : ""}
-      ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${opcao("data-legenda-op", "1", "Legenda dos símbolos", ui.legenda, ICONES.legenda)}</div>`}`;
+      ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${opcao("data-legenda-op", "1", "Legenda dos símbolos", legendaLigada(), ICONES.legenda)}</div>`}`;
   }
 
   /** Ferramentas na barra do topo: modo, Filtrar, Ordenar e Nova ação (celular: "Filtros e exibição"). */
@@ -657,7 +679,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ajustarMais();
     const contador = inferior.filtros?.querySelector(".contador");
     if (contador) { contador.textContent = ativos() || ""; contador.hidden = !ativos(); }
-    legenda.hidden = !ui.legenda || planilha;
+    /* a legenda geral não vale na planilha, e a Rede e o Cronograma têm a sua (12/11/2026: antes, a regra das telas
+       sem filtros a escondia também ali, e a opção de Exibir não fazia nada) */
+    legenda.hidden = !ui.legenda || ["planilha", "rede", "cronograma"].includes(ui.modo);
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
 
@@ -742,7 +766,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (tempoNum) return mudarTempoNumero(tempoNum.dataset.tempoNum);
     const id = t.closest("[data-identificador-op]");
     if (id) return mudarIdentificador(id.dataset.identificadorOp);
-    if (t.closest("[data-legenda-op]")) { ui.legenda = !ui.legenda; return desenharFerramentas(); }
+    if (t.closest("[data-legenda-op]")) return alternarLegenda();
     const crono = t.closest("[data-crono-op]");
     if (crono) return mudarCrono(crono.dataset.cronoOp);
     const cronoInd = t.closest("[data-crono-ind]");
@@ -1036,7 +1060,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         },
         retratos: ui.retratos, comparar: ui.comparar, base: ui.base, aoComparar: compararCom,
         /* menu "Exibir" (11/11/2026): responsável ao lado da barra, esconder concluídas e contínuas */
-        exibir: { responsavel: ui.cronoResponsavel, semConcluidas: ui.cronoSemConcluidas, semContinuas: ui.cronoSemContinuas },
+        exibir: { responsavel: ui.cronoResponsavel, semConcluidas: ui.cronoSemConcluidas, semContinuas: ui.cronoSemContinuas, legenda: ui.legendaPropria },
         nomesDe: (a) => a.responsaveis.map((id) => pessoas.get(id)?.nome).filter(Boolean),
         /* indicador numa coluna estreita ao lado dos nomes (12/11/2026, pedido do responsável), escolhido em "Exibir":
            nenhum, o índice de criticidade ou a contribuição para a incerteza; o tempo restante não entra, porque o
@@ -1074,7 +1098,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         porCriticidade: usaSimulacao(espaco),
         /* barra do indicador escolhido no menu, igual à da lista e do quadro (12/11/2026) */
         /* na Rede, o tempo restante é sempre em dias úteis: a data já está escrita no cartão (12/11/2026) */
-        indicador: ui.barra, barra: (l) => barraHtml(l, { tempoNumero: "dias" }),
+        indicador: ui.barra, barra: (l) => barraHtml(l, { tempoNumero: "dias" }), legenda: ui.legendaPropria,
         /* botão "Arrumar" (11/11/2026): redesenha com a arrumação completa */
         aoArrumar: () => desenharLista(),
         edicao: store.podeGravar !== false && !redeNoCelular() ? edicaoDaRede() : null });
@@ -2106,7 +2130,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       else if (b.dataset.nivel) mostrarAte(b.dataset.nivel);
       else if (b.dataset.tempoNum) mudarTempoNumero(b.dataset.tempoNum);
       else if (b.dataset.identificadorOp) mudarIdentificador(b.dataset.identificadorOp);
-      else if (b.dataset.legendaOp != null) { ui.legenda = !ui.legenda; desenharFerramentas(); }
+      else if (b.dataset.legendaOp != null) alternarLegenda();
       else if (b.dataset.cronoOp) return mudarCrono(b.dataset.cronoOp);
       else if (b.dataset.cronoInd) return mudarCronoIndicador(b.dataset.cronoInd);
       else return;
@@ -2680,7 +2704,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ...modos().filter(([v, , , classe]) => v !== ui.modo && !(classe === "so-computador" && matchMedia("(max-width: 899px)").matches))
         .map(([v, nome, icone]) => ({ titulo: `Ver como ${nome.toLowerCase()}`, icone, palavras: "visualizacao exibir", executar: () => mudarModo(v) })),
       ...(linhas.some((l) => l.atrasada) && ui.situacao !== "atrasada" && !semFiltros() ? [{ titulo: `Mostrar só as ${t.acoes} atrasadas`, icone: "atrasada", palavras: "filtrar", executar: () => mudar("situacao", "atrasada") }] : []),
-      ...(ui.modo !== "planilha" && ui.modo !== "entregas" ? [{ titulo: ui.legenda ? "Esconder a legenda dos símbolos" : "Mostrar a legenda dos símbolos", icone: "legenda", palavras: "ajuda simbolos", executar: () => { ui.legenda = !ui.legenda; desenharFerramentas(); } }] : []),
+      ...(ui.modo !== "planilha" && ui.modo !== "entregas" ? [{ titulo: legendaLigada() ? "Esconder a legenda dos símbolos" : "Mostrar a legenda dos símbolos", icone: "legenda", palavras: "ajuda simbolos", executar: alternarLegenda }] : []),
     ].map((c) => ({ ...c, grupo: "Neste espaço" }));
     const itens = linhas.map((l) => {
       const a = l.acao;
