@@ -10,16 +10,20 @@
  *
  * Paleta (em teste desde 11/11/2026, pedido do responsável): além do modo (claro, escuro ou automático), o Sextante
  * tem a escolha da paleta, guardada à parte ("sextante.paleta") e aplicada pelo atributo data-paleta na raiz:
- * "ufcimg", a identidade visual da UFCI-MG (padrão), ou "original", a paleta verde-azulada de sempre. O Strata não
+ * "ufcimg", a identidade visual da UFCI-MG (padrão), "original", a paleta verde-azulada de sempre, ou, desde
+ * 12/11/2026, "neutro", "papel" e "alto-contraste". O Strata não
  * recebe as paletas por enquanto. A cor da barra do navegador acompanha a paleta e o modo.
  */
 export const TEMAS = Object.freeze([["automatico", "Automático"], ["claro", "Claro"], ["escuro", "Escuro"]]);
 
 /** Paletas do Sextante: valor e nome no menu. Os nomes são provisórios. */
-export const PALETAS = Object.freeze([["ufcimg", "UFCIMG"], ["original", "Original"]]);
+export const PALETAS = Object.freeze([["ufcimg", "UFCIMG"], ["original", "Original"], ["neutro", "Neutro"], ["papel", "Papel"], ["alto-contraste", "Alto contraste"]]);
 const PALETA_PADRAO = "ufcimg";
 const CHAVE_PALETA = "sextante.paleta";
-const BARRA_POR_PALETA = Object.freeze({ ufcimg: { claro: "#F4F6F8", escuro: "#1B1F27" }, original: { claro: "#F5F3EF", escuro: "#0F1A19" } });
+const BARRA_POR_PALETA = Object.freeze({
+  ufcimg: { claro: "#F4F6F8", escuro: "#1B1F27" }, original: { claro: "#F5F3EF", escuro: "#0F1A19" },
+  neutro: { claro: "#F5F5F5", escuro: "#1C1D1F" }, papel: { claro: "#F6F1E7", escuro: "#24201C" },
+  "alto-contraste": { claro: "#FFFFFF", escuro: "#000000" } }); /* Neutro, Papel e Alto contraste: 12/11/2026, em teste */
 const PALETAS_VALIDAS = new Set(PALETAS.map(([v]) => v));
 
 const POR_APLICATIVO = Object.freeze({
@@ -55,7 +59,7 @@ export function aplicarTema(tema, raiz = document.documentElement) {
   }
 }
 
-/** @returns {"ufcimg"|"original"} a paleta guardada neste aparelho ou, sem ela, a padrão */
+/** @returns {"ufcimg"|"original"|"neutro"|"papel"|"alto-contraste"} a paleta guardada neste aparelho ou, sem ela, a padrão */
 export function lerPaleta() {
   try {
     const p = localStorage.getItem(CHAVE_PALETA);

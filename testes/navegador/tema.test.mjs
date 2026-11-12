@@ -151,6 +151,28 @@ describe("Tema deste aparelho", { skip: pular }, () => {
       assert.equal(await varCss(p, "--folga"), "#68C0B5", "ações com folga em verde-água, separadas do marinho dos botões");
     });
 
+    test("Neutro, Papel e Alto contraste (12/11/2026): cada um com as suas cores, nos dois modos", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 760, tema: "light", temaGuardado: null });
+      await p.evaluate(() => { document.querySelector("[data-lateral-mais]").open = true; });
+      const fundos = { neutro: ["#F5F5F5", "#1C1D1F"], papel: ["#F6F1E7", "#24201C"], "alto-contraste": ["#FFFFFF", "#000000"] };
+      for (const [paleta, [claro, escuro]] of Object.entries(fundos)) {
+        await p.locator(`.lateral-tema button[data-paleta="${paleta}"]`).click();
+        await p.locator('.lateral-tema button[data-tema="claro"]').click();
+        assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), paleta);
+        assert.equal(await varCss(p, "--bg"), claro, `${paleta} claro`);
+        await p.locator('.lateral-tema button[data-tema="escuro"]').click();
+        assert.equal(await varCss(p, "--bg"), escuro, `${paleta} escuro`);
+        assert.equal(await p.locator(`.lateral-tema button[data-paleta="${paleta}"]`).getAttribute("aria-pressed"), "true");
+      }
+      await p.reload();
+      assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "alto-contraste", "fica guardado e vale desde a abertura");
+      assert.equal(await p.evaluate(() => document.querySelector('meta[name="theme-color"]').content), "#000000");
+      await p.evaluate(() => localStorage.setItem("sextante.paleta", "constructor"));
+      await p.reload();
+      assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "ufcimg", "valor desconhecido vale UFCIMG");
+      assert.deepEqual(p.erros, []);
+    });
+
     test("o Strata não recebe a paleta", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 760, temaGuardado: null, caminho: "strata/", aguardar: ".mapa-svg .mapa-no" });
       assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta ?? null), null);

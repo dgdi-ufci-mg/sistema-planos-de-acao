@@ -244,7 +244,7 @@ export function mostrarNavegacao(opcoes) {
 
   /* tema e modo deste aparelho: no menu da conta; sem login, no "Mais" (12/11/2026, em teste, pedido do responsável) */
   const temaHtml = () => `<div class="conta-tema" role="group" aria-label="Tema neste aparelho"><span>Tema</span>
-          <div class="alternador dois">${PALETAS.map(([v, nome]) => `<button type="button" data-paleta="${v}" aria-pressed="${v === lerPaleta()}">${nome}</button>`).join("")}</div></div>
+          <div class="paletas">${PALETAS.map(([v, nome]) => `<button type="button" data-paleta="${v}" aria-pressed="${v === lerPaleta()}"><i class="paleta-amostra" data-amostra="${v}" aria-hidden="true"></i>${nome}</button>`).join("")}</div></div>
         <div class="conta-tema" role="group" aria-label="Modo claro ou escuro neste aparelho"><span>Modo</span>
           <div class="alternador">${TEMAS.map(([v, nome]) => `<button type="button" data-tema="${v}" aria-pressed="${v === lerTema()}">${nome}</button>`).join("")}</div></div>`;
   const contaHtml = usuario

@@ -178,6 +178,214 @@
   color-scheme: dark;
 }
 
+/* tema Neutro (em teste desde 12/11/2026; seção 8.0), no mesmo molde do UFCIMG */
+:root[data-paleta="neutro"]:not(.strata) {
+  --bg: #F5F5F5; --surface: #FFFFFF; --sunk: #FAFAFA;
+  --ink: #1F2225; --muted: #5C6166; --faint: #8E9399; --line: #DCDEE1; --grid: #EAEBED;
+  --accent: #3A5F8A; --accent-ink: #2C4A6E; --accent-soft: #E3EAF2;
+  --folga: #68C0B5;
+  --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
+  --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
+  --warn: #F2A905; --warn-soft: #FEF3D4; --warn-ink: #7A5600;
+  --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #B5B8BC;
+  --execucao: #6D28D9;
+  --rede-fundo: #FFFFFF; --rede-grade: #DCDEE1;
+  --sombra: 0 10px 30px rgba(31, 34, 37, .16);
+  --relevo: 0 1px 2px rgba(31, 34, 37, .06), 0 2px 6px rgba(31, 34, 37, .06);
+  --sombra-flutuante: 0 4px 10px rgba(31, 34, 37, .10), 0 14px 32px rgba(31, 34, 37, .16);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(31, 34, 37, .10);
+  --barra-controle: rgba(31, 34, 37, .06);
+  --barra-controle-foco: rgba(31, 34, 37, .12);
+  --texto-sobre-destaque: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-paleta="neutro"]:not(.strata):not([data-theme="light"]) {
+    --bg: #1C1D1F; --surface: #27292C; --sunk: #222326;
+    --ink: #F0F1F2; --muted: #A8ACB1; --faint: #8D9197; --line: #3D4044; --grid: #2F3134;
+    --accent: #9DB8DC; --accent-ink: #BACDE8; --accent-soft: #26313F;
+    --folga: #68C0B5;
+    --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
+    --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
+    --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
+    --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #505357;
+    --execucao: #A78BFA;
+    --rede-fundo: #1C1D1F; --rede-grade: #3A3D41;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+    --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+    --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+    --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+    --barra-topo: var(--bg);
+    --barra-borda: rgba(255, 255, 255, .08);
+    --barra-controle: rgba(255, 255, 255, .07);
+    --barra-controle-foco: rgba(255, 255, 255, .14);
+    --texto-sobre-destaque: #1C1D1F;
+    color-scheme: dark;
+  }
+}
+:root[data-paleta="neutro"][data-theme="dark"]:not(.strata) {
+  --bg: #1C1D1F; --surface: #27292C; --sunk: #222326;
+  --ink: #F0F1F2; --muted: #A8ACB1; --faint: #8D9197; --line: #3D4044; --grid: #2F3134;
+  --accent: #9DB8DC; --accent-ink: #BACDE8; --accent-soft: #26313F;
+  --folga: #68C0B5;
+  --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
+  --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
+  --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
+  --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #505357;
+  --execucao: #A78BFA;
+  --rede-fundo: #1C1D1F; --rede-grade: #3A3D41;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+  --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(255, 255, 255, .08);
+  --barra-controle: rgba(255, 255, 255, .07);
+  --barra-controle-foco: rgba(255, 255, 255, .14);
+  --texto-sobre-destaque: #1C1D1F;
+  color-scheme: dark;
+}
+/* tema Papel (em teste desde 12/11/2026; seção 8.0), no mesmo molde do UFCIMG */
+:root[data-paleta="papel"]:not(.strata) {
+  --bg: #F6F1E7; --surface: #FFFDF8; --sunk: #FBF7EF;
+  --ink: #2B2520; --muted: #655A4E; --faint: #978A7B; --line: #E0D6C4; --grid: #ECE4D6;
+  --accent: #8A4B1F; --accent-ink: #6E3A16; --accent-soft: #F2E3D3;
+  --folga: #4F8F84;
+  --crit: #B3362B; --crit-soft: #F6DFD9; --crit-ink: #8E1F17;
+  --ok: #5B8A3A; --ok-soft: #E7EEDC; --ok-ink: #3B5E25;
+  --warn: #D99A2B; --warn-soft: #F8EBD0; --warn-ink: #7A4F08;
+  --laranja: #D9661A; --dourado-claro: #EBC57E; --neutral: #BFB4A3;
+  --execucao: #6B3FA0;
+  --rede-fundo: #FFFDF8; --rede-grade: #E0D6C4;
+  --sombra: 0 10px 30px rgba(60, 45, 30, .16);
+  --relevo: 0 1px 2px rgba(60, 45, 30, .06), 0 2px 6px rgba(60, 45, 30, .06);
+  --sombra-flutuante: 0 4px 10px rgba(60, 45, 30, .10), 0 14px 32px rgba(60, 45, 30, .16);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(60, 45, 30, .10);
+  --barra-controle: rgba(60, 45, 30, .06);
+  --barra-controle-foco: rgba(60, 45, 30, .12);
+  --texto-sobre-destaque: #FFFDF8;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-paleta="papel"]:not(.strata):not([data-theme="light"]) {
+    --bg: #24201C; --surface: #2F2A25; --sunk: #29251F;
+    --ink: #F2EBDF; --muted: #B8AD9D; --faint: #9A8F80; --line: #4A433B; --grid: #38322B;
+    --accent: #E0B07A; --accent-ink: #ECC898; --accent-soft: #4A3826;
+    --folga: #7FB8AC;
+    --crit: #F07D6E; --crit-soft: #4A2520; --crit-ink: #F5A79A;
+    --ok: #9FCA8A; --ok-soft: #2C3A22; --ok-ink: #B8D9A6;
+    --warn: #E8B04F; --warn-soft: #45351A; --warn-ink: #F2CB85;
+    --laranja: #F08A3E; --dourado-claro: #EBC57E; --neutral: #5E554A;
+    --execucao: #B49AE0;
+    --rede-fundo: #24201C; --rede-grade: #433C34;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+    --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+    --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+    --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+    --barra-topo: var(--bg);
+    --barra-borda: rgba(255, 255, 255, .08);
+    --barra-controle: rgba(255, 255, 255, .07);
+    --barra-controle-foco: rgba(255, 255, 255, .14);
+    --texto-sobre-destaque: #24201C;
+    color-scheme: dark;
+  }
+}
+:root[data-paleta="papel"][data-theme="dark"]:not(.strata) {
+  --bg: #24201C; --surface: #2F2A25; --sunk: #29251F;
+  --ink: #F2EBDF; --muted: #B8AD9D; --faint: #9A8F80; --line: #4A433B; --grid: #38322B;
+  --accent: #E0B07A; --accent-ink: #ECC898; --accent-soft: #4A3826;
+  --folga: #7FB8AC;
+  --crit: #F07D6E; --crit-soft: #4A2520; --crit-ink: #F5A79A;
+  --ok: #9FCA8A; --ok-soft: #2C3A22; --ok-ink: #B8D9A6;
+  --warn: #E8B04F; --warn-soft: #45351A; --warn-ink: #F2CB85;
+  --laranja: #F08A3E; --dourado-claro: #EBC57E; --neutral: #5E554A;
+  --execucao: #B49AE0;
+  --rede-fundo: #24201C; --rede-grade: #433C34;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+  --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(255, 255, 255, .08);
+  --barra-controle: rgba(255, 255, 255, .07);
+  --barra-controle-foco: rgba(255, 255, 255, .14);
+  --texto-sobre-destaque: #24201C;
+  color-scheme: dark;
+}
+/* tema Alto contraste (em teste desde 12/11/2026; seção 8.0), no mesmo molde do UFCIMG */
+:root[data-paleta="alto-contraste"]:not(.strata) {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sunk: #F2F2F2;
+  --ink: #000000; --muted: #2B2B2B; --faint: #4D4D4D; --line: #595959; --grid: #A6A6A6;
+  --accent: #0000C2; --accent-ink: #0000A0; --accent-soft: #E0E0FF;
+  --folga: #00695C;
+  --crit: #A80000; --crit-soft: #FFE0E0; --crit-ink: #7A0000;
+  --ok: #005A1E; --ok-soft: #DDF2E3; --ok-ink: #004015;
+  --warn: #8A4A00; --warn-soft: #FFEBC7; --warn-ink: #5C3000;
+  --laranja: #B34700; --dourado-claro: #8A4A00; --neutral: #767676;
+  --execucao: #5B1FB8;
+  --rede-fundo: #FFFFFF; --rede-grade: #8C8C8C;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .16);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .06), 0 2px 6px rgba(0, 0, 0, .06);
+  --sombra-flutuante: 0 4px 10px rgba(0, 0, 0, .10), 0 14px 32px rgba(0, 0, 0, .16);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: #595959;
+  --barra-controle: rgba(0, 0, 0, .06);
+  --barra-controle-foco: rgba(0, 0, 0, .12);
+  --texto-sobre-destaque: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-paleta="alto-contraste"]:not(.strata):not([data-theme="light"]) {
+    --bg: #000000; --surface: #000000; --sunk: #141414;
+    --ink: #FFFFFF; --muted: #E0E0E0; --faint: #BDBDBD; --line: #9E9E9E; --grid: #5C5C5C;
+    --accent: #7FD4FF; --accent-ink: #A8E3FF; --accent-soft: #00334D;
+    --folga: #5EE6C8;
+    --crit: #FF6B6B; --crit-soft: #3D0000; --crit-ink: #FFA3A3;
+    --ok: #7EE08A; --ok-soft: #003314; --ok-ink: #A8F0B0;
+    --warn: #FFD500; --warn-soft: #3D3300; --warn-ink: #FFE666;
+    --laranja: #FF9E4D; --dourado-claro: #FFD500; --neutral: #767676;
+    --execucao: #C4A8FF;
+    --rede-fundo: #000000; --rede-grade: #4D4D4D;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+    --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+    --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+    --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+    --barra-topo: var(--bg);
+    --barra-borda: #9E9E9E;
+    --barra-controle: rgba(255, 255, 255, .07);
+    --barra-controle-foco: rgba(255, 255, 255, .14);
+    --texto-sobre-destaque: #000000;
+    color-scheme: dark;
+  }
+}
+:root[data-paleta="alto-contraste"][data-theme="dark"]:not(.strata) {
+  --bg: #000000; --surface: #000000; --sunk: #141414;
+  --ink: #FFFFFF; --muted: #E0E0E0; --faint: #BDBDBD; --line: #9E9E9E; --grid: #5C5C5C;
+  --accent: #7FD4FF; --accent-ink: #A8E3FF; --accent-soft: #00334D;
+  --folga: #5EE6C8;
+  --crit: #FF6B6B; --crit-soft: #3D0000; --crit-ink: #FFA3A3;
+  --ok: #7EE08A; --ok-soft: #003314; --ok-ink: #A8F0B0;
+  --warn: #FFD500; --warn-soft: #3D3300; --warn-ink: #FFE666;
+  --laranja: #FF9E4D; --dourado-claro: #FFD500; --neutral: #767676;
+  --execucao: #C4A8FF;
+  --rede-fundo: #000000; --rede-grade: #4D4D4D;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+  --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: #9E9E9E;
+  --barra-controle: rgba(255, 255, 255, .07);
+  --barra-controle-foco: rgba(255, 255, 255, .14);
+  --texto-sobre-destaque: #000000;
+  color-scheme: dark;
+}
+
 /* ---------- paleta do Strata (27/10/2026, pedido do responsável): o módulo da estratégia, na página strata/, tem
    o mesmo desenho do sistema e só o símbolo e a paleta próprios, de azuis de céu com um âmbar de destaque. Os
    três blocos (claro, escuro do aparelho e escuro escolhido) seguem a regra dos temas; as cores de situação
@@ -424,8 +632,20 @@ body::before {
 .conta-tema .alternador::before { width: calc((100% - 6px) / 3); }
 .conta-tema .alternador:has(button:nth-child(2)[aria-pressed="true"])::before { transform: translateX(100%); }
 .conta-tema .alternador:has(button:nth-child(3)[aria-pressed="true"])::before { transform: translateX(200%); }
-.conta-tema .alternador.dois { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* tema UFCIMG ou original (11/11/2026) */
-.conta-tema .alternador.dois::before { width: calc((100% - 6px) / 2); }
+/* escolha do tema (paleta), em teste desde 12/11/2026: uma linha por tema, com amostra das cores dele no modo claro.
+   As amostras usam cores fixas de propósito: mostram os outros temas, não o atual */
+.paletas { display: flex; flex-direction: column; gap: 2px; }
+.conta-tema .paletas button, .lateral-tema .paletas button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border: 1px solid transparent;
+  border-radius: 8px; background: none; color: var(--ink); font: 500 .85rem var(--f-texto); text-align: left; cursor: pointer; }
+.conta-tema .paletas button:hover, .lateral-tema .paletas button:hover { background: var(--barra-controle); }
+.conta-tema .paletas button[aria-pressed="true"], .lateral-tema .paletas button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; border-color: var(--accent); }
+.paletas button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.paleta-amostra { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line); background: linear-gradient(135deg, var(--a1) 50%, var(--a2) 50%); }
+.paleta-amostra[data-amostra="ufcimg"] { --a1: #F4F6F8; --a2: #142C46; }
+.paleta-amostra[data-amostra="original"] { --a1: #F5F3EF; --a2: #00796B; }
+.paleta-amostra[data-amostra="neutro"] { --a1: #F5F5F5; --a2: #3A5F8A; }
+.paleta-amostra[data-amostra="papel"] { --a1: #F6F1E7; --a2: #8A4B1F; }
+.paleta-amostra[data-amostra="alto-contraste"] { --a1: #FFFFFF; --a2: #000000; }
 .conta-menu .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 2px; font-size: .8rem; text-align: center; }
 .conta-menu .conta-tema .alternador button:hover { background: none; }
 /* sem login, tema e modo no "Mais" da barra lateral (12/11/2026, em teste) */
