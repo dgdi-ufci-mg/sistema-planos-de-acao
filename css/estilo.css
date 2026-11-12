@@ -3230,6 +3230,15 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
 .rede:not([data-detalhe="completo"]) .rede-indicador :is(.barra-icone, .num, .prazo-num, .falta-estimar) { display: none; }
 .rede:not([data-detalhe="completo"]) .rede-indicador :is(.barra-medidor, .prazo-trilho) { height: calc(6px * var(--rede-inv, 1)); border-radius: 99px; }
 .rede[data-detalhe="cor"] .rede-no.indice .rede-cartao { background: var(--surface); }
+/* sem a faixa lateral (12/11/2026, pedido do responsável): a situação já está no cartão (o símbolo de concluída, "Falta
+   estimar", "contínua") e o índice, na barra; menos informação repetida */
+.rede .rede-no .rede-cartao { border-left: 1px solid color-mix(in srgb, var(--ink) 16%, var(--line)); border-image: none; padding-left: 12px; }
+/* liberadas: o alvo a procurar na rede; contorno inteiro e, de longe, fundo e contorno mais fortes */
+.rede .rede-no.agora .rede-cartao { border-color: var(--accent); }
+.rede:not([data-detalhe="completo"]) .rede-no.agora .rede-cartao { border: calc(3px * var(--rede-inv, 1)) solid var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.rede[data-detalhe="cor"] .rede-no:not(.agora) .rede-cartao { background: var(--surface); }
+.rede[data-detalhe="cor"] .rede-no.concluida .rede-cartao { background: var(--sunk); }
+.crono-legenda i.rede-leg-seta-critica { width: 22px; height: 2px; border-radius: 1px; background: var(--crit); }
 .crono-legenda i.rede-leg-barra { width: 34px; height: 6px; border-radius: 3px; background: var(--grid); overflow: hidden; }
 .crono-legenda i.rede-leg-barra b { display: block; height: 100%; border-radius: 3px; }
 .crono-legenda i.rede-leg-barra.execucao b { background: var(--execucao); }

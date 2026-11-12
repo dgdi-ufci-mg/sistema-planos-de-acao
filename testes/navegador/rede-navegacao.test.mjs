@@ -155,7 +155,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     await clicar(p, '[data-escala="normal"]');
     const cores = await p.evaluate(() => ({
       termino: getComputedStyle(document.querySelector(".rede-ponto.termino")).backgroundColor,
-      critica: getComputedStyle([...document.querySelectorAll(".rede-seta.indice")].sort((a, b) => b.dataset.indice - a.dataset.indice)[0]).stroke,
+      critica: getComputedStyle(document.querySelector(".rede-seta")).stroke,
     }));
     assert.notEqual(cores.termino, cores.critica);
     assert.ok(await p.locator(".rede-no.agora .rede-agora").count() >= 1, "pílula nas ações liberadas");
@@ -180,7 +180,10 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
       barra: e.querySelector(".rede-indicador .barra-medidor i")?.getBoundingClientRect().width ?? 0 })));
     assert.ok(nos.length >= 5, "ações não concluídas marcadas pelo índice");
     assert.equal(await p.locator(".rede-no.critica, .rede-no.folga").count(), 0, "sem as classes da folga onde há simulação");
-    assert.equal(new Set(nos.map((n) => n.borda)).size, 1, "a borda é a mesma em todos: sem limiar");
+    const bordas = await p.locator(".rede-no.indice:not(.agora) .rede-cartao").evaluateAll((els) => els.map((e) => getComputedStyle(e).borderLeftColor));
+    assert.equal(new Set(bordas).size, 1, "a borda é a mesma em todas as não liberadas: sem limiar");
+    const larguras = await p.locator(".rede-no:not(.agora) .rede-cartao").evaluateAll((els) => els.map((e) => getComputedStyle(e).borderLeftWidth));
+    assert.ok(larguras.every((w) => w === "1px"), "sem a faixa lateral");
     const [menor, maior] = [nos.reduce((a, b) => (b.indice < a.indice ? b : a)), nos.reduce((a, b) => (b.indice > a.indice ? b : a))];
     assert.ok(maior.indice > menor.indice && maior.barra > menor.barra, "índice maior, barra maior");
     const setas = await p.locator(".rede-seta.indice").evaluateAll((els) => els.map((e) => ({ v: Number(e.dataset.indice), cor: getComputedStyle(e).stroke, largura: parseFloat(getComputedStyle(e).strokeWidth) })));
@@ -207,9 +210,15 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     await escolher("revisao");
     assert.ok(await p.locator('.rede-indicador[data-indicador="revisao"] .barra-icone.revisao').count() >= 1);
     assert.match(await p.locator(".rede-legenda").innerText(), /mais pesa na incerteza do prazo/);
+    assert.equal(await p.locator(".rede-seta.indice").count(), 0, "fora do índice de criticidade, setas uniformes");
+    assert.equal(new Set(await p.locator(".rede-seta:not(.volta)").evaluateAll((els) => els.map((e) => getComputedStyle(e).stroke))).size, 1);
+    assert.doesNotMatch(await p.locator(".rede-legenda").innerText(), /mais forte a seta/);
     await escolher("tempo");
     assert.ok(await p.locator('.rede-indicador[data-indicador="tempo"] .prazo-barra').count() >= 1, "tempo restante, como na lista");
     assert.doesNotMatch(await p.locator(".rede-legenda").innerText(), /Quanto maior a barra/);
+    /* na Rede, o tempo restante é sempre em dias úteis: a data já está no cartão */
+    assert.equal(await p.locator(".popover [data-tempo-num]").count(), 0, "sem a escolha dias/data na Rede");
+    assert.equal(await p.locator(".rede-indicador .prazo-num.data").count(), 0);
     await escolher("execucao");
     await p.keyboard.press("Escape");
     for (let i = 0; i < 6; i++) await p.click('[data-zoom-passo="-1"]');
@@ -217,6 +226,11 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     const longe = p.locator(".rede-no.indice .rede-indicador").first();
     assert.ok(await longe.locator(".barra-medidor").isVisible(), "a barra continua de longe");
     assert.ok(!(await longe.locator(".num").isVisible()), "sem o número de longe");
+    /* liberadas: o alvo a procurar; de longe, fundo e contorno do destaque */
+    const [livre, outra] = await p.evaluate(() => [".rede-no.agora .rede-cartao", ".rede-no:not(.agora):not(.concluida) .rede-cartao"]
+      .map((sel) => { const c = getComputedStyle(document.querySelector(sel)); return { fundo: c.backgroundColor, borda: parseFloat(c.borderTopWidth) }; }));
+    assert.notEqual(livre.fundo, outra.fundo, "a liberada tem fundo próprio de longe");
+    assert.ok(livre.borda > outra.borda, "e contorno mais grosso");
     assert.deepEqual(p.erros, []);
   });
 

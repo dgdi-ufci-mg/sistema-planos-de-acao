@@ -293,9 +293,15 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
      espessura variam de forma contínua, num só matiz (o violeta da barra), do claro ao forte */
   const indiceDe = (n) => { const l = linhaDe.get(n); return !l || l.situacao === "concluida" || l.continua || l.semEstimativa ? 0 : l.execucao ?? 0; };
   const indiceDaSeta = (de, para) => Math.min(indiceDe(de), indiceDe(para));
+  const setasPeloIndice = porCriticidade && indicador === "execucao";
   const setas = arestas.map(({ de, para, critica, volta, ligacao, pontos, saltos }) => {
     if (ligacao) return `<path class="rede-ligacao" data-de="${de}" data-para="${para}" d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>`;
-    const v = porCriticidade ? indiceDaSeta(de, para) : null;
+    /* só com o índice de criticidade no menu Indicador (12/11/2026, pedido do responsável); com os outros, setas
+       uniformes: a contribuição para a incerteza é da ação e o tempo restante, da data, e não da ligação */
+    const v = setasPeloIndice ? indiceDaSeta(de, para) : null;
+    if (v == null && porCriticidade) return `<path class="rede-seta${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"
+      d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>${edicao ? `
+      <path class="rede-seta-alvo" data-seta-de="${de}" data-seta-para="${para}" d="${caminhoDaSeta(pontos, saltos)}"><title>Clique para selecionar; Delete retira a ligação</title></path>` : ""}`;
     const [classe, ponta] = v != null ? [" indice", `-indice-${Math.round(v * PONTAS)}`] : [critica ? " critica" : "", critica ? "-critica" : ""];
     const estilo = v != null ? ` style="--seta-cor:${corDaSeta(v)};--seta-largura:${(1.2 + 1.4 * v).toFixed(2)}" data-indice="${Math.round(v * 100)}"` : "";
     return `<path class="rede-seta${classe}${volta ? " volta" : ""}" data-de="${de}" data-para="${para}"${estilo}
@@ -364,7 +370,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
               <defs>
                 <marker id="rede-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
                 <marker id="rede-ponta-critica" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z"/></marker>
-                ${porCriticidade ? Array.from({ length: PONTAS + 1 }, (_, k) => `<marker id="rede-ponta-indice-${k}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:${corDaSeta(k / PONTAS)}"/></marker>`).join("") : ""}
+                ${setasPeloIndice ? Array.from({ length: PONTAS + 1 }, (_, k) => `<marker id="rede-ponta-indice-${k}" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="5" markerHeight="5" orient="auto"><path d="M0,0 L8,4 L0,8 z" style="fill:${corDaSeta(k / PONTAS)}"/></marker>`).join("") : ""}
                 <marker id="rede-ponta-continua" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="6" markerHeight="6"><circle cx="4" cy="4" r="3"/></marker>
               </defs>
               ${setas}
@@ -379,10 +385,9 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
       ${reguaDasFases}
       <div class="rede-legenda rede-sobre">
         ${legendaDaBarra[indicador] ?? ""}
-        ${porCriticidade ? `<span class="crono-legenda"><i class="rede-leg-indice"></i>Quanto mais forte a seta, mais pesa no prazo <a href="#" class="oque" data-termo="exec">o que é?</a></span>`
-    : `<span class="crono-legenda"><i class="critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>
-        <span class="crono-legenda"><i class="folga"></i>Com folga</span>`}
-        <span class="crono-legenda"><i class="concluida"></i>Concluída</span>
+        ${setasPeloIndice ? `<span class="crono-legenda"><i class="rede-leg-indice"></i>Quanto mais forte a seta, mais pesa no prazo <a href="#" class="oque" data-termo="exec">o que é?</a></span>`
+    : porCriticidade ? "" : `<span class="crono-legenda"><i class="rede-leg-seta-critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>`}
+        <span class="crono-legenda rede-leg-icone">${ICONES.concluida}Concluída</span>
         <span class="crono-legenda"><i class="rede-leg-agora"></i>${esc(nomeLiberada)}: pode ser feita agora</span>
         <span class="crono-legenda rede-leg-icone">${ICONES.naoLiberada}Espera outra ação</span>
         ${cercas.length ? `<span class="crono-legenda"><i class="rede-leg-etapa"></i>Etapa</span>` : ""}
