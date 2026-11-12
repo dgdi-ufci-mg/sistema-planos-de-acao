@@ -1191,7 +1191,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
   .crono-impressao { display: block; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .crono-pagina { break-after: page; break-inside: avoid; }
   .crono-pagina:last-child { break-after: auto; }
-  .crono-pagina-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin: 0 0 6px; font: 10pt var(--f-texto); }
+  .crono-pagina-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin: 0 0 4px; font: 10pt var(--f-texto); }
   .crono-pagina-titulo b { font: 600 12pt var(--f-titulo); }
   .crono-pagina-titulo span { color: var(--muted); font-size: 8.5pt; white-space: nowrap; }
   .crono.impresso { box-shadow: none; border-radius: 0; width: max-content; }
@@ -1199,7 +1199,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
   .crono-recorte { overflow: hidden; }
   .crono.impresso .crono-corpo { cursor: auto; }
   .crono.impresso .crono-recolher, .crono.impresso .crono-mais { display: none; }
-  .crono-pagina .crono-legendas { margin-top: 6px; font-size: 7.5pt; gap: 3px 12px; }
+  .crono-pagina .crono-legendas { margin-top: 4px; font-size: 7.5pt; gap: 2px 12px; }
   .crono-pagina .oque { display: none; }
 }
 .crono-abrir-acao { border: 0; background: none; padding: 0; font: inherit; color: var(--accent-ink); text-decoration: underline; cursor: pointer; }
