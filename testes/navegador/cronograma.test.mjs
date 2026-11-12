@@ -449,8 +449,7 @@ describe("Cronograma: indicador ao lado dos nomes (12/11/2026)", { skip: pular }
 
   async function abrir(largura = 1440) {
     const p = await sessao.abrir({ largura, altura: 860 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-trilho");
     await assentar(p, 400);
     return p;
