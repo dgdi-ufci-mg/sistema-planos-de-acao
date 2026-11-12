@@ -171,9 +171,11 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
   test("índice de criticidade: borda neutra, barra do indicador no cartão, setas contínuas num só matiz, legenda", async () => {
     const p = await abrirRede();
     await clicar(p, '[data-escala="normal"]');
-    await p.click('.menu-topo[data-pop="indicador"]');
+    await p.click('.menu-topo[data-pop="exibir"]');
     await p.locator('.popover [data-barra="execucao"]').first().click();
     await p.keyboard.press("Escape");
+    /* o ponteiro fica onde estava a opção de Exibir, que cai sobre um cartão e destacaria as setas dele */
+    await p.mouse.move(5, 5);
     await assentar(p);
     const nos = await p.locator(".rede-no.indice").evaluateAll((els) => els.map((e) => ({
       indice: Number(e.dataset.indice), borda: getComputedStyle(e.querySelector(".rede-cartao")).borderLeftColor,
@@ -199,11 +201,11 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
-  test("a barra do cartão segue o menu Indicador; de longe, fica só a barra", async () => {
+  test("a barra do cartão segue o indicador em Exibir; Nenhum a tira; de longe, fica só a barra", async () => {
     const p = await abrirRede();
     await clicar(p, '[data-escala="normal"]');
     const escolher = async (v) => {
-      if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="indicador"]');
+      if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="exibir"]');
       await p.locator(`.popover [data-barra="${v}"]`).first().click();
       await assentar(p);
     };
@@ -219,6 +221,11 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     /* na Rede, o tempo restante é sempre em dias úteis: a data já está no cartão */
     assert.equal(await p.locator(".popover [data-tempo-num]").count(), 0, "sem a escolha dias/data na Rede");
     assert.equal(await p.locator(".rede-indicador .prazo-num.data").count(), 0);
+    /* "Nenhum" (12/11/2026): sem barra no cartão e setas uniformes */
+    await escolher("nenhum");
+    assert.equal(await p.locator(".rede-indicador .barra-icone, .rede-indicador .prazo-barra").count(), 0, "sem barra");
+    assert.equal(await p.locator(".rede-seta.indice").count(), 0);
+    assert.equal(await p.locator('.menu-topo[data-pop="indicador"]').count(), 0, "sem o menu Indicador no topo");
     await escolher("execucao");
     await p.keyboard.press("Escape");
     for (let i = 0; i < 6; i++) await p.click('[data-zoom-passo="-1"]');

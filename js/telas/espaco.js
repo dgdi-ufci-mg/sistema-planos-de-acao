@@ -100,7 +100,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /** cronograma, indicador ao lado dos nomes (12/11/2026, pedido do responsável), escolhido em "Exibir" e lembrado no
         aparelho: "nenhum", "execucao" ou "revisao"; independente da barra das outras visualizações */
     cronoIndicador: lembrado("sextante.cronoIndicador", "nenhum"),
-    /** barra mostrada nos cartões: "tempo", "execucao" ou "revisao" (lembrada neste aparelho) */
+    /** barra mostrada nos cartões: "nenhum", "tempo", "execucao" ou "revisao" (lembrada neste aparelho); vale para a
+        lista, o quadro e a rede; o cronograma tem a sua (cronoIndicador) */
     barra: lembrado("sextante.barra", "tempo"),
     /** colunas opcionais da lista (22/10/2026), lembradas neste aparelho; nome e situação são fixos */
     colunas: { descricao: false, participantes: true, barras: true, ...lerColunas() },
@@ -122,7 +123,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     entregas: null, alcances: [],
     /** visualização "Responsáveis" (seção 8.4): responsáveis com as ações à vista, enquanto o espaço está aberto */
     cargaAbertos: new Set() };
-  if (!["tempo", "execucao", "revisao"].includes(ui.barra)) ui.barra = "tempo";
+  if (!["nenhum", "tempo", "execucao", "revisao"].includes(ui.barra)) ui.barra = "tempo";
+  /* a coluna Indicador da lista virou a opção "Nenhum" do indicador (12/11/2026): quem a tinha desligado fica com "Nenhum" */
+  if (ui.colunas.barras === false) {
+    ui.barra = "nenhum";
+    ui.colunas = { ...ui.colunas, barras: true };
+    try { localStorage.setItem("sextante.barra", "nenhum"); localStorage.setItem("sextante.colunas", JSON.stringify(ui.colunas)); } catch { /* sem armazenamento */ }
+  }
   if (!["nenhum", "execucao", "revisao"].includes(ui.cronoIndicador)) ui.cronoIndicador = "nenhum";
   let chaveSim = null;
   let espaco, acoes, responsaveis, cal, sim, linhas, pessoas, meus, usaFases, usaCodigos, etapaDe, caminho;
@@ -388,7 +395,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["revisao", "Contribuição para a incerteza", "barraRevisao"],
   ];
   /** Indicadores que o espaço tem: os dois índices vêm da simulação (passo 2.4b). */
-  const barras = () => (usaSimulacao(espaco) ? BARRAS : BARRAS.filter(([v]) => v === "tempo"));
+  /* "Nenhum" (12/11/2026, pedido do responsável): a mesma lógica de "Exibir" em todas as visualizações; nos tipos de
+     tarefas não há escolha, e a barra de tempo fica sempre */
+  const barras = () => {
+    const daqui = usaSimulacao(espaco) ? BARRAS : BARRAS.filter(([v]) => v === "tempo");
+    return deTarefas() ? daqui : [["nenhum", "Nenhum", ""], ...daqui];
+  };
   /** Ordens que o espaço tem; no espaço com data-limite, "Conclusão prevista" vira "Data-limite". */
   const ordens = () => ORDENS.filter(([v]) => (usaSimulacao(espaco) || !["execucao", "revisao"].includes(v)) && (v !== "prioridade" || usaPrioridade(espaco)))
     .map(([v, t]) => [v, v === "conclusao" && usaDataLimite(espaco) ? "Data-limite" : t]);
@@ -399,8 +411,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
    * participantes e barras entram e saem por um menu. A descrição só aparece se o espaço a usa.
    */
   const usaDescricao = () => espaco.camposOpcionais?.descricao !== false;
-  const colunas = () => ({ ...ui.colunas, descricao: ui.colunas.descricao && usaDescricao() });
-  const OPCOES_COLUNAS = [["descricao", "Descrição"], ["participantes", "Participantes"], ["barras", "Indicador"]];
+  /* a coluna do indicador segue a escolha em "Exibir": com "Nenhum", some (12/11/2026) */
+  const colunas = () => ({ ...ui.colunas, descricao: ui.colunas.descricao && usaDescricao(), barras: ui.barra !== "nenhum" });
+  const OPCOES_COLUNAS = [["descricao", "Descrição"], ["participantes", "Participantes"]];
   /**
    * Identificador antes do nome (22/10/2026, decisão do responsável): o número (#1) ou o código,
    * nunca os dois, porque servem ao mesmo fim. O código só existe se o espaço usa códigos; ação
@@ -530,7 +543,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       </div>`;
     }
     if (ui.pop === "exibir") return exibirHtml();
-    if (ui.pop === "indicador") return indicadorHtml();
     return "";
   }
 
@@ -548,20 +560,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     desenharFerramentas();
   }
   /* nos tipos de tarefas (Quadro e Lista), sem o menu Indicador: só há o tempo até a data-limite, já no cartão (27/10/2026) */
-  /* também na Rede (12/11/2026, pedido do responsável); no Cronograma, o indicador fica em "Exibir", com "Nenhum"
-     no lugar do tempo restante, que o próprio Gantt já mostra (12/11/2026, pedido do responsável) */
-  const comIndicador = () => !deTarefas() && (["quadro", "rede"].includes(ui.modo) || (ui.modo === "lista" && colunas().barras));
+  /* o indicador fica em "Exibir", com "Nenhum" como primeira opção, em todas as visualizações (12/11/2026, pedido do
+     responsável); sai o menu Indicador da barra do topo. No Cronograma, as opções são outras (INDICADORES_CRONO) */
+  const comIndicador = () => !deTarefas() && ["lista", "quadro", "rede"].includes(ui.modo);
   const comExibir = () => ["lista", "quadro", "rede", "cronograma", "planilha"].includes(ui.modo);
   const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
-  /** Menu próprio do indicador (23/10/2026, pedido do responsável): só onde há barras. */
-  function indicadorHtml() {
-    return `<div class="popover popover-exibir" data-popover role="dialog" aria-label="Indicador">${indicadorConteudo()}</div>`;
-  }
   function indicadorConteudo() {
     return `
       <h3>Indicador</h3><div class="opcoes-lista">${barras().map(([v, nome, icone]) =>
-        opcao("data-barra", v, nome, ui.barra === v, `<span class="barra-icone ${v}">${ICONES[icone]}</span>`)).join("")}</div>
+        opcao("data-barra", v, nome, ui.barra === v, icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : "")).join("")}</div>
       ${ui.barra === "tempo" && ui.modo !== "rede" ? `<h3>Ao lado da barra de tempo</h3><div class="opcoes-lista">${OPCOES_TEMPO.map(([v, nome]) =>
         opcao("data-tempo-num", v, nome, ui.tempoNumero === v)).join("")}</div>` : ""}`;
   }
@@ -594,6 +602,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ${ui.modo === "lista" ? `<h3>Colunas</h3><div class="colunas-escolha">
         <label class="fixa"><input type="checkbox" checked disabled> Nome e situação</label>
         ${OPCOES_COLUNAS.filter(([v]) => (v !== "descricao" || (usaDescricao() && !ehLista())) && (v !== "barras" || !ehLista())).map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
+      ${comIndicador() ? indicadorConteudo() : ""}
       ${ui.modo === "cronograma" && !deTarefas() && usaSimulacao(espaco) ? `<h3>Indicador</h3><div class="opcoes-lista">${INDICADORES_CRONO.map(([v, nome, icone]) =>
         opcao("data-crono-ind", v, nome, ui.cronoIndicador === v, icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : "")).join("")}</div>` : ""}
       ${ui.modo === "cronograma" ? `<h3>No cronograma</h3><div class="opcoes-lista">
@@ -612,13 +621,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
        No celular, continua o funil com "Filtros e exibição" e a segunda linha */
     const [, nomeModo] = MODOS.find(([v]) => v === ui.modo);
     if (["filtrar", "ordenar"].includes(ui.pop) || (ui.pop === "classificar" && planilha)) ui.pop = null;
-    if ((ui.pop === "indicador" && !comIndicador()) || (ui.pop === "exibir" && !comExibir())) ui.pop = null;
+    if (ui.pop === "indicador" || (ui.pop === "exibir" && !comExibir())) ui.pop = null;
     const atrasadas = linhas.filter((l) => l.atrasada).length;
     const menu = (pop, icone, nome, extra = "", titulo = nome) => `<button class="menu-topo" type="button" data-pop="${pop}" aria-expanded="${ui.pop === pop}" aria-haspopup="dialog" title="${titulo}">
       ${icone}<span class="menu-topo-nome">${nome}</span>${extra}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>`;
     /* três grupos, como na barra do Numbers (teste de 23/10/2026): à esquerda, onde estou (nome do espaço,
        só com o menu lateral fechado, e a visualização); no centro, como vejo; à direita, o que faço */
-    const doCentro = ["classificar", "exibir", "indicador"].includes(ui.pop);
+    const doCentro = ["classificar", "exibir"].includes(ui.pop);
     const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
     if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
     ferramentas.innerHTML = `
@@ -633,7 +642,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
             (ui.ordem !== ordemPadrao() ? '<span class="ponto-menu" title="Ordem diferente da inicial" aria-label="Ordem diferente da inicial"></span>' : "")
             + (nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : ""))}
           ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
-          ${comIndicador() ? menu("indicador", ICONES.indicador, "Indicador") : ""}
         </div>
         ${doCentro ? popoverHtml() : ""}
       </div>
@@ -892,6 +900,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   /** A barra escolhida, com o símbolo à esquerda (22/10/2026). */
   function barraHtml(l, { tempoNumero = ui.tempoNumero, barra = ui.barra } = {}) {
+    if (barra === "nenhum") return "";
     const [, nome, icone] = BARRAS.find(([v]) => v === barra);
     const simbolo = `<span class="barra-icone ${barra}" title="${nome}" aria-hidden="true">${ICONES[icone]}</span>`;
     if (l.situacao === "concluida") return `<div class="pr"></div>`;
@@ -2056,7 +2065,6 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function preencherOpcoes() {
     if (naExibicao && temExibicao()) {
       painelOpcoes.innerHTML = `<button type="button" class="config-voltar opcoes-voltar" data-sair-exibicao>${ICONES.seguir}Filtros</button>
-        ${comIndicador() ? `<section class="opcoes">${indicadorConteudo()}</section>` : ""}
         ${comExibir() && ui.modo !== "planilha" ? `<section class="opcoes opcoes-exibir">${exibirConteudo()}</section>` : ""}`;
       return;
     }
