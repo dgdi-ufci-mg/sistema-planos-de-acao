@@ -3667,8 +3667,8 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual
 /* ---------- barra do topo dos espaços de uma visualização só (decisão do responsável, 13/11/2026) ----------
    Quadro e Lista de tarefas, no computador: o mesmo esqueleto da barra dos planos, sem as abas. Uma linha só, com o
    nome do espaço à esquerda (no lugar do título no alto do conteúdo) e, à direita, "Filtros e exibição", quem participa,
-   as atrasadas e "Nova tarefa". No Quadro, a barra ocupa a largura toda; na Lista, acompanha a coluna de 800 px.
-   O nome é editável com um clique (para quem configura o espaço). No celular, nada muda. */
+   as atrasadas e "Nova tarefa". A barra ocupa a largura toda, como nas outras telas (também na Lista, revisto no mesmo dia).
+   O nome é editável com um clique (para quem configura o espaço), na mesma letra do nome dos planos. No celular, nada muda. */
 @media (min-width: 641px) {
   body[data-vista-atual][data-visao-unica] .topo-linha { height: 54px; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 12px; box-shadow: inset 0 -1px 0 var(--line); }
   body[data-vista-atual][data-visao-unica] .topo-esquerda { grid-column: 1; grid-row: 1; justify-self: stretch; }
@@ -3678,18 +3678,12 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual
   body[data-vista-atual][data-visao-unica] .topo-direita { grid-column: 3; grid-row: 1; gap: 0; }
   body[data-vista-atual][data-visao-unica] .titulo-barra { display: block; max-width: none; font-size: 1.4rem; font-weight: 700; color: var(--ink); }
   body[data-vista-atual][data-visao-unica] #principal .titulo-conteudo { display: none; }
-  body[data-vista-atual][data-visao-unica][data-sem-nome] .titulo-barra { display: none; }
-  /* Lista de tarefas: a barra acompanha a coluna de leitura de 800 px (o nome alinhado às tarefas, os controles na borda direita dela) */
-  body[data-tipo-espaco="lista"][data-visao-unica] .topo-linha { padding-left: max(40px, calc((100% - 800px) / 2)); padding-right: max(0px, calc((100% - 800px) / 2)); }
-}
-@media (min-width: 900px) {
-  body:not(.lateral-recolhida)[data-tipo-espaco="lista"][data-visao-unica] .topo-linha { padding-left: max(0px, calc((100% - 800px) / 2)); }
 }
 /* nome editável com um clique: parece título, e o fundo aparece ao passar o mouse, como no Trello */
-.titulo-editavel { border: 0; background: transparent; font-family: var(--f-titulo); text-align: left; cursor: text; padding: 2px 6px; margin-left: -6px; border-radius: var(--raio); min-width: 0;
+.titulo-editavel { border: 0; background: transparent; font-family: inherit; text-align: left; cursor: text; padding: 2px 6px; margin-left: -6px; border-radius: var(--raio); min-width: 0;
   transition: background-color var(--mov-rapido); }
 .titulo-editavel:hover { background: var(--barra-controle-foco); }
-.titulo-campo { width: 100%; font-family: var(--f-titulo); padding: 1px 5px; margin-left: -6px; border: 1px solid var(--accent); border-radius: var(--raio);
+.titulo-campo { width: 100%; font-family: inherit; padding: 1px 5px; margin-left: -6px; border: 1px solid var(--accent); border-radius: var(--raio);
   background: var(--surface); color: var(--ink); outline: 2px solid var(--accent-soft); }
 /* quem participa: círculos das pessoas antes do chip das atrasadas */
 .participantes-topo { display: inline-flex; align-items: center; margin-right: 10px; padding: 3px 4px; border: 0; border-radius: 999px; background: transparent; }
@@ -3699,4 +3693,3 @@ button.participantes-topo:hover { background: var(--barra-controle-foco); }
 .topo.barra-icones .participantes-topo { display: none; }
 @media (prefers-reduced-motion: reduce) { .titulo-editavel, button.participantes-topo { transition: none; } }
 button.participantes-topo .avatar { cursor: pointer; }
-@media (min-width: 641px) { body[data-vista-atual][data-visao-unica][data-sem-nome] .topo-linha { height: 44px; } }

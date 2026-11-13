@@ -284,13 +284,10 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
-  test("Lista de tarefas: título e lista numa coluna de até 800 px, centralizada (04/11/2026; o título na barra desde 13/11/2026)", async () => {
+  test("Lista de tarefas: lista numa coluna de até 800 px, centralizada (04/11/2026; o título vai para a barra do topo em 13/11/2026)", async () => {
     const p = await abrirLista({ largura: 1600 });
     const l = await p.locator(".lista[data-tarefas]").boundingBox();
-    /* o texto do nome (o botão tem 6 px de folga à esquerda, compensados pela margem) */
-    const t = await p.locator(".topo .titulo-barra").evaluate((el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().toJSON(); });
     assert.ok(l.width <= 800, `largura ${l.width}`);
-    assert.ok(Math.abs(t.x - l.x) <= 2, `título alinhado à lista (${t.x} contra ${l.x})`);
     const area = await p.locator("#principal").boundingBox();
     assert.ok(Math.abs((l.x - area.x) - (area.x + area.width - (l.x + l.width))) < 60, "centralizada na área de trabalho");
     assert.deepEqual(p.erros, []);

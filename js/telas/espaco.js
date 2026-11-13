@@ -824,9 +824,11 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       : `<span class="participantes-topo so-computador" role="img" title="${esc(rotulo)}" aria-label="${esc(rotulo)}">${selos}</span>`;
   }
 
-  /** Botão direito na barra do topo, no computador: abre o menu da barra junto ao ponteiro (também nos espaços de uma visualização, desde 13/11/2026). */
+  /** Botão direito na barra do topo, no computador e nos espaços com abas: abre o menu da barra junto ao ponteiro. */
   function aoMenuDaBarra(e) {
-    if (matchMedia("(max-width: 640px)").matches) return; // celular: menu do navegador
+    /* celular e espaços de uma visualização: menu do navegador (no Quadro e na Lista de tarefas, esconder o nome não
+       ganharia nada, porque a barra já tem uma linha só; decisão do responsável, 13/11/2026) */
+    if (!document.body.hasAttribute("data-abas") || matchMedia("(max-width: 640px)").matches) return;
     if (e.target.closest("[data-popover], input, textarea, select")) return;
     e.preventDefault();
     /* posição relativa ao grupo da esquerda (que contém o painel): a barra tem desfoque de fundo, e isso faz

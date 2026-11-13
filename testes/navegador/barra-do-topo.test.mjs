@@ -261,7 +261,7 @@ describe("Barra do topo: nome do espaço pelo botão direito", { skip: pular }, 
 /**
  * Barra do topo dos espaços de uma visualização só (decisão do responsável, 13/11/2026): Quadro e Lista de tarefas
  * ganham o esqueleto da barra dos planos, sem as abas. Uma linha, com o nome à esquerda e, à direita, "Filtros e
- * exibição", quem participa, as atrasadas e "Nova tarefa"; nome editável com um clique; botão direito como nos planos.
+ * exibição", quem participa, as atrasadas e "Nova tarefa"; nome editável com um clique, na mesma letra dos planos.
  */
 describe("Barra do topo do Quadro e da Lista de tarefas", { skip: pular }, () => {
   let sessao;
@@ -308,18 +308,16 @@ describe("Barra do topo do Quadro e da Lista de tarefas", { skip: pular }, () =>
     });
   }
 
-  test("na Lista, a barra acompanha a coluna de 800 px: o nome alinhado às tarefas e Nova tarefa na borda direita", async () => {
-    const p = await abrirLista({ largura: 1600 });
-    for (const lado of ["aberta", "recolhida"]) {
-      const l = await caixa(p, ".lista[data-tarefas]");
-      const t = await p.locator(".topo .titulo-barra").evaluate((el) => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().toJSON(); });
-      const nova = await caixa(p, ".topo [data-nova]");
-      assert.ok(Math.abs(t.x - l.x) <= 2, `${lado}: nome alinhado (${t.x} contra ${l.x})`);
-      assert.ok(Math.abs(nova.x + nova.width - (l.x + l.width)) <= 2, `${lado}: Nova tarefa na borda direita da coluna`);
-      await p.keyboard.press("Control+b");
-      await assentar(p, 600);
-    }
-    assert.deepEqual(p.erros, []);
+  test("o nome tem a mesma letra, o mesmo tamanho e a mesma posição que nos planos; na Lista também, na largura toda", async () => {
+    const medir = (p) => p.locator(".topo .titulo-barra").evaluate((el) => {
+      const c = getComputedStyle(el), r = document.createRange();
+      r.selectNodeContents(el);
+      const b = r.getBoundingClientRect(), topo = document.querySelector(".topo").getBoundingClientRect();
+      return { letra: c.fontFamily, tamanho: c.fontSize, peso: c.fontWeight, cor: c.color, x: Math.round(b.x), y: Math.round(b.y - topo.y) };
+    });
+    const plano = await medir(await sessao.abrir({ largura: 1600, altura: 760 }));
+    assert.deepEqual(await medir(await abrirQuadro({ largura: 1600 })), plano, "Quadro");
+    assert.deepEqual(await medir(await abrirLista({ largura: 1600 })), plano, "Lista");
   });
 
   test("o nome se edita com um clique: Enter grava, Esc desiste, clicar fora grava", async () => {
@@ -370,16 +368,12 @@ describe("Barra do topo do Quadro e da Lista de tarefas", { skip: pular }, () =>
     assert.deepEqual(p.erros, []);
   });
 
-  test("o botão direito esconde o nome, como nos planos", async () => {
+  test("o botão direito não abre o menu da barra (esconder o nome não ganharia nada numa barra de uma linha)", async () => {
     const p = await abrirQuadro({ largura: 1280 });
     const filtros = await caixa(p, '.topo .menu-topo[data-pop="painel"]');
     await p.mouse.click(filtros.x - 40, filtros.y + filtros.height / 2, { button: "right" });
     await assentar(p);
-    await p.locator("[data-nome-barra]").click();
-    await assentar(p, 600);
-    assert.equal(await p.locator(".topo .titulo-barra").isVisible(), false);
-    assert.ok(await p.evaluate(() => document.querySelector(".topo").getBoundingClientRect().height) <= 46, "barra mais baixa");
-    assert.deepEqual(await problemas(p), []);
+    assert.equal(await p.locator("[data-nome-barra]").count(), 0);
     assert.deepEqual(p.erros, []);
   });
 });
