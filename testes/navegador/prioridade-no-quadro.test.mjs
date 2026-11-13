@@ -45,8 +45,8 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
     assert.equal(await p.locator(".quadro-tarefas .puxador").count(), 0);
     assert.equal(await p.locator(".quadro-tarefas .cartao-quadro[data-arrasta]").count(), cartoes);
     /* a ordem inicial dos tipos de tarefas não conta como ordem escolhida */
-    assert.equal(await p.locator(".menu-topo[data-pop='classificar'] .ponto-menu").count(), 0);
-    await p.click('.menu-topo[data-pop="classificar"]');
+    assert.equal(await p.locator(".menu-topo[data-pop='painel'] .ponto-menu").count(), 0);
+    await p.click('.menu-topo[data-pop="painel"]');
     assert.equal(await p.locator('[data-ordem="prioridade"][aria-pressed="true"]').count(), 1);
     assert.deepEqual(p.erros, []);
   });
@@ -101,7 +101,7 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
 
   test("com outra ordem, o cartão assenta onde vai ficar: nada salta ao redesenhar (correção de 29/10/2026)", async () => {
     const p = await abrirQuadro(sessao, { largura: 1280 });
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     await p.click('[data-ordem="espaco"]');
     await p.keyboard.press("Escape");
     await assentar(p, 600);
@@ -271,7 +271,7 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
 
   test("Projeto e Plano de Ação: o campo está ligado, mas a ordem inicial continua a do espaço", async () => {
     const p = await sessao.abrir({ largura: 1280 });
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     assert.equal(await p.locator('[data-ordem="prioridade"]').count(), 1, "a opção existe sem ligar nada");
     assert.equal(await p.locator('[data-ordem="espaco"][aria-pressed="true"]').count(), 1);
     assert.equal(await p.locator(".puxador").count(), 0);
@@ -287,7 +287,7 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
 
   test("lista: arrastar pelo puxador muda a ordem; as setas também", async () => {
     const p = await sessao.abrir({ largura: 1280 });
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     await p.click('[data-ordem="prioridade"]');
     await assentar(p);
     const nomes = () => p.locator(".lista .item .rotulo").allInnerTexts();

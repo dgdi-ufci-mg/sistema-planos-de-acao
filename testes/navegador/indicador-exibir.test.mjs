@@ -17,7 +17,7 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
     await assentar(p, 400);
   };
   const escolher = async (p, v) => {
-    if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="exibir"]');
+    if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="painel"]');
     await p.locator(`.popover [data-barra="${v}"]`).first().click();
     await assentar(p, 400);
   };
@@ -25,7 +25,7 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
   test("Lista: sem o menu Indicador e sem a coluna Indicador; Nenhum tira a barra", async () => {
     const p = await sessao.abrir({ largura: 1280, altura: 800 });
     assert.equal(await p.locator('.menu-topo[data-pop="indicador"]').count(), 0, "sem o menu Indicador no topo");
-    await p.click('.menu-topo[data-pop="exibir"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     assert.deepEqual(await p.locator(".popover [data-barra]").evaluateAll((bs) => bs.map((b) => b.dataset.barra)), ["nenhum", "tempo", "execucao", "revisao"]);
     assert.equal(await p.locator('.popover [data-coluna="barras"]').count(), 0, "a coluna Indicador virou a opção Nenhum");
     assert.ok(await p.locator(".linha .pr .barra-icone").count() >= 3, "começa com a barra de tempo");
@@ -61,7 +61,7 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
     await p.waitForSelector(".linha[data-abrir-acao]");
     await assentar(p, 400);
     assert.equal(await p.locator(".linha .pr .barra-icone").count(), 0);
-    await p.click('.menu-topo[data-pop="exibir"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     assert.equal(await p.locator('.popover [data-barra="nenhum"]').getAttribute("aria-pressed"), "true");
     assert.deepEqual(p.erros, []);
   });
@@ -82,9 +82,9 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
   /* ---------- organização do Exibir e legenda (12/11/2026) ---------- */
   test("Exibir da Lista: indicador no alto, escolhas curtas lado a lado e sem a caixa travada; cabe sem rolar", async () => {
     const p = await sessao.abrir({ largura: 1280, altura: 900 });
-    await p.click('.menu-topo[data-pop="exibir"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     await assentar(p, 300);
-    const titulos = await p.locator(".popover h3").allInnerTexts();
+    const titulos = await p.locator('.popover .painel-coluna[aria-label="Exibir"] h3').allInnerTexts();
     assert.deepEqual(titulos.map((t) => t.toLowerCase()), ["indicador", "colunas", "identificador antes do nome", "mostrar até", "ajuda na tela"]);
     assert.equal(await p.locator(".popover .segmentos [data-identificador-op]").count() >= 2, true);
     assert.equal(await p.locator(".popover .segmentos [data-nivel]").count(), 3);
@@ -114,14 +114,14 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
       const p = await sessao.abrir({ largura: 1280, altura: 800 });
       await irPara(p, modo);
       assert.ok(await p.locator(seletor).isVisible(), "começa ligada");
-      await p.click('.menu-topo[data-pop="exibir"]');
+      await p.click('.menu-topo[data-pop="painel"]');
       assert.equal(await p.locator(".popover [data-legenda-op]").getAttribute("aria-checked"), "true");
       assert.equal(await p.locator(".popover [data-legenda-op]").getAttribute("role"), "switch", "chave, não caixinha");
       await p.locator(".popover [data-legenda-op]").click();
       await assentar(p, 400);
       assert.equal(await p.locator(seletor).isVisible().catch(() => false), false, "desligada");
       assert.equal(await p.locator("[data-legenda]").isVisible(), false, "e sem a legenda geral");
-      if (!(await p.locator(".popover [data-legenda-op]").isVisible())) await p.click('.menu-topo[data-pop="exibir"]');
+      if (!(await p.locator(".popover [data-legenda-op]").isVisible())) await p.click('.menu-topo[data-pop="painel"]');
       await p.locator(".popover [data-legenda-op]").click();
       await assentar(p, 400);
       assert.ok(await p.locator(seletor).isVisible(), "ligada de novo");

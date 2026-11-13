@@ -56,7 +56,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
   test("o filtro esconde e mostra as concluídas", async () => {
     const p = await abrirQuadro(sessao, { largura: 1280 });
     assert.equal(await cartao(p, "Publicar o boletim").count(), 1, "por padrão, as concluídas ficam à vista");
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     await p.locator('[data-ctl="concluidas"]').uncheck();
     await assentar(p);
     assert.equal(await cartao(p, "Publicar o boletim").count(), 0);
@@ -118,7 +118,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     await assentar(p, 1000);
     assert.equal(await item(p, "Agendar a reunião").count(), 0);
     assert.match(await p.locator(".aviso-curto").innerText(), /concluída/);
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     await p.locator('[data-ctl="concluidas"]').check();
     await assentar(p);
     assert.equal(await item(p, "Agendar a reunião").locator("[data-marcar]").getAttribute("aria-checked"), "true");
@@ -240,7 +240,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.ok((await vencida.boundingBox()).y >= nome.y + nome.height - 1, "abaixo do nome");
     assert.equal(await item(p, "Agendar a reunião").locator(".prazo-tarefa").count(), 0, "sem data, nada");
     /* a opção "Indicador" sai das colunas da Lista */
-    await p.click('.menu-topo[data-pop="exibir"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     assert.equal(await p.locator('[data-coluna="barras"]').count(), 0);
     assert.deepEqual(p.erros, []);
   });
@@ -304,7 +304,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.equal(await item(p, "Atualizar o currículo").count(), 1);
     assert.equal((await botao.innerText()).trim(), "Esconder as concluídas");
     /* o filtro do menu acompanha */
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     assert.equal(await p.locator('[data-ctl="concluidas"]').isChecked(), true);
     await p.keyboard.press("Escape");
     await botao.click();

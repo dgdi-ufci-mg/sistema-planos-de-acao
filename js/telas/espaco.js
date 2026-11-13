@@ -486,7 +486,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     }
     marcarNivel();
     marcarLegenda();
-    if (ui.pop === "exibir") desenharFerramentas();
+    if (ui.pop === "painel") desenharFerramentas();
   }
 
   /** Filtros ativos (situação, responsável, "Minhas ações"), para o número no funil. */
@@ -562,7 +562,28 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       </div>`;
     }
     if (ui.pop === "exibir") return exibirHtml();
+    if (ui.pop === "painel") return painelHtml();
     return "";
+  }
+
+  /**
+   * Painel único "Filtros e exibição" (13/11/2026, pedido do responsável): Filtrar, Classificar e Exibir lado a lado, num
+   * painel largo que se abre por cima do conteúdo, no lugar dos menus "Classificar e filtrar" e "Exibir". Mesmo nome do
+   * painel do celular. Cada coluna aparece só onde vale: a planilha tem os filtros nas próprias colunas, e só fica Exibir.
+   */
+  function painelHtml() {
+    const colunas = [];
+    if (!semFiltros()) {
+      colunas.push(`<section class="painel-coluna" aria-label="Filtrar"><h2>Filtrar</h2>
+        <h3>Por situação</h3><div class="opcoes-lista">${situacoesHtml()}</div>
+        ${responsavelHtml()}
+        ${etiquetaFiltroHtml()}
+        ${filtrosAtivos() ? '<button class="botao discreto" type="button" data-limpar-filtros>Limpar filtros</button>' : ""}</section>`);
+      colunas.push(`<section class="painel-coluna" aria-label="Classificar"><h2>Classificar</h2>
+        <div class="opcoes-lista">${ordensHtml()}</div></section>`);
+    }
+    if (comExibir()) colunas.push(`<section class="painel-coluna" aria-label="Exibir"><h2>Exibir</h2>${exibirConteudo()}</section>`);
+    return `<div class="popover popover-painel" data-popover role="dialog" aria-label="Filtros e exibição" style="--colunas: ${colunas.length}">${colunas.join("")}</div>`;
   }
 
   /**
@@ -666,13 +687,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
        Visualização, Filtrar, Ordenar e Exibir, todos abrindo para baixo; à direita, as atrasadas e Nova ação.
        No celular, continua o funil com "Filtros e exibição" e a segunda linha */
     if (["filtrar", "ordenar"].includes(ui.pop) || (ui.pop === "classificar" && planilha)) ui.pop = null;
-    if (ui.pop === "indicador" || (ui.pop === "exibir" && !comExibir())) ui.pop = null;
+    if (["indicador", "exibir", "classificar"].includes(ui.pop) || (ui.pop === "painel" && planilha && !comExibir())) ui.pop = null;
     const atrasadas = linhas.filter((l) => l.atrasada).length;
     const menu = (pop, icone, nome, extra = "", titulo = nome) => `<button class="menu-topo" type="button" data-pop="${pop}" aria-expanded="${ui.pop === pop}" aria-haspopup="dialog" title="${titulo}">
       ${icone}<span class="menu-topo-nome">${nome}</span>${extra}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>`;
     /* três grupos, como na barra do Numbers (teste de 23/10/2026): à esquerda, onde estou (nome do espaço,
        só com o menu lateral fechado, e a visualização); no centro, como vejo; à direita, o que faço */
-    const doCentro = ["classificar", "exibir"].includes(ui.pop);
+    const doCentro = ui.pop === "painel";
     const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
     if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
     /* barra em duas linhas, no computador (decisão do responsável, 12/11/2026):
@@ -699,10 +720,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${abasHtml}
         <div class="topo-centro">
           <div class="menus-topo">
-            ${planilha ? "" : menu("classificar", ICONES.funil, "Classificar e filtrar",
-              (ui.ordem !== ordemPadrao() ? '<span class="ponto-menu" title="Ordem diferente da inicial" aria-label="Ordem diferente da inicial"></span>' : "")
+            ${planilha && !comExibir() ? "" : menu("painel", ICONES.filtros, "Filtros e exibição",
+              (!planilha && ui.ordem !== ordemPadrao() ? '<span class="ponto-menu" title="Ordem diferente da inicial" aria-label="Ordem diferente da inicial"></span>' : "")
               + (nf ? `<span class="contador" aria-label="${nf} ${plural(nf, "filtro ativo", "filtros ativos")}">${nf}</span>` : ""))}
-            ${comExibir() ? menu("exibir", ICONES.olho, "Exibir") : ""}
           </div>
           ${doCentro ? popoverHtml() : ""}
         </div>

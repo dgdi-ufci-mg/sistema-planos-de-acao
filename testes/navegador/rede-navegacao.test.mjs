@@ -170,7 +170,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
   test("índice de criticidade: borda neutra, barra do indicador no cartão, setas contínuas num só matiz, legenda", async () => {
     const p = await abrirRede();
     await clicar(p, '[data-escala="normal"]');
-    await p.click('.menu-topo[data-pop="exibir"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     await p.locator('.popover [data-barra="execucao"]').first().click();
     await p.keyboard.press("Escape");
     /* o ponteiro fica onde estava a opção de Exibir, que cai sobre um cartão e destacaria as setas dele */
@@ -204,7 +204,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     const p = await abrirRede();
     await clicar(p, '[data-escala="normal"]');
     const escolher = async (v) => {
-      if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="exibir"]');
+      if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="painel"]');
       await p.locator(`.popover [data-barra="${v}"]`).first().click();
       await assentar(p);
     };

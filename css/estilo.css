@@ -1541,6 +1541,24 @@ input.chave:focus-visible { outline: 2px solid var(--accent); outline-offset: 2p
 .colunas-planilha label { font-size: .85rem; align-items: flex-start; }
 .colunas-planilha input { margin-top: 3px; }
 body[data-vista-atual="planilha"] .popover-exibir { width: 380px; }
+/* painel único "Filtros e exibição" (13/11/2026): Filtrar, Classificar e Exibir lado a lado, por cima do conteúdo; Exibir,
+   com mais texto, um pouco mais largo; sem espaço, as colunas descem uma para baixo da outra; nunca passa por baixo da
+   barra lateral (largura da área de conteúdo, e não da janela) */
+.popover-painel { --coluna: 250px; --livre: calc(100vw - 32px);
+  width: min(calc(var(--colunas) * var(--coluna) + (var(--colunas) - 1) * 21px + 60px + 22px), var(--livre)); max-width: var(--livre);
+  max-height: min(78vh, 680px); overflow-y: auto; display: flex; flex-flow: row wrap; align-items: flex-start; gap: 14px 20px; padding: 14px 10px 12px; }
+@media (min-width: 900px) { body:not(.lateral-recolhida) .popover-painel { --livre: calc(100vw - var(--largura-lateral) - 48px); } }
+.popover-painel .painel-coluna { flex: 1 1 210px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.popover-painel .painel-coluna[aria-label="Exibir"] { flex: 1.25 1 260px; }
+.popover-painel .painel-coluna + .painel-coluna { border-left: 1px solid var(--grid); padding-left: 20px; margin-left: -1px; }
+.popover-painel h2 { font-size: .95rem; font-weight: 700; color: var(--ink); margin: 0 0 -2px 2px; }
+.popover-painel h3 + .opcoes-lista, .popover-painel h3 + .colunas-escolha { margin-top: -4px; }
+body[data-vista-atual="planilha"] .popover-painel { --coluna: 360px; }
+/* sem espaço para três colunas lado a lado: Filtrar e Classificar em cima, Exibir embaixo, com uma linha entre eles */
+.popover-painel { container: painel / inline-size; }
+@container painel (max-width: 780px) {
+  .popover-painel .painel-coluna + .painel-coluna[aria-label="Exibir"] { flex-basis: 100%; border-left: 0; margin-left: 0; padding-left: 0; padding-top: 14px; border-top: 1px solid var(--grid); }
+}
 .chip-atrasadas { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; margin-right: 8px; border: 1px solid var(--crit); border-radius: 999px;
   background: var(--crit-soft); color: var(--crit-ink); font: 600 .84rem var(--f-texto); cursor: pointer; white-space: nowrap; }
 .chip-atrasadas .icone { width: 15px; height: 15px; }
