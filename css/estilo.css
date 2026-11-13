@@ -3364,8 +3364,6 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual
 .crono-ajuda .crono-legendas { display: grid; gap: 5px; color: var(--ink); font-size: .84rem; }
 /* no computador, o cronograma desce até perto do pé da tela (sem a margem de 56 px das outras visualizações) */
 @media (min-width: 641px) { body[data-vista-atual="cronograma"] { padding-bottom: 12px; } }
-/* folga no pé, para a última linha poder subir acima dos controles */
-.crono:not(.impresso) .crono-conteudo { padding-bottom: 56px; }
 /* linhas compactas, em "Exibir" */
 .crono.compacta .crono-barra-acao { top: 6px; height: calc(var(--altura) - 12px); }
 .crono.compacta .crono-barra-acao.continua { top: calc(var(--altura) / 2 - 4px); height: 8px; }

@@ -341,6 +341,13 @@ describe("Cronograma: responsável, filtros, legenda, setas de borda, teclado, i
     assert.ok(m.pe <= 24, `o cronograma vai até perto do pé da tela (sobram ${m.pe} px)`);
     assert.ok(m.rola <= 1, "a página não rola");
     assert.equal(await p.locator("[data-crono-desfazer]").isVisible(), false, "Desfazer só aparece quando há o que desfazer");
+    const sobra = await p.evaluate(() => {
+      const r = document.querySelector("[data-rolagem]");
+      r.scrollTop = r.scrollHeight;
+      const ultima = [...document.querySelectorAll(".crono-linha")].at(-1).getBoundingClientRect().bottom;
+      return r.getBoundingClientRect().top + r.clientHeight - ultima;
+    });
+    assert.ok(sobra < 2, `sem espaço em branco depois da última linha (${sobra} px)`);
     assert.deepEqual(p.erros, []);
   });
 
