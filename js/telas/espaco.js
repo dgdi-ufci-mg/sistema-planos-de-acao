@@ -363,7 +363,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function controlesHtml() {
     return `
       ${semFiltros() ? "" : `
-      ${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
+      ${meus ? `<label class="alternar"><input type="checkbox" class="chave" role="switch" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
       <select data-ctl="responsavel" aria-label="Responsável">
         <option value="">Todos os responsáveis</option>
         ${responsaveis.map((r) => `<option value="${esc(r.id)}"${ui.responsavel === r.id ? " selected" : ""}>${esc(r.sigla ? `${r.sigla} · ${r.nome}` : r.nome)}</option>`).join("")}
@@ -490,13 +490,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const botao = ([v, t, icone, classe], recuo = false) => `<button class="opcao${recuo ? " recuo" : ""}" type="button" data-filtro="${v}" aria-pressed="${ui.situacao === v}">
         <span class="opcao-icone ${classe ?? ""}">${icone ? ICONES[icone] : ""}</span><span class="opcao-texto">${t}</span><span class="n">${n[v] ?? 0}</span></button>`;
     /* Quadro de tarefas: mostrar ou esconder as marcadas como concluídas (revisão de 27/10/2026) */
-    const concluidas = deTarefas() ? `<label class="alternar"><input type="checkbox" data-ctl="concluidas"${ui.concluidas ? " checked" : ""}> Mostrar as concluídas <span class="n">${linhas.filter((l) => l.situacao === "concluida").length}</span></label>` : "";
+    const concluidas = deTarefas() ? `<label class="alternar"><input type="checkbox" class="chave" role="switch" data-ctl="concluidas"${ui.concluidas ? " checked" : ""}> Mostrar as concluídas <span class="n">${linhas.filter((l) => l.situacao === "concluida").length}</span></label>` : "";
     return BOTOES_DE_FILTRO.filter(([v]) => (ui.modo === "lista" && !deTarefas()) || v === "todas" || v === "atrasada").map((b) =>
       botao(b[0] === "liberada" && !usaDependencias(espaco) ? ["liberada", "Em aberto", b[2], b[3]] : b)
       + (b[0] === "liberada" ? sub.map(([v, t]) => botao([v, t, v === "fluxo:inicial" ? "liberada" : "personalizada", "icone-liberada"], true)).join("") : "")).join("") + concluidas;
   }
   function responsavelHtml() {
-    return `${meus ? `<label class="alternar"><input type="checkbox" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
+    return `${meus ? `<label class="alternar"><input type="checkbox" class="chave" role="switch" data-ctl="minhas"${ui.minhas ? " checked" : ""}> Minhas ações</label>` : ""}
       <label class="campo-pop"><span>Responsável</span><select data-ctl="responsavel">
         <option value="">Todos</option>
         ${responsaveis.map((r) => `<option value="${esc(r.id)}"${ui.responsavel === r.id ? " selected" : ""}>${esc(r.sigla ? `${r.sigla} · ${r.nome}` : r.nome)}</option>`).join("")}
@@ -569,6 +569,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   const opcao = (atributo, v, nome, ativo, icone = "") => `<button class="opcao" type="button" ${atributo}="${v}" aria-pressed="${ativo}">
       <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span>${ativo ? `<span class="opcao-marca">${ICONES.marcado}</span>` : ""}</button>`;
   /**
+   * Chave de ligar e desligar (13/11/2026, pedido do responsável: no lugar das caixinhas de marcação). Regra: ligar ou
+   * desligar algo usa chave; escolher um entre poucos, botões lado a lado; um entre vários, lista com marca; vários de
+   * uma lista, caixinha. Leva o mesmo atributo de antes, e os mesmos tratadores valem.
+   */
+  const chave = (atributo, v, nome, ligado, icone = "") => `<button class="opcao opcao-chave" type="button" role="switch" ${atributo}="${v}" aria-checked="${ligado}">
+      <span class="opcao-icone">${icone}</span><span class="opcao-texto">${nome}</span><span class="chave-visual" aria-hidden="true"></span></button>`;
+  /**
    * Escolha curta numa linha só de botões lado a lado (12/11/2026, pedido do responsável: o menu Exibir ficou comprido).
    * Os botões levam o mesmo atributo das opções em lista, e os mesmos tratadores valem para os dois.
    */
@@ -586,8 +593,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
   function colunasDaPlanilhaHtml() {
     const todas = colunasDaPlanilha(dadosDaJanela());
     const grupo = (titulo, cols) => `<h3>${titulo}</h3><div class="colunas-escolha colunas-planilha">${cols.map((c) => c.obrigatoria
-      ? `<label class="fixa"><input type="checkbox" checked disabled> ${c.titulo}</label>`
-      : `<label><input type="checkbox" data-coluna-planilha="${c.chave}"${ui.ocultasPlanilha.has(c.chave) ? "" : " checked"}> ${c.titulo}</label>`).join("")}</div>`;
+      ? `<label class="fixa"><input type="checkbox" class="chave" role="switch" checked disabled> ${c.titulo}</label>`
+      : `<label><input type="checkbox" class="chave" role="switch" data-coluna-planilha="${c.chave}"${ui.ocultasPlanilha.has(c.chave) ? "" : " checked"}> ${c.titulo}</label>`).join("")}</div>`;
     return grupo("Dados da ação", todas.filter((c) => !c.calculada)) + grupo("Calculados", todas.filter((c) => c.calculada));
   }
   /** Indicador do Cronograma em "Exibir" (12/11/2026): nenhum ou um dos dois índices da simulação. */
@@ -623,15 +630,15 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ${ui.modo === "cronograma" && !deTarefas() && usaSimulacao(espaco) ? `<h3>Indicador</h3><div class="opcoes-lista">${INDICADORES_CRONO.map(([v, nome, icone]) =>
         opcao("data-crono-ind", v, nome, ui.cronoIndicador === v, icone ? `<span class="barra-icone ${v}">${ICONES[icone]}</span>` : "")).join("")}</div>` : ""}
       ${ui.modo === "lista" && colunasLista.length ? `<h3>Colunas</h3><div class="colunas-escolha">
-        ${colunasLista.map(([v, nome]) => `<label><input type="checkbox" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
+        ${colunasLista.map(([v, nome]) => `<label><input type="checkbox" class="chave" role="switch" data-coluna="${v}"${ui.colunas[v] ? " checked" : ""}> ${nome}</label>`).join("")}</div>` : ""}
       ${ui.modo === "planilha" ? colunasDaPlanilhaHtml() : `<h3>Identificador antes do nome</h3>${segmentos("data-identificador-op",
         OPCOES_ID.filter(([v]) => v !== "codigo" || usaCodigos).map(([v, nome]) => [v, v === "numero" ? "Número" : nome]), identificador(), "Identificador antes do nome")}`}
       ${agrupado() ? `<h3>Mostrar até</h3>${segmentos("data-nivel", NIVEIS, nivel, "Mostrar até")}` : ""}
       ${ui.modo === "cronograma" ? `<h3>No cronograma</h3><div class="opcoes-lista">
-        ${opcao("data-crono-op", "cronoResponsavel", "Responsável ao lado da barra", ui.cronoResponsavel, ICONES.pessoa)}
-        ${opcao("data-crono-op", "cronoSemConcluidas", "Esconder as concluídas", ui.cronoSemConcluidas, ICONES.concluida)}
-        ${usaContinuas(espaco) && acoes.some((a) => caminho.porAcao.get(a.numero)?.continua) ? opcao("data-crono-op", "cronoSemContinuas", "Esconder as contínuas", ui.cronoSemContinuas, ICONES.olho) : ""}</div>` : ""}
-      ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${opcao("data-legenda-op", "1", "Legenda dos símbolos", legendaLigada(), ICONES.legenda)}</div>`}`;
+        ${chave("data-crono-op", "cronoResponsavel", "Responsável ao lado da barra", ui.cronoResponsavel, ICONES.pessoa)}
+        ${chave("data-crono-op", "cronoSemConcluidas", "Esconder as concluídas", ui.cronoSemConcluidas, ICONES.concluida)}
+        ${usaContinuas(espaco) && acoes.some((a) => caminho.porAcao.get(a.numero)?.continua) ? chave("data-crono-op", "cronoSemContinuas", "Esconder as contínuas", ui.cronoSemContinuas, ICONES.olho) : ""}</div>` : ""}
+      ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${chave("data-legenda-op", "1", "Legenda dos símbolos", legendaLigada(), ICONES.legenda)}</div>`}`;
   }
 
   /** Ferramentas na barra do topo: modo, Filtrar, Ordenar e Nova ação (celular: "Filtros e exibição"). */

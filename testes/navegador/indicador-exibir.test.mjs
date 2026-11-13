@@ -91,6 +91,11 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
     assert.equal(await p.locator(".popover .segmentos [data-nivel]").count(), 3);
     assert.equal(await p.locator(".popover .segmentos.recuo [data-tempo-num]").count(), 2, "dias ou data logo abaixo de Tempo restante");
     assert.equal(await p.locator(".popover label.fixa").count(), 0, "sem Nome e situação");
+    /* chaves no lugar das caixinhas (13/11/2026) */
+    assert.equal(await p.locator('.popover input[data-coluna]:not(.chave)').count(), 0, "colunas como chave");
+    assert.equal(await p.locator('.popover input.chave[role="switch"][data-coluna]').count() >= 1, true);
+    const chave = await p.locator(".popover input.chave").first().evaluate((e) => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height, depoisDoTexto: r.left > e.parentElement.getBoundingClientRect().left + 100 }; });
+    assert.deepEqual(chave, { w: 32, h: 18, depoisDoTexto: true }, "chave à direita do texto");
     const pop = await p.locator(".popover").evaluate((e) => ({ rola: e.scrollHeight > e.clientHeight + 1 }));
     assert.equal(pop.rola, false, "o menu cabe sem rolar");
     /* os botões lado a lado funcionam como as opções em lista */
@@ -111,7 +116,8 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
       await irPara(p, modo);
       assert.ok(await p.locator(seletor).isVisible(), "começa ligada");
       await p.click('.menu-topo[data-pop="exibir"]');
-      assert.equal(await p.locator(".popover [data-legenda-op]").getAttribute("aria-pressed"), "true");
+      assert.equal(await p.locator(".popover [data-legenda-op]").getAttribute("aria-checked"), "true");
+      assert.equal(await p.locator(".popover [data-legenda-op]").getAttribute("role"), "switch", "chave, não caixinha");
       await p.locator(".popover [data-legenda-op]").click();
       await assentar(p, 400);
       assert.equal(await p.locator(seletor).isVisible().catch(() => false), false, "desligada");
