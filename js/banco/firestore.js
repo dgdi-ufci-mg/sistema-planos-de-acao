@@ -292,7 +292,9 @@ export function criarBancoFirestore(db) {
         const ref = comentariosRef(espacoId).doc(id);
         const s = await t.get(ref);
         if (!s.exists) throw new ErroDeDados("nao-encontrado", "Comentário não encontrado.");
-        t.update(ref, copia(mudanca(s.data())));
+        const campos = mudanca(s.data());
+        /* nada a mudar (edição com o mesmo texto): não grava, porque as regras recusariam uma edição sem versão nova */
+        if (Object.keys(campos).length) t.update(ref, copia(campos));
       });
     },
     async listarComentarios(espacoId, numero) {
