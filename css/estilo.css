@@ -213,9 +213,12 @@ body::before {
 }
 .topo, body::before {
   background: var(--barra-topo);
-  -webkit-backdrop-filter: blur(14px) saturate(190%); backdrop-filter: blur(14px) saturate(190%);
   transition: background-color .3s ease, box-shadow .3s ease;
 }
+/* o desfoque da barra fica numa camada atrás dela (13/11/2026), e não na própria barra: um elemento com desfoque
+   impede que os de dentro dele desfoquem a página, e o painel "Filtros e exibição", em vidro fosco, mora na barra */
+body::before, .topo::before { -webkit-backdrop-filter: blur(14px) saturate(190%); backdrop-filter: blur(14px) saturate(190%); }
+.topo::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .topo {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30;
   margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
@@ -1559,6 +1562,17 @@ body[data-vista-atual="planilha"] .popover-painel { --coluna: 360px; }
 @container painel (max-width: 780px) {
   .popover-painel .painel-coluna + .painel-coluna[aria-label="Exibir"] { flex-basis: 100%; border-left: 0; margin-left: 0; padding-left: 0; padding-top: 14px; border-top: 1px solid var(--grid); }
 }
+/* teste de vidro fosco no painel "Filtros e exibição" (13/11/2026, pedido do responsável, inspirado no iOS): o conteúdo
+   de trás aparece desfocado, para a pessoa perceber a tela mudando enquanto escolhe, sem disputar a leitura das opções.
+   No escuro, um pouco mais transparente. Sem suporte ao desfoque ou com "Reduzir transparência" ligado, volta a ser sólido */
+.popover-painel { --vidro-painel: 60%;
+  background: color-mix(in srgb, var(--surface) var(--vidro-painel), transparent);
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  -webkit-backdrop-filter: blur(12px) saturate(160%); backdrop-filter: blur(12px) saturate(160%); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .popover-painel { --vidro-painel: 52%; } }
+:root[data-theme="dark"] .popover-painel { --vidro-painel: 52%; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .popover-painel { --vidro-painel: 100%; } }
+@media (prefers-reduced-transparency: reduce) { .popover-painel { --vidro-painel: 100%; -webkit-backdrop-filter: none; backdrop-filter: none; } }
 .chip-atrasadas { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; margin-right: 8px; border: 1px solid var(--crit); border-radius: 999px;
   background: var(--crit-soft); color: var(--crit-ink); font: 600 .84rem var(--f-texto); cursor: pointer; white-space: nowrap; }
 .chip-atrasadas .icone { width: 15px; height: 15px; }
