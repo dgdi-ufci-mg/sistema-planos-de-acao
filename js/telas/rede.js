@@ -360,8 +360,10 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     <ul class="rede-gestos">${gestos.map(([g, r]) => `<li><b>${g}</b><span>${r}</span></li>`).join("")}</ul>`;
   /* Rede em tela cheia, como um mapa (09/11/2026, pedido do responsável): os controles flutuam sobre ela */
   const ajudaAberta = alvo.dataset.redeAjudaAberta === "1";
+  /* a classe da edição é "rede-editavel", não "editavel": a regra genérica `.editavel` (campos de texto) dava à Rede um
+     padding que empurrava o desenho 6 px e o descolava da régua das fases (12/11/2026) */
   alvo.innerHTML = `
-    <div class="rede${edicao ? " editavel" : ""}" data-rede tabindex="-1">
+    <div class="rede${edicao ? " rede-editavel" : ""}" data-rede tabindex="-1">
       <div class="rede-rolagem" data-rede-rolagem>
         <div class="rede-tamanho" data-tamanho>
           <div class="rede-conteudo" data-conteudo style="width:${largura}px;height:${altura}px">

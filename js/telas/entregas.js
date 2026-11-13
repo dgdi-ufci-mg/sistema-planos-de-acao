@@ -31,7 +31,9 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAca
   let aberta = null;
   let redesenharPainel = null;
 
-  const pode = () => store.podeGravar !== false && d.perm.configurar;
+  /** Quem cria e altera entregas: o administrador do espaço, com gravação ligada. Vale também para o botão da barra do topo. */
+  const podeCriar = (perm) => store.podeGravar !== false && Boolean(perm?.configurar);
+  const pode = () => podeCriar(d.perm);
   const pessoa = (id) => d.responsaveis.find((r) => r.id === id);
   const nomes = (ids) => (ids ?? []).map(pessoa).filter(Boolean);
   const gravar = async (operacao, mensagem) => {
@@ -58,7 +60,10 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAca
     </div>`;
   }
 
-  /** A visualização: resumo por situação, os cartões e, para o administrador, "Nova entrega". */
+  /**
+   * A visualização: explicação, resumo por situação e os cartões. "Nova entrega" fica só na barra do topo (e no (+) do
+   * celular), no lugar de "Nova ação" (12/11/2026, decisão do responsável): antes havia dois botões principais.
+   */
   function desenhar(alvo, dados) {
     d = dados;
     const lista = d.entregas;
@@ -66,7 +71,6 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAca
     alvo.innerHTML = `<section class="entregas">
       <div class="entregas-cabeca">
         <p class="tec">Os resultados do Plano de Ação que importam para o PEI/PDI. ${pode() ? "Abra uma entrega para registrar o alcance, com evidência, ou mudar a situação." : "Só o administrador do espaço registra o alcance e muda a situação."}</p>
-        ${pode() ? `<button class="botao principal" type="button" data-nova-entrega>${ICONES.mais}Nova entrega</button>` : ""}
       </div>
       ${conta.length ? `<p class="entregas-resumo">${conta.map(([s, n]) => `<span class="entregas-conta">${seloDaSituacao(s)} <b>${n}</b></span>`).join("")}</p>` : ""}
       ${lista.length ? `<div class="lista-entregas">${lista.map(cartaoHtml).join("")}</div>`
@@ -80,7 +84,6 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAca
   function aoClicar(e) {
     const abrir = e.target.closest("[data-abrir-entrega]");
     if (abrir) { abrirEntrega(abrir.dataset.abrirEntrega); return true; }
-    if (e.target.closest("[data-nova-entrega]")) { abrirCadastro(null); return true; }
     return false;
   }
   function aoTeclar(e) {
@@ -371,5 +374,7 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAca
     desenharPainel();
   }
 
-  return { desenhar, aoClicar, aoTeclar };
+  /** Abre o cadastro de uma entrega nova (barra do topo, (+) do celular e tecla N); só depois de desenhada e com permissão. */
+  const novaEntrega = () => { if (d && pode()) abrirCadastro(null); };
+  return { desenhar, aoClicar, aoTeclar, podeCriar, novaEntrega };
 }

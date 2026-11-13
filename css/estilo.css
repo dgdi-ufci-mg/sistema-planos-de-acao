@@ -1284,12 +1284,12 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .rede-seta.selecionada { stroke: var(--accent); stroke-width: 2.8; }
 .rede.destacando .rede-seta.selecionada { opacity: 1; }
 .rede:focus { outline: none; }
-.rede.editavel .rede-cartao { cursor: default; }
+.rede.rede-editavel .rede-cartao { cursor: default; }
 .rede-no.selecionada .rede-cartao { box-shadow: 0 0 0 2px var(--accent), var(--sombra); }
 .rede-no.selecionada .rede-cartao:focus-visible { outline: none; }
 .rede .rede-no.alvo-ligacao { opacity: 1; }
 .rede .rede-no.alvo-ligacao .rede-cartao { box-shadow: 0 0 0 3px var(--accent), var(--sombra); transform: translateY(-1px); }
-.rede.editavel .rede-no::after { content: ""; position: absolute; top: -8px; right: -44px; width: 44px; height: 40px; }
+.rede.rede-editavel .rede-no::after { content: ""; position: absolute; top: -8px; right: -44px; width: 44px; height: 40px; }
 .rede-mais, .rede-alca { position: absolute; z-index: 2; opacity: 0; pointer-events: none;
   transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
 .rede-mais { top: -6px; right: -38px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 999px;
@@ -1301,8 +1301,8 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
   border: 2px solid var(--accent); background: var(--surface); cursor: crosshair; touch-action: none; }
 .rede-alca::before { content: ""; position: absolute; inset: -8px; } /* área de toque maior que o desenho */
 .rede-alca:hover { background: var(--accent); transform: scale(1.25); }
-.rede.editavel:not(.ligando) .rede-no:hover :is(.rede-mais, .rede-alca), .rede.editavel .rede-no.selecionada :is(.rede-mais, .rede-alca) { opacity: 1; pointer-events: auto; }
-.rede.editavel:not(.ligando) .rede-no:hover .rede-mais, .rede.editavel .rede-no.selecionada .rede-mais { transform: none; }
+.rede.rede-editavel:not(.ligando) .rede-no:hover :is(.rede-mais, .rede-alca), .rede.rede-editavel .rede-no.selecionada :is(.rede-mais, .rede-alca) { opacity: 1; pointer-events: auto; }
+.rede.rede-editavel:not(.ligando) .rede-no:hover .rede-mais, .rede.rede-editavel .rede-no.selecionada .rede-mais { transform: none; }
 .rede.ligando, .rede.ligando * { cursor: crosshair !important; }
 .rede-ligando { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .rede-ligando path { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
@@ -3158,13 +3158,13 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
   background: var(--accent); color: var(--texto-sobre-destaque); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
 /* botão de abrir a ação, abaixo do "+", com o mesmo desenho */
-.rede.editavel .rede-no::after { height: 72px; }
+.rede.rede-editavel .rede-no::after { height: 72px; }
 .rede-abrir { position: absolute; z-index: 2; top: 26px; right: -38px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 999px;
   border: 1px solid var(--line); background: var(--surface); color: var(--accent-ink); box-shadow: var(--relevo); cursor: pointer;
   opacity: 0; pointer-events: none; transform: scale(.85); transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
 .rede-abrir svg { width: 15px; height: 15px; }
 .rede-abrir:hover, .rede-abrir:focus-visible { background: var(--accent); color: var(--surface); border-color: var(--accent); }
-.rede.editavel:not(.ligando) .rede-no:hover .rede-abrir, .rede.editavel .rede-no.selecionada .rede-abrir { opacity: 1; pointer-events: auto; transform: none; }
+.rede.rede-editavel:not(.ligando) .rede-no:hover .rede-abrir, .rede.rede-editavel .rede-no.selecionada .rede-abrir { opacity: 1; pointer-events: auto; transform: none; }
 /* os botões do cartão não encolhem com o zoom (até 1,8 vez no desenho; js/telas/rede.js) */
 .rede-mais { scale: var(--rede-inv, 1); transform-origin: 0 100%; }
 .rede-abrir { scale: var(--rede-inv, 1); transform-origin: 0 0; }
@@ -3276,12 +3276,53 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
 .rede-campo .rede-escolha-opcoes { max-height: min(280px, 46vh); overflow: auto; }
 .rede-campo .rede-escolha-opcoes button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 /* na ação selecionada, os responsáveis e a data abrem a caixinha do campo */
-.rede.editavel .rede-no.selecionada :is(.donos, .rede-data) { cursor: pointer; border-radius: 6px; outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color var(--mov-rapido); }
-.rede.editavel .rede-no.selecionada :is(.donos, .rede-data):hover { outline-color: color-mix(in srgb, var(--accent) 60%, transparent); }
-.rede.editavel .rede-no.selecionada .donos:empty { min-width: 24px; min-height: 22px; }
-.rede.editavel .rede-agora[data-rede-situacao] { cursor: pointer; pointer-events: auto; }
+.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data) { cursor: pointer; border-radius: 6px; outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color var(--mov-rapido); }
+.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data):hover { outline-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+.rede.rede-editavel .rede-no.selecionada .donos:empty { min-width: 24px; min-height: 22px; }
+.rede.rede-editavel .rede-agora[data-rede-situacao] { cursor: pointer; pointer-events: auto; }
 /* acabamento: datas na letra do cartão, com algarismos alinhados */
 .rede-data .mono, .rede-ponto-data.mono { font-family: inherit; font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .rede-base .donos { align-items: center; gap: 4px; }
 .rede-base .donos [hidden] { display: none; }
 body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual="rede"] .cabeca-espaco { background: color-mix(in srgb, var(--rede-fundo) 80%, transparent); }
+
+/* ---------- barra do topo em duas linhas (decisão do responsável, 12/11/2026) ----------
+   No computador, dentro de um espaço: 1ª linha com o nome do espaço e, à direita, as atrasadas e o botão principal;
+   2ª linha com as visualizações em abas e, à direita delas, os controles da visualização atual. O nome sai do alto
+   do conteúdo e vai para a barra. Só nos espaços com mais de uma visualização (data-abas): Quadro e Lista de tarefas
+   continuam como antes, com o nome no alto do conteúdo. No celular, nada muda. */
+.abas-visao { position: relative; display: flex; align-items: flex-end; gap: 2px; min-width: 0; }
+.aba-visao { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 10px; border: 0; border-radius: var(--raio) var(--raio) 0 0;
+  background: transparent; color: var(--muted); font: 600 .9rem var(--f-texto); cursor: pointer; white-space: nowrap;
+  box-shadow: inset 0 -2px 0 transparent; transition: color var(--mov-rapido), box-shadow var(--mov-rapido), background-color var(--mov-rapido); }
+.aba-visao:hover { color: var(--ink); background: var(--barra-controle-foco, var(--sunk)); }
+.aba-visao[aria-pressed="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+.aba-visao:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.aba-visao > .icone { width: 17px; height: 17px; flex: none; }
+.aba-visao .menu-topo-seta { margin-left: -2px; }
+.aba-visao[aria-expanded="true"] .menu-topo-seta { transform: rotate(180deg); }
+.abas-visao .popover { left: auto; right: 0; translate: none; }
+.topo.barra-abas-icones .aba-visao:not([aria-pressed="true"]):not(.aba-mais) > span:not(.menu-topo-seta) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .aba-visao { transition: none; } }
+@media (min-width: 641px) {
+  body[data-vista-atual][data-abas] .topo-linha { height: auto; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 54px auto; column-gap: 12px; row-gap: 0; }
+  body[data-vista-atual][data-abas] .topo-esquerda { grid-column: 1; grid-row: 1; justify-self: stretch; }
+  body[data-vista-atual][data-abas] .topo-direita { grid-column: 2; grid-row: 1; justify-self: end; }
+  body[data-vista-atual][data-abas] .topo-abas { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: flex-end; gap: 12px; min-width: 0; box-shadow: inset 0 -1px 0 var(--line); }
+  body[data-vista-atual][data-abas] .titulo-barra { display: block; max-width: none; font-size: 1.4rem; font-weight: 700; color: var(--ink); }
+  body[data-vista-atual][data-abas] .topo-centro { margin-left: auto; justify-self: auto; padding-bottom: 3px; }
+  body[data-vista-atual][data-abas] .topo-centro .popover { left: auto; right: 0; translate: none; }
+  body[data-vista-atual][data-abas] #principal .titulo-conteudo { display: none; }
+}
+/* nome do espaço escondido pelo botão direito na barra (12/11/2026): uma linha só, abas e controles à esquerda,
+   atrasadas e botão principal à direita */
+.popover-barra { width: 270px; }
+.popover-barra .tec { margin: 6px 6px 2px; font-size: .8rem; color: var(--muted); }
+@media (min-width: 641px) {
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-linha { grid-template-rows: auto; align-items: end; box-shadow: inset 0 -1px 0 var(--line); }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { box-shadow: none; }
+  body[data-vista-atual][data-abas][data-sem-nome] .titulo-barra { display: none; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-esquerda { grid-column: 1; grid-row: 1; width: 0; min-width: 0; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { grid-column: 1; grid-row: 1; padding-top: 6px; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-direita { grid-column: 2; grid-row: 1; align-self: center; padding-top: 6px; }
+}

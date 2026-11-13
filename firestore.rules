@@ -79,13 +79,14 @@ service cloud.firestore {
       function membro() {
         return logado() && (livre(esp()) || papelNo(esp()) in ['administrador', 'usuario', 'leitor']);
       }
-      // o usuário muda no espaço só os tons das pessoas e acrescenta etiquetas ao catálogo (sem mudar as que existem)
+      // o usuário muda no espaço só os tons das pessoas e acrescenta etiquetas ao catálogo; a lista não diminui
+      // (correção de 12/11/2026: sem a comparação de trechos de lista, que o Firestore recusava; as etiquetas
+      // que já existem não são conferidas uma a uma pelo banco, e sim pelo Store)
       function soTonsEEtiquetas() {
         let mudou = request.resource.data.diff(resource.data).affectedKeys();
         let antes = resource.data.get('etiquetas', []);
         return mudou.hasOnly(['tons', 'etiquetas', 'alteradoEm', 'alteradoPor'])
-          && (!mudou.hasAny(['etiquetas'])
-            || (request.resource.data.etiquetas.size() >= antes.size() && request.resource.data.etiquetas[0:antes.size()] == antes));
+          && (!mudou.hasAny(['etiquetas']) || request.resource.data.etiquetas.size() >= antes.size());
       }
 
       allow read: if true;
@@ -96,12 +97,14 @@ service cloud.firestore {
           && request.resource.data.encerradoEm == null;
       }
       // espaço órfão: o Administrador do Sistema acrescenta uma nomeação em nome próprio e o administrador nomeado, e nada mais
+      // (correção de 12/11/2026: a lista ganha exatamente uma nomeação; sem a comparação de trechos de lista, que o
+      // Firestore recusava; as nomeações anteriores não são conferidas uma a uma pelo banco)
       function soNomeacao() {
         let antes = resource.data.get('nomeacoes', []);
         let depois = request.resource.data.nomeacoes;
         let nova = depois[antes.size()];
         return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['acessos', 'nomeacoes', 'alteradoEm', 'alteradoPor'])
-          && depois.size() == antes.size() + 1 && depois[0:antes.size()] == antes && nova.por == eu()
+          && depois.size() == antes.size() + 1 && nova.por == eu()
           && request.resource.data.acessos.diff(resource.data.get('acessos', {})).affectedKeys().hasOnly([nova.email])
           && request.resource.data.acessos[nova.email].papel == 'administrador';
       }
@@ -142,29 +145,33 @@ service cloud.firestore {
         allow create: if aberto() && atua();
       }
       // comentários das ações (passo 2.9): nunca apagados do banco (documentação técnica, seção 4.2.3)
+      // Correção de 12/11/2026: editar e apagar não usam mais a comparação de trechos de lista
+      // (`versoes[0:n] == versoes`), que o Firestore recusava, impedindo o autor de editar e de apagar.
       match /comentarios/{comentarioId} {
+        // editar: muda só o texto, a data da edição e as versões; a lista ganha uma versão, que é o texto anterior
+        function soEditar() {
+          let antes = resource.data.versoes;
+          let depois = request.resource.data.versoes;
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['texto', 'editadoEm', 'versoes'])
+            && depois.size() == antes.size() + 1
+            && depois[antes.size()].texto == resource.data.texto;
+        }
+        // apagar (esconder): muda só os três campos do apagamento, em nome de quem apaga
+        function soApagar(como) {
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['apagadoEm', 'apagadoPor', 'apagadoComo'])
+            && request.resource.data.apagadoPor == eu()
+            && request.resource.data.apagadoComo == como;
+        }
         allow read: if podeVer();
         allow create: if aberto() && membro()
           && request.resource.data.autor == eu()
           && request.resource.data.id == comentarioId
           && request.resource.data.versoes.size() == 0
           && !('apagadoEm' in request.resource.data);
-        allow update: if aberto() && ((membro()
-          && resource.data.autor == eu()
-          && !('apagadoEm' in resource.data)
-          && request.resource.data.id == resource.data.id
-          && request.resource.data.acao == resource.data.acao
-          && request.resource.data.autor == resource.data.autor
-          && request.resource.data.criadoEm == resource.data.criadoEm
-          && request.resource.data.versoes.size() >= resource.data.versoes.size()
-          && request.resource.data.versoes[0:resource.data.versoes.size()] == resource.data.versoes
-          && (!('apagadoPor' in request.resource.data) || request.resource.data.apagadoPor == eu()))
-          // o administrador do espaço esconde comentários alheios, sem mudar o texto (passo 2.1)
-          || (logado() && papelNo(esp()) == 'administrador'
-            && !('apagadoEm' in resource.data)
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['apagadoEm', 'apagadoPor', 'apagadoComo'])
-            && request.resource.data.apagadoComo == 'administrador'
-            && request.resource.data.apagadoPor == eu()));
+        // apagado, não muda mais; o autor edita e apaga; o administrador do espaço apaga os alheios (passo 2.1)
+        allow update: if aberto() && !('apagadoEm' in resource.data) && (
+          (membro() && resource.data.autor == eu() && (soEditar() || soApagar('autor')))
+          || (logado() && papelNo(esp()) == 'administrador' && soApagar('administrador')));
       }
       // entregas do Plano de Ação (passo 2.6): o administrador cadastra e muda; exclusão lógica
       match /entregas/{entregaId} {

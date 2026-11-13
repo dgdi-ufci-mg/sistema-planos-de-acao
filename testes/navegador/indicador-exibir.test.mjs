@@ -5,7 +5,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => {
   let sessao;
@@ -13,8 +13,7 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
   after(async () => { await sessao?.fechar(); });
 
   const irPara = async (p, modo) => {
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator(`[data-modo="${modo}"]`).first().click();
+    await irParaVisualizacao(p, modo);
     await assentar(p, 400);
   };
   const escolher = async (p, v) => {

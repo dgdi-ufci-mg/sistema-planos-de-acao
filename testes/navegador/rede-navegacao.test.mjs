@@ -6,7 +6,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Rede: navegação como num mapa", { skip: pular }, () => {
   let sessao;
@@ -15,8 +15,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
 
   const abrirRede = async (o = {}) => {
     const p = await sessao.abrir({ largura: 1440, altura: 860, ...o });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="rede"]').first().click();
+    await irParaVisualizacao(p, "rede");
     await p.waitForSelector(".rede-no");
     await assentar(p);
     return p;
@@ -107,9 +106,9 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     const conteudo = await caixa(p, "[data-conteudo]");
     const controles = await caixa(p, "[data-rede-controles]");
     const legenda = await caixa(p, ".rede-legenda");
-    const titulo = await caixa(p, "#principal .titulo-conteudo");
+    const titulo = await caixa(p, ".topo"); // o nome do espaço fica na barra do topo desde a barra em abas (12/11/2026)
     assert.ok(conteudo.x >= 264 && conteudo.x + conteudo.width <= controles.x, "não passa por baixo dos botões");
-    assert.ok(conteudo.y >= titulo.y + titulo.height && conteudo.y + conteudo.height <= legenda.y, "nem do título, nem da legenda");
+    assert.ok(conteudo.y >= titulo.y + titulo.height && conteudo.y + conteudo.height <= legenda.y, "nem da barra do topo, nem da legenda");
     await clicar(p, '[data-escala="normal"]');
     assert.equal(await zoom(p), 100);
     await clicar(p, '[data-zoom-passo="1"]');
@@ -294,7 +293,7 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     await p.waitForSelector(".rede-no");
     await p.keyboard.press("Escape");
     await p.waitForTimeout(600);
-    assert.equal(await p.locator(".rede.editavel").count(), 0, "sem edição no celular");
+    assert.equal(await p.locator(".rede.rede-editavel").count(), 0, "sem edição no celular");
     assert.ok(await zoom(p) >= 50, "abre legível, a partir do início");
     const [controles, barra] = await Promise.all([caixa(p, "[data-rede-controles]"), caixa(p, ".barra-inferior")]);
     assert.ok(controles.y + controles.height <= barra.y, "botões acima da barra de baixo");

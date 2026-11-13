@@ -4,7 +4,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Rede: início, término, cercas das etapas e marcos das fases", { skip: pular }, () => {
   let sessao;
@@ -13,8 +13,7 @@ describe("Rede: início, término, cercas das etapas e marcos das fases", { skip
 
   test("círculos com as datas, uma faixa por fase e tracejado entre as etapas", async () => {
     const p = await sessao.abrir({ largura: 1440, altura: 820 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="rede"]').first().click();
+    await irParaVisualizacao(p, "rede");
     await p.waitForSelector(".rede-no");
     await assentar(p);
     assert.match(await p.locator(".rede-ponto.inicio").innerText(), /Início\s+\d{2}\/\d{2}\/\d{4}/i);
