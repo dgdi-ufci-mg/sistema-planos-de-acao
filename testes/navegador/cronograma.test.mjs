@@ -4,7 +4,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Cronograma: zoom", { skip: pular }, () => {
   let sessao;
@@ -15,8 +15,7 @@ describe("Cronograma: zoom", { skip: pular }, () => {
 
   test("botões − e + e Ctrl + rolagem mudam o zoom; a data sob o ponteiro fica parada", async () => {
     const p = await sessao.abrir({ largura: 1280, altura: 760 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-trilho");
     const l0 = await largura(p);
     await p.click('[data-zoom="1"]');
@@ -46,8 +45,7 @@ describe("Cronograma: zoom", { skip: pular }, () => {
 
   test("rolagem no próprio cronograma: cabeçalho parado e barra horizontal sempre à vista (27/10/2026)", async () => {
     const p = await sessao.abrir({ largura: 1280, altura: 700 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-trilho");
     await assentar(p, 300);
     const medidas = () => p.evaluate(() => {
@@ -74,8 +72,7 @@ describe("Cronograma: escala das datas alinhada às barras (10/11/2026)", { skip
 
   test("a escala do cabeçalho e a área das barras começam no mesmo ponto", async () => {
     const p = await sessao.abrir({ largura: 1280, altura: 760 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-trilho");
     await assentar(p, 300);
     const m = await p.evaluate(() => ({
@@ -94,8 +91,7 @@ describe("Cronograma: navegação e edição na tela (10/11/2026)", { skip: pula
 
   async function abrir() {
     const p = await sessao.abrir({ largura: 1440, altura: 860 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-trilho");
     await assentar(p, 400);
     return p;
@@ -262,8 +258,7 @@ describe("Cronograma: responsável, filtros, legenda, setas de borda, teclado, i
 
   async function abrir() {
     const p = await sessao.abrir({ largura: 1440, altura: 860 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-trilho");
     await assentar(p, 400);
     return p;
@@ -366,8 +361,7 @@ describe("Cronograma: responsável, filtros, legenda, setas de borda, teclado, i
 
   test("impressão: páginas deitadas com cabeçalho e legenda, tema claro, e tudo volta depois", async () => {
     const p = await sessao.abrir({ largura: 1440, altura: 860, tema: "dark" });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-trilho");
     await assentar(p, 400);
     const temaAntes = await p.evaluate(() => document.documentElement.getAttribute("data-theme"));
@@ -455,8 +449,7 @@ describe("Cronograma: indicador ao lado dos nomes (12/11/2026)", { skip: pular }
 
   async function abrir(largura = 1440) {
     const p = await sessao.abrir({ largura, altura: 860 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="cronograma"]').first().click();
+    await irParaVisualizacao(p, "cronograma");
     await p.waitForSelector(".crono-trilho");
     await assentar(p, 400);
     return p;

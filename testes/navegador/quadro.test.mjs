@@ -4,7 +4,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Quadro: janela inteira", { skip: pular }, () => {
   let sessao;
@@ -33,8 +33,7 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
 
   test("tela larga: colunas no meio, quadro até o pé da tela, página sem rolar", async () => {
     const p = await sessao.abrir({ largura: 2400, altura: 800 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="quadro"]').first().click();
+    await irParaVisualizacao(p, "quadro");
     await p.waitForSelector(".quadro .coluna");
     await assentar(p, 300);
     const m = await assentado(p);
@@ -50,8 +49,7 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
     /* num aparelho lento, a simulação pode terminar depois da última medida; antes de 29/10/2026, a página passava
        a rolar e assim ficava (o teste da tela larga falhava às vezes, com todos os testes rodando juntos) */
     const p = await sessao.abrir({ largura: 2400, altura: 800 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="quadro"]').first().click();
+    await irParaVisualizacao(p, "quadro");
     await p.waitForSelector(".quadro .coluna");
     const antes = await assentado(p);
     await assentar(p, 600); // depois da última medida programada (0,4 s)
@@ -66,8 +64,7 @@ describe("Quadro: janela inteira", { skip: pular }, () => {
 
   test("tela estreita: as colunas começam da esquerda e a barra para o lado fica no pé da tela", async () => {
     const p = await sessao.abrir({ largura: 900, altura: 700 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="quadro"]').first().click();
+    await irParaVisualizacao(p, "quadro");
     await p.waitForSelector(".quadro .coluna");
     await assentar(p, 300);
     const m = await assentado(p);

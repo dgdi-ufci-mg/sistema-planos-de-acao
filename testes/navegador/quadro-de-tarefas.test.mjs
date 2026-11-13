@@ -30,7 +30,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     const titulos = await p.locator(".quadro-tarefas .coluna > header").allInnerTexts();
     assert.deepEqual(titulos.map((t) => t.split("\n")[0].trim()), ["A fazer", "Fazendo", "Em revisão"]);
     assert.equal(await p.locator(".quadro-tarefas .coluna > header svg:not(.menu-coluna svg)").count(), 0);
-    assert.equal(await p.locator('.menu-topo[data-pop="modo"]').count(), 0);
+    assert.equal(await p.locator('.abas-visao, .menu-topo[data-pop="modo"]').count(), 0);
     assert.equal(await p.locator('.menu-topo[data-pop="indicador"]').count(), 0, "sem o menu Indicador (27/10/2026)");
     /* todas as colunas têm o menu "⋯", inclusive a primeira */
     assert.equal(await p.locator(".quadro-tarefas [data-menu-coluna]").count(), 3);
@@ -108,7 +108,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
 
   test("Lista de tarefas: só a Lista; a tarefa marcada some na hora e o filtro a mostra de volta", async () => {
     const p = await abrirLista({ largura: 1100 });
-    assert.equal(await p.locator('.menu-topo[data-pop="modo"]').count(), 0);
+    assert.equal(await p.locator('.abas-visao, .menu-topo[data-pop="modo"]').count(), 0);
     assert.equal(await item(p, "Atualizar o currículo").count(), 0, "as concluídas começam escondidas");
     await item(p, "Agendar a reunião").locator("[data-marcar]").click();
     /* antes de sumir, a caixinha se preenche e o nome fica riscado (04/11/2026) */

@@ -15,6 +15,7 @@ export const LISTA_DE_ATALHOS = () => [
     [[atalhoDaBusca(), "/"], "Buscar ações, espaços e comandos"],
     [["N"], "Nova ação (ou tarefa) no espaço aberto"],
     [[/Mac|iPhone|iPad/.test(navigator.platform || "") ? "⌘B" : "Ctrl B"], "Mostrar ou recolher a barra lateral"],
+    [["Botão direito na barra do topo"], "Mostrar ou esconder o nome do espaço (sem ele, a barra fica numa linha só)"],
     [["?"], "Esta lista de atalhos"],
     [["Esc"], "Fechar a janela, o painel ou o menu aberto"],
   ]],

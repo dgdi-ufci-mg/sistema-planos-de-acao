@@ -3264,3 +3264,44 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
 .rede-base .donos { align-items: center; gap: 4px; }
 .rede-base .donos [hidden] { display: none; }
 body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual="rede"] .cabeca-espaco { background: color-mix(in srgb, var(--rede-fundo) 80%, transparent); }
+
+/* ---------- barra do topo em duas linhas (decisão do responsável, 12/11/2026) ----------
+   No computador, dentro de um espaço: 1ª linha com o nome do espaço e, à direita, as atrasadas e o botão principal;
+   2ª linha com as visualizações em abas e, à direita delas, os controles da visualização atual. O nome sai do alto
+   do conteúdo e vai para a barra. Só nos espaços com mais de uma visualização (data-abas): Quadro e Lista de tarefas
+   continuam como antes, com o nome no alto do conteúdo. No celular, nada muda. */
+.abas-visao { position: relative; display: flex; align-items: flex-end; gap: 2px; min-width: 0; }
+.aba-visao { display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 10px; border: 0; border-radius: var(--raio) var(--raio) 0 0;
+  background: transparent; color: var(--muted); font: 600 .9rem var(--f-texto); cursor: pointer; white-space: nowrap;
+  box-shadow: inset 0 -2px 0 transparent; transition: color var(--mov-rapido), box-shadow var(--mov-rapido), background-color var(--mov-rapido); }
+.aba-visao:hover { color: var(--ink); background: var(--barra-controle-foco, var(--sunk)); }
+.aba-visao[aria-pressed="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent); }
+.aba-visao:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.aba-visao > .icone { width: 17px; height: 17px; flex: none; }
+.aba-visao .menu-topo-seta { margin-left: -2px; }
+.aba-visao[aria-expanded="true"] .menu-topo-seta { transform: rotate(180deg); }
+.abas-visao .popover { left: auto; right: 0; translate: none; }
+.topo.barra-abas-icones .aba-visao:not([aria-pressed="true"]):not(.aba-mais) > span:not(.menu-topo-seta) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .aba-visao { transition: none; } }
+@media (min-width: 641px) {
+  body[data-vista-atual][data-abas] .topo-linha { height: auto; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: 54px auto; column-gap: 12px; row-gap: 0; }
+  body[data-vista-atual][data-abas] .topo-esquerda { grid-column: 1; grid-row: 1; justify-self: stretch; }
+  body[data-vista-atual][data-abas] .topo-direita { grid-column: 2; grid-row: 1; justify-self: end; }
+  body[data-vista-atual][data-abas] .topo-abas { grid-column: 1 / -1; grid-row: 2; display: flex; align-items: flex-end; gap: 12px; min-width: 0; box-shadow: inset 0 -1px 0 var(--line); }
+  body[data-vista-atual][data-abas] .titulo-barra { display: block; max-width: none; font-size: 1.4rem; font-weight: 700; color: var(--ink); }
+  body[data-vista-atual][data-abas] .topo-centro { margin-left: auto; justify-self: auto; padding-bottom: 3px; }
+  body[data-vista-atual][data-abas] .topo-centro .popover { left: auto; right: 0; translate: none; }
+  body[data-vista-atual][data-abas] #principal .titulo-conteudo { display: none; }
+}
+/* nome do espaço escondido pelo botão direito na barra (12/11/2026): uma linha só, abas e controles à esquerda,
+   atrasadas e botão principal à direita */
+.popover-barra { width: 270px; }
+.popover-barra .tec { margin: 6px 6px 2px; font-size: .8rem; color: var(--muted); }
+@media (min-width: 641px) {
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-linha { grid-template-rows: auto; align-items: end; box-shadow: inset 0 -1px 0 var(--line); }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { box-shadow: none; }
+  body[data-vista-atual][data-abas][data-sem-nome] .titulo-barra { display: none; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-esquerda { grid-column: 1; grid-row: 1; width: 0; min-width: 0; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { grid-column: 1; grid-row: 1; padding-top: 6px; }
+  body[data-vista-atual][data-abas][data-sem-nome] .topo-direita { grid-column: 2; grid-row: 1; align-self: center; padding-top: 6px; }
+}

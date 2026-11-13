@@ -4,7 +4,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Planilha: classificar, filtrar e escolher vários", { skip: pular }, () => {
   let sessao;
@@ -13,8 +13,7 @@ describe("Planilha: classificar, filtrar e escolher vários", { skip: pular }, (
 
   async function abrirPlanilha() {
     const p = await sessao.abrir({ largura: 1366, altura: 760 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="planilha"]').first().click();
+    await irParaVisualizacao(p, "planilha");
     await p.waitForSelector(".planilha");
     return p;
   }

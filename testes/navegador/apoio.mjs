@@ -159,3 +159,14 @@ export async function centro(locator) {
   const r = await locator.boundingBox();
   return { x: r.x + r.width / 2, y: r.y + r.height / 2, r };
 }
+
+/**
+ * Troca de visualização pela barra do topo (barra em abas, 12/11/2026): clica na aba, se estiver à vista,
+ * ou abre "Mais" e escolhe a visualização no painel.
+ */
+export async function irParaVisualizacao(p, modo) {
+  const aba = p.locator(`.aba-visao[data-modo="${modo}"]`);
+  if (await aba.count()) return aba.click();
+  await p.click(".aba-mais");
+  await p.locator(`[data-popover] [data-modo="${modo}"]`).click();
+}

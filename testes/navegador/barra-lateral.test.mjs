@@ -5,7 +5,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar } from "./apoio.mjs";
+import { pular, iniciar, assentar, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Barra lateral", { skip: pular }, () => {
   let sessao;
@@ -78,8 +78,7 @@ describe("Visualização lembrada", { skip: pular }, () => {
 
   test("o espaço abre na última visualização usada nele, neste aparelho", async () => {
     const p = await sessao.abrir({ largura: 1280 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="quadro"]').first().click();
+    await irParaVisualizacao(p, "quadro");
     await assentar(p);
     /* outro espaço e de volta: continua no Quadro */
     await p.locator(".lateral [data-espaco]").filter({ hasText: "minhas tarefas" }).click();
@@ -146,10 +145,11 @@ describe("Configurar este espaço: como surge", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
-  /* 04/11/2026, como no Todoist: o nome do espaço fica no alto do conteúdo com a barra lateral aberta ou recolhida */
-  test("1280 px: o nome do espaço aparece no alto do conteúdo com a barra lateral aberta e recolhida", async () => {
+  /* 04/11/2026, como no Todoist: o nome do espaço fica à vista com a barra lateral aberta ou recolhida; desde a barra
+     em abas (12/11/2026), na 1ª linha da barra do topo, nos espaços com mais de uma visualização */
+  test("1280 px: o nome do espaço aparece na barra do topo com a barra lateral aberta e recolhida", async () => {
     const p = await sessao.abrir({ largura: 1280 });
-    const titulo = p.locator("#principal .titulo-conteudo");
+    const titulo = p.locator(".topo .titulo-barra");
     assert.equal(await titulo.isVisible(), true, "barra aberta");
     assert.ok((await titulo.innerText()).trim().length > 0);
     await p.keyboard.press("Control+b");

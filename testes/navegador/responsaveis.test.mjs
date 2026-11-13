@@ -4,7 +4,7 @@
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { pular, iniciar, assentar, camadasAbertas } from "./apoio.mjs";
+import { pular, iniciar, assentar, camadasAbertas, irParaVisualizacao } from "./apoio.mjs";
 
 describe("Visualização Responsáveis", { skip: pular }, () => {
   let sessao;
@@ -13,8 +13,7 @@ describe("Visualização Responsáveis", { skip: pular }, () => {
 
   test("computador: linhas por responsável, abrir as ações de um deles e abrir uma ação", async () => {
     const p = await sessao.abrir({ largura: 1280, altura: 800 });
-    await p.click('.menu-topo[data-pop="modo"]');
-    await p.locator('[data-modo="responsaveis"]').first().click();
+    await irParaVisualizacao(p, "responsaveis");
     await p.waitForSelector(".carga");
     const linhas = await p.locator(".carga-grupo").count();
     assert.ok(linhas >= 4, "uma linha por responsável com ação em aberto");
