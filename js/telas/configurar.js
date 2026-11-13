@@ -48,8 +48,8 @@ const CAMPOS_OPCIONAIS = [
 const DESLIGADOS_POR_PADRAO = new Set(["codigos", "etiquetas", "documentos", "justificativa", "local"]);
 const ligado = (campos, chave) => (DESLIGADOS_POR_PADRAO.has(chave) ? campos?.[chave] === true : campos?.[chave] !== false);
 
-/** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void}} opcoes */
-export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () => {}, criarConta = null }) {
+/** @param {{store: object, espacoId: string, aoExcluirEspaco?: () => void, criarConta?: Function|null, secao?: string|null}} opcoes */
+export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () => {}, criarConta = null, secao = null }) {
   let espaco = await store.lerEspaco(espacoId);
   let geral = await store.lerCalendarioGeral();
   let acoes = await store.listarAcoes(espacoId);
@@ -99,10 +99,11 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
      lista à esquerda e só a escolhida à direita, como nas configurações do Linear, do Notion e do GitHub; no
      celular e em telas médias, as mesmas seções continuam abrindo e fechando uma abaixo da outra */
   const largo = matchMedia("(min-width: 900px)");
-  let abaAtual = null;
+  /* `secao` (13/11/2026): abre já numa seção, como a dos responsáveis, pelos círculos de quem participa na barra do topo */
+  let abaAtual = secao;
   largo.addEventListener("change", aplicarAbas);
   /** Seções abertas; os dados do espaço começam abertos. Mantidas quando o painel é redesenhado. */
-  const abertas = new Set(["dados"]);
+  const abertas = new Set([secao ?? "dados"]);
   const aberta = (secao) => (abertas.has(secao) ? " open" : "");
   corpo.addEventListener("toggle", (e) => {
     const secao = e.target.dataset?.secao ?? e.target.dataset?.sub;

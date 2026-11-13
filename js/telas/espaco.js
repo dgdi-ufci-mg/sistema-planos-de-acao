@@ -82,7 +82,7 @@ function lerColunas() {
   return lembrado("sextante.barra", "") === "nenhuma" ? { barras: false } : {};
 }
 
-export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra, acaoInicial = null }) {
+export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra, acaoInicial = null, aoConfigurar = null }) {
   /** ação a abrir quando os dados chegarem, vinda do link "#/espaco/<id>/acao/<número>" ou de "Minhas tarefas" (05/11/2026) */
   let acaoDoLink = acaoInicial;
   /** Números das ações na ordem em que a tela as mostra (cada coluna do quadro segue esta ordem; ver o arrastar). */
@@ -95,6 +95,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     nomeNaBarra: lembrado("sextante.nomeNaBarra", "1") === "1",
     /** onde o botão direito abriu o menu da barra (clientX, clientY) */
     menuBarraEm: null,
+    /** Quadro e Lista de tarefas (13/11/2026): o nome do espaço sendo editado na barra, e o texto digitado até gravar */
+    renomeando: false, nomeRascunho: "",
     /** zoom do cronograma: px por dia (ver ZOOM em js/telas/cronograma.js; aceita os nomes antigos "semanas" e "meses") */
     escalaCrono: lembrado("sextante.zoomCronograma", "semanas"), /* zoom do cronograma, em px por dia (27/10/2026), lembrado no aparelho */
     /** cronograma, menu "Exibir" (11/11/2026), lembrado no aparelho: responsável ao lado da barra (ligado de início), esconder concluídas e contínuas */
@@ -296,6 +298,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* propriedades, e não addEventListener: a barra é a mesma para todos os espaços */
     ferramentas.onchange = aoMudarControle;
     ferramentas.onclick = aoClicarNaBarra;
+    /* nome do espaço editado na barra (13/11/2026): Enter grava, Esc desiste, sair do campo grava */
+    ferramentas.onkeydown = aoTeclarNaBarra;
+    ferramentas.oninput = (e) => { if (e.target.matches("[data-campo-nome]")) ui.nomeRascunho = e.target.value; };
+    ferramentas.addEventListener("focusout", aoSairDoNome); // não há a propriedade onfocusout; o ouvinte sai em pararTela
     /* botão direito na barra do topo (12/11/2026, decisão do responsável): menu com "Mostrar o nome do espaço",
        para quem quer a barra numa linha só. Recurso para quem usa muito o sistema; fica registrado nos atalhos */
     const topoEl = ferramentas.closest(".topo");
@@ -711,9 +717,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           title="${atualNoMais ? `Visualização: ${atualNoMais[1]}` : "Mais visualizações"}">${atualNoMais ? `${ICONES[atualNoMais[2]]}<span>${atualNoMais[1]}</span>` : "<span>Mais</span>"}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>` : ""}
         ${ui.pop === "modo" ? popoverHtml() : ""}
       </div>`;
+    montandoBarra = true; // trocar o conteúdo tira o foco do campo do nome sem que a pessoa tenha saído dele
     ferramentas.innerHTML = `
       <div class="topo-esquerda">
-        <span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>
+        ${tituloDaBarraHtml(todas.length < 2)}
         ${!doCentro && ui.pop !== "modo" ? popoverHtml() : ""}
       </div>
       <div class="topo-abas so-computador">
@@ -728,6 +735,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         </div>
       </div>
       <div class="topo-direita">
+        ${todas.length < 2 ? participantesHtml() : ""}
         ${!atrasadas ? "" : planilha
           /* nas visualizações sem filtro (12/11/2026, decisão do responsável): o chip leva à Lista já filtrada, em vez de ligar um filtro que a tela não aplica */
           ? `<button class="chip-atrasadas" type="button" data-atrasadas-na-lista title="Ver as atrasadas na Lista">${ICONES.atrasada}${atrasadas}<span class="chip-palavra"> ${plural(atrasadas, "atrasada", "atrasadas")}</span></button>`
@@ -738,13 +746,19 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           ? (telaEntregas.podeCriar(perm) ? `<button class="botao principal so-computador" type="button" data-nova title="Nova entrega (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova entrega</button>` : "")
           : `<button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>`}
       </div>`;
+    montandoBarra = false;
     modoDesenhado = ui.modo;
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
     document.body.dataset.tipoEspaco = tipoDe(espaco); // Lista de tarefas: margem de leitura (css, 04/11/2026)
     document.body.toggleAttribute("data-abas", todas.length > 1); // barra em duas linhas só com mais de uma visualização (css, 12/11/2026)
+    document.body.toggleAttribute("data-visao-unica", todas.length < 2); // Quadro e Lista de tarefas: barra numa linha, com o nome (css, 13/11/2026)
     document.body.toggleAttribute("data-sem-nome", !ui.nomeNaBarra); // nome escondido pelo botão direito: uma linha só (css)
     ajustarBarra();
     ajustarMais();
+    if (ui.renomeando) {
+      const campo = ferramentas.querySelector("[data-campo-nome]");
+      if (campo && document.activeElement !== campo) { campo.focus(); campo.setSelectionRange(campo.value.length, campo.value.length); }
+    }
     const contador = inferior.filtros?.querySelector(".contador");
     if (contador) { contador.textContent = ativos() || ""; contador.hidden = !ativos(); }
     /* a legenda geral não vale na planilha, e a Rede e o Cronograma têm a sua (12/11/2026: antes, a regra das telas
@@ -753,9 +767,66 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
 
-  /** Botão direito na barra do topo, no computador e nos espaços com abas: abre o menu da barra junto ao ponteiro. */
+  /**
+   * Nome do espaço na barra do topo. Nos espaços de uma visualização só (Quadro e Lista de tarefas; 13/11/2026, decisão
+   * do responsável), quem pode configurar o espaço o renomeia ali mesmo, com um clique, como no Trello e no Todoist:
+   * Enter ou clicar fora grava; Esc desiste; nome vazio ou igual não grava.
+   */
+  let montandoBarra = false;
+  const podeRenomear = () => store.podeGravar !== false && Boolean(perm?.configurar);
+  function tituloDaBarraHtml(unica) {
+    if (!unica || !podeRenomear()) return `<span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>`;
+    if (ui.renomeando) {
+      return `<input class="titulo-barra titulo-campo" type="text" data-campo-nome value="${esc(ui.nomeRascunho)}" aria-label="Nome do espaço" maxlength="200" autocomplete="off" spellcheck="false">`;
+    }
+    return `<button class="titulo-barra titulo-editavel" type="button" data-renomear title="${esc(espaco.nome)}. Clique para renomear">${esc(espaco.nome)}</button>`;
+  }
+  function comecarARenomear() {
+    ui.pop = null;
+    ui.renomeando = true;
+    ui.nomeRascunho = espaco.nome;
+    desenharFerramentas();
+    ferramentas.querySelector("[data-campo-nome]")?.select();
+  }
+  async function terminarDeRenomear(gravar) {
+    if (!ui.renomeando) return;
+    const nome = ui.nomeRascunho.trim();
+    ui.renomeando = false;
+    desenharFerramentas();
+    if (!gravar || !nome || nome === espaco.nome) return;
+    try { await store.alterarEspaco(espacoId, { nome }); } catch (falha) { avisar(falha.message); }
+  }
+  function aoSairDoNome(e) { if (e.target.matches("[data-campo-nome]") && !montandoBarra) terminarDeRenomear(true); }
+  function aoTeclarNaBarra(e) {
+    if (!e.target.matches("[data-campo-nome]")) return;
+    if (e.key === "Enter") { e.preventDefault(); terminarDeRenomear(true); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); terminarDeRenomear(false); }
+  }
+
+  /**
+   * Quem participa, nos espaços de uma visualização só (13/11/2026, decisão do responsável, como no Trello): as pessoas
+   * responsáveis do espaço, em círculos, antes do chip das atrasadas. Só quando há mais de uma pessoa (o espaço de uma
+   * pessoa só não mostra nada) e só no computador. Até quatro círculos; as demais viram "+N". Para quem pode configurar,
+   * um clique abre "Configurar este espaço" na seção dos responsáveis, onde se escolhe o papel de cada pessoa.
+   */
+  const MAX_PARTICIPANTES = 4;
+  function participantesHtml() {
+    const gente = (responsaveis ?? []).filter((r) => r.tipo !== "unidade").sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+    if (gente.length < 2) return "";
+    const vistos = gente.length > MAX_PARTICIPANTES ? gente.slice(0, MAX_PARTICIPANTES - 1) : gente;
+    const resto = gente.slice(vistos.length);
+    const nomes = gente.map((r) => r.nome).join(", ");
+    const selos = donosHtml(vistos, { tons: espaco.tons, meus, todos: true })
+      + (resto.length ? `<span class="avatar mais" aria-hidden="true">+${resto.length}</span>` : "");
+    const rotulo = `${gente.length} pessoas neste espaço: ${nomes}`;
+    return aoConfigurar && podeRenomear()
+      ? `<button class="participantes-topo so-computador" type="button" data-participantes title="${esc(rotulo)}. Clique para ver os responsáveis e os papéis" aria-label="${esc(rotulo)}. Ver os responsáveis e os papéis">${selos}</button>`
+      : `<span class="participantes-topo so-computador" role="img" title="${esc(rotulo)}" aria-label="${esc(rotulo)}">${selos}</span>`;
+  }
+
+  /** Botão direito na barra do topo, no computador: abre o menu da barra junto ao ponteiro (também nos espaços de uma visualização, desde 13/11/2026). */
   function aoMenuDaBarra(e) {
-    if (!document.body.hasAttribute("data-abas") || matchMedia("(max-width: 640px)").matches) return; // celular e espaços de uma visualização: menu do navegador
+    if (matchMedia("(max-width: 640px)").matches) return; // celular: menu do navegador
     if (e.target.closest("[data-popover], input, textarea, select")) return;
     e.preventDefault();
     /* posição relativa ao grupo da esquerda (que contém o painel): a barra tem desfoque de fundo, e isso faz
@@ -778,7 +849,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* mede só os controles da barra (nome do espaço, menus, chip e Nova ação), e não os grupos: um menu aberto
        (o painel que desce dele) alargava o grupo e fazia os nomes sumirem (correção de 27/10/2026) */
     const encostam = () => {
-      const els = [...ferramentas.querySelectorAll(".titulo-barra, .aba-visao, .menu-topo, .chip-atrasadas, .botao[data-nova]")].filter((el) => el.getBoundingClientRect().width > 2); // o nome escondido (só para leitor de tela) mede 1 px
+      const els = [...ferramentas.querySelectorAll(".titulo-barra, .aba-visao, .menu-topo, .participantes-topo, .chip-atrasadas, .botao[data-nova]")].filter((el) => el.getBoundingClientRect().width > 2); // o nome escondido (só para leitor de tela) mede 1 px
       const grupo = (el) => el.closest(".abas-visao, .topo-esquerda, .topo-centro, .topo-direita");
       /* barra em duas linhas (12/11/2026): compara só controles da mesma linha */
       const rs = els.map((el) => ({ g: grupo(el), ...el.getBoundingClientRect().toJSON() }));
@@ -796,7 +867,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (!encostam()) return;
     topo.classList.add("barra-curta");
     if (!encostam()) return;
-    topo.classList.add("barra-icones");
+    topo.classList.add("barra-icones"); // e os círculos de quem participa (Quadro e Lista de tarefas, 13/11/2026) saem
     /* barra em duas linhas (12/11/2026): depois dos menus, as abas não escolhidas ficam só com o ícone (o nome na dica) */
     if (!encostam()) return;
     topo.classList.add("barra-abas-icones");
@@ -838,6 +909,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   function aoClicarNaBarra(e) {
     const t = e.target;
+    if (t.closest("[data-renomear]")) return comecarARenomear();
+    if (t.closest("[data-campo-nome]")) return;
+    if (t.closest("[data-participantes]")) { ui.pop = null; desenharFerramentas(); return aoConfigurar?.("responsaveis"); }
     const pop = t.closest("[data-pop]");
     if (pop) { ui.pop = ui.pop === pop.dataset.pop ? null : pop.dataset.pop; return desenharFerramentas({ abriu: Boolean(ui.pop) }); }
     const modo = t.closest("[data-modo]");
@@ -2826,6 +2900,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     for (const b of [inferior.nova, inferior.filtros]) if (b) { b.onclick = null; b.hidden = true; }
     parar();
     janela?.fechar();
+    ferramentas?.removeEventListener("focusout", aoSairDoNome);
     document.removeEventListener("click", fecharPop);
     document.removeEventListener("keydown", fecharPop);
     document.removeEventListener("click", fecharColunas);
@@ -2838,6 +2913,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.body.classList.remove("alt-edicao");
     delete document.body.dataset.vistaAtual;
     document.body.removeAttribute("data-abas");
+    document.body.removeAttribute("data-visao-unica");
     document.body.removeAttribute("data-sem-nome");
     const topoEl = ferramentas?.closest(".topo");
     if (topoEl) topoEl.oncontextmenu = null;

@@ -278,7 +278,9 @@ async function abrirEspaco(id, { acao = null } = {}) {
   pararEspaco();
   /* sem login, a tela esconde "Nova ação"; as demais gravações são recusadas com aviso */
   document.body.classList.toggle("so-leitura", !daqui.podeGravar);
-  const pararTela = mostrarEspaco(principal, { store: daqui, espacoId: id, hoje, usuario, barra: document.querySelector("[data-acoes-topo]"), acaoInicial: acao });
+  const pararTela = mostrarEspaco(principal, { store: daqui, espacoId: id, hoje, usuario, barra: document.querySelector("[data-acoes-topo]"), acaoInicial: acao,
+    /* Quadro e Lista de tarefas (13/11/2026): os círculos de quem participa, na barra, abrem a configuração numa seção */
+    aoConfigurar: (secao) => abrirConfiguracao({ store: daqui, espacoId: id, aoExcluirEspaco: espacoExcluido, criarConta: !exemplos.has(id) && acesso ? acesso.criarConta : null, secao }) });
   telaDoEspaco = pararTela;
   /* o nome do espaço no topo acompanha as mudanças (por exemplo, ao renomear em "Configurar este espaço") */
   /* o topo acompanha o nome do espaço e o nome de quem entrou (o do responsável ligado ao e-mail neste espaço) */
