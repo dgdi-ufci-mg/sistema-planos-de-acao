@@ -3305,3 +3305,25 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual
   body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { grid-column: 1; grid-row: 1; padding-top: 6px; }
   body[data-vista-atual][data-abas][data-sem-nome] .topo-direita { grid-column: 2; grid-row: 1; align-self: center; padding-top: 6px; }
 }
+
+/* ---------- Rede como prancheta (13/11/2026, pedido do responsável: conceber o plano pela Rede) ---------- */
+/* "+" no círculo de início: aparece ao passar o mouse, como o "+" do cartão */
+/* no canto de cima, encostado ao círculo, para não cobrir o "+" das linhas que saem dele */
+.rede-mais-inicio { top: -10px; right: -10px; transform-origin: 0 100%; }
+.rede.rede-editavel:not(.ligando) .rede-ponto.inicio:hover .rede-mais-inicio, .rede-mais-inicio:focus-visible { opacity: 1; pointer-events: auto; transform: none; }
+/* faixa invisível sobre as linhas do início e do término, para mostrar o "+" de inserir */
+.rede-ligacao-alvo { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
+/* plano sem ações: início e término ligados por uma linha tracejada, com o "+" no meio */
+.rede-prancheta .rede-rolagem { cursor: default; display: grid; place-items: center; }
+.rede-prancheta-palco { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 24px 16px; max-width: 560px; }
+.rede-prancheta-trilho { display: flex; align-items: center; width: min(460px, calc(100vw - 48px)); }
+.rede-prancheta .rede-ponto { position: relative; flex: none; }
+.rede-prancheta-linha { flex: 1; min-width: 16px; border-top: 1.5px dashed color-mix(in srgb, var(--ink) 30%, transparent); }
+.rede-prancheta-mais { flex: none; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--surface); color: var(--accent-ink); box-shadow: var(--relevo);
+  transition: background var(--mov-rapido) var(--mov-curva), color var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
+.rede-prancheta-mais svg { width: 20px; height: 20px; }
+.rede-prancheta-mais:hover, .rede-prancheta-mais:focus-visible { background: var(--accent); color: var(--surface); transform: scale(1.06); }
+.rede-prancheta-mais:disabled { opacity: .5; cursor: progress; }
+.rede-prancheta-dica { margin: 0; text-align: center; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+@media (prefers-reduced-motion: reduce) { .rede-prancheta-mais { transition: none; } }

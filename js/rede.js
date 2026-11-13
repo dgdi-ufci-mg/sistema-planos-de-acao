@@ -751,8 +751,12 @@ function fasesEfetivas(acoes, anteriores, marcos, marcoDe) {
  * - uma ação nova entra na coluna seguinte à da sua anterior mais adiantada, na altura da vizinha da mesma etapa
  *   (a seguinte, se houver; senão, a anterior). Se o lugar estiver ocupado, ou não houver coluna livre antes da
  *   seguinte, abre-se uma coluna: tudo dali para a direita desliza uma coluna, sem subir nem descer.
+ * - uma ação nova sem anteriores, mas com seguintes (13/11/2026: "+" na linha que sai do início), entra na coluna
+ *   anterior à da seguinte mais recuada, na altura dela; sem coluna livre antes, abre-se uma coluna;
+ * - uma ação nova sem anteriores nem seguintes ("+" do início) entra na primeira coluna, abaixo de tudo, se a etapa
+ *   dela ainda não tiver ações.
  * Devolve null quando o arranjo não pode ser mantido e a rede precisa ser arrumada de novo: mais de uma ação nova,
- * ação nova sem anteriores ou contínua, ação que mudou de etapa ou seta que passaria a apontar para trás.
+ * ação nova solta numa etapa que já tem ações, ação nova contínua, ação que mudou de etapa ou seta que passaria a apontar para trás.
  * @param {{coluna: Map<number, number>, pos: Map<number, {x: number, y: number}>, etapas?: Map<number, string|null>}} anterior
  * @param {object[]} acoes ações de agora
  * @param {{marcoDe?: (acao: object) => string|null, continuas?: boolean, medidas?: Partial<typeof MEDIDAS>}} [opcoes]
@@ -779,13 +783,33 @@ export function abrirEspaco(anterior, acoes, opcoes = {}) {
     if (continua(nova)) return null;
     const antes = dependencias(nova).filter((d) => fixos.has(d));
     const depois = acoes.filter((a) => a !== nova && dependencias(a).includes(nova.numero)).map((a) => a.numero);
-    if (!antes.length) return null;
-    const maisAdiantada = antes.reduce((m, d) => (fixos.get(d).coluna > fixos.get(m).coluna ? d : m));
-    const c = fixos.get(maisAdiantada).coluna + 1;
     const porEtapa = (lista) => lista.find((n) => etapaDe(acoes.find((a) => a.numero === n)) === etapaDe(nova));
-    const ancora = (depois.length ? porEtapa(depois) : undefined) ?? porEtapa([maisAdiantada]) ?? depois[0] ?? maisAdiantada;
-    const y = fixos.get(ancora).y;
-    const semColuna = depois.some((n) => fixos.get(n).coluna <= c);
+    const primeira = Math.min(...[...fixos.values()].map((f) => f.coluna));
+    let c;
+    let y;
+    let semColuna;
+    if (antes.length) {
+      const maisAdiantada = antes.reduce((m, d) => (fixos.get(d).coluna > fixos.get(m).coluna ? d : m));
+      c = fixos.get(maisAdiantada).coluna + 1;
+      const ancora = (depois.length ? porEtapa(depois) : undefined) ?? porEtapa([maisAdiantada]) ?? depois[0] ?? maisAdiantada;
+      y = fixos.get(ancora).y;
+      semColuna = depois.some((n) => fixos.get(n).coluna <= c);
+    } else if (depois.length) {
+      /* inserir antes da primeira (13/11/2026, "+" na linha que sai do início): na coluna anterior à da seguinte mais
+         recuada, na altura dela; sem coluna livre antes dela, abre-se uma coluna ali */
+      const alvo = Math.min(...depois.map((n) => fixos.get(n).coluna));
+      y = fixos.get(porEtapa(depois) ?? depois[0]).y;
+      c = alvo - 1;
+      semColuna = c < primeira;
+      if (semColuna) c = alvo;
+    } else {
+      /* ação solta, criada pelo "+" do início (13/11/2026): na primeira coluna, abaixo de tudo, quando a etapa dela
+         ainda não tem ações (senão a cerca da etapa se esticaria por cima das outras, e a rede é arrumada de novo) */
+      if (acoes.some((a) => a !== nova && fixos.has(a.numero) && !continua(a) && etapaDe(a) === etapaDe(nova))) return null;
+      c = primeira;
+      y = Math.max(...[...fixos.values()].map((f) => f.y)) + M.altura + M.vaoY;
+      semColuna = false;
+    }
     /* lugar ocupado: um cartão na mesma coluna e altura, ou a cerca de outra etapa passando por ali */
     const cercas = new Map();
     for (const a of acoes) {

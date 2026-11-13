@@ -2404,6 +2404,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           return numero;
         } catch (f) { return falhar(f); }
       },
+      /*
+       * Criar pelo início (13/11/2026, pedido do responsável: a Rede como prancheta de elaboração do plano): uma ação
+       * sem anteriores. Sem `antesDe`, fica solta, ligada ao início e ao término; com `antesDe`, a de chegada passa a
+       * depender dela (o "+" na linha que sai do início: Início → nova → seguinte). A etapa vem de quem chama.
+       */
+      async criarNoInicio(etapa, antesDe = null) {
+        const naoAntesDe = dataMinimaPadrao(espaco, hoje);
+        try {
+          const numero = await store.criarAcao(espacoId, {
+            rotulo: `Nova ${termos(espaco).acao}`,
+            dependeDe: [],
+            ...(etapa ? { etapa } : {}),
+            ...(naoAntesDe ? { naoAntesDe } : {}),
+          });
+          if (antesDe != null) await store.acrescentarDependencia(espacoId, antesDe, numero);
+          /* desfazer: a ação criada vai para a lixeira, e a ligação à seguinte sai junto */
+          desfazivel(`${antesDe != null ? "inserção" : "criação"} da ${termos(espaco).acao}`, () => store.excluirAcao(espacoId, numero));
+          return numero;
+        } catch (f) { return falhar(f); }
+      },
       ligar: (de, para) => store.acrescentarDependencia(espacoId, para, de).then(() => {
         desfazivel(`ligação entre "${nomeDe(de)}" e "${nomeDe(para)}"`, () => store.retirarDependencia(espacoId, para, de));
         return true;

@@ -276,6 +276,30 @@ describe("Rede (passo 1.17c)", () => {
       for (const n of [2, 3, 4]) assert.equal(fixos.get(n).coluna, r.coluna.get(n) + 1);
     });
 
+    it("inserir antes da primeira (\"+\" na linha do início) abre uma coluna no começo, na altura da seguinte", () => {
+      const { r, anterior } = antes();
+      const acoes = [...base.map((a) => (a.numero === 1 ? { ...a, dependeDe: [5] } : a)), { numero: 5, etapa: "E11", dependeDe: [] }];
+      const fixos = abrirEspaco(anterior, acoes, op);
+      assert.ok(fixos);
+      assert.deepEqual(fixos.get(5), { coluna: r.coluna.get(1), y: centro(r, 1) });
+      for (const a of base) {
+        assert.equal(fixos.get(a.numero).coluna, r.coluna.get(a.numero) + 1, `a ação ${a.numero} deslizou uma coluna`);
+        assert.equal(fixos.get(a.numero).y, centro(r, a.numero));
+      }
+      const novo = montarRede(acoes, { porAcao: new Map() }, { ...op, fixos });
+      assert.ok(novo.arestas.every((a) => !a.volta));
+    });
+
+    it("ação solta pelo \"+\" do início, numa etapa ainda sem ações, entra na primeira coluna, abaixo de tudo", () => {
+      const { r, anterior } = antes();
+      const acoes = [...base, { numero: 5, etapa: "E22", dependeDe: [] }];
+      const fixos = abrirEspaco(anterior, acoes, op);
+      assert.ok(fixos);
+      assert.equal(fixos.get(5).coluna, r.coluna.get(1));
+      assert.ok(fixos.get(5).y > Math.max(...base.map((a) => centro(r, a.numero))));
+      for (const a of base) assert.deepEqual(fixos.get(a.numero), { coluna: r.coluna.get(a.numero), y: centro(r, a.numero) });
+    });
+
     it("sem ação nova (ligar, desligar, renomear), tudo fica onde estava", () => {
       const { r, anterior } = antes();
       const acoes = base.map((a) => (a.numero === 4 ? { ...a, dependeDe: [2] } : a));
@@ -287,7 +311,7 @@ describe("Rede (passo 1.17c)", () => {
       const { anterior } = antes();
       assert.equal(abrirEspaco(anterior, base.map((a) => (a.numero === 2 ? { ...a, dependeDe: [1, 4] } : a)), op), null, "seta para trás");
       assert.equal(abrirEspaco(anterior, base.map((a) => (a.numero === 3 ? { ...a, etapa: "E22" } : a)), op), null, "mudança de etapa");
-      assert.equal(abrirEspaco(anterior, [...base, { numero: 5, etapa: "E11", dependeDe: [] }], op), null, "ação nova sem anteriores");
+      assert.equal(abrirEspaco(anterior, [...base, { numero: 5, etapa: "E11", dependeDe: [] }], op), null, "ação solta numa etapa que já tem ações");
       assert.equal(abrirEspaco(anterior, [...base, { numero: 5, etapa: "E11", dependeDe: [1] }, { numero: 6, etapa: "E11", dependeDe: [1] }], op), null, "duas ações novas");
       assert.equal(abrirEspaco(null, base, op), null, "sem desenho anterior");
     });
