@@ -5,7 +5,7 @@
  * da barra precisam ser os mesmos de lá.
  * Desde 30/10/2026, cada aplicativo tem a sua escolha: o Strata (classe "strata" no <html>) abre no escuro e o
  * Sextante, no claro, até alguém escolher outro tema naquele aplicativo.
- * Desde 11/11/2026 (em teste), o Sextante tem também a paleta ("sextante.paleta": "ufcimg", o padrão, "original", "neutro", "papel" ou "alto-contraste"),
+ * Desde 11/11/2026, o Sextante tem também a paleta ("sextante.paleta": "ufcimg", o padrão, "original", "neutro", "papel" ou "alto-contraste"),
  * aplicada pelo atributo data-paleta; a cor da barra do navegador acompanha a paleta.
  */
 (function () {

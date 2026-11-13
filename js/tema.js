@@ -8,7 +8,7 @@
  * guardada) e cor da barra do navegador próprios. O Strata é reconhecido pela classe "strata" no <html>.
  * O primeiro desenho usa js/tema-inicial.js, com as mesmas chaves e os mesmos padrões.
  *
- * Paleta (em teste desde 11/11/2026, pedido do responsável): além do modo (claro, escuro ou automático), o Sextante
+ * Paleta (desde 11/11/2026, pedido do responsável): além do modo (claro, escuro ou automático), o Sextante
  * tem a escolha da paleta, guardada à parte ("sextante.paleta") e aplicada pelo atributo data-paleta na raiz:
  * "ufcimg", a identidade visual da UFCI-MG (padrão), "original", a paleta verde-azulada de sempre, ou, desde
  * 12/11/2026, "neutro", "papel" e "alto-contraste". O Strata não
@@ -23,7 +23,7 @@ const CHAVE_PALETA = "sextante.paleta";
 const BARRA_POR_PALETA = Object.freeze({
   ufcimg: { claro: "#F4F6F8", escuro: "#1B1F27" }, original: { claro: "#F5F3EF", escuro: "#0F1A19" },
   neutro: { claro: "#F5F5F5", escuro: "#1C1D1F" }, papel: { claro: "#F6F1E7", escuro: "#24201C" },
-  "alto-contraste": { claro: "#FFFFFF", escuro: "#000000" } }); /* Neutro, Papel e Alto contraste: 12/11/2026, em teste */
+  "alto-contraste": { claro: "#FFFFFF", escuro: "#000000" } }); /* Neutro, Papel e Alto contraste: 12/11/2026 */
 const PALETAS_VALIDAS = new Set(PALETAS.map(([v]) => v));
 
 const POR_APLICATIVO = Object.freeze({

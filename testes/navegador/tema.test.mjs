@@ -2,7 +2,7 @@
  * Tema claro ou escuro escolhido em cada aparelho, no menu da conta (27/10/2026, pedido do responsável;
  * documentação técnica, seção 8.0). A escolha vale depois de recarregar e "Automático" volta a seguir o sistema.
  * Desde 30/10/2026, cada aplicativo tem a sua escolha e o seu padrão: Sextante claro, Strata escuro.
- * Desde 11/11/2026 (em teste), o Sextante tem também a paleta: UFCIMG (padrão) ou Original, à parte do modo.
+ * Desde 11/11/2026, o Sextante tem também a paleta (UFCIMG, padrão, Original, Neutro, Papel ou Alto contraste), à parte do modo.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";

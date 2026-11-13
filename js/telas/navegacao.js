@@ -167,7 +167,7 @@ function ligar() {
       for (const b of lateral.querySelectorAll("[data-tema]")) b.setAttribute("aria-pressed", String(b.dataset.tema === escolhido));
       return;
     }
-    /* paleta deste aparelho (11/11/2026, em teste): troca na hora, sem fechar o menu */
+    /* paleta deste aparelho (11/11/2026): troca na hora, sem fechar o menu */
     const paleta = e.target.closest("button[data-paleta]");
     if (paleta) {
       const escolhida = escolherPaleta(paleta.dataset.paleta);
@@ -242,7 +242,7 @@ export function mostrarNavegacao(opcoes) {
   h1.textContent = titulo || NOME;
   h1.classList.toggle("so-leitor", !titulo);
 
-  /* tema e modo deste aparelho: no menu da conta; sem login, no "Mais" (12/11/2026, em teste, pedido do responsável) */
+  /* tema e modo deste aparelho: no menu da conta; sem login, no "Mais" (12/11/2026, pedido do responsável) */
   const temaHtml = () => `<div class="conta-tema" role="group" aria-label="Tema neste aparelho"><span>Tema</span>
           <div class="paletas">${PALETAS.map(([v, nome]) => `<button type="button" data-paleta="${v}" aria-pressed="${v === lerPaleta()}"><i class="paleta-amostra" data-amostra="${v}" aria-hidden="true"></i>${nome}</button>`).join("")}</div></div>
         <div class="conta-tema" role="group" aria-label="Modo claro ou escuro neste aparelho"><span>Modo</span>
