@@ -750,7 +750,14 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* a legenda geral não vale na planilha, e a Rede e o Cronograma têm a sua (12/11/2026: antes, a regra das telas
        sem filtros a escondia também ali, e a opção de Exibir não fazia nada) */
     legenda.hidden = !ui.legenda || ["planilha", "rede", "cronograma"].includes(ui.modo);
+    medirTopo();
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
+  }
+
+  /** Painel lateral "Filtros e exibição" (teste de 13/11/2026): começa logo abaixo da barra do topo, que muda de altura (uma ou duas linhas). */
+  function medirTopo() {
+    const t = document.querySelector(".topo");
+    if (t) document.documentElement.style.setProperty("--topo-fim", `${Math.round(t.getBoundingClientRect().bottom)}px`);
   }
 
   /** Botão direito na barra do topo, no computador e nos espaços com abas: abre o menu da barra junto ao ponteiro. */
@@ -812,6 +819,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     new ResizeObserver(([e]) => {
       const w = Math.round(e.contentRect.width);
       if (w !== largura) { largura = w; ajustarBarra(); }
+      medirTopo();
     }).observe(document.querySelector(".topo"));
   }
 

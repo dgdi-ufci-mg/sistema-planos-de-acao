@@ -95,8 +95,11 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
     assert.equal(await p.locator('.popover input.chave[role="switch"][data-coluna]').count() >= 1, true);
     const chave = await p.locator(".popover input.chave").first().evaluate((e) => { const r = e.getBoundingClientRect(); return { w: r.width, h: r.height, depoisDoTexto: r.left > e.parentElement.getBoundingClientRect().left + 100 }; });
     assert.deepEqual(chave, { w: 32, h: 18, depoisDoTexto: true }, "chave à direita do texto");
-    const pop = await p.locator(".popover").evaluate((e) => ({ rola: e.scrollHeight > e.clientHeight + 1 }));
-    assert.equal(pop.rola, false, "o menu cabe sem rolar");
+    /* painel lateral (teste de 13/11/2026): Filtrar, Classificar e Exibir ficam um embaixo do outro, e o painel rola;
+       o que se confere é que a parte Exibir, sozinha, cabe na altura da janela */
+    const m = await p.locator('.popover .painel-coluna[aria-label="Exibir"]').evaluate((e) => ({ exibir: e.getBoundingClientRect().height,
+      livre: innerHeight - document.querySelector(".topo").getBoundingClientRect().bottom }));
+    assert.ok(m.exibir < m.livre, `a parte Exibir cabe na altura do painel (${Math.round(m.exibir)} de ${Math.round(m.livre)} px)`);
     /* os botões lado a lado funcionam como as opções em lista */
     await p.locator('.popover [data-nivel="fases"]').click();
     await assentar(p, 400);

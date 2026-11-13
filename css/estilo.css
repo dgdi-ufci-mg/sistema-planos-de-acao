@@ -213,9 +213,12 @@ body::before {
 }
 .topo, body::before {
   background: var(--barra-topo);
-  -webkit-backdrop-filter: blur(14px) saturate(190%); backdrop-filter: blur(14px) saturate(190%);
   transition: background-color .3s ease, box-shadow .3s ease;
 }
+/* o desfoque da barra fica numa camada atrás dela (13/11/2026), e não na própria barra: com desfoque, a barra prenderia
+   dentro dela o painel lateral "Filtros e exibição", que mora na barra mas ocupa a altura da janela */
+body::before, .topo::before { -webkit-backdrop-filter: blur(14px) saturate(190%); backdrop-filter: blur(14px) saturate(190%); }
+.topo::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .topo {
   position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30;
   margin: 0 calc(-1 * max(16px, env(safe-area-inset-right, 0px))) 0 calc(-1 * max(16px, env(safe-area-inset-left, 0px)));
@@ -1558,6 +1561,27 @@ body[data-vista-atual="planilha"] .popover-painel { --coluna: 360px; }
 .popover-painel { container: painel / inline-size; }
 @container painel (max-width: 780px) {
   .popover-painel .painel-coluna + .painel-coluna[aria-label="Exibir"] { flex-basis: 100%; border-left: 0; margin-left: 0; padding-left: 0; padding-top: 14px; border-top: 1px solid var(--grid); }
+}
+/* teste do painel lateral "Filtros e exibição" (13/11/2026, pedido do responsável): no computador, o painel encosta à
+   direita, da barra do topo até o pé da janela, e o conteúdo encolhe para caber ao lado dele, em vez de ficar coberto.
+   Filtrar, Classificar e Exibir ficam um embaixo do outro. A altura da barra vem de --topo-fim (js/telas/espaco.js) */
+@media (min-width: 641px) {
+  :root { --largura-painel-lateral: 340px; }
+  .topo-centro .popover-painel {
+    position: fixed; top: var(--topo-fim, 96px); right: 0; bottom: 0; left: auto; translate: none; z-index: 29;
+    width: var(--largura-painel-lateral); max-width: none; max-height: none;
+    flex-flow: column nowrap; gap: 14px; padding: 14px 14px 20px;
+    border-width: 0 0 0 1px; border-radius: 0; box-shadow: none; overflow-y: auto; overscroll-behavior: contain; }
+  .topo-centro .popover-painel .painel-coluna { flex: none; width: 100%; }
+  .topo-centro .popover-painel .painel-coluna + .painel-coluna,
+  .topo-centro .popover-painel .painel-coluna + .painel-coluna[aria-label="Exibir"] {
+    border-left: 0; margin-left: 0; padding-left: 0; padding-top: 14px; border-top: 1px solid var(--grid); }
+  body:has(.topo-centro .popover-painel) { padding-right: calc(var(--largura-painel-lateral) + 16px); }
+  /* a barra do topo continua de ponta a ponta, por cima do painel */
+  body:has(.topo-centro .popover-painel) .topo { margin-right: calc(-1 * (var(--largura-painel-lateral) + 16px)); }
+  body { transition: padding-left var(--mov) var(--mov-curva), padding-right var(--mov) var(--mov-curva); }
+  /* a Rede ocupa a janela toda por conta própria: com o painel aberto, termina onde ele começa (e os botões de zoom ficam à vista) */
+  body[data-vista-atual="rede"]:has(.topo-centro .popover-painel) .rede { right: var(--largura-painel-lateral); }
 }
 .chip-atrasadas { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; margin-right: 8px; border: 1px solid var(--crit); border-radius: 999px;
   background: var(--crit-soft); color: var(--crit-ink); font: 600 .84rem var(--f-texto); cursor: pointer; white-space: nowrap; }
