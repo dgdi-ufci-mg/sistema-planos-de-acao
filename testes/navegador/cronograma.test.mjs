@@ -305,17 +305,77 @@ describe("Cronograma: responsável, filtros, legenda, setas de borda, teclado, i
     assert.deepEqual(p.erros, []);
   });
 
-  test("legenda completa sob o cronograma; Hoje e Prazo final escritos no cabeçalho", async () => {
+  test("legenda completa no botão ?; Hoje e Prazo final escritos no cabeçalho", async () => {
     const p = await abrir();
-    const itens = await p.evaluate(() => [...document.querySelectorAll(".crono + .crono-legendas .crono-legenda")].map((e) => e.textContent.replace("o que é?", "").trim()));
+    assert.equal(await p.locator("[data-crono-ajuda-cartao]").isVisible(), false, "a legenda começa guardada");
+    await p.click("[data-crono-ajuda]");
+    assert.ok(await p.locator("[data-crono-ajuda-cartao]").isVisible(), "o ? abre a legenda");
+    const itens = await p.evaluate(() => [...document.querySelectorAll("[data-crono-ajuda-cartao] .crono-legenda")].map((e) => e.textContent.replace("o que é?", "").trim()));
     for (const item of ["Sem folga", "Com folga", "Ainda não liberada", "Atrasada", "Concluída", "Fase ou etapa, do começo ao fim", "Ligação: só começa quando a anterior termina", "Hoje", "Dias que já passaram", "Prazo final"]) {
       assert.ok(itens.includes(item), `falta na legenda: ${item} (${itens.join(" | ")})`);
     }
-    assert.equal(await p.locator(".crono-ferramentas .crono-legenda").count(), 0, "a legenda saiu da barra de ferramentas");
+    assert.equal(await p.locator(".crono ~ .crono-legendas").count(), 0, "nada de legenda sob o cronograma");
+    await p.click("[data-crono-ajuda]");
+    await assentar(p, 400);
+    assert.equal(await p.locator("[data-crono-ajuda-cartao]").isVisible(), false, "o ? fecha a legenda");
+    await p.click("[data-crono-ajuda]");
+    await p.mouse.click(400, 300);
+    await assentar(p, 400);
+    assert.equal(await p.locator("[data-crono-ajuda-cartao]").isVisible(), false, "clicar fora também fecha");
     assert.equal(await p.locator(".crono-escala .crono-pino.hoje").textContent(), "Hoje");
     assert.equal(await p.locator(".crono-escala .crono-pino.prazo").textContent(), "Prazo final");
     const x = await p.evaluate(() => ({ pino: document.querySelector(".crono-pino.hoje").getBoundingClientRect(), linha: document.querySelector(".crono-marca.hoje").getBoundingClientRect().left }));
     assert.ok(Math.abs(x.pino.left + x.pino.width / 2 - x.linha) < 2, "o nome fica em cima da linha de hoje");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("controles sobre o gráfico, como na Rede: nada de linha de ferramentas nem de legenda abaixo; a área vai ao pé da tela (13/11/2026)", async () => {
+    const p = await abrir();
+    assert.equal(await p.locator(".crono-ferramentas").count(), 0, "sem a linha de ferramentas");
+    const m = await p.evaluate(() => {
+      const c = document.querySelector(".crono").getBoundingClientRect();
+      const ctl = document.querySelector("[data-crono-controles]").getBoundingClientRect();
+      return { pe: innerHeight - c.bottom, dentro: ctl.right <= c.right && ctl.bottom <= c.bottom && ctl.top >= c.top, rola: document.documentElement.scrollHeight - innerHeight };
+    });
+    assert.ok(m.dentro, "os controles ficam dentro do cronograma");
+    assert.ok(m.pe <= 24, `o cronograma vai até perto do pé da tela (sobram ${m.pe} px)`);
+    assert.ok(m.rola <= 1, "a página não rola");
+    assert.equal(await p.locator("[data-crono-desfazer]").isVisible(), false, "Desfazer só aparece quando há o que desfazer");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("linhas compactas, em Exibir: mais linhas por tela, e a escolha fica lembrada", async () => {
+    const p = await abrir();
+    const altura = () => p.evaluate(() => document.querySelector(".crono-linha").getBoundingClientRect().height);
+    assert.equal(await altura(), 34);
+    await exibir(p, "cronoCompacto");
+    assert.equal(await altura(), 26);
+    assert.equal(await p.locator(".crono.compacta").count(), 1);
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.cronoCompacto")), "1");
+    await exibir(p, "cronoCompacto");
+    assert.equal(await altura(), 34);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("arrastar a borda da coluna dos nomes muda a largura, lembrada; duplo clique volta ao normal", async () => {
+    const p = await abrir();
+    const nomes = () => p.evaluate(() => document.querySelector(".crono-linha .crono-nome").getBoundingClientRect().width);
+    assert.equal(Math.round(await nomes()), 300);
+    const b = await p.locator("[data-nomes-borda]").boundingBox();
+    await p.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(b.x + 80, b.y + b.height / 2, { steps: 5 });
+    await p.mouse.up();
+    await assentar(p, 400);
+    const larga = Math.round(await nomes());
+    assert.ok(larga > 360 && larga < 390, `alargou (${larga})`);
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.cronoNomes")), String(larga));
+    const t = await p.evaluate(() => [document.querySelector(".crono-escala").getBoundingClientRect().left, document.querySelector(".crono-trilho").getBoundingClientRect().left]);
+    assert.ok(Math.abs(t[0] - t[1]) < 1, "o cabeçalho das datas acompanha");
+    await p.locator("[data-nomes-borda]").dblclick();
+    await assentar(p, 400);
+    assert.equal(Math.round(await nomes()), 300);
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.cronoNomes")), null);
     assert.deepEqual(p.erros, []);
   });
 
@@ -367,6 +427,7 @@ describe("Cronograma: responsável, filtros, legenda, setas de borda, teclado, i
     const temaAntes = await p.evaluate(() => document.documentElement.getAttribute("data-theme"));
     await p.evaluate(() => dispatchEvent(new Event("beforeprint")));
     await p.emulateMedia({ media: "print" });
+    await assentar(p, 300); // a folha muda a altura da página, e a barra de rolagem pode aparecer ou sumir: espera o desenho assentar
     const m = await p.evaluate(() => {
       const paginas = [...document.querySelectorAll(".crono-impressao .crono-pagina")];
       return {
@@ -471,8 +532,8 @@ describe("Cronograma: indicador ao lado dos nomes (12/11/2026)", { skip: pular }
     assert.ok(await p.locator(".crono.com-indicador").count() === 1);
     assert.ok(await p.locator(".crono-linha .crono-ind .barra-medidor").count() >= 5, "barra nas ações não concluídas");
     assert.equal(await p.locator(".crono-cabeca .crono-ind-titulo .barra-icone.execucao").count(), 1);
-    const largura = await p.evaluate(() => getComputedStyle(document.querySelector(".crono")).getPropertyValue("--nomes").trim());
-    assert.equal(largura, "404px");
+    const largura = await p.evaluate(() => document.querySelector(".crono-nome.crono-cabeca").getBoundingClientRect().width);
+    assert.equal(Math.round(largura), 404);
     await escolher(p, "revisao");
     assert.equal(await p.locator(".crono-cabeca .barra-icone.revisao").count(), 1);
     assert.equal(await p.evaluate(() => localStorage.getItem("sextante.cronoIndicador")), "revisao");

@@ -1039,12 +1039,12 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-legenda i.critica, .crono-barra-acao.critica { background: var(--crit); }
 .crono-legenda i.folga, .crono-barra-acao.folga { background: var(--accent); }
 .crono-legenda i.concluida, .crono-barra-acao.concluida { background: var(--ok); }
-.crono { --nomes: 300px; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
+.crono { --nomes: var(--nomes-pessoal, 300px); position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
 .crono-rolagem { overflow: auto; overscroll-behavior: contain; border-radius: var(--raio); }
 .crono-conteudo { position: relative; }
 .crono-topo { display: flex; height: 40px; border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 4; background: var(--surface); }
 /* indicador numa coluna estreita ao lado dos nomes (12/11/2026): a mesma barra da lista e do quadro; no celular, não */
-.crono.com-indicador { --nomes: 404px; }
+.crono.com-indicador { --nomes: calc(var(--nomes-pessoal, 300px) + 104px); }
 .crono-ind { flex: none; width: 96px; margin-left: auto; display: flex; align-items: center; }
 .crono-ind .medidor { flex: 1; min-width: 0; gap: 5px; }
 .crono-ind .barra-medidor { height: 6px; min-width: 0; }
@@ -3343,4 +3343,41 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual
   body[data-vista-atual][data-abas][data-sem-nome] .topo-esquerda { grid-column: 1; grid-row: 1; width: 0; min-width: 0; }
   body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { grid-column: 1; grid-row: 1; padding-top: 6px; }
   body[data-vista-atual][data-abas][data-sem-nome] .topo-direita { grid-column: 2; grid-row: 1; align-self: center; padding-top: 6px; }
+}
+
+/* ---------- Cronograma, 13/11/2026 (pedido do responsável: aproveitar melhor a tela) ---------- */
+/* controles sobre o gráfico, iguais aos da Rede: Desfazer, Hoje, ?, zoom e Ver tudo no canto de baixo, à direita;
+   a comparação com um retrato e o aviso das escondidas numa pílula no canto de baixo, à esquerda */
+.crono-controles { right: 22px; bottom: 22px; z-index: 6; }
+.crono-controles .rede-controle[hidden] { display: none; }
+.crono-controles .rede-controle[disabled] { opacity: .4; cursor: default; background: transparent; }
+.crono-controles .crono-zoom-nome { display: flex; align-items: center; justify-content: center; width: 40px; min-width: 0; height: 26px; font-size: .68rem; font-weight: 600;
+  font-family: inherit; overflow: hidden; }
+.rede-controle.crono-hoje { width: auto; height: 36px; padding: 0 12px 0 10px; gap: 6px; align-self: flex-end; font: inherit; font-size: .82rem; font-weight: 600; color: var(--accent-ink); border-radius: 999px; }
+.rede-controle.crono-hoje .icone { width: 17px; height: 17px; }
+.crono-pilula { position: absolute; left: 12px; bottom: 22px; z-index: 6; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 6px 12px;
+  max-width: calc(100% - 120px); box-sizing: border-box; font-size: .84rem; }
+.crono-pilula .crono-comparar select { padding: 3px 6px; }
+.crono-ajuda { right: 112px; bottom: 22px; z-index: 7; width: min(440px, calc(100% - 120px)); max-height: calc(100% - 60px); }
+.crono-ajuda h3 { margin: 0 0 6px; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.crono-ajuda h3:not(:first-child) { margin-top: 12px; }
+.crono-ajuda .crono-legendas { display: grid; gap: 5px; color: var(--ink); font-size: .84rem; }
+/* no computador, o cronograma desce até perto do pé da tela (sem a margem de 56 px das outras visualizações) */
+@media (min-width: 641px) { body[data-vista-atual="cronograma"] { padding-bottom: 12px; } }
+/* folga no pé, para a última linha poder subir acima dos controles */
+.crono:not(.impresso) .crono-conteudo { padding-bottom: 56px; }
+/* linhas compactas, em "Exibir" */
+.crono.compacta .crono-barra-acao { top: 6px; height: calc(var(--altura) - 12px); }
+.crono.compacta .crono-barra-acao.continua { top: calc(var(--altura) / 2 - 4px); height: 8px; }
+.crono.compacta .crono-nome { font-size: .86rem; }
+/* borda da coluna dos nomes: arrastar muda a largura */
+.crono-nomes-borda { position: absolute; top: 0; right: -4px; width: 8px; height: 100%; cursor: col-resize; z-index: 6; }
+.crono-nomes-borda::after { content: ""; position: absolute; top: 8px; bottom: 8px; left: 3px; width: 2px; border-radius: 1px; background: transparent; transition: background var(--mov-rapido); }
+.crono-nomes-borda:hover::after, .crono.ajustando-nomes .crono-nomes-borda::after { background: var(--accent); }
+.crono.ajustando-nomes, .crono.ajustando-nomes * { cursor: col-resize !important; user-select: none; }
+@media (max-width: 640px) {
+  .crono-nomes-borda { display: none; }
+  .crono-controles { right: 10px; bottom: 14px; gap: 8px; }
+  .crono-pilula { left: 8px; bottom: 14px; max-width: calc(100% - 72px); font-size: .76rem; }
+  .crono-ajuda { left: 10px; right: 10px; bottom: 14px; width: auto; max-height: calc(100% - 28px); }
 }

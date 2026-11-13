@@ -101,6 +101,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     cronoResponsavel: lembrado("sextante.cronoResponsavel", "1") === "1",
     cronoSemConcluidas: lembrado("sextante.cronoSemConcluidas", "0") === "1",
     cronoSemContinuas: lembrado("sextante.cronoSemContinuas", "0") === "1",
+    /** cronograma, linhas compactas (13/11/2026, pedido do responsável: mais ações por tela), lembrado no aparelho */
+    cronoCompacto: lembrado("sextante.cronoCompacto", "0") === "1",
     /** legenda própria da Rede e do Cronograma, ligada de início (12/11/2026) */
     legendaPropria: true,
     /** cronograma, indicador ao lado dos nomes (12/11/2026, pedido do responsável), escolhido em "Exibir" e lembrado no
@@ -675,8 +677,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       ${ui.modo === "cronograma" ? `<h3>No cronograma</h3><div class="opcoes-lista">
         ${chave("data-crono-op", "cronoResponsavel", "Responsável ao lado da barra", ui.cronoResponsavel, ICONES.pessoa)}
         ${chave("data-crono-op", "cronoSemConcluidas", "Esconder as concluídas", ui.cronoSemConcluidas, ICONES.concluida)}
-        ${usaContinuas(espaco) && acoes.some((a) => caminho.porAcao.get(a.numero)?.continua) ? chave("data-crono-op", "cronoSemContinuas", "Esconder as contínuas", ui.cronoSemContinuas, ICONES.olho) : ""}</div>` : ""}
-      ${ui.modo === "planilha" ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${chave("data-legenda-op", "1", "Legenda dos símbolos", legendaLigada(), ICONES.legenda)}</div>`}`;
+        ${usaContinuas(espaco) && acoes.some((a) => caminho.porAcao.get(a.numero)?.continua) ? chave("data-crono-op", "cronoSemContinuas", "Esconder as contínuas", ui.cronoSemContinuas, ICONES.olho) : ""}
+        ${chave("data-crono-op", "cronoCompacto", "Linhas compactas", ui.cronoCompacto, ICONES.menu)}</div>` : ""}
+      ${/* no Cronograma, a legenda fica no botão "?" sobre o gráfico (13/11/2026) */ ["planilha", "cronograma"].includes(ui.modo) ? "" : `<h3>Ajuda na tela</h3><div class="opcoes-lista">${chave("data-legenda-op", "1", "Legenda dos símbolos", legendaLigada(), ICONES.legenda)}</div>`}`;
   }
 
   /** Ferramentas na barra do topo: modo, Filtrar, Ordenar e Nova ação (celular: "Filtros e exibição"). */
@@ -1162,7 +1165,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         },
         retratos: ui.retratos, comparar: ui.comparar, base: ui.base, aoComparar: compararCom,
         /* menu "Exibir" (11/11/2026): responsável ao lado da barra, esconder concluídas e contínuas */
-        exibir: { responsavel: ui.cronoResponsavel, semConcluidas: ui.cronoSemConcluidas, semContinuas: ui.cronoSemContinuas, legenda: ui.legendaPropria },
+        exibir: { responsavel: ui.cronoResponsavel, semConcluidas: ui.cronoSemConcluidas, semContinuas: ui.cronoSemContinuas, compacto: ui.cronoCompacto },
         nomesDe: (a) => a.responsaveis.map((id) => pessoas.get(id)?.nome).filter(Boolean),
         /* indicador numa coluna estreita ao lado dos nomes (12/11/2026, pedido do responsável), escolhido em "Exibir":
            nenhum, o índice de criticidade ou a contribuição para a incerteza; o tempo restante não entra, porque o

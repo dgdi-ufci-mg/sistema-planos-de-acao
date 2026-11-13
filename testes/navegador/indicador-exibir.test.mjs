@@ -109,7 +109,7 @@ describe("Indicador em Exibir, com Nenhum (12/11/2026)", { skip: pular }, () => 
     assert.deepEqual(p.erros, []);
   });
 
-  for (const [modo, seletor] of [["rede", ".rede-legenda"], ["cronograma", ".crono + .crono-legendas"]]) {
+  for (const [modo, seletor] of [["rede", ".rede-legenda"]]) {
     test(`${modo}: "Legenda dos símbolos" liga e desliga a legenda própria, ligada de início`, async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 800 });
       await irPara(p, modo);

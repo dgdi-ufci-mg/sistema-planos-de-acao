@@ -38,6 +38,8 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
  */
 export const ZOOM = [[2, "Trimestres"], [3, "Meses"], [5, "Meses"], [8, "Semanas"], [12, "Semanas"], [18, "Semanas"], [28, "Dias"], [40, "Dias"]];
 export const ZOOM_PADRAO = 18;
+/** Nome curto do nível, no botão flutuante do zoom, que é estreito (13/11/2026); o nome inteiro fica na dica. */
+const CURTO = { Trimestres: "Trim.", Semanas: "Sem." };
 /**
  * Pixels por dia do zoom guardado: um dos níveis ou, depois de "Ver tudo" (10/11/2026), qualquer valor de 1 a 40.
  * Aceita os nomes antigos "semanas" e "meses".
@@ -53,7 +55,22 @@ export const nivelDoZoom = (escala) => {
 };
 /** Data e posição do ponteiro a manter paradas no próximo desenho (zoom pela rolagem do mouse); `inicio`: "Ver tudo". */
 let ancora = null;
-const ALTURA = 34;
+/** Altura de cada linha: normal ou compacta (13/11/2026, "Linhas compactas" em "Exibir"; a impressão usa sempre a normal). */
+const ALTURA_NORMAL = 34;
+const ALTURA_COMPACTA = 26;
+/**
+ * Largura da coluna dos nomes escolhida pela pessoa, arrastando a borda dela (13/11/2026), lembrada no aparelho.
+ * É a largura sem o indicador (que soma 104 px). null: a de sempre (300 px). Só no computador.
+ */
+const NOMES_PADRAO = 300;
+const NOMES_MIN = 160;
+const NOMES_MAX = 640;
+const lerNomes = () => {
+  try { const v = Number(localStorage.getItem("sextante.cronoNomes")); return v >= NOMES_MIN && v <= NOMES_MAX ? v : null; } catch { return null; }
+};
+const gravarNomes = (v) => {
+  try { if (v == null) localStorage.removeItem("sextante.cronoNomes"); else localStorage.setItem("sextante.cronoNomes", String(v)); } catch { /* sem armazenamento */ }
+};
 const DURACAO = 250;
 const CURVA = "cubic-bezier(.2, 0, 0, 1)";
 const reduzirMovimento = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -102,6 +119,7 @@ export function desenharCronograma(alvo, dados) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. O cronograma aparece quando houver ações.</p>`;
     return;
   }
+  const ALTURA = !impressao && exibir.compacto ? ALTURA_COMPACTA : ALTURA_NORMAL;
   const redesenhar = () => desenharCronograma(alvo, dados);
   if (!impressao) ultimo = { alvo, dados };
   if (!recolhidosDe.has(espaco.id)) recolhidosDe.set(espaco.id, new Set());
@@ -257,7 +275,7 @@ export function desenharCronograma(alvo, dados) {
                 <defs><marker id="crono-ponta" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L8,4 L0,8 z"/></marker></defs>
                 ${setas.join("")}
               </svg>`;
-  const topoHtml = (mais) => `<div class="crono-topo"><div class="crono-nome crono-cabeca"><span>Ação</span>${mais}${indicador && !impressao ? `<span class="crono-ind crono-ind-titulo">${indicador.titulo}</span>` : ""}</div><div class="crono-escala" style="width:${largura}px">${marcasTopo.join("")}</div></div>`;
+  const topoHtml = (mais) => `<div class="crono-topo"><div class="crono-nome crono-cabeca"><span>Ação</span>${mais}${indicador && !impressao ? `<span class="crono-ind crono-ind-titulo">${indicador.titulo}</span>` : ""}${impressao ? "" : `<i class="crono-nomes-borda" data-nomes-borda title="Arraste para alargar ou estreitar a coluna dos nomes. Duplo clique volta à largura normal."></i>`}</div><div class="crono-escala" style="width:${largura}px">${marcasTopo.join("")}</div></div>`;
 
   /* ---------- impressão (11/11/2026): páginas deitadas, cada uma com o cabeçalho das datas e a legenda ---------- */
   if (impressao) {
@@ -292,22 +310,12 @@ export function desenharCronograma(alvo, dados) {
   const rolagemAnterior = antiga ? { esquerda: antiga.scrollLeft, topo: antiga.scrollTop, escala: alvo.dataset.cronoEscala } : null;
   const focoDentro = Boolean(alvo.querySelector(".crono")?.contains(document.activeElement));
   alvo.dataset.cronoEscala = escala;
+  const ajudaAberta = alvo.dataset.cronoAjudaAberta === "1";
+  const nomesPessoal = lerNomes();
+  /* controles sobre o gráfico, iguais aos da Rede (13/11/2026, pedido do responsável: aproveitar melhor a tela) */
+  const pilula = comparacao || avisoOcultas ? `<div class="crono-pilula rede-sobre">${comparacao}${avisoOcultas}</div>` : "";
   alvo.innerHTML = `
-    <div class="crono-ferramentas">
-      <div class="crono-zoom" role="group" aria-label="Zoom">
-        <button type="button" class="botao" data-zoom="-1" aria-label="Diminuir o zoom" title="Diminuir o zoom (Ctrl + rolar o mouse para baixo)"${px <= ZOOM[0][0] ? " disabled" : ""}>${ICONES.menos}</button>
-        <span class="crono-zoom-nome" aria-live="polite">${ZOOM[nivel][1]}</span>
-        <button type="button" class="botao" data-zoom="1" aria-label="Aumentar o zoom" title="Aumentar o zoom (Ctrl + rolar o mouse para cima)"${px >= ZOOM.at(-1)[0] ? " disabled" : ""}>${ICONES.mais}</button>
-      </div>
-      <div class="crono-ir" role="group" aria-label="Ir para">
-        <button type="button" class="botao" data-ir-hoje title="Levar a vista até o dia de hoje">Hoje</button>
-        <button type="button" class="botao" data-ver-tudo title="Ajustar o zoom para o cronograma inteiro caber na tela">Ver tudo</button>
-      </div>
-      ${edicao ? `<button type="button" class="botao" data-crono-desfazer title="Desfazer a última edição feita aqui (Ctrl+Z)"${edicao.temDesfazer() ? "" : " disabled"}>Desfazer</button>` : ""}
-      ${comparacao}
-      ${avisoOcultas}
-    </div>
-    <div class="crono${edicao ? " editavel" : ""}${indicador ? " com-indicador" : ""}" style="--altura:${ALTURA}px" tabindex="-1">
+    <div class="crono${edicao ? " editavel" : ""}${indicador ? " com-indicador" : ""}${ALTURA === ALTURA_COMPACTA ? " compacta" : ""}" style="--altura:${ALTURA}px${nomesPessoal ? `;--nomes-pessoal:${nomesPessoal}px` : ""}" tabindex="-1">
       <div class="crono-rolagem" data-rolagem>
         <div class="crono-conteudo" style="width:calc(var(--nomes) + ${largura}px)">
           ${topoHtml(usaFases && (espaco.estrutura ?? []).length ? "" : maisHtml("", ""))}
@@ -321,9 +329,27 @@ export function desenharCronograma(alvo, dados) {
       </div>
       <div class="crono-foras" data-foras></div>
       <div class="tempo-dica" data-dica hidden></div>
-    </div>
-    ${exibir.legenda === false ? "" : `<div class="crono-legendas" aria-label="Legenda">${legenda}</div>`}
-    <p class="tec">${ajuda} <span class="so-computador">Para imprimir ou salvar em PDF, use o Imprimir do navegador (Ctrl+P).</span> Termo técnico: diagrama de Gantt (<a href="#" class="oque" data-termo="cronograma">o que é?</a>).</p>`;
+      ${pilula}
+      <div class="rede-ajuda rede-sobre crono-ajuda" data-crono-ajuda-cartao${ajudaAberta ? "" : " hidden"}>
+        <h3>Legenda</h3>
+        <div class="crono-legendas" aria-label="Legenda">${legenda}</div>
+        <h3>Como usar</h3>
+        <p>${ajuda}</p>
+        <p class="so-computador">Para imprimir ou salvar em PDF, use o Imprimir do navegador (Ctrl+P).</p>
+        <p class="tec">Termo técnico: diagrama de Gantt (<a href="#" class="oque" data-termo="cronograma">o que é?</a>).</p>
+      </div>
+      <div class="rede-controles crono-controles" data-crono-controles>
+        ${edicao ? `<button type="button" class="rede-controle rede-sobre redondo" data-crono-desfazer title="Desfazer a última edição feita aqui (Ctrl+Z)" aria-label="Desfazer a última edição"${edicao.temDesfazer() ? "" : " hidden"}>${ICONES.desfazer}</button>` : ""}
+        <button type="button" class="rede-controle rede-sobre crono-hoje" data-ir-hoje title="Levar a vista até o dia de hoje">${ICONES.calendario}<span>Hoje</span></button>
+        <button type="button" class="rede-controle rede-sobre redondo" data-crono-ajuda aria-expanded="${ajudaAberta}" title="Legenda e como usar o cronograma" aria-label="Legenda e como usar o cronograma">${ICONES.ajuda}</button>
+        <div class="rede-controles-grupo rede-sobre" role="group" aria-label="Zoom">
+          <button type="button" class="rede-controle" data-zoom="1" title="Aumentar o zoom (Ctrl + rolar o mouse para cima)" aria-label="Aumentar o zoom"${px >= ZOOM.at(-1)[0] ? " disabled" : ""}>${ICONES.mais}</button>
+          <span class="rede-zoom-valor crono-zoom-nome" aria-live="polite" title="Zoom: ${ZOOM[nivel][1]}">${CURTO[ZOOM[nivel][1]] ?? ZOOM[nivel][1]}</span>
+          <button type="button" class="rede-controle" data-zoom="-1" title="Diminuir o zoom (Ctrl + rolar o mouse para baixo)" aria-label="Diminuir o zoom"${px <= ZOOM[0][0] ? " disabled" : ""}>${ICONES.menos}</button>
+        </div>
+        <button type="button" class="rede-controle rede-sobre" data-ver-tudo title="Ver tudo: ajusta o zoom para o cronograma inteiro caber na tela" aria-label="Ver tudo">${ICONES.enquadrar}</button>
+      </div>
+    </div>`;
 
   /* ---------- interação ---------- */
   const caixa = alvo.querySelector(".crono");
@@ -335,17 +361,35 @@ export function desenharCronograma(alvo, dados) {
   const barraDe = (n) => caixa.querySelector(`[data-barra="${n}"]`);
   /** Durante um arrasto, a dica e o destaque do mouse ficam parados. */
   let arrastando = false;
-  alvo.querySelector(".crono-ferramentas").onclick = (e) => {
+  alvo.querySelector("[data-crono-controles]").onclick = (e) => {
     const b = e.target.closest("[data-zoom]");
     if (b) return zoom(Number(b.dataset.zoom));
     if (e.target.closest("[data-ir-hoje]")) return irParaHoje();
     if (e.target.closest("[data-ver-tudo]")) return verTudo();
     if (e.target.closest("[data-crono-desfazer]")) return edicao?.desfazer();
-    if (e.target.closest("[data-mostrar-todas]")) return aoMostrarTodas();
+    if (e.target.closest("[data-crono-ajuda]")) alternarAjuda();
   };
-  alvo.querySelector(".crono-ferramentas").onchange = (e) => {
-    if (e.target.matches("[data-comparar]")) aoComparar(e.target.value || null);
-  };
+  /** O "?" abre e fecha a legenda e o "como usar"; tocar fora do cartão também fecha (no celular, ele cobre o "?"). */
+  function alternarAjuda(abrir = alvo.querySelector("[data-crono-ajuda-cartao]").hidden) {
+    const cartao = alvo.querySelector("[data-crono-ajuda-cartao]");
+    if (abrir === !cartao.hidden) return;
+    if (abrir) {
+      cartao.hidden = false;
+      if (!reduzirMovimento()) cartao.animate([{ opacity: 0, transform: "translateY(3px)" }, { opacity: 1 }], { duration: DURACAO, easing: CURVA });
+    } else if (reduzirMovimento()) cartao.hidden = true;
+    else cartao.animate([{ opacity: 1 }, { opacity: 0, transform: "translateY(3px)" }], { duration: DURACAO, easing: CURVA }).finished.then(() => { cartao.hidden = true; }, () => {});
+    alvo.querySelector("[data-crono-ajuda]").setAttribute("aria-expanded", String(abrir));
+    alvo.dataset.cronoAjudaAberta = abrir ? "1" : "";
+  }
+  caixa.addEventListener("pointerdown", (e) => {
+    if (alvo.dataset.cronoAjudaAberta !== "1" || e.target.closest("[data-crono-ajuda-cartao], [data-crono-ajuda]")) return;
+    alternarAjuda(false);
+  });
+  const pilulaEl = alvo.querySelector(".crono-pilula");
+  if (pilulaEl) {
+    pilulaEl.onclick = (e) => { if (e.target.closest("[data-mostrar-todas]")) aoMostrarTodas(); };
+    pilulaEl.onchange = (e) => { if (e.target.matches("[data-comparar]")) aoComparar(e.target.value || null); };
+  }
   const limpar = () => {
     caixa.classList.remove("destacando");
     for (const el of caixa.querySelectorAll(".ligada")) el.classList.remove("ligada");
@@ -547,6 +591,37 @@ export function desenharCronograma(alvo, dados) {
     addEventListener("pointercancel", soltar);
   });
 
+  /* ---------- largura da coluna dos nomes (13/11/2026): arrastar a borda dela; duplo clique volta ao normal ---------- */
+  const bordaNomes = alvo.querySelector("[data-nomes-borda]");
+  bordaNomes.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const extra = indicador ? 104 : 0;
+    const inicio = { x: e.clientX, largura: (nomesPessoal ?? NOMES_PADRAO) };
+    let atual = inicio.largura;
+    caixa.classList.add("ajustando-nomes");
+    limpar();
+    arrastando = true;
+    const mover = (ev) => {
+      atual = Math.round(Math.max(NOMES_MIN, Math.min(NOMES_MAX, inicio.largura + ev.clientX - inicio.x, rolagem.clientWidth - extra - 120)));
+      caixa.style.setProperty("--nomes-pessoal", `${atual}px`);
+    };
+    const soltar = () => {
+      removeEventListener("pointermove", mover);
+      removeEventListener("pointerup", soltar);
+      removeEventListener("pointercancel", soltar);
+      arrastando = false;
+      caixa.classList.remove("ajustando-nomes");
+      if (atual === inicio.largura) return;
+      gravarNomes(atual === NOMES_PADRAO ? null : atual);
+      redesenhar();
+    };
+    addEventListener("pointermove", mover);
+    addEventListener("pointerup", soltar);
+    addEventListener("pointercancel", soltar);
+  });
+  bordaNomes.addEventListener("dblclick", () => { if (nomesPessoal == null) return; gravarNomes(null); redesenhar(); });
+
   /* ---------- recolher e abrir fases e etapas (10/11/2026) ---------- */
   caixa.addEventListener("click", (e) => {
     const grupo = e.target.closest("[data-recolher]");
@@ -563,7 +638,7 @@ export function desenharCronograma(alvo, dados) {
 
   /* ====================== edição (10/11/2026) ====================== */
   function ativarEdicao() {
-    edicao.ouvirDesfazer((tem) => { const b = alvo.querySelector("[data-crono-desfazer]"); if (b) b.disabled = !tem; });
+    edicao.ouvirDesfazer((tem) => { const b = alvo.querySelector("[data-crono-desfazer]"); if (b) b.hidden = !tem; });
     const diaSob = (clientX) => (clientX - trilho.getBoundingClientRect().left) / px;
     const marcar = () => {
       for (const el of caixa.querySelectorAll(".selecionada")) el.classList.remove("selecionada");
