@@ -27,6 +27,8 @@ import { surgir, DURACAO as MOV_DURACAO, CURVA as MOV_CURVA } from "./movimento.
 let aoRedimensionar = null;
 /** Ctrl+Z na Rede (10/11/2026): um só ouvinte no documento, trocado a cada desenho. */
 let aoTeclarDesfazer = null;
+/** Régua das fases (13/11/2026): observa a barra do topo e a área da Rede; um só observador, trocado a cada desenho. */
+let observadorDaRegua = null;
 /**
  * Níveis de detalhe do cartão conforme o zoom (10/11/2026): "completo" de 60% para cima; "nome" de 35% a 60%
  * (só o nome, em letra maior); "cor" abaixo de 35% (bloco preenchido com a cor da situação, nome onde couber).
@@ -459,6 +461,21 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     conteudo.style.top = `${my}px`;
     if (fasesTopo) fasesTopo.style.top = `${areaLivre().regua}px`;
   };
+  /* a régua acompanha a altura da barra do topo (13/11/2026, defeito relatado pelo responsável): antes, a posição era
+     medida só ao abrir a Rede; mostrar ou esconder o nome do espaço (botão direito na barra) ou mudar a largura da
+     janela mudava a altura da barra, e a régua ficava escondida atrás dela ou com um vão grande embaixo */
+  observadorDaRegua?.disconnect();
+  observadorDaRegua = null;
+  if (fasesTopo && typeof ResizeObserver === "function") {
+    observadorDaRegua = new ResizeObserver(() => {
+      if (!fasesTopo.isConnected) { observadorDaRegua?.disconnect(); return; }
+      fasesTopo.style.top = `${areaLivre().regua}px`;
+      atualizarFases();
+    });
+    for (const el of [document.querySelector(".topo"), document.querySelector("#principal .titulo-conteudo"), document.querySelector("#principal .cabeca-espaco"), rolagem]) {
+      if (el) observadorDaRegua.observe(el);
+    }
+  }
   /* régua das fases: cada nome fica no meio do trecho da sua faixa que está na tela, sempre à vista */
   const atualizarFases = () => {
     if (!fasesTopo) return;
