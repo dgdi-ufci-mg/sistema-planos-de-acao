@@ -643,10 +643,13 @@ body::before {
 /* tema deste aparelho (27/10/2026): três botões lado a lado no menu da conta; desde 11/11/2026, também a paleta, com dois */
 .conta-tema { display: flex; flex-direction: column; gap: 4px; padding: 4px 8px 8px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
 .conta-tema > span { font-size: .78rem; font-weight: 600; color: var(--muted); }
-.conta-tema .alternador { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; box-sizing: border-box; }
-.conta-tema .alternador::before { width: calc((100% - 6px) / 3); }
-.conta-tema .alternador:has(button:nth-child(2)[aria-pressed="true"])::before { transform: translateX(100%); }
-.conta-tema .alternador:has(button:nth-child(3)[aria-pressed="true"])::before { transform: translateX(200%); }
+/* Modo (13/11/2026): "Automático" não cabia num terço do menu e se misturava a "Claro". Cada botão agora tem a largura
+   do próprio nome (a sobra é repartida), e a marca de escolhido é o fundo do próprio botão, já que a faixa deslizante
+   pressupunha três larguras iguais. Se ainda faltar espaço, os botões descem para a linha de baixo, sem cortar texto */
+.conta-tema .alternador { display: flex; flex-wrap: wrap; gap: 1px; width: 100%; box-sizing: border-box; border-radius: 16px; }
+.conta-tema .alternador::before { content: none; }
+.conta-tema .alternador button { flex: 1 1 auto; white-space: nowrap; transition: background-color var(--mov-rapido), color var(--mov-rapido); }
+.conta-tema .alternador button[aria-pressed="true"] { background: var(--accent-soft); box-shadow: var(--relevo); }
 /* escolha do tema (paleta), desde 12/11/2026: uma linha por tema, com amostra das cores dele no modo claro.
    As amostras usam cores fixas de propósito: mostram os outros temas, não o atual */
 .paletas { display: flex; flex-direction: column; gap: 2px; }
@@ -661,12 +664,12 @@ body::before {
 .paleta-amostra[data-amostra="neutro"] { --a1: #F5F5F5; --a2: #3A5F8A; }
 .paleta-amostra[data-amostra="papel"] { --a1: #F6F1E7; --a2: #8A4B1F; }
 .paleta-amostra[data-amostra="alto-contraste"] { --a1: #FFFFFF; --a2: #000000; }
-.conta-menu .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 2px; font-size: .8rem; text-align: center; }
-.conta-menu .conta-tema .alternador button:hover { background: none; }
+.conta-menu .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 4px; font-size: .8rem; text-align: center; }
+.conta-menu .conta-tema .alternador button:hover:not([aria-pressed="true"]) { background: var(--barra-controle); }
 /* sem login, tema e modo no "Mais" da barra lateral (12/11/2026) */
 .lateral-tema { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 6px; }
 .lateral-tema .conta-tema { padding: 4px 8px; border-bottom: 0; margin-bottom: 0; }
-.lateral-tema .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 2px; font-size: .8rem; text-align: center; }
+.lateral-tema .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 4px; font-size: .8rem; text-align: center; }
 .conta-menu button, .lateral-acao {
   display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; padding: 7px 8px;
   border-radius: var(--raio); text-align: left; cursor: pointer; color: var(--muted); font-weight: 600;

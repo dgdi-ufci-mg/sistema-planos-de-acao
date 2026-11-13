@@ -145,6 +145,29 @@ describe("Tema deste aparelho", { skip: pular }, () => {
       assert.deepEqual(p.erros, []);
     });
 
+    test("Modo: Automático, Claro e Escuro cabem sem se sobrepor, no menu da conta e no \"Mais\" (13/11/2026)", async () => {
+      const p = await sessao.abrir({ largura: 1280, altura: 760, tema: "light", temaGuardado: null });
+      const conferir = async (seletor, onde) => {
+        const caixas = await p.locator(`${seletor} .alternador button`).evaluateAll((bs) => bs.map((b) => {
+          const r = b.getBoundingClientRect(); return { e: r.left, d: r.right, t: r.top, cabe: b.scrollWidth <= b.clientWidth + 1 };
+        }));
+        assert.equal(caixas.length, 3, onde);
+        caixas.forEach((c, i) => assert.ok(c.cabe, `${onde}: nome do botão ${i + 1} cortado`));
+        for (let i = 1; i < 3; i++) {
+          const a = caixas[i - 1], b = caixas[i];
+          assert.ok(b.t > a.t + 1 || b.e >= a.d - 0.5, `${onde}: botões ${i} e ${i + 1} sobrepostos`);
+        }
+      };
+      await p.evaluate(() => { document.querySelector("[data-lateral-mais]").open = true; });
+      await conferir(".lateral-tema", "Mais");
+      await comConta(p);
+      await p.click("[data-abrir-conta]");
+      await conferir(".conta-menu", "menu da conta");
+      await p.click('.conta-menu [data-tema="claro"]');
+      assert.equal(await p.locator('.conta-menu [data-tema="claro"]').getAttribute("aria-pressed"), "true");
+      assert.deepEqual(p.erros, []);
+    });
+
     test("UFCIMG claro: destaque em marinho e folga em verde-água", async () => {
       const p = await sessao.abrir({ largura: 1280, altura: 760, tema: "light", temaGuardado: null });
       assert.equal(await varCss(p, "--accent"), "#142C46");
