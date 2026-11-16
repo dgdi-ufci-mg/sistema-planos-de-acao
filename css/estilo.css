@@ -3696,3 +3696,20 @@ button.participantes-topo:hover { background: var(--barra-controle-foco); }
 .topo.barra-icones .participantes-topo { display: none; }
 @media (prefers-reduced-motion: reduce) { .titulo-editavel, button.participantes-topo { transition: none; } }
 button.participantes-topo .avatar { cursor: pointer; }
+
+/* ---------- Lista de tarefas no padrão do Todoist (16/11/2026, decisão do responsável) ----------
+   Fundo branco (a superfície do tema) na área de trabalho; o nome do espaço dentro da coluna central, logo acima das
+   tarefas, e não mais no canto da barra; sem a linha divisória sob a barra; sem o botão "Nova tarefa" no alto (a
+   criação é a linha "Adicionar tarefa" no começo da lista; a tecla N e o (+) do celular continuam); prazo, checklist e
+   etiquetas lado a lado numa linha só sob o nome. Só no tipo Lista; o Quadro e os planos não mudam. */
+body[data-tipo-espaco="lista"] { background: var(--surface); }
+body[data-tipo-espaco="lista"] .topo:not(.rolou) { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (min-width: 641px) {
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .topo-linha { box-shadow: none; }
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .titulo-barra { display: none; }
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] #principal .titulo-conteudo { display: block; margin: 14px 0 -6px; }
+}
+.meta-tarefa { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin-top: 3px; }
+.meta-tarefa > * { margin-top: 0; align-self: center; }
+.lista[data-tarefas] .linha-rapida { margin: 0 0 4px; padding: 8px 4px; border-radius: 6px; }
+.lista[data-tarefas] .linha-rapida .icone { width: 18px; height: 18px; flex: none; color: var(--accent); }
