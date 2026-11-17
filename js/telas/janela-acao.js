@@ -73,7 +73,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let focoNoChecklist = false;
   /** botão de subir/descer a devolver ao foco depois que o item muda de lugar (passo 3.7): { id, direcao } */
   let focoNoMover = null;
-  /** item que está sendo arrastado pela alça (só com mouse), e o lugar onde cairia: { id, antesDe } (passo 3.7) */
+  /** item do checklist sendo arrastado pela alça (só com mouse; passo 3.7); null quando não há arrasto */
   let arrasto = null;
 
   const inicial = acaoAtual();
@@ -1037,7 +1037,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       <span class="campo-nome">Checklist${itens.length ? ` <span class="checklist-progresso">${feitos}/${itens.length}</span>` : ""}</span>
       ${itens.length ? `<span class="checklist-barra" aria-hidden="true"><i style="width:${Math.round((100 * feitos) / itens.length)}%"></i></span>` : ""}
       <ul class="checklist-itens">${itens.map((i, n) => `<li class="${i.feito ? "feito" : ""}" data-item="${esc(i.id)}">
-        ${pode && itens.length > 1 ? `<span class="checklist-alca" draggable="true" data-alca-item="${esc(i.id)}" title="Arrastar para mudar de lugar" aria-hidden="true">${ICONES.alca}</span>` : ""}
+        ${pode && itens.length > 1 ? `<span class="checklist-alca" data-alca-item="${esc(i.id)}" title="Arrastar para mudar de lugar" aria-hidden="true">${ICONES.alca}</span>` : ""}
         <input type="checkbox" data-marcar-item="${esc(i.id)}"${i.feito ? " checked" : ""}${pode ? "" : " disabled"} aria-label="${esc(i.texto)}">
         <span class="checklist-texto"${pode ? ` data-texto-item="${esc(i.id)}" tabindex="0" title="Clique para mudar o texto"` : ""}>${esc(i.texto)}</span>
         ${responsavelDoItemHtml(acao, i, pode)}
@@ -1510,52 +1510,89 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }
 
   /**
-   * Arrastar um item do checklist pela alça (passo 3.7), só com mouse: a alça não aparece em tela de toque, onde
-   * valem as setas. O traço mostra onde o item cai; soltar grava a nova ordem, a mesma operação das setas.
+   * Arrastar um item do checklist pela alça (passo 3.7), só com mouse: o item acompanha o ponteiro e os outros
+   * deslizam para abrir o lugar onde ele cairá, como no Trello e no Todoist. Soltar grava a nova ordem, com a mesma
+   * operação das setas; Esc cancela. Em tela de toque a alça não aparece: valem as setas. As posições dos itens
+   * são medidas uma vez, ao começar, e tudo é feito com `transform`, sem mexer na ordem do desenho até gravar.
    */
-  const limparArrasto = () => {
-    corpo.querySelectorAll(".checklist-itens li.arrastando, .checklist-itens li.solta-antes, .checklist-itens li.solta-depois")
-      .forEach((li) => li.classList.remove("arrastando", "solta-antes", "solta-depois"));
+  const desfazerArrasto = () => {
+    const a = arrasto;
+    if (!a) return;
     arrasto = null;
+    window.removeEventListener("keydown", aoTeclarNoArrasto, true);
+    document.body.classList.remove("arrastando-item");
+    a.itens.forEach((x) => { x.style.transform = ""; x.classList.remove("arrastando"); });
+    /* a classe da transição sai depois, para os itens deslizarem de volta */
+    setTimeout(() => a.itens.forEach((x) => x.classList.remove("desliza", "assenta")), 300);
+    a.ul.classList.remove("em-arrasto");
   };
-  corpo.addEventListener("dragstart", (e) => {
+  function aoTeclarNoArrasto(e) {
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation(); /* o Esc é só do arrasto: não fecha a janela */
+    desfazerArrasto();
+  }
+  corpo.addEventListener("pointerdown", (e) => {
     const alca = e.target.closest?.("[data-alca-item]");
-    if (!alca) return;
-    const li = alca.closest("li");
-    arrasto = { id: alca.dataset.alcaItem, alvo: null, depois: false };
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", "");
-    e.dataTransfer.setDragImage(li, 12, 12);
+    if (arrasto && !arrasto.li.isConnected) { arrasto.assentando = false; desfazerArrasto(); } /* sobra de um arrasto já gravado */
+    if (!alca || arrasto || e.button !== 0 || e.pointerType === "touch") return;
+    const li = alca.closest("li[data-item]");
+    const ul = li.parentElement;
+    const itens = [...ul.children].filter((x) => x.matches("li[data-item]"));
+    const caixas = itens.map((x) => x.getBoundingClientRect());
+    const de = itens.indexOf(li);
+    arrasto = {
+      li, ul, itens, caixas, de, para: de, y0: e.clientY, id: li.dataset.item, assentando: false,
+      vao: itens.length > 1 ? caixas[1].top - caixas[0].bottom : 0,
+    };
+    alca.setPointerCapture(e.pointerId);
+    document.body.classList.add("arrastando-item"); /* cursor de mão fechada e sem selecionar texto */
+    ul.classList.add("em-arrasto");
     li.classList.add("arrastando");
-  });
-  corpo.addEventListener("dragover", (e) => {
-    const li = e.target.closest?.(".checklist-itens li[data-item]");
-    if (!arrasto || !li) return;
+    itens.forEach((x) => { if (x !== li) x.classList.add("desliza"); });
+    window.addEventListener("keydown", aoTeclarNoArrasto, true);
     e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    const caixa = li.getBoundingClientRect();
-    const depois = e.clientY > caixa.top + caixa.height / 2;
-    arrasto.alvo = li.dataset.item;
-    arrasto.depois = depois;
-    corpo.querySelectorAll(".checklist-itens li.solta-antes, .checklist-itens li.solta-depois")
-      .forEach((x) => x.classList.remove("solta-antes", "solta-depois"));
-    if (li.dataset.item !== arrasto.id) li.classList.add(depois ? "solta-depois" : "solta-antes");
   });
-  corpo.addEventListener("drop", (e) => {
-    if (!arrasto) return;
-    e.preventDefault();
-    const { id, alvo, depois } = arrasto;
-    limparArrasto();
-    const lista = acaoAtual()?.checklist ?? [];
-    const de = lista.findIndex((i) => i.id === id);
-    const n = lista.findIndex((i) => i.id === alvo);
-    if (de < 0 || n < 0) return;
-    let para = n + (depois ? 1 : 0);
-    if (de < para) para -= 1; /* ao tirar o item de cima, tudo abaixo dele sobe um lugar */
-    if (para === de) return;
-    executar(() => store.moverItemDoChecklist(espacoId, numero, id, para));
+  corpo.addEventListener("pointermove", (e) => {
+    const a = arrasto;
+    if (!a || a.assentando) return;
+    if (!a.li.isConnected) return desfazerArrasto(); /* a janela foi redesenhada por baixo (outra pessoa gravou) */
+    const { caixas, de, vao, itens } = a;
+    const alto = caixas[de].height;
+    /* o item acompanha o ponteiro, mas não sai da lista */
+    const dy = Math.max(caixas[0].top - caixas[de].top, Math.min(caixas.at(-1).bottom - caixas[de].bottom, e.clientY - a.y0));
+    a.li.style.transform = `translateY(${dy}px)`;
+    /* o lugar de destino é o número de itens que ficam acima do centro do arrastado */
+    const centro = caixas[de].top + alto / 2 + dy;
+    a.para = caixas.filter((c, j) => j !== de && c.top + c.height / 2 < centro).length;
+    itens.forEach((x, j) => {
+      if (j === de) return;
+      const passo = alto + vao;
+      const desloca = de < j && j <= a.para ? -passo : a.para <= j && j < de ? passo : 0;
+      x.style.transform = desloca ? `translateY(${desloca}px)` : "";
+    });
   });
-  corpo.addEventListener("dragend", limparArrasto);
+  const soltarArrasto = (e) => {
+    const a = arrasto;
+    if (!a || a.assentando) return;
+    if (e.type === "pointercancel" || !a.li.isConnected || a.para === a.de) return desfazerArrasto();
+    /* o item desliza até o lugar final, e o desenho novo, já com a ordem gravada, o substitui sem salto */
+    a.assentando = true;
+    window.removeEventListener("keydown", aoTeclarNoArrasto, true);
+    document.body.classList.remove("arrastando-item");
+    const acima = a.itens.map((_, j) => j).filter((j) => j !== a.de).slice(0, a.para);
+    const topoFinal = a.caixas[0].top + acima.reduce((soma, j) => soma + a.caixas[j].height + a.vao, 0);
+    a.li.classList.remove("arrastando");
+    a.li.classList.add("desliza", "assenta");
+    a.li.style.transform = `translateY(${topoFinal - a.caixas[a.de].top}px)`;
+    executar(() => store.moverItemDoChecklist(espacoId, numero, a.id, a.para)).then((ok) => {
+      if (!ok) return a.li.isConnected && ((a.assentando = false), desfazerArrasto());
+      /* gravou e a janela não foi redesenhada logo: limpa, para não ficar com a ordem antiga e as posições novas */
+      setTimeout(() => { if (arrasto === a) { a.assentando = false; desfazerArrasto(); } }, 600);
+    });
+  };
+  corpo.addEventListener("pointerup", soltarArrasto);
+  corpo.addEventListener("pointercancel", soltarArrasto);
 
   /* ---------- eventos ---------- */
   corpo.addEventListener("click", async (e) => {
