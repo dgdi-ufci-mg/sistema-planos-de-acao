@@ -73,7 +73,7 @@ export const CAMPOS = Object.freeze({
   registroDeAlcance: ["id", "entrega", "data", "valor", "descricao", "evidencias", "realizadores", "registradoEm", "registradoPor"],
   evidencia: ["descricao", "identificacao", "link"],
   /** Item do checklist da ação (passo 2.8). */
-  checklistItem: ["id", "texto", "feito"],
+  checklistItem: ["id", "texto", "feito", "responsavel"],
   /** Histórico de alterações das ações (passo 1.16): só de acréscimo. */
   historico: ["id", "entidade", "chave", "tipo", "campo", "antes", "depois", "em", "por"],
   retrato: [

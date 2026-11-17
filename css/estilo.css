@@ -1807,6 +1807,24 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .checklist-itens input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); flex: none; margin: 0; cursor: pointer; }
 .checklist-texto { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: text; padding: 1px 2px; border-radius: 3px; }
 .checklist-itens li.feito .checklist-texto:not([contenteditable]) { color: var(--muted); text-decoration: line-through; }
+/* reordenar e responsável do item (passo 3.7); só variáveis de :root, que já existem nos três blocos de tema */
+.checklist-resp { position: relative; display: inline-flex; flex: none; cursor: pointer; border-radius: 50%; }
+.checklist-resp .avatar { width: 24px; height: 24px; font-size: .62rem; box-shadow: none; cursor: pointer; }
+.checklist-resp .unidade { height: 22px; cursor: pointer; }
+.checklist-resp.somente { cursor: default; }
+.checklist-sem-resp { width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 1px dashed var(--line); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; opacity: .55; }
+.checklist-sem-resp .icone { width: 14px; height: 14px; }
+.checklist-resp.vazio:hover .checklist-sem-resp, .checklist-resp.vazio:focus-within .checklist-sem-resp { opacity: 1; border-color: var(--accent); color: var(--accent); }
+/* a lista nativa cobre o círculo, invisível: o toque abre a lista do aparelho */
+.checklist-resp select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+.checklist-resp:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.checklist-mover { display: inline-flex; flex: none; }
+.checklist-mover .mover { border: 0; background: none; padding: 2px; border-radius: 50%; cursor: pointer; color: var(--muted); display: inline-flex; opacity: .5; }
+.checklist-mover .mover .icone { width: 1em; height: 1em; }
+.checklist-mover .mover:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
+.checklist-mover .mover:disabled { opacity: .18; cursor: default; }
+.checklist-itens li:hover .mover:not(:disabled), .checklist-mover .mover:focus-visible { opacity: 1; }
+@media (pointer: coarse) { .checklist-mover .mover:not(:disabled) { opacity: .8; } .checklist-mover .mover { padding: 5px; } }
 .checklist-itens .tirar { opacity: .5; }
 .checklist-itens li:hover .tirar, .checklist-itens .tirar:focus-visible { opacity: 1; }
 .checklist-novo input { width: 100%; box-sizing: border-box; border: 1px dashed var(--line); border-radius: var(--raio); background: transparent; padding: 6px 8px; font: inherit; color: var(--ink); }

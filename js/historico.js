@@ -110,6 +110,11 @@ export function descreverRegistro(r, nomes) {
         else {
           if (velho.texto !== i.texto) partes.push(`mudou “${velho.texto}” para “${i.texto}”`);
           if (velho.feito !== i.feito) partes.push(i.feito ? `marcou “${i.texto}” como feito` : `desmarcou “${i.texto}”`);
+          /* passo 3.7: responsável do item; o nome vem do espaço, e um responsável já excluído aparece como tal */
+          if ((velho.responsavel ?? null) !== (i.responsavel ?? null)) {
+            const quem = (id) => nomes.responsavel?.(id) ?? "um responsável excluído";
+            partes.push(i.responsavel ? `passou “${i.texto}” para ${quem(i.responsavel)}` : `tirou o responsável de “${i.texto}”`);
+          }
         }
       }
       for (const [id, i] of a) if (!d.has(id)) partes.push(`retirou “${i.texto}”`);
