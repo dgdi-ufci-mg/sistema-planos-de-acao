@@ -161,7 +161,9 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     await assentar(p, 250);
     await p.locator(`[data-inserir-de="${de}"][data-inserir-para="${para}"]`).click();
     await p.waitForSelector(".rede-escolha .rede-fantasma");
-    assert.equal(await p.locator(".rede-escolha [data-escolher-etapa]").count(), 2);
+    /* as etapas das duas pontas e, para quem configura o espaço, "Nova etapa…" (17/11/2026) */
+    assert.equal(await p.locator(".rede-escolha [data-escolher-etapa]:not(.rede-opcao-nova)").count(), 2);
+    assert.equal(await p.locator(".rede-escolha .rede-opcao-nova").textContent(), "Nova etapa…");
     if (SCREENSHOTS) { await assentar(p, 250); await p.screenshot({ path: `${SCREENSHOTS}/7-escolha.png` }); }
     await p.locator(`.rede-escolha [data-escolher-etapa="${etapaPara}"]`).click();
     await p.waitForSelector(".rede [data-editando]");
