@@ -3718,3 +3718,20 @@ button.participantes-topo .avatar { cursor: pointer; }
 .rede-prancheta-mais:disabled { opacity: .5; cursor: progress; }
 .rede-prancheta-dica { margin: 0; text-align: center; color: var(--muted); font-size: .9rem; line-height: 1.5; }
 @media (prefers-reduced-motion: reduce) { .rede-prancheta-mais { transition: none; } }
+
+/* ---------- fases e etapas pela Rede (17/11/2026, pedido do responsável) ---------- */
+/* "Nova etapa…" no fim das escolhas, separada das etapas que já existem */
+.rede-escolha-opcoes .rede-opcao-nova { border-style: dashed; color: var(--accent-ink); }
+/* caixinha "Nova etapa": campos de texto, um por linha */
+.rede-nova-campo { display: grid; gap: 2px; min-width: 0; }
+.rede-nova-campo[hidden] { display: none; }
+.rede-nova-campo span { font-size: .72rem; color: var(--muted); }
+.rede-nova-campo input, .rede-nova-campo select { width: 100%; box-sizing: border-box; padding: 5px 7px; border: 1px solid var(--line); border-radius: 6px;
+  background: var(--surface); color: var(--ink); font: .88rem var(--f-texto); }
+.rede-nova-campo input:focus, .rede-nova-campo select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+/* nome da etapa e da fase: clique duplo renomeia, para quem configura o espaço */
+.rede.rede-editavel [data-renomear-etapa], .rede.rede-editavel [data-renomear-fase] { pointer-events: auto; cursor: text; }
+.rede.rede-editavel [data-renomear-etapa]:hover, .rede.rede-editavel [data-renomear-fase]:hover { text-decoration: underline dotted; text-underline-offset: 3px; }
+.rede-cerca-nome.editando, .rede-fase-nome.editando { overflow: visible; z-index: 3; }
+.rede-rotulo-campo { box-sizing: content-box; max-width: 320px; padding: 1px 5px; margin: -2px 0 0 -6px; border: 1px solid var(--accent); border-radius: 5px;
+  background: var(--surface); color: var(--ink); font: inherit; outline: 2px solid var(--accent-soft); }

@@ -97,12 +97,90 @@ describe("Rede: prancheta do plano", { skip: pular }, () => {
     await p.click("[data-rede-inicio]");
     await p.waitForSelector(".rede-escolha");
     const opcoes = await p.locator(".rede-escolha [data-escolher-etapa]").allTextContents();
-    assert.ok(opcoes.length >= 3 && opcoes.at(-1) === "Sem etapa", "todas as etapas e \"Sem etapa\"");
+    assert.ok(opcoes.length >= 4 && opcoes.at(-2) === "Sem etapa" && opcoes.at(-1) === "Nova etapa…", "todas as etapas, \"Sem etapa\" e \"Nova etapa…\"");
     await p.locator(".rede-escolha [data-escolher-etapa]").nth(1).click();
     await digitarNome(p, "Nova no começo");
     assert.equal(await p.locator(".rede-no").count(), antes + 1);
     const no = p.locator(".rede-no", { hasText: "Nova no começo" });
     assert.ok((await no.getAttribute("data-etapa")).length > 0, "fica na etapa escolhida");
+    assert.deepEqual(p.erros, []);
+  });
+
+  /* ---------- fases e etapas pela Rede (17/11/2026) ---------- */
+  test("plano sem fases: botão direito, Etapa, \"Nova etapa…\" cria a fase e a etapa e põe a ação nela", async () => {
+    const p = await planoVazio();
+    await p.click("[data-prancheta-mais]");
+    await digitarNome(p, "Levantar requisitos");
+    const card = p.locator(".rede-no", { hasText: "Levantar requisitos" });
+    await card.click({ button: "right" });
+    await assentar(p, 300);
+    await p.locator(".rede-menu button", { hasText: "Etapa" }).click();
+    await assentar(p, 300);
+    assert.deepEqual(await p.locator(".rede-campo-etapa [data-opcao]").allTextContents(), ["Sem etapa", "Nova etapa…"]);
+    await p.locator(".rede-campo-etapa .rede-opcao-nova").click();
+    await p.waitForSelector(".rede-nova-etapa");
+    assert.equal(await p.locator(".rede-nova-etapa [name=fase]").count(), 0, "sem fases, não há lista de fases");
+    await p.press(".rede-nova-etapa [name=etapa]", "Enter");
+    assert.equal(await p.locator(".rede-nova-etapa .rede-estimar-erro").textContent(), "Dê um nome à etapa.");
+    await p.fill(".rede-nova-etapa [name=etapa]", "Diagnóstico");
+    await p.press(".rede-nova-etapa [name=etapa]", "Enter");
+    assert.equal(await p.locator(".rede-nova-etapa .rede-estimar-erro").textContent(), "Dê um nome à fase.");
+    await p.fill(".rede-nova-etapa [name=novaFase]", "Planejamento");
+    await p.press(".rede-nova-etapa [name=novaFase]", "Enter");
+    await p.waitForSelector(".rede-cerca-nome:has-text('Diagnóstico')");
+    await assentar(p, 600);
+    assert.deepEqual(await p.locator(".rede-fase-nome").allTextContents(), ["Planejamento"]);
+    assert.equal(await card.getAttribute("data-etapa") !== "", true);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("\"+\" do início com \"Nova etapa…\"; clique duplo renomeia etapa e fase; Ctrl+Z desfaz", async () => {
+    const p = await sessao.abrir({ largura: 1440, altura: 860 });
+    await irParaVisualizacao(p, "rede");
+    await p.waitForSelector(".rede-no");
+    await assentar(p);
+    await p.hover(".rede-ponto.inicio");
+    await assentar(p, 250);
+    await p.click("[data-rede-inicio]");
+    await p.waitForSelector(".rede-escolha");
+    assert.equal(await p.locator(".rede-escolha [data-escolher-etapa]").last().textContent(), "Nova etapa…");
+    await p.locator(".rede-escolha .rede-opcao-nova").click();
+    await p.waitForSelector(".rede-nova-etapa");
+    const fases = await p.locator(".rede-nova-etapa [name=fase] option").allTextContents();
+    assert.equal(fases.at(-1), "Nova fase…");
+    await p.fill(".rede-nova-etapa [name=etapa]", "Sondagem");
+    await p.press(".rede-nova-etapa [name=etapa]", "Enter");
+    await digitarNome(p, "Ouvir as áreas");
+    const nova = p.locator(".rede-no", { hasText: "Ouvir as áreas" });
+    const etapa = await nova.getAttribute("data-etapa");
+    assert.ok(etapa, "a ação nasce na etapa nova");
+    assert.equal(await p.locator(".rede-cerca-nome", { hasText: "Sondagem" }).count(), 1);
+
+    /* renomear a etapa */
+    await p.locator(".rede-cerca-nome", { hasText: "Sondagem" }).dblclick();
+    await p.waitForSelector(".rede-rotulo-campo");
+    await p.fill(".rede-rotulo-campo", "Escuta das áreas");
+    await p.press(".rede-rotulo-campo", "Enter");
+    await p.waitForSelector(".rede-cerca-nome:has-text('Escuta das áreas')");
+    /* renomear a fase, na régua; Esc desiste */
+    const fase = p.locator(".rede-fase-nome").first();
+    const nomeFase = await fase.textContent();
+    await fase.dblclick();
+    await p.waitForSelector(".rede-rotulo-campo");
+    await p.fill(".rede-rotulo-campo", "Outro nome");
+    await p.press(".rede-rotulo-campo", "Escape");
+    assert.equal(await fase.textContent(), nomeFase, "Esc mantém o nome");
+    await fase.dblclick();
+    await p.fill(".rede-rotulo-campo", "Fase 1 · Concepção");
+    await p.press(".rede-rotulo-campo", "Enter");
+    await p.waitForSelector(".rede-fase-nome:has-text('Fase 1 · Concepção')");
+
+    /* Ctrl+Z: o nome da fase, depois o da etapa */
+    await p.locator(".rede-rolagem").click({ position: { x: 40, y: 600 } });
+    await p.keyboard.press("Control+z");
+    await p.waitForSelector(`.rede-fase-nome:has-text('${nomeFase}')`);
+    await p.keyboard.press("Control+z");
+    await p.waitForSelector(".rede-cerca-nome:has-text('Sondagem')");
     assert.deepEqual(p.erros, []);
   });
 });

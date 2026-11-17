@@ -32,7 +32,7 @@ import { desenharCarga } from "./carga.js";
 import { desenharRede } from "./rede.js";
 import { criarTelaDeEntregas } from "./entregas.js";
 import { esqueletoHtml } from "./esqueleto.js";
-import { tipoDe } from "../tipos.js";
+import { tipoDe, ehDeTarefas } from "../tipos.js";
 import { termos } from "../vocabulario.js";
 import { registrarFonte } from "./busca.js";
 import { registrarTecla } from "./atalhos.js";
@@ -2654,6 +2654,58 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         try {
           await store.alterarAcao(espacoId, numero, { etapa: id ?? null });
           desfazivel(`mudança da etapa de "${acao.rotulo}"`, () => store.alterarAcao(espacoId, numero, { etapa: antes }));
+        } catch (f) { falhar(f); }
+      },
+      /*
+       * Fases e etapas pela Rede (17/11/2026, pedido do responsável: o editor da Rede mais completo, sem ir às
+       * configurações). Só para quem configura o espaço (o mesmo papel que edita fases e etapas nas configurações) e
+       * nunca nos espaços de tarefas, que não têm fases. Criar e renomear; excluir e reordenar seguem nas configurações.
+       */
+      podeEstruturar: store.podeGravar !== false && perm.configurar && !ehDeTarefas(espaco),
+      fases: (espaco.estrutura ?? []).map((f) => ({ id: f.id, nome: f.nome })),
+      faseDaEtapa: (id) => (espaco.estrutura ?? []).find((f) => (f.etapas ?? []).some((e) => e.id === id))?.id ?? null,
+      /** Cria a etapa (e, com `novaFase`, a fase, no fim da sequência) e liga as fases no espaço; devolve o id da etapa. */
+      async criarEtapa(nome, { fase = null, novaFase = null } = {}) {
+        const novoId = (prefixo) => `${prefixo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        const estrutura = structuredClone(espaco.estrutura ?? []);
+        let f = estrutura.find((x) => x.id === fase);
+        const criouFase = !f;
+        if (!f) { f = { id: novoId("f"), nome: (novaFase ?? "").trim(), etapas: [] }; estrutura.push(f); }
+        const etapa = { id: novoId("e"), nome: nome.trim() };
+        (f.etapas ??= []).push(etapa);
+        const ligou = espaco.camposOpcionais?.fasesEtapas !== true;
+        try {
+          await store.alterarEspaco(espacoId, { estrutura, camposOpcionais: { ...(espaco.camposOpcionais ?? {}), fasesEtapas: true } });
+        } catch (erro) { falhar(erro); return null; }
+        /* desfazer: tira a etapa (e a fase criada junto, se ficou vazia) da estrutura do momento, desde que nenhuma
+           ação esteja nela; desliga as fases se foi esta criação que as ligou e a estrutura ficou vazia */
+        desfazivel(`criação da etapa "${etapa.nome}"`, async () => {
+          if (acoes.some((a) => a.etapa === etapa.id)) throw new Error(`a etapa "${etapa.nome}" tem ações`);
+          const atual = structuredClone(espaco.estrutura ?? []).map((x) => ({ ...x, etapas: (x.etapas ?? []).filter((e) => e.id !== etapa.id) }))
+            .filter((x) => !(criouFase && x.id === f.id && !x.etapas.length));
+          await store.alterarEspaco(espacoId, { estrutura: atual,
+            ...(ligou && !atual.length ? { camposOpcionais: { ...(espaco.camposOpcionais ?? {}), fasesEtapas: false } } : {}) });
+        });
+        return etapa.id;
+      },
+      /** Renomeia uma fase ou uma etapa (o id diz qual); nome vazio ou igual não grava. */
+      async renomearNaEstrutura(id, nome) {
+        const novo = nome.trim();
+        const estrutura = structuredClone(espaco.estrutura ?? []);
+        const item = estrutura.flatMap((f) => [f, ...(f.etapas ?? [])]).find((x) => x.id === id);
+        if (!item || !novo || item.nome === novo) return;
+        const antes = item.nome;
+        const ehFase = estrutura.some((f) => f.id === id);
+        item.nome = novo;
+        try {
+          await store.alterarEspaco(espacoId, { estrutura });
+          desfazivel(`novo nome da ${ehFase ? "fase" : "etapa"} "${novo}"`, () => {
+            const atual = structuredClone(espaco.estrutura ?? []);
+            const x = atual.flatMap((f) => [f, ...(f.etapas ?? [])]).find((y) => y.id === id);
+            if (!x) throw new Error(`a ${ehFase ? "fase" : "etapa"} não existe mais`);
+            x.nome = antes;
+            return store.alterarEspaco(espacoId, { estrutura: atual });
+          });
         } catch (f) { falhar(f); }
       },
       usaDataLimite: usaDataLimite(espaco),
