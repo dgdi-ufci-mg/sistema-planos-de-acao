@@ -11,6 +11,8 @@
   --rede-fundo: #FFFFFF; --rede-grade: #DAD5CC; /* fundo da Rede: branco, com grade de pontos (11/11/2026) */
   --ink: #163F3A; --muted: #5A6864; /* 24/10/2026: um pouco mais escuro, para contraste de 4,5:1 (WCAG 1.4.3) também sobre o verde-claro e o cinza das células travadas */ --faint: #8E9895; --line: #DDD6CC; --grid: #ECE6DD;
   --accent: #00796B; --accent-ink: #00594F; --accent-soft: #D6EEE9;
+  --folga: #00796B; /* ações com folga (barras, faixas); no tema original, igual ao destaque */
+  --liberada: #00796B; --liberada-texto: #FFFFFF; --liberada-ink: #00796B; /* ação liberada: pode ser feita agora; verde em todos os temas (12/11/2026) */
   --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
   --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
   --warn: #F2B04A; --warn-soft: #FEF1D8; --warn-ink: #8A5E10;
@@ -49,6 +51,8 @@
     --rede-fundo: #0F1A19; --rede-grade: #24403C;
     --ink: #ECF2F0; --muted: #9FB3AE; --faint: #86978F; --line: #2A3F3C; --grid: #1E302D;
     --accent: #2CC4AA; --accent-ink: #5FD8C2; --accent-soft: #103B35;
+    --folga: #2CC4AA;
+    --liberada: #2CC4AA; --liberada-texto: #062B26; --liberada-ink: #2CC4AA;
     --crit: #FF4D52; --crit-soft: #3D1618; --crit-ink: #FF8A8D;
     --ok: #8FC68E; --ok-soft: #1B3320; --ok-ink: #A9D6A9;
     --warn: #FBCA78; --warn-soft: #3A2B12; --warn-ink: #FFD58F;
@@ -78,6 +82,8 @@
   --rede-fundo: #0F1A19; --rede-grade: #24403C;
   --ink: #ECF2F0; --muted: #9FB3AE; --faint: #86978F; --line: #2A3F3C; --grid: #1E302D;
   --accent: #2CC4AA; --accent-ink: #5FD8C2; --accent-soft: #103B35;
+  --folga: #2CC4AA;
+  --liberada: #2CC4AA; --liberada-texto: #062B26; --liberada-ink: #2CC4AA;
   --crit: #FF4D52; --crit-soft: #3D1618; --crit-ink: #FF8A8D;
   --ok: #8FC68E; --ok-soft: #1B3320; --ok-ink: #A9D6A9;
   --warn: #FBCA78; --warn-soft: #3A2B12; --warn-ink: #FFD58F;
@@ -97,6 +103,301 @@
   --tom-7: #223E61; --tom-7-texto: #B0DBFF; --tom-8: #582D42; --tom-8-texto: #FFBFDF; --tom-9: #5C2F20; --tom-9-texto: #FFC4AC;
   --tom-10: #05435B; --tom-10-texto: #99E3FF; --tom-11: #2C451E; --tom-11-texto: #BEE5AA; --tom-12: #502F50; --tom-12-texto: #F8C3F7;
   --tom-13: #4D3A05; --tom-13-texto: #F1D492; --tom-14: #004941; --tom-14-texto: #90EBDD; --tom-15: #353961; --tom-15-texto: #CAD2FF;
+  color-scheme: dark;
+}
+
+/* ---------- tema UFCIMG (desde 11/11/2026; documentação técnica, seção 8.0): a paleta da identidade
+   visual da UFCI-MG, no mesmo molde do tema original, variável por variável. Marinho #142C46 no texto e nas sombras,
+   verde-água #68C0B5 no destaque, âmbar #F2A905 no "quase sem folga" e na marca. Vermelho, verde de concluída,
+   laranja, roxo da execução e os tons das pessoas ficam como no tema original. Escolhido pelo atributo
+   data-paleta="ufcimg" na raiz, à parte do modo (data-theme); o Strata não recebe os temas por enquanto.
+   Os três blocos têm especificidade maior que os do tema original, para valer sobre eles em qualquer modo ---------- */
+:root[data-paleta="ufcimg"]:not(.strata) {
+  --bg: #F4F6F8; --surface: #FFFFFF; --sunk: #FAFBFC;
+  --ink: #142C46; --muted: #55657A; --faint: #8A96A6; --line: #D5DCE4; --grid: #E7EBF0;
+  --accent: #142C46; --accent-ink: #142C46; --accent-soft: #DDF1EE; /* marinho da marca; fundo suave em verde-água (12/11/2026, pedido do responsável) */
+  --folga: #68C0B5; /* verde-água da marca, separado do marinho dos botões (12/11/2026) */
+  --liberada: #68C0B5; --liberada-texto: #142C46; --liberada-ink: #1F6F66;
+  --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
+  --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
+  --warn: #F2A905; --warn-soft: #FEF3D4; --warn-ink: #7A5600;
+  --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #B3BAC4;
+  --execucao: #6D28D9;
+  --rede-fundo: #FFFFFF; --rede-grade: #D5DCE4;
+  --sombra: 0 10px 30px rgba(20, 44, 70, .16);
+  --relevo: 0 1px 2px rgba(20, 44, 70, .06), 0 2px 6px rgba(20, 44, 70, .06);
+  --sombra-flutuante: 0 4px 10px rgba(20, 44, 70, .10), 0 14px 32px rgba(20, 44, 70, .16);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(20, 44, 70, .10);
+  --barra-controle: rgba(20, 44, 70, .06);
+  --barra-controle-foco: rgba(20, 44, 70, .12);
+  --texto-sobre-destaque: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-paleta="ufcimg"]:not(.strata):not([data-theme="light"]) {
+    --bg: #1B1F27; --surface: #232833; --sunk: #1F242C;
+    --ink: #EEF1F5; --muted: #A5AFBD; --faint: #8C96A4; --line: #343B48; --grid: #2A303B;
+    --accent: #68C0B5; --accent-ink: #8FD4CB; --accent-soft: #173A3A;
+    --folga: #68C0B5;
+    --liberada: #68C0B5; --liberada-texto: #0B2A27; --liberada-ink: #8FD4CB;
+    --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
+    --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
+    --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
+    --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #4F5866;
+    --execucao: #A78BFA;
+    --rede-fundo: #1B1F27; --rede-grade: #333A47;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+    --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+    --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+    --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+    --barra-topo: var(--bg);
+    --barra-borda: rgba(255, 255, 255, .08);
+    --barra-controle: rgba(255, 255, 255, .07);
+    --barra-controle-foco: rgba(255, 255, 255, .14);
+    --texto-sobre-destaque: #0B2A27;
+    color-scheme: dark;
+  }
+}
+:root[data-paleta="ufcimg"][data-theme="dark"]:not(.strata) {
+  --bg: #1B1F27; --surface: #232833; --sunk: #1F242C;
+  --ink: #EEF1F5; --muted: #A5AFBD; --faint: #8C96A4; --line: #343B48; --grid: #2A303B;
+  --accent: #68C0B5; --accent-ink: #8FD4CB; --accent-soft: #173A3A;
+  --folga: #68C0B5;
+  --liberada: #68C0B5; --liberada-texto: #0B2A27; --liberada-ink: #8FD4CB;
+  --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
+  --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
+  --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
+  --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #4F5866;
+  --execucao: #A78BFA;
+  --rede-fundo: #1B1F27; --rede-grade: #333A47;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+  --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(255, 255, 255, .08);
+  --barra-controle: rgba(255, 255, 255, .07);
+  --barra-controle-foco: rgba(255, 255, 255, .14);
+  --texto-sobre-destaque: #0B2A27;
+  color-scheme: dark;
+}
+
+/* tema Neutro (desde 12/11/2026; seção 8.0), no mesmo molde do UFCIMG */
+:root[data-paleta="neutro"]:not(.strata) {
+  --bg: #F5F5F5; --surface: #FFFFFF; --sunk: #FAFAFA;
+  --ink: #1F2225; --muted: #5C6166; --faint: #8E9399; --line: #DCDEE1; --grid: #EAEBED;
+  --accent: #3A5F8A; --accent-ink: #2C4A6E; --accent-soft: #E3EAF2;
+  --folga: #68C0B5;
+  --liberada: #68C0B5; --liberada-texto: #1F2225; --liberada-ink: #1F6F66;
+  --crit: #E3262D; --crit-soft: #FCE0DF; --crit-ink: #9C1116;
+  --ok: #4E9A4D; --ok-soft: #E4F1E3; --ok-ink: #3B6E3A;
+  --warn: #F2A905; --warn-soft: #FEF3D4; --warn-ink: #7A5600;
+  --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #B5B8BC;
+  --execucao: #6D28D9;
+  --rede-fundo: #FFFFFF; --rede-grade: #DCDEE1;
+  --sombra: 0 10px 30px rgba(31, 34, 37, .16);
+  --relevo: 0 1px 2px rgba(31, 34, 37, .06), 0 2px 6px rgba(31, 34, 37, .06);
+  --sombra-flutuante: 0 4px 10px rgba(31, 34, 37, .10), 0 14px 32px rgba(31, 34, 37, .16);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(31, 34, 37, .10);
+  --barra-controle: rgba(31, 34, 37, .06);
+  --barra-controle-foco: rgba(31, 34, 37, .12);
+  --texto-sobre-destaque: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-paleta="neutro"]:not(.strata):not([data-theme="light"]) {
+    --bg: #1C1D1F; --surface: #27292C; --sunk: #222326;
+    --ink: #F0F1F2; --muted: #A8ACB1; --faint: #8D9197; --line: #3D4044; --grid: #2F3134;
+    --accent: #9DB8DC; --accent-ink: #BACDE8; --accent-soft: #26313F;
+    --folga: #68C0B5;
+    --liberada: #68C0B5; --liberada-texto: #1C1D1F; --liberada-ink: #8FD4CB;
+    --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
+    --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
+    --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
+    --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #505357;
+    --execucao: #A78BFA;
+    --rede-fundo: #1C1D1F; --rede-grade: #3A3D41;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+    --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+    --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+    --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+    --barra-topo: var(--bg);
+    --barra-borda: rgba(255, 255, 255, .08);
+    --barra-controle: rgba(255, 255, 255, .07);
+    --barra-controle-foco: rgba(255, 255, 255, .14);
+    --texto-sobre-destaque: #1C1D1F;
+    color-scheme: dark;
+  }
+}
+:root[data-paleta="neutro"][data-theme="dark"]:not(.strata) {
+  --bg: #1C1D1F; --surface: #27292C; --sunk: #222326;
+  --ink: #F0F1F2; --muted: #A8ACB1; --faint: #8D9197; --line: #3D4044; --grid: #2F3134;
+  --accent: #9DB8DC; --accent-ink: #BACDE8; --accent-soft: #26313F;
+  --folga: #68C0B5;
+  --liberada: #68C0B5; --liberada-texto: #1C1D1F; --liberada-ink: #8FD4CB;
+  --crit: #FF4D52; --crit-soft: #3D1A1E; --crit-ink: #FF8A8D;
+  --ok: #8FC68E; --ok-soft: #1C3324; --ok-ink: #A9D6A9;
+  --warn: #F2A905; --warn-soft: #3A2E12; --warn-ink: #FFCF5C;
+  --laranja: #F47216; --dourado-claro: #FBD36E; --neutral: #505357;
+  --execucao: #A78BFA;
+  --rede-fundo: #1C1D1F; --rede-grade: #3A3D41;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+  --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(255, 255, 255, .08);
+  --barra-controle: rgba(255, 255, 255, .07);
+  --barra-controle-foco: rgba(255, 255, 255, .14);
+  --texto-sobre-destaque: #1C1D1F;
+  color-scheme: dark;
+}
+/* tema Papel (desde 12/11/2026; seção 8.0), no mesmo molde do UFCIMG */
+:root[data-paleta="papel"]:not(.strata) {
+  --bg: #F6F1E7; --surface: #FFFDF8; --sunk: #FBF7EF;
+  --ink: #2B2520; --muted: #655A4E; --faint: #978A7B; --line: #E0D6C4; --grid: #ECE4D6;
+  --accent: #8A4B1F; --accent-ink: #6E3A16; --accent-soft: #F2E3D3;
+  --folga: #4F8F84;
+  --liberada: #3E7A70; --liberada-texto: #FFFDF8; --liberada-ink: #2F6A60;
+  --crit: #B3362B; --crit-soft: #F6DFD9; --crit-ink: #8E1F17;
+  --ok: #5B8A3A; --ok-soft: #E7EEDC; --ok-ink: #3B5E25;
+  --warn: #D99A2B; --warn-soft: #F8EBD0; --warn-ink: #7A4F08;
+  --laranja: #D9661A; --dourado-claro: #EBC57E; --neutral: #BFB4A3;
+  --execucao: #6B3FA0;
+  --rede-fundo: #FFFDF8; --rede-grade: #E0D6C4;
+  --sombra: 0 10px 30px rgba(60, 45, 30, .16);
+  --relevo: 0 1px 2px rgba(60, 45, 30, .06), 0 2px 6px rgba(60, 45, 30, .06);
+  --sombra-flutuante: 0 4px 10px rgba(60, 45, 30, .10), 0 14px 32px rgba(60, 45, 30, .16);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(60, 45, 30, .10);
+  --barra-controle: rgba(60, 45, 30, .06);
+  --barra-controle-foco: rgba(60, 45, 30, .12);
+  --texto-sobre-destaque: #FFFDF8;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-paleta="papel"]:not(.strata):not([data-theme="light"]) {
+    --bg: #24201C; --surface: #2F2A25; --sunk: #29251F;
+    --ink: #F2EBDF; --muted: #B8AD9D; --faint: #9A8F80; --line: #4A433B; --grid: #38322B;
+    --accent: #E0B07A; --accent-ink: #ECC898; --accent-soft: #4A3826;
+    --folga: #7FB8AC;
+    --liberada: #7FB8AC; --liberada-texto: #24201C; --liberada-ink: #9CCFC4;
+    --crit: #F07D6E; --crit-soft: #4A2520; --crit-ink: #F5A79A;
+    --ok: #9FCA8A; --ok-soft: #2C3A22; --ok-ink: #B8D9A6;
+    --warn: #E8B04F; --warn-soft: #45351A; --warn-ink: #F2CB85;
+    --laranja: #F08A3E; --dourado-claro: #EBC57E; --neutral: #5E554A;
+    --execucao: #B49AE0;
+    --rede-fundo: #24201C; --rede-grade: #433C34;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+    --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+    --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+    --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+    --barra-topo: var(--bg);
+    --barra-borda: rgba(255, 255, 255, .08);
+    --barra-controle: rgba(255, 255, 255, .07);
+    --barra-controle-foco: rgba(255, 255, 255, .14);
+    --texto-sobre-destaque: #24201C;
+    color-scheme: dark;
+  }
+}
+:root[data-paleta="papel"][data-theme="dark"]:not(.strata) {
+  --bg: #24201C; --surface: #2F2A25; --sunk: #29251F;
+  --ink: #F2EBDF; --muted: #B8AD9D; --faint: #9A8F80; --line: #4A433B; --grid: #38322B;
+  --accent: #E0B07A; --accent-ink: #ECC898; --accent-soft: #4A3826;
+  --folga: #7FB8AC;
+  --liberada: #7FB8AC; --liberada-texto: #24201C; --liberada-ink: #9CCFC4;
+  --crit: #F07D6E; --crit-soft: #4A2520; --crit-ink: #F5A79A;
+  --ok: #9FCA8A; --ok-soft: #2C3A22; --ok-ink: #B8D9A6;
+  --warn: #E8B04F; --warn-soft: #45351A; --warn-ink: #F2CB85;
+  --laranja: #F08A3E; --dourado-claro: #EBC57E; --neutral: #5E554A;
+  --execucao: #B49AE0;
+  --rede-fundo: #24201C; --rede-grade: #433C34;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+  --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: rgba(255, 255, 255, .08);
+  --barra-controle: rgba(255, 255, 255, .07);
+  --barra-controle-foco: rgba(255, 255, 255, .14);
+  --texto-sobre-destaque: #24201C;
+  color-scheme: dark;
+}
+/* tema Alto contraste (desde 12/11/2026; seção 8.0), no mesmo molde do UFCIMG */
+:root[data-paleta="alto-contraste"]:not(.strata) {
+  --bg: #FFFFFF; --surface: #FFFFFF; --sunk: #F2F2F2;
+  --ink: #000000; --muted: #2B2B2B; --faint: #4D4D4D; --line: #595959; --grid: #A6A6A6;
+  --accent: #0000C2; --accent-ink: #0000A0; --accent-soft: #E0E0FF;
+  --folga: #00695C;
+  --liberada: #00695C; --liberada-texto: #FFFFFF; --liberada-ink: #00695C;
+  --crit: #A80000; --crit-soft: #FFE0E0; --crit-ink: #7A0000;
+  --ok: #005A1E; --ok-soft: #DDF2E3; --ok-ink: #004015;
+  --warn: #8A4A00; --warn-soft: #FFEBC7; --warn-ink: #5C3000;
+  --laranja: #B34700; --dourado-claro: #8A4A00; --neutral: #767676;
+  --execucao: #5B1FB8;
+  --rede-fundo: #FFFFFF; --rede-grade: #8C8C8C;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .16);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .06), 0 2px 6px rgba(0, 0, 0, .06);
+  --sombra-flutuante: 0 4px 10px rgba(0, 0, 0, .10), 0 14px 32px rgba(0, 0, 0, .16);
+  --barra: color-mix(in srgb, var(--bg) 22%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: #595959;
+  --barra-controle: rgba(0, 0, 0, .06);
+  --barra-controle-foco: rgba(0, 0, 0, .12);
+  --texto-sobre-destaque: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-paleta="alto-contraste"]:not(.strata):not([data-theme="light"]) {
+    --bg: #000000; --surface: #000000; --sunk: #141414;
+    --ink: #FFFFFF; --muted: #E0E0E0; --faint: #BDBDBD; --line: #9E9E9E; --grid: #5C5C5C;
+    --accent: #7FD4FF; --accent-ink: #A8E3FF; --accent-soft: #00334D;
+    --folga: #5EE6C8;
+    --liberada: #5EE6C8; --liberada-texto: #000000; --liberada-ink: #5EE6C8;
+    --crit: #FF6B6B; --crit-soft: #3D0000; --crit-ink: #FFA3A3;
+    --ok: #7EE08A; --ok-soft: #003314; --ok-ink: #A8F0B0;
+    --warn: #FFD500; --warn-soft: #3D3300; --warn-ink: #FFE666;
+    --laranja: #FF9E4D; --dourado-claro: #FFD500; --neutral: #767676;
+    --execucao: #C4A8FF;
+    --rede-fundo: #000000; --rede-grade: #4D4D4D;
+    --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+    --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+    --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+    --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+    --barra-topo: var(--bg);
+    --barra-borda: #9E9E9E;
+    --barra-controle: rgba(255, 255, 255, .07);
+    --barra-controle-foco: rgba(255, 255, 255, .14);
+    --texto-sobre-destaque: #000000;
+    color-scheme: dark;
+  }
+}
+:root[data-paleta="alto-contraste"][data-theme="dark"]:not(.strata) {
+  --bg: #000000; --surface: #000000; --sunk: #141414;
+  --ink: #FFFFFF; --muted: #E0E0E0; --faint: #BDBDBD; --line: #9E9E9E; --grid: #5C5C5C;
+  --accent: #7FD4FF; --accent-ink: #A8E3FF; --accent-soft: #00334D;
+  --folga: #5EE6C8;
+  --liberada: #5EE6C8; --liberada-texto: #000000; --liberada-ink: #5EE6C8;
+  --crit: #FF6B6B; --crit-soft: #3D0000; --crit-ink: #FFA3A3;
+  --ok: #7EE08A; --ok-soft: #003314; --ok-ink: #A8F0B0;
+  --warn: #FFD500; --warn-soft: #3D3300; --warn-ink: #FFE666;
+  --laranja: #FF9E4D; --dourado-claro: #FFD500; --neutral: #767676;
+  --execucao: #C4A8FF;
+  --rede-fundo: #000000; --rede-grade: #4D4D4D;
+  --sombra: 0 10px 30px rgba(0, 0, 0, .5);
+  --relevo: 0 1px 2px rgba(0, 0, 0, .35), 0 2px 8px rgba(0, 0, 0, .25);
+  --sombra-flutuante: 0 4px 12px rgba(0, 0, 0, .40), 0 14px 36px rgba(0, 0, 0, .45);
+  --barra: color-mix(in srgb, var(--bg) 30%, transparent);
+  --barra-topo: var(--bg);
+  --barra-borda: #9E9E9E;
+  --barra-controle: rgba(255, 255, 255, .07);
+  --barra-controle-foco: rgba(255, 255, 255, .14);
+  --texto-sobre-destaque: #000000;
   color-scheme: dark;
 }
 
@@ -202,7 +503,7 @@ a { color: var(--accent-ink); font-weight: 600; }
 /* ---------- ícones (SVG em js/icones.js, coloridos pela cor do texto) ---------- */
 .icone { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
 .icone-concluida { color: var(--ok); }
-.icone-liberada { color: var(--accent); }
+.icone-liberada { color: var(--liberada-ink); }
 .icone-nao-liberada { color: var(--muted); }
 .icone-atrasada { color: var(--crit); }
 
@@ -339,15 +640,36 @@ body::before {
 @keyframes surgir-conta { from { opacity: 0; transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .conta-menu { animation: none; } }
 .conta-menu .tec { margin: 0 0 4px; }
-/* tema deste aparelho (27/10/2026): três botões lado a lado no menu da conta */
+/* tema deste aparelho (27/10/2026): três botões lado a lado no menu da conta; desde 11/11/2026, também a paleta, com dois */
 .conta-tema { display: flex; flex-direction: column; gap: 4px; padding: 4px 8px 8px; border-bottom: 1px solid var(--line); margin-bottom: 2px; }
 .conta-tema > span { font-size: .78rem; font-weight: 600; color: var(--muted); }
-.conta-tema .alternador { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; box-sizing: border-box; }
-.conta-tema .alternador::before { width: calc((100% - 6px) / 3); }
-.conta-tema .alternador:has(button:nth-child(2)[aria-pressed="true"])::before { transform: translateX(100%); }
-.conta-tema .alternador:has(button:nth-child(3)[aria-pressed="true"])::before { transform: translateX(200%); }
-.conta-menu .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 2px; font-size: .8rem; text-align: center; }
-.conta-menu .conta-tema .alternador button:hover { background: none; }
+/* Modo (13/11/2026): "Automático" não cabia num terço do menu e se misturava a "Claro". Cada botão agora tem a largura
+   do próprio nome (a sobra é repartida), e a marca de escolhido é o fundo do próprio botão, já que a faixa deslizante
+   pressupunha três larguras iguais. Se ainda faltar espaço, os botões descem para a linha de baixo, sem cortar texto */
+.conta-tema .alternador { display: flex; flex-wrap: wrap; gap: 1px; width: 100%; box-sizing: border-box; border-radius: 16px; }
+.conta-tema .alternador::before { content: none; }
+.conta-tema .alternador button { flex: 1 1 auto; white-space: nowrap; transition: background-color var(--mov-rapido), color var(--mov-rapido); }
+.conta-tema .alternador button[aria-pressed="true"] { background: var(--accent-soft); box-shadow: var(--relevo); }
+/* escolha do tema (paleta), desde 12/11/2026: uma linha por tema, com amostra das cores dele no modo claro.
+   As amostras usam cores fixas de propósito: mostram os outros temas, não o atual */
+.paletas { display: flex; flex-direction: column; gap: 2px; }
+.conta-tema .paletas button, .lateral-tema .paletas button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 8px; border: 1px solid transparent;
+  border-radius: 8px; background: none; color: var(--ink); font: 500 .85rem var(--f-texto); text-align: left; cursor: pointer; }
+.conta-tema .paletas button:hover, .lateral-tema .paletas button:hover { background: var(--barra-controle); }
+.conta-tema .paletas button[aria-pressed="true"], .lateral-tema .paletas button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; border-color: var(--accent); }
+.paletas button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.paleta-amostra { flex: none; width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line); background: linear-gradient(135deg, var(--a1) 50%, var(--a2) 50%); }
+.paleta-amostra[data-amostra="ufcimg"] { --a1: #F4F6F8; --a2: #142C46; }
+.paleta-amostra[data-amostra="original"] { --a1: #F5F3EF; --a2: #00796B; }
+.paleta-amostra[data-amostra="neutro"] { --a1: #F5F5F5; --a2: #3A5F8A; }
+.paleta-amostra[data-amostra="papel"] { --a1: #F6F1E7; --a2: #8A4B1F; }
+.paleta-amostra[data-amostra="alto-contraste"] { --a1: #FFFFFF; --a2: #000000; }
+.conta-menu .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 4px; font-size: .8rem; text-align: center; }
+.conta-menu .conta-tema .alternador button:hover:not([aria-pressed="true"]) { background: var(--barra-controle); }
+/* sem login, tema e modo no "Mais" da barra lateral (12/11/2026) */
+.lateral-tema { display: flex; flex-direction: column; gap: 2px; padding: 4px 0 6px; }
+.lateral-tema .conta-tema { padding: 4px 8px; border-bottom: 0; margin-bottom: 0; }
+.lateral-tema .conta-tema .alternador button { justify-content: center; width: auto; padding: 5px 4px; font-size: .8rem; text-align: center; }
 .conta-menu button, .lateral-acao {
   display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent; padding: 7px 8px;
   border-radius: var(--raio); text-align: left; cursor: pointer; color: var(--muted); font-weight: 600;
@@ -1037,7 +1359,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-legenda { display: inline-flex; align-items: center; gap: 6px; }
 .crono-legenda i { width: 18px; height: 8px; border-radius: 3px; display: inline-block; }
 .crono-legenda i.critica, .crono-barra-acao.critica { background: var(--crit); }
-.crono-legenda i.folga, .crono-barra-acao.folga { background: var(--accent); }
+.crono-legenda i.folga, .crono-barra-acao.folga { background: var(--folga); }
 .crono-legenda i.concluida, .crono-barra-acao.concluida { background: var(--ok); }
 .crono { --nomes: 300px; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--raio); box-shadow: var(--relevo); }
 .crono-rolagem { overflow: auto; overscroll-behavior: contain; border-radius: var(--raio); }
@@ -1119,7 +1441,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .crono-mais[disabled] { opacity: .4; cursor: default; }
 /* andamento e atraso na barra: a que ainda espera fica mais clara, com o contorno na cor; a atrasada, listrada e contornada */
 .crono-barra-acao.critica, .crono-legenda i.critica { --cor: var(--crit); }
-.crono-barra-acao.folga, .crono-legenda i.folga { --cor: var(--accent); }
+.crono-barra-acao.folga, .crono-legenda i.folga { --cor: var(--folga); }
 .crono-barra-acao.aguardando, .crono-legenda i.aguardando { background: color-mix(in srgb, var(--cor) 30%, var(--surface)); box-shadow: inset 0 0 0 1.5px var(--cor); }
 .crono-barra-acao.atrasada, .crono-legenda i.atrasada { background-image: repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, var(--surface) 60%, transparent) 4px 7px); outline: 2px solid var(--crit-ink); outline-offset: 1px; }
 .crono-legenda i.atrasada { outline-width: 1.5px; }
@@ -1201,7 +1523,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
   .crono-impressao { display: block; color: var(--ink); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .crono-pagina { break-after: page; break-inside: avoid; }
   .crono-pagina:last-child { break-after: auto; }
-  .crono-pagina-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin: 0 0 6px; font: 10pt var(--f-texto); }
+  .crono-pagina-titulo { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; margin: 0 0 4px; font: 10pt var(--f-texto); }
   .crono-pagina-titulo b { font: 600 12pt var(--f-titulo); }
   .crono-pagina-titulo span { color: var(--muted); font-size: 8.5pt; white-space: nowrap; }
   .crono.impresso { box-shadow: none; border-radius: 0; width: max-content; }
@@ -1209,7 +1531,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
   .crono-recorte { overflow: hidden; }
   .crono.impresso .crono-corpo { cursor: auto; }
   .crono.impresso .crono-recolher, .crono.impresso .crono-mais { display: none; }
-  .crono-pagina .crono-legendas { margin-top: 6px; font-size: 7.5pt; gap: 3px 12px; }
+  .crono-pagina .crono-legendas { margin-top: 4px; font-size: 7.5pt; gap: 2px 12px; }
   .crono-pagina .oque { display: none; }
 }
 .crono-abrir-acao { border: 0; background: none; padding: 0; font: inherit; color: var(--accent-ink); text-decoration: underline; cursor: pointer; }
@@ -1244,7 +1566,7 @@ body.arrastando-cartao-corpo, body.arrastando-cartao-corpo * { cursor: grabbing 
 .rede-no { position: absolute; transition: opacity var(--mov-rapido) var(--mov-curva); }
 /* cartões no padrão do quadro (22/10/2026); a borda esquerda continua dizendo se há folga */
 .rede-cartao { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; gap: 6px; padding: 9px 12px 9px 13px;
-  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; box-shadow: var(--relevo); cursor: pointer;
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--folga); border-radius: 10px; box-shadow: var(--relevo); cursor: pointer;
   transition: box-shadow .18s, transform .18s; }
 .rede-no.critica .rede-cartao { border-left-color: var(--crit); }
 .rede-no.concluida .rede-cartao { border-left-color: var(--ok); }
@@ -1514,12 +1836,51 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .popover-exibir { width: 300px; max-height: min(70vh, 560px); overflow-y: auto; }
 .popover-exibir h3 + .opcoes-lista, .popover-exibir h3 + .colunas-escolha { margin-top: -4px; }
 .colunas-escolha { display: flex; flex-direction: column; gap: 6px; padding: 2px 6px; }
+/* chave de ligar e desligar (13/11/2026), no lugar das caixinhas de Exibir e dos filtros: a mesma aparência no
+   <input type="checkbox" class="chave"> e no botão com <span class="chave-visual">; a chave fica à direita do texto */
+input.chave, .chave-visual { appearance: none; -webkit-appearance: none; position: relative; flex: none; width: 32px; height: 18px; margin: 0; border-radius: 999px; background: var(--faint); cursor: pointer; transition: background var(--mov-rapido); }
+input.chave::after, .chave-visual::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--surface); box-shadow: var(--relevo); transition: transform var(--mov) var(--mov-curva); }
+input.chave:checked, .opcao-chave[aria-checked="true"] .chave-visual { background: var(--accent); }
+input.chave:checked::after, .opcao-chave[aria-checked="true"] .chave-visual::after { transform: translateX(14px); }
+input.chave:disabled { opacity: .5; cursor: default; }
+input.chave:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.colunas-escolha label:has(> input.chave), .alternar:has(> input.chave) { gap: 10px; }
+.colunas-escolha label > input.chave, .alternar > input.chave { order: 2; margin-left: auto; }
+.alternar:has(> input.chave) { display: flex; width: 100%; }
+.alternar:has(> input.chave) .n { order: 1; }
+.opcao-chave:hover { background: var(--sunk); }
+/* escolhas curtas numa linha só (12/11/2026): Identificador, Mostrar até e, sob "Tempo restante", dias ou data */
+.segmentos { display: grid; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; gap: 2px; padding: 2px; margin: 0 2px 2px; border: 1px solid var(--line); border-radius: var(--raio); background: var(--sunk); }
+.segmentos button { min-width: 0; border: 0; border-radius: calc(var(--raio) - 2px); background: transparent; padding: 5px 4px; font: inherit; font-size: .86rem; color: var(--muted); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background var(--mov-rapido), color var(--mov-rapido); }
+.segmentos button:hover { color: var(--ink); }
+.segmentos button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+.segmentos.recuo { margin: 2px 2px 4px 34px; }
+.segmentos.recuo button { font-size: .8rem; padding: 3px 4px; }
+@media (max-width: 640px) { .segmentos button { min-height: 40px; } .segmentos.recuo button { min-height: 36px; } }
 .colunas-escolha label { display: flex; align-items: center; gap: 8px; font-size: .9rem; cursor: pointer; }
 .colunas-escolha label.fixa { color: var(--muted); cursor: default; }
 .colunas-planilha { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; }
 .colunas-planilha label { font-size: .85rem; align-items: flex-start; }
 .colunas-planilha input { margin-top: 3px; }
 body[data-vista-atual="planilha"] .popover-exibir { width: 380px; }
+/* painel único "Filtros e exibição" (13/11/2026): Filtrar, Classificar e Exibir lado a lado, por cima do conteúdo; Exibir,
+   com mais texto, um pouco mais largo; sem espaço, as colunas descem uma para baixo da outra; nunca passa por baixo da
+   barra lateral (largura da área de conteúdo, e não da janela) */
+.popover-painel { --coluna: 250px; --livre: calc(100vw - 32px);
+  width: min(calc(var(--colunas) * var(--coluna) + (var(--colunas) - 1) * 21px + 60px + 22px), var(--livre)); max-width: var(--livre);
+  max-height: min(78vh, 680px); overflow-y: auto; display: flex; flex-flow: row wrap; align-items: flex-start; gap: 14px 20px; padding: 14px 10px 12px; }
+@media (min-width: 900px) { body:not(.lateral-recolhida) .popover-painel { --livre: calc(100vw - var(--largura-lateral) - 48px); } }
+.popover-painel .painel-coluna { flex: 1 1 210px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.popover-painel .painel-coluna[aria-label="Exibir"] { flex: 1.25 1 260px; }
+.popover-painel .painel-coluna + .painel-coluna { border-left: 1px solid var(--grid); padding-left: 20px; margin-left: -1px; }
+.popover-painel h2 { font-size: .95rem; font-weight: 700; color: var(--ink); margin: 0 0 -2px 2px; }
+.popover-painel h3 + .opcoes-lista, .popover-painel h3 + .colunas-escolha { margin-top: -4px; }
+body[data-vista-atual="planilha"] .popover-painel { --coluna: 360px; }
+/* sem espaço para três colunas lado a lado: Filtrar e Classificar em cima, Exibir embaixo, com uma linha entre eles */
+.popover-painel { container: painel / inline-size; }
+@container painel (max-width: 780px) {
+  .popover-painel .painel-coluna + .painel-coluna[aria-label="Exibir"] { flex-basis: 100%; border-left: 0; margin-left: 0; padding-left: 0; padding-top: 14px; border-top: 1px solid var(--grid); }
+}
 .chip-atrasadas { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 11px; margin-right: 8px; border: 1px solid var(--crit); border-radius: 999px;
   background: var(--crit-soft); color: var(--crit-ink); font: 600 .84rem var(--f-texto); cursor: pointer; white-space: nowrap; }
 .chip-atrasadas .icone { width: 15px; height: 15px; }
@@ -3104,7 +3465,7 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .carga-cel.n3 { background: color-mix(in srgb, var(--accent) 48%, var(--surface)); }
 .carga-cel.n4 { background: var(--accent); color: var(--surface); }
 .carga-cel.pico { font-weight: 700; }
-.carga-barra { position: absolute; top: 9px; height: 16px; border: 0; border-radius: 4px; padding: 0; cursor: pointer; background: var(--accent); }
+.carga-barra { position: absolute; top: 9px; height: 16px; border: 0; border-radius: 4px; padding: 0; cursor: pointer; background: var(--folga); }
 .carga-barra.critica { background: var(--crit); }
 .carga-barra.antes { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .carga-barra.sem-estimativa { background: transparent; border: 2px dashed var(--warn); }
@@ -3132,9 +3493,9 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .rede-no.concluida .rede-cartao { background: var(--sunk); box-shadow: none; }
 .rede-no.concluida .rede-rotulo { color: var(--muted); }
 /* "agora": a ação liberada, que pode ser feita neste momento, ganha contorno e uma pílula com o nome da situação */
-.rede-no.agora .rede-cartao { border-top-color: var(--accent); border-right-color: var(--accent); border-bottom-color: var(--accent); }
+.rede-no.agora .rede-cartao { border-top-color: var(--liberada); border-right-color: var(--liberada); border-bottom-color: var(--liberada); }
 .rede-agora { position: absolute; top: -9px; right: 10px; z-index: 1; max-width: 60%; box-sizing: border-box; padding: 1px 8px; border-radius: 999px;
-  background: var(--accent); color: var(--texto-sobre-destaque); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
+  background: var(--liberada); color: var(--liberada-texto); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
 /* botão de abrir a ação, abaixo do "+", com o mesmo desenho */
 .rede.rede-editavel .rede-no::after { height: 72px; }
@@ -3161,7 +3522,7 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .rede:not([data-detalhe="completo"]) .rede-ponto-data { font-size: 12.5px; }
 .rede:not([data-detalhe="completo"]) .rede-ponto-prazo { font-size: min(var(--rede-letra, 1rem), 20px); }
 .rede:not([data-detalhe="completo"]) .rede-no.agora .rede-cartao { border-top-width: 3px; border-right-width: 3px; border-bottom-width: 3px; }
-.rede[data-detalhe="cor"] .rede-cartao { border-left-width: 10px; background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.rede[data-detalhe="cor"] .rede-cartao { border-left-width: 10px; background: color-mix(in srgb, var(--folga) 16%, var(--surface)); }
 .rede[data-detalhe="cor"] .rede-no.critica .rede-cartao { background: color-mix(in srgb, var(--crit) 16%, var(--surface)); }
 .rede[data-detalhe="cor"] .rede-no.concluida .rede-cartao { background: var(--sunk); }
 .rede[data-detalhe="cor"] .rede-no.sem-estimativa .rede-cartao { background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
@@ -3174,7 +3535,7 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .rede-gestos span { color: var(--muted); }
 /* legenda completa: situação "agora", cadeado, etapa e fim da fase */
 .rede-legenda { max-width: calc(100% - 104px); box-sizing: border-box; }
-.crono-legenda i.rede-leg-agora { box-sizing: border-box; height: 12px; border: 1.5px solid var(--accent); border-radius: 3px; background: var(--surface); }
+.crono-legenda i.rede-leg-agora { box-sizing: border-box; height: 12px; border: 1.5px solid var(--liberada); border-radius: 3px; background: var(--surface); }
 .crono-legenda i.rede-leg-etapa { box-sizing: border-box; height: 12px; border: 1.5px dashed color-mix(in srgb, var(--accent) 60%, transparent); border-radius: 3px; background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .crono-legenda i.rede-leg-fase { width: 0; height: 14px; margin: 0 6px; border-radius: 0; background: none; border-left: 1.5px solid color-mix(in srgb, var(--ink) 45%, transparent); }
 .rede-leg-icone .icone { width: 14px; height: 14px; margin-right: 5px; vertical-align: -2px; color: var(--muted); }
@@ -3234,8 +3595,8 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
    estimar", "contínua") e o índice, na barra; menos informação repetida */
 .rede .rede-no .rede-cartao { border-left: 1px solid color-mix(in srgb, var(--ink) 16%, var(--line)); border-image: none; padding-left: 12px; }
 /* liberadas: o alvo a procurar na rede; contorno inteiro e, de longe, fundo e contorno mais fortes */
-.rede .rede-no.agora .rede-cartao { border-color: var(--accent); }
-.rede:not([data-detalhe="completo"]) .rede-no.agora .rede-cartao { border: calc(3px * var(--rede-inv, 1)) solid var(--accent); background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.rede .rede-no.agora .rede-cartao { border-color: var(--liberada); }
+.rede:not([data-detalhe="completo"]) .rede-no.agora .rede-cartao { border: calc(3px * var(--rede-inv, 1)) solid var(--liberada); background: color-mix(in srgb, var(--liberada) 22%, var(--surface)); }
 .rede[data-detalhe="cor"] .rede-no:not(.agora) .rede-cartao { background: var(--surface); }
 .rede[data-detalhe="cor"] .rede-no.concluida .rede-cartao { background: var(--sunk); }
 .crono-legenda i.rede-leg-seta-critica { width: 22px; height: 2px; border-radius: 1px; background: var(--crit); }
@@ -3305,6 +3666,36 @@ body[data-vista-atual="rede"] #principal .titulo-conteudo, body[data-vista-atual
   body[data-vista-atual][data-abas][data-sem-nome] .topo-abas { grid-column: 1; grid-row: 1; padding-top: 6px; }
   body[data-vista-atual][data-abas][data-sem-nome] .topo-direita { grid-column: 2; grid-row: 1; align-self: center; padding-top: 6px; }
 }
+
+/* ---------- barra do topo dos espaços de uma visualização só (decisão do responsável, 13/11/2026) ----------
+   Quadro e Lista de tarefas, no computador: o mesmo esqueleto da barra dos planos, sem as abas. Uma linha só, com o
+   nome do espaço à esquerda (no lugar do título no alto do conteúdo) e, à direita, "Filtros e exibição", quem participa,
+   as atrasadas e "Nova tarefa". A barra ocupa a largura toda, como nas outras telas (também na Lista, revisto no mesmo dia).
+   O nome é editável com um clique (para quem configura o espaço), na mesma letra do nome dos planos. No celular, nada muda. */
+@media (min-width: 641px) {
+  body[data-vista-atual][data-visao-unica] .topo-linha { height: 54px; grid-template-columns: minmax(0, 1fr) auto auto; column-gap: 12px; box-shadow: inset 0 -1px 0 var(--line); }
+  body[data-vista-atual][data-visao-unica] .topo-esquerda { grid-column: 1; grid-row: 1; justify-self: stretch; }
+  body[data-vista-atual][data-visao-unica] .topo-abas { grid-column: 2; grid-row: 1; display: flex; align-items: center; min-width: 0; }
+  body[data-vista-atual][data-visao-unica] .topo-centro { justify-self: auto; }
+  body[data-vista-atual][data-visao-unica] .topo-centro .popover { left: auto; right: 0; translate: none; }
+  body[data-vista-atual][data-visao-unica] .topo-direita { grid-column: 3; grid-row: 1; gap: 0; }
+  body[data-vista-atual][data-visao-unica] .titulo-barra { display: block; max-width: none; font-size: 1.4rem; font-weight: 700; color: var(--ink); }
+  body[data-vista-atual][data-visao-unica] #principal .titulo-conteudo { display: none; }
+}
+/* nome editável com um clique: parece título, e o fundo aparece ao passar o mouse, como no Trello */
+.titulo-editavel { border: 0; background: transparent; font-family: inherit; text-align: left; cursor: text; padding: 2px 6px; margin-left: -6px; border-radius: var(--raio); min-width: 0;
+  transition: background-color var(--mov-rapido); }
+.titulo-editavel:hover { background: var(--barra-controle-foco); }
+.titulo-campo { width: 100%; font-family: inherit; padding: 1px 5px; margin-left: -6px; border: 1px solid var(--accent); border-radius: var(--raio);
+  background: var(--surface); color: var(--ink); outline: 2px solid var(--accent-soft); }
+/* quem participa: círculos das pessoas antes do chip das atrasadas */
+.participantes-topo { display: inline-flex; align-items: center; margin-right: 10px; padding: 3px 4px; border: 0; border-radius: 999px; background: transparent; }
+button.participantes-topo { cursor: pointer; transition: background-color var(--mov-rapido); }
+button.participantes-topo:hover { background: var(--barra-controle-foco); }
+.participantes-topo .avatar.mais { margin-left: 3px; }
+.topo.barra-icones .participantes-topo { display: none; }
+@media (prefers-reduced-motion: reduce) { .titulo-editavel, button.participantes-topo { transition: none; } }
+button.participantes-topo .avatar { cursor: pointer; }
 
 /* ---------- Rede como prancheta (13/11/2026, pedido do responsável: conceber o plano pela Rede) ---------- */
 /* "+" no círculo de início: aparece ao passar o mouse, como o "+" do cartão */

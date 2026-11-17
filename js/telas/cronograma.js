@@ -322,7 +322,7 @@ export function desenharCronograma(alvo, dados) {
       <div class="crono-foras" data-foras></div>
       <div class="tempo-dica" data-dica hidden></div>
     </div>
-    <div class="crono-legendas" aria-label="Legenda">${legenda}</div>
+    ${exibir.legenda === false ? "" : `<div class="crono-legendas" aria-label="Legenda">${legenda}</div>`}
     <p class="tec">${ajuda} <span class="so-computador">Para imprimir ou salvar em PDF, use o Imprimir do navegador (Ctrl+P).</span> Termo técnico: diagrama de Gantt (<a href="#" class="oque" data-termo="cronograma">o que é?</a>).</p>`;
 
   /* ---------- interação ---------- */

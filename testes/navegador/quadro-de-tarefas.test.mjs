@@ -56,7 +56,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
   test("o filtro esconde e mostra as concluídas", async () => {
     const p = await abrirQuadro(sessao, { largura: 1280 });
     assert.equal(await cartao(p, "Publicar o boletim").count(), 1, "por padrão, as concluídas ficam à vista");
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     await p.locator('[data-ctl="concluidas"]').uncheck();
     await assentar(p);
     assert.equal(await cartao(p, "Publicar o boletim").count(), 0);
@@ -118,7 +118,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     await assentar(p, 1000);
     assert.equal(await item(p, "Agendar a reunião").count(), 0);
     assert.match(await p.locator(".aviso-curto").innerText(), /concluída/);
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     await p.locator('[data-ctl="concluidas"]').check();
     await assentar(p);
     assert.equal(await item(p, "Agendar a reunião").locator("[data-marcar]").getAttribute("aria-checked"), "true");
@@ -240,7 +240,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.ok((await vencida.boundingBox()).y >= nome.y + nome.height - 1, "abaixo do nome");
     assert.equal(await item(p, "Agendar a reunião").locator(".prazo-tarefa").count(), 0, "sem data, nada");
     /* a opção "Indicador" sai das colunas da Lista */
-    await p.click('.menu-topo[data-pop="exibir"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     assert.equal(await p.locator('[data-coluna="barras"]').count(), 0);
     assert.deepEqual(p.erros, []);
   });
@@ -284,12 +284,10 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
-  test("Lista de tarefas: título e lista numa coluna de até 800 px, centralizada (04/11/2026)", async () => {
+  test("Lista de tarefas: lista numa coluna de até 800 px, centralizada (04/11/2026; o título vai para a barra do topo em 13/11/2026)", async () => {
     const p = await abrirLista({ largura: 1600 });
     const l = await p.locator(".lista[data-tarefas]").boundingBox();
-    const t = await p.locator("#principal .titulo-conteudo").boundingBox();
     assert.ok(l.width <= 800, `largura ${l.width}`);
-    assert.ok(Math.abs(t.x - l.x) <= 2, "título alinhado à lista");
     const area = await p.locator("#principal").boundingBox();
     assert.ok(Math.abs((l.x - area.x) - (area.x + area.width - (l.x + l.width))) < 60, "centralizada na área de trabalho");
     assert.deepEqual(p.erros, []);
@@ -304,7 +302,7 @@ describe("Quadro de tarefas no navegador", { skip: pular }, () => {
     assert.equal(await item(p, "Atualizar o currículo").count(), 1);
     assert.equal((await botao.innerText()).trim(), "Esconder as concluídas");
     /* o filtro do menu acompanha */
-    await p.click('.menu-topo[data-pop="classificar"]');
+    await p.click('.menu-topo[data-pop="painel"]');
     assert.equal(await p.locator('[data-ctl="concluidas"]').isChecked(), true);
     await p.keyboard.press("Escape");
     await botao.click();

@@ -265,7 +265,7 @@ describe("Cronograma: responsável, filtros, legenda, setas de borda, teclado, i
   }
   const linha = (p, nome) => p.locator(`.crono-linha[data-numero]:has-text("${nome}")`);
   const exibir = async (p, opcao) => {
-    await p.locator('.menu-topo[data-pop="exibir"]').click();
+    await p.locator('.menu-topo[data-pop="painel"]').click();
     await assentar(p, 250);
     await p.locator(`[data-crono-op="${opcao}"]`).click();
     await assentar(p, 500);
@@ -455,14 +455,18 @@ describe("Cronograma: indicador ao lado dos nomes (12/11/2026)", { skip: pular }
     return p;
   }
   const escolher = async (p, v) => {
-    if (!(await p.locator(".popover [data-barra]").first().isVisible())) await p.click('.menu-topo[data-pop="indicador"]');
-    await p.locator(`.popover [data-barra="${v}"]`).first().click();
+    if (!(await p.locator(".popover [data-crono-ind]").first().isVisible())) await p.click('.menu-topo[data-pop="painel"]');
+    await p.locator(`.popover [data-crono-ind="${v}"]`).first().click();
     await assentar(p, 400);
   };
 
-  test("o menu Indicador aparece; criticidade e incerteza ganham a coluna; o tempo restante não", async () => {
+  test("o indicador fica em Exibir: Nenhum, criticidade ou incerteza; sem o menu Indicador", async () => {
     const p = await abrir();
-    assert.equal(await p.locator('.menu-topo[data-pop="indicador"]').count(), 1);
+    assert.equal(await p.locator('.menu-topo[data-pop="indicador"]').count(), 0, "no Cronograma, sem o menu Indicador");
+    assert.equal(await p.locator(".crono.com-indicador").count(), 0, "começa sem indicador");
+    await p.click('.menu-topo[data-pop="painel"]');
+    assert.deepEqual(await p.locator(".popover [data-crono-ind]").evaluateAll((bs) => bs.map((b) => b.dataset.cronoInd)), ["nenhum", "execucao", "revisao"]);
+    assert.equal(await p.locator('.popover [data-crono-ind="nenhum"]').getAttribute("aria-pressed"), "true");
     await escolher(p, "execucao");
     assert.ok(await p.locator(".crono.com-indicador").count() === 1);
     assert.ok(await p.locator(".crono-linha .crono-ind .barra-medidor").count() >= 5, "barra nas ações não concluídas");
@@ -471,8 +475,9 @@ describe("Cronograma: indicador ao lado dos nomes (12/11/2026)", { skip: pular }
     assert.equal(largura, "404px");
     await escolher(p, "revisao");
     assert.equal(await p.locator(".crono-cabeca .barra-icone.revisao").count(), 1);
-    await escolher(p, "tempo");
-    assert.equal(await p.locator(".crono-ind").count(), 0, "o Gantt já mostra o tempo");
+    assert.equal(await p.evaluate(() => localStorage.getItem("sextante.cronoIndicador")), "revisao");
+    await escolher(p, "nenhum");
+    assert.equal(await p.locator(".crono-ind").count(), 0);
     assert.equal(await p.locator(".crono.com-indicador").count(), 0);
     assert.deepEqual(p.erros, []);
   });

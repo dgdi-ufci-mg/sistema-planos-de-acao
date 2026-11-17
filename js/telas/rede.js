@@ -27,6 +27,8 @@ import { surgir, DURACAO as MOV_DURACAO, CURVA as MOV_CURVA } from "./movimento.
 let aoRedimensionar = null;
 /** Ctrl+Z na Rede (10/11/2026): um só ouvinte no documento, trocado a cada desenho. */
 let aoTeclarDesfazer = null;
+/** Régua das fases (13/11/2026): observa a barra do topo e a área da Rede; um só observador, trocado a cada desenho. */
+let observadorDaRegua = null;
 /**
  * Níveis de detalhe do cartão conforme o zoom (10/11/2026): "completo" de 60% para cima; "nome" de 35% a 60%
  * (só o nome, em letra maior); "cor" abaixo de 35% (bloco preenchido com a cor da situação, nome onde couber).
@@ -232,7 +234,7 @@ const legendaDaBarra = {
 
 export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
   inicio = null, termino = null, prazoFinal = null, continuas = false, ocultarContinuas = false, aoOcultarContinuas = () => {}, edicao = null, nomeDaSituacao = () => "", nomeLiberada = "Liberada", toque = false,
-  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "" }) {
+  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "", legenda = true }) {
   /* ações contínuas (seção 5.9; 09/11/2026): caixa como as outras, com ligações tracejadas aos marcos; o filtro as esconde */
   const linhaDaAcao = new Map(linhas.map((l) => [l.acao.numero, l]));
   const temContinuas = continuas && todas.some((a) => linhaDaAcao.get(a.numero)?.continua);
@@ -429,7 +431,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
         </div>
       </div>
       ${reguaDasFases}
-      <div class="rede-legenda rede-sobre">
+      <div class="rede-legenda rede-sobre"${legenda || temContinuas ? "" : " hidden"}>${legenda ? `
         ${legendaDaBarra[indicador] ?? ""}
         ${setasPeloIndice ? `<span class="crono-legenda"><i class="rede-leg-indice"></i>Quanto mais forte a seta, mais pesa no prazo <a href="#" class="oque" data-termo="exec">o que é?</a></span>`
     : porCriticidade ? "" : `<span class="crono-legenda"><i class="rede-leg-seta-critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>`}
@@ -438,7 +440,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
         <span class="crono-legenda rede-leg-icone">${ICONES.naoLiberada}Espera outra ação</span>
         ${cercas.length ? `<span class="crono-legenda"><i class="rede-leg-etapa"></i>Etapa</span>` : ""}
         ${fases.length ? `<span class="crono-legenda"><i class="rede-leg-fase"></i>Fim da fase</span>` : ""}
-        ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}
+        ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}` : "" /* legenda desligada em Exibir (12/11/2026): fica só o botão das contínuas */}
         ${temContinuas ? `<button type="button" class="rede-legenda-botao" data-ocultar-continuas aria-pressed="${ocultarContinuas}">${ocultarContinuas ? "Mostrar ações contínuas" : "Ocultar ações contínuas"}</button>` : ""}
       </div>
       <div class="rede-ajuda rede-sobre" data-rede-ajuda-cartao${ajudaAberta ? "" : " hidden"}>
@@ -484,7 +486,8 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
       const r = el.getBoundingClientRect();
       if (r.height) topo = Math.max(topo, r.bottom - v.top);
     }
-    const legenda = alvo.querySelector(".rede-legenda").getBoundingClientRect();
+    const caixaLegenda = alvo.querySelector(".rede-legenda");
+    const legenda = caixaLegenda.hidden ? { top: v.bottom } : caixaLegenda.getBoundingClientRect();
     const controles = alvo.querySelector("[data-rede-controles]").getBoundingClientRect();
     const folga = 24;
     /* a régua das fases fica logo abaixo do título e conta como área ocupada */
@@ -502,6 +505,21 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     conteudo.style.top = `${my}px`;
     if (fasesTopo) fasesTopo.style.top = `${areaLivre().regua}px`;
   };
+  /* a régua acompanha a altura da barra do topo (13/11/2026, defeito relatado pelo responsável): antes, a posição era
+     medida só ao abrir a Rede; mostrar ou esconder o nome do espaço (botão direito na barra) ou mudar a largura da
+     janela mudava a altura da barra, e a régua ficava escondida atrás dela ou com um vão grande embaixo */
+  observadorDaRegua?.disconnect();
+  observadorDaRegua = null;
+  if (fasesTopo && typeof ResizeObserver === "function") {
+    observadorDaRegua = new ResizeObserver(() => {
+      if (!fasesTopo.isConnected) { observadorDaRegua?.disconnect(); return; }
+      fasesTopo.style.top = `${areaLivre().regua}px`;
+      atualizarFases();
+    });
+    for (const el of [document.querySelector(".topo"), document.querySelector("#principal .titulo-conteudo"), document.querySelector("#principal .cabeca-espaco"), rolagem]) {
+      if (el) observadorDaRegua.observe(el);
+    }
+  }
   /* régua das fases: cada nome fica no meio do trecho da sua faixa que está na tela, sempre à vista */
   const atualizarFases = () => {
     if (!fasesTopo) return;
