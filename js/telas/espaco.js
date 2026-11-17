@@ -702,6 +702,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const doCentro = ui.pop === "painel";
     const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
     if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
+    /* Lista de tarefas (17/11/2026): o nome da coluna também se renomeia com um clique (o campo aparece na barra, no centro) */
+    if (tituloConteudo) {
+      const editavel = ehLista() && podeRenomear();
+      tituloConteudo.toggleAttribute("data-renomear", editavel);
+      if (editavel) { tituloConteudo.title = "Clique para renomear"; tituloConteudo.onclick = () => comecarARenomear(); }
+      else { tituloConteudo.removeAttribute("title"); tituloConteudo.onclick = null; }
+    }
     /* barra em duas linhas, no computador (decisão do responsável, 12/11/2026):
        1ª linha, "o quê": o nome do espaço e, à direita, as atrasadas e o botão principal, iguais em todas as visualizações;
        2ª linha, "como vejo": as visualizações em abas, à vista, e, à direita delas, os controles da visualização atual.

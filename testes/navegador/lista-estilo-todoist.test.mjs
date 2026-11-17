@@ -73,6 +73,60 @@ describe("Lista de tarefas no padrão do Todoist", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  /** Abre a lista numa janela baixa e enche de tarefas, para a página rolar. */
+  async function abrirListaLonga(largura = 1366) {
+    const p = await abrirLista({ largura, altura: 480 });
+    const campo = p.locator('.lista[data-tarefas] [data-rapida="lista"] input');
+    for (let i = 1; i <= 12; i++) { await campo.fill(`Tarefa de enchimento ${i}`); await p.keyboard.press("Enter"); await assentar(p, 250); }
+    return p;
+  }
+
+  test("ao rolar, o nome passa para o centro da barra; ao voltar ao topo, sai de lá", async () => {
+    const p = await abrirListaLonga();
+    const nomeBarra = p.locator(".topo .titulo-barra");
+    assert.equal(await nomeBarra.isVisible(), false, "no topo, só o nome da coluna");
+    await p.evaluate(() => window.scrollTo(0, 400));
+    await assentar(p, 500);
+    assert.ok(await nomeBarra.isVisible(), "rolado, o nome aparece na barra");
+    const [n, barra, filtros] = await Promise.all([nomeBarra.boundingBox(), p.locator(".topo-linha").boundingBox(), p.locator('.topo .menu-topo[data-pop="painel"]').boundingBox()]);
+    assert.ok(Math.abs(n.x + n.width / 2 - (barra.x + barra.width / 2)) < 4, "centralizado na barra");
+    assert.ok(n.x + n.width < filtros.x, "sem encostar nos filtros");
+    await p.evaluate(() => window.scrollTo(0, 0));
+    await assentar(p, 500);
+    assert.equal(await nomeBarra.isVisible(), false, "de volta ao topo, o nome sai da barra");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("nome estreito: com a janela de 760 px, o nome da barra não encosta nos filtros", async () => {
+    const p = await abrirListaLonga(760);
+    await p.evaluate(() => window.scrollTo(0, 400));
+    await assentar(p, 500);
+    const [n, filtros] = await Promise.all([p.locator(".topo .titulo-barra").boundingBox(), p.locator('.topo .menu-topo[data-pop="painel"]').boundingBox()]);
+    assert.ok(n.x + n.width < filtros.x, "sem encostar");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("o nome se renomeia com um clique, na coluna ou na barra", async () => {
+    const p = await abrirListaLonga();
+    await p.click("#principal .titulo-conteudo");
+    assert.ok(await p.evaluate(() => document.activeElement?.matches("[data-campo-nome]")), "o campo recebe o foco");
+    assert.ok(await p.locator(".topo [data-campo-nome]").isVisible(), "o campo aparece na barra, mesmo no topo");
+    await p.keyboard.type("Lista da equipe");
+    await p.keyboard.press("Enter");
+    await assentar(p);
+    assert.equal((await p.locator("#principal .titulo-conteudo").innerText()).trim(), "Lista da equipe");
+    assert.match(await p.locator(".lateral").innerText(), /Lista da equipe/);
+    await p.evaluate(() => window.scrollTo(0, 400));
+    await assentar(p, 500);
+    await p.click(".topo [data-renomear]");
+    await p.keyboard.press("End");
+    await p.keyboard.type(" 2");
+    await p.keyboard.press("Enter");
+    await assentar(p);
+    assert.match(await p.locator(".topo .titulo-barra").innerText(), /Lista da equipe 2/);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("a tecla N continua abrindo a janela de nova tarefa; no celular, o (+) também", async () => {
     const p = await abrirLista({ largura: 1366 });
     await p.keyboard.press("n");
