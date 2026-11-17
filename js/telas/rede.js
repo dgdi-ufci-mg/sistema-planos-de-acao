@@ -393,12 +393,15 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     /* "agora" (10/11/2026): a ação liberada e ainda não concluída é a que pode ser feita neste momento */
     const agora = l.situacao === "liberada";
     const pilula = agora ? nomeDaSituacao(l) : "";
-    const dica = `${etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo}${indice != null && l.execucao != null ? `\nÍndice de criticidade: ${indice}%` : ""}`;
+    /* nome para o leitor de tela: a etapa e o nome inteiro. Desde 17/11/2026 (pedido do responsável) não é mais a dica
+       do cartão inteiro, que aparecia sobre os campos editáveis; o nome inteiro aparece na dica do próprio nome, só
+       quando ele está cortado (ver o "pointerover"), e o índice de criticidade fica na dica da barra do indicador */
+    const dica = etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo;
     /* barra do indicador (12/11/2026, pedido do responsável): a mesma da lista e do quadro, escolhida no menu Indicador */
     const barraHtml = barra(l);
     return `<div class="rede-no ${classe}${agora ? " agora" : ""}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}"${indice != null ? ` data-indice="${indice}"` : ""}>
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
-        title="${esc(dica)}">
+        aria-label="${esc(dica)}">
         <span class="rede-topo">${situacao(l)}<span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
         <span class="rede-base"><span class="donos">${donos(a)}</span>
           <span class="rede-data${l.atrasada ? " atrasada" : ""}"><span class="mono">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}${data}</span>${folga ? `<small>${folga}</small>` : ""}</span></span>
@@ -839,6 +842,13 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   caixa.addEventListener("pointerover", (e) => {
     const no = e.target.closest("[data-rede-no]");
     if (no) destacar(Number(no.dataset.redeNo));
+    /* dica do nome (17/11/2026): o nome inteiro, só quando ele está cortado, medido na hora (depende do zoom) */
+    const rotulo = e.target.closest(".rede-rotulo");
+    if (rotulo && !rotulo.querySelector("[data-editando]")) {
+      const nome = rotulo.querySelector('[data-editar="rotulo"]')?.textContent ?? "";
+      if (rotulo.scrollHeight > rotulo.clientHeight + 1) rotulo.title = nome;
+      else rotulo.removeAttribute("title");
+    }
   });
   caixa.addEventListener("pointerout", (e) => {
     if (e.target.closest("[data-rede-no]") && !e.relatedTarget?.closest?.("[data-rede-no]")) limpar();
@@ -988,6 +998,8 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
       if (selecionadaAntes === n && edicao.podeAlterar(n)) {
         if (e.target.closest(".donos")) return abrirResponsaveis(n);
         if (e.target.closest(".rede-data")) return edicao.usaDataLimite ? abrirDataLimite(n) : abrirEstimativa(n);
+        /* o nome, sombreado como os outros dois campos, também se edita com um clique (17/11/2026) */
+        if (e.target.closest(".rede-rotulo") && !e.target.closest("[data-editando]")) return renomear(n);
       }
       return selecionarNo(n);
     }

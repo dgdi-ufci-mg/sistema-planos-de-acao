@@ -272,9 +272,41 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     await p.keyboard.type("Nome trocado na rede");
     await p.keyboard.press("Enter");
     await p.waitForFunction((n) => document.querySelector(`.rede-no[data-numero="${n}"]`)?.textContent.includes("Nome trocado na rede"), numero);
-    await p.locator(`.rede-no[data-numero="${numero}"] .rede-cartao`).click();
+    /* no canto do cartão, fora dos campos: desde 17/11/2026, o clique no nome da ação selecionada o edita */
+    await p.locator(`.rede-no[data-numero="${numero}"] .rede-cartao`).click({ position: { x: 4, y: 4 } });
     await p.keyboard.press("Escape");
     assert.equal(await p.locator(".rede-no.selecionada").count(), 0);
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("campos editáveis: sombreados ao passar o mouse; um clique no nome da selecionada o edita; dica só no nome cortado", async () => {
+    const p = await abrirRede();
+    await p.locator('[data-escala="normal"]').click(); // de longe, a data some do cartão
+    await assentar(p);
+    const no = p.locator(".rede-no").nth(1);
+    const fundo = (sel) => no.locator(sel).evaluate((el) => getComputedStyle(el).backgroundColor);
+    assert.equal(await no.locator(".rede-cartao").getAttribute("title"), null, "o cartão inteiro não tem dica");
+    await no.locator(".rede-cartao").click({ position: { x: 4, y: 4 } });
+    await assentar(p);
+    for (const sel of [".rede-rotulo", ".rede-data"]) {
+      const antes = await fundo(sel);
+      await no.locator(sel).hover();
+      await p.waitForTimeout(250);
+      assert.notEqual(await fundo(sel), antes, `${sel} sombreado ao passar o mouse`);
+      assert.equal(await no.locator(sel).evaluate((el) => getComputedStyle(el).outlineStyle), "none", "sem traço ao passar o mouse");
+    }
+    /* dica: aparece só se o nome estiver cortado */
+    const rotulo = no.locator(".rede-rotulo");
+    await rotulo.hover();
+    const cortado = await rotulo.evaluate((el) => el.scrollHeight > el.clientHeight + 1);
+    assert.equal(await rotulo.getAttribute("title"), cortado ? await no.locator('[data-editar="rotulo"]').innerText() : null);
+    await no.locator('[data-editar="rotulo"]').evaluate((el) => { el.textContent = "Nome muito comprido ".repeat(8); });
+    await p.mouse.move(0, 0);
+    await rotulo.hover();
+    assert.match(await rotulo.getAttribute("title") ?? "", /Nome muito comprido/, "nome cortado ganha a dica");
+    await rotulo.click();
+    await p.waitForSelector(".rede [data-editando]");
+    await p.keyboard.press("Escape");
     assert.deepEqual(p.erros, []);
   });
 

@@ -3689,8 +3689,16 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
 .rede-campo .rede-escolha-opcoes { max-height: min(280px, 46vh); overflow: auto; }
 .rede-campo .rede-escolha-opcoes button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 /* na ação selecionada, os responsáveis e a data abrem a caixinha do campo */
-.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data) { cursor: pointer; border-radius: 6px; outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color var(--mov-rapido); }
-.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data):hover { outline-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+/* sombreamento ao passar o mouse (17/11/2026, pedido do responsável), como nos campos editáveis das outras telas; a
+   sombra sem desfoque faz a margem do fundo sem mexer no desenho e não é cortada pelo limite de duas linhas do nome */
+.rede.rede-editavel .rede-no.selecionada :is(.rede-rotulo, .donos, .rede-data) { border-radius: 4px; transition: background-color var(--mov-rapido), box-shadow var(--mov-rapido); }
+.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data) { cursor: pointer; }
+.rede.rede-editavel .rede-no.selecionada .rede-rotulo { cursor: text; }
+.rede.rede-editavel .rede-no.selecionada :is(.rede-rotulo, .donos, .rede-data):hover:not(:has([data-editando])) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 8%, transparent); }
+/* com Alt, o mesmo traço nos três campos; no nome, em volta da caixa inteira, e não de cada linha do texto */
+.alt-edicao .rede.rede-editavel [data-editar="rotulo"] { outline: none; }
+.alt-edicao .rede.rede-editavel :is(.rede-rotulo, .rede-base .donos, .rede-data) { outline: 1px dashed var(--accent); outline-offset: 2px; border-radius: 4px; }
 .rede.rede-editavel .rede-no.selecionada .donos:empty { min-width: 24px; min-height: 22px; }
 .rede.rede-editavel .rede-agora[data-rede-situacao] { cursor: pointer; pointer-events: auto; }
 /* acabamento: datas na letra do cartão, com algarismos alinhados */
