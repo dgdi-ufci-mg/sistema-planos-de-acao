@@ -984,7 +984,6 @@ body.sem-criar-acao [data-nova] { display: none !important; } /* só o administr
 @media (max-width: 640px) {
   .camada.janela .painel { max-height: 94%; }
 }
-.camada.janela .painel { border-top: 5px solid var(--calor, var(--line)); }
 .camada.janela .painel header h2 { font-family: var(--f-texto); font-size: .9rem; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .janela-cabeca { display: flex; flex-direction: column; gap: 2px; }
 .janela-rotulo { font-family: var(--f-titulo); font-size: 1.45rem; margin: 0; }
