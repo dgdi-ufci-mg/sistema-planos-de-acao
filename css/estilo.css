@@ -3696,3 +3696,31 @@ button.participantes-topo:hover { background: var(--barra-controle-foco); }
 .topo.barra-icones .participantes-topo { display: none; }
 @media (prefers-reduced-motion: reduce) { .titulo-editavel, button.participantes-topo { transition: none; } }
 button.participantes-topo .avatar { cursor: pointer; }
+
+/* ---------- Lista de tarefas no padrão do Todoist (16/11/2026, decisão do responsável) ----------
+   Fundo branco (a superfície do tema) na área de trabalho; o nome do espaço dentro da coluna central, logo acima das
+   tarefas, e não mais no canto da barra; sem a linha divisória sob a barra; sem o botão "Nova tarefa" no alto (a
+   criação é a linha "Adicionar tarefa" no começo da lista; a tecla N e o (+) do celular continuam); prazo, checklist e
+   etiquetas lado a lado numa linha só sob o nome. Só no tipo Lista; o Quadro e os planos não mudam. */
+body[data-tipo-espaco="lista"] { background: var(--surface); }
+body[data-tipo-espaco="lista"] .topo:not(.rolou) { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (min-width: 641px) {
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .topo-linha { box-shadow: none; }
+  /* o nome passa para o centro da barra quando o da coluna rola para baixo dela (17/11/2026, como no Todoist) */
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .topo-linha { position: relative; }
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .topo-esquerda { position: static; }
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .titulo-barra { position: absolute; left: 50%; top: 50%; translate: -50% -50%; margin: 0;
+    font-size: 1.05rem; font-weight: 600; max-width: clamp(120px, calc(50% - 190px), 32ch); text-align: center;
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity var(--mov-rapido), visibility 0s linear var(--mov-rapido); }
+  body.titulo-fora[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .titulo-barra,
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .titulo-barra.titulo-campo {
+    opacity: 1; visibility: visible; pointer-events: auto; transition-delay: 0s; }
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] .titulo-barra.titulo-editavel { margin-left: 0; text-align: center; }
+  body[data-vista-atual][data-visao-unica][data-tipo-espaco="lista"] #principal .titulo-conteudo { display: block; margin: 14px 0 -6px; }
+}
+body[data-tipo-espaco="lista"] .titulo-conteudo[data-renomear] { cursor: text; border-radius: var(--raio); margin-left: -6px; padding-left: 6px; transition: background-color var(--mov-rapido); }
+body[data-tipo-espaco="lista"] .titulo-conteudo[data-renomear]:hover { background: var(--barra-controle-foco); }
+.meta-tarefa { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; margin-top: 3px; }
+.meta-tarefa > * { margin-top: 0; align-self: center; }
+.lista[data-tarefas] .linha-rapida { margin: 0 0 4px; padding: 8px 4px; border-radius: 6px; }
+.lista[data-tarefas] .linha-rapida .icone { width: 18px; height: 18px; flex: none; color: var(--accent); }

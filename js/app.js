@@ -46,10 +46,15 @@ const marcarRolagem = () => {
   const rolou = window.scrollY > 4;
   topo.classList.toggle("rolou", rolou);
   document.body.classList.toggle("rolou", rolou);
+  /* Lista de tarefas (17/11/2026): quando o nome da coluna rola para baixo da barra, ele passa para o centro da barra */
+  const titulo = document.querySelector("#principal [data-titulo-conteudo]");
+  document.body.classList.toggle("titulo-fora", Boolean(titulo) && titulo.getBoundingClientRect().bottom < 54);
 };
-window.addEventListener("scroll", () => {
-  if (!pendente) { pendente = true; requestAnimationFrame(marcarRolagem); }
-}, { passive: true });
+const agendarRolagem = () => { if (!pendente) { pendente = true; requestAnimationFrame(marcarRolagem); } };
+/* a tela se redesenha (troca de espaço, edição): refaz a conta sem esperar uma rolagem */
+const areaPrincipal = document.getElementById("principal");
+if (areaPrincipal) new MutationObserver(agendarRolagem).observe(areaPrincipal, { childList: true });
+window.addEventListener("scroll", agendarRolagem, { passive: true });
 marcarRolagem();
 
 /* lembrança do último espaço, só neste aparelho; sem armazenamento, segue sem ela */

@@ -12,7 +12,7 @@ import { colunasDoQuadro, nomeInicial, nomeDoFluxo, personalizadasDe, estaConclu
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo, usaContinuas } from "../modelos.js";
-import { usaPrioridade } from "../prioridade.js";
+import { usaPrioridade, compararPrioridade } from "../prioridade.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir, prazoDaTarefa } from "../lista.js";
@@ -702,6 +702,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const doCentro = ui.pop === "painel";
     const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
     if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
+    /* Lista de tarefas (17/11/2026): o nome da coluna também se renomeia com um clique (o campo aparece na barra, no centro) */
+    if (tituloConteudo) {
+      const editavel = ehLista() && podeRenomear();
+      tituloConteudo.toggleAttribute("data-renomear", editavel);
+      if (editavel) { tituloConteudo.title = "Clique para renomear"; tituloConteudo.onclick = () => comecarARenomear(); }
+      else { tituloConteudo.removeAttribute("title"); tituloConteudo.onclick = null; }
+    }
     /* barra em duas linhas, no computador (decisão do responsável, 12/11/2026):
        1ª linha, "o quê": o nome do espaço e, à direita, as atrasadas e o botão principal, iguais em todas as visualizações;
        2ª linha, "como vejo": as visualizações em abas, à vista, e, à direita delas, os controles da visualização atual.
@@ -744,6 +751,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${ui.modo === "entregas"
           /* nas Entregas, o botão cria entrega (12/11/2026, decisão do responsável), como o (+) do celular e a tecla N; quem não pode criar não o vê */
           ? (telaEntregas.podeCriar(perm) ? `<button class="botao principal so-computador" type="button" data-nova title="Nova entrega (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova entrega</button>` : "")
+          : ehLista() ? "" /* Lista de tarefas: a criação é a linha "Adicionar tarefa" no alto da lista (16/11/2026) */
           : `<button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>`}
       </div>`;
     montandoBarra = false;
@@ -1006,6 +1014,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           ...(form.dataset.etapa ? { etapa: form.dataset.etapa } : {}),
           ...(naoAntesDe ? { naoAntesDe } : {}),
         });
+        /* Lista de tarefas (16/11/2026): a nova entra no alto, para a pessoa decidir depois o destino dela; sem permissão
+           de priorizar, ou se a gravação falhar, fica no fim, como antes */
+        if (ehLista() && usaPrioridade(espaco) && perm.priorizar) {
+          const primeira = [...acoes].filter((a) => a.numero !== numero).sort(compararPrioridade)[0];
+          if (primeira) { try { await store.priorizar(espacoId, numero, { depoisDe: null, antesDe: primeira.numero }); } catch { /* fica no fim */ } }
+        }
         /* Quadro de tarefas (passo 3.1): criada numa coluna personalizada, já fica nela */
         if (form.dataset.situacao) await store.mudarSituacao(espacoId, numero, form.dataset.situacao);
       } catch (falha) {
@@ -1146,14 +1160,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* prazo como texto, no lugar da barra de tempo (04/11/2026, pedido do responsável, como no Todoist): "Hoje", "Amanhã", o dia da semana ou a data */
     const prazo = ehLista() ? prazoDaTarefa(a.dataLimite, hoje, { concluida: l.situacao === "concluida" }) : null;
     const prazoSob = prazo ? `<span class="prazo-tarefa ${prazo.tom}" title="Data-limite: ${dataBr(a.dataLimite)}${prazo.tom === "vencida" ? " (venceu)" : ""}">${ICONES.barraTempo}<span>${prazo.texto}</span></span>` : "";
+    /* Lista de tarefas (16/11/2026): prazo, checklist e etiquetas lado a lado, numa linha só */
+    const metaSob = [prazoSob, checklistNota(a), etiquetasNota(a)].some(Boolean) ? `<span class="meta-tarefa">${prazoSob}${checklistNota(a)}${etiquetasNota(a)}</span>` : "";
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>${puxadores() ? `<button type="button" class="puxador" data-puxar="${a.numero}"
         aria-label="Mudar a prioridade de ${esc(a.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a prioridade">${ICONES.puxador}</button>` : ""}
         <div class="sit">${deTarefas() && l.situacao !== "naoLiberada" ? caixaHtml(l) : sit}</div>
-        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${prazoSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${ehLista() ? metaSob : prazoSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
-            continuaNota(l), l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a), etiquetasNota(a)].join("")}</div>
+            continuaNota(l), l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", ehLista() ? "" : checklistNota(a), ehLista() ? "" : etiquetasNota(a)].join("")}</div>
         ${c.descricao && !ehLista() ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
         ${c.participantes && !semPessoasNaLista() ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras && !ehLista() ? barraHtml(l) : ""}
@@ -1305,8 +1321,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
     } else {
       /* todas concluídas e escondidas pelo filtro (04/11/2026, pedido do responsável): o espaço tem tarefas, só não há pendentes */
-      corpo = (ls.length ? "" : linhas.length ? `<p class="lista-vazia">Nenhuma ${termos(espaco).acao} pendente.</p>` : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ${termos(espaco).acao}".</p>`)
-        + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "") + verConcluidasHtml();
+      corpo = (ehLista() && rapida ? rapidaHtml("lista") : "")
+        + (ls.length ? "" : linhas.length ? `<p class="lista-vazia">Nenhuma ${termos(espaco).acao} pendente.</p>` : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira acima e tecle Enter.</p>`)
+        + ls.map(linhaHtml).join("") + (rapida && !ehLista() ? rapidaHtml("lista") : "") + verConcluidasHtml();
     }
     const rolagemDoQuadro = lista.querySelector(".quadro")?.scrollLeft ?? 0; // o redesenho não volta o quadro para a primeira coluna
     /* nem a rolagem de cada coluna (rolagem própria, como no Trello; 27/10/2026) */
