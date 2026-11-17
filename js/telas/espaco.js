@@ -12,7 +12,7 @@ import { colunasDoQuadro, nomeInicial, nomeDoFluxo, personalizadasDe, estaConclu
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo, usaContinuas } from "../modelos.js";
-import { usaPrioridade } from "../prioridade.js";
+import { usaPrioridade, compararPrioridade } from "../prioridade.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir, prazoDaTarefa } from "../lista.js";
@@ -32,7 +32,7 @@ import { desenharCarga } from "./carga.js";
 import { desenharRede } from "./rede.js";
 import { criarTelaDeEntregas } from "./entregas.js";
 import { esqueletoHtml } from "./esqueleto.js";
-import { tipoDe } from "../tipos.js";
+import { tipoDe, ehDeTarefas } from "../tipos.js";
 import { termos } from "../vocabulario.js";
 import { registrarFonte } from "./busca.js";
 import { registrarTecla } from "./atalhos.js";
@@ -82,7 +82,7 @@ function lerColunas() {
   return lembrado("sextante.barra", "") === "nenhuma" ? { barras: false } : {};
 }
 
-export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra, acaoInicial = null }) {
+export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, barra, acaoInicial = null, aoConfigurar = null }) {
   /** ação a abrir quando os dados chegarem, vinda do link "#/espaco/<id>/acao/<número>" ou de "Minhas tarefas" (05/11/2026) */
   let acaoDoLink = acaoInicial;
   /** Números das ações na ordem em que a tela as mostra (cada coluna do quadro segue esta ordem; ver o arrastar). */
@@ -95,6 +95,8 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     nomeNaBarra: lembrado("sextante.nomeNaBarra", "1") === "1",
     /** onde o botão direito abriu o menu da barra (clientX, clientY) */
     menuBarraEm: null,
+    /** Quadro e Lista de tarefas (13/11/2026): o nome do espaço sendo editado na barra, e o texto digitado até gravar */
+    renomeando: false, nomeRascunho: "",
     /** zoom do cronograma: px por dia (ver ZOOM em js/telas/cronograma.js; aceita os nomes antigos "semanas" e "meses") */
     escalaCrono: lembrado("sextante.zoomCronograma", "semanas"), /* zoom do cronograma, em px por dia (27/10/2026), lembrado no aparelho */
     /** cronograma, menu "Exibir" (11/11/2026), lembrado no aparelho: responsável ao lado da barra (ligado de início), esconder concluídas e contínuas */
@@ -298,6 +300,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* propriedades, e não addEventListener: a barra é a mesma para todos os espaços */
     ferramentas.onchange = aoMudarControle;
     ferramentas.onclick = aoClicarNaBarra;
+    /* nome do espaço editado na barra (13/11/2026): Enter grava, Esc desiste, sair do campo grava */
+    ferramentas.onkeydown = aoTeclarNaBarra;
+    ferramentas.oninput = (e) => { if (e.target.matches("[data-campo-nome]")) ui.nomeRascunho = e.target.value; };
+    ferramentas.addEventListener("focusout", aoSairDoNome); // não há a propriedade onfocusout; o ouvinte sai em pararTela
     /* botão direito na barra do topo (12/11/2026, decisão do responsável): menu com "Mostrar o nome do espaço",
        para quem quer a barra numa linha só. Recurso para quem usa muito o sistema; fica registrado nos atalhos */
     const topoEl = ferramentas.closest(".topo");
@@ -699,6 +705,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const doCentro = ui.pop === "painel";
     const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
     if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
+    /* Lista de tarefas (17/11/2026): o nome da coluna também se renomeia com um clique (o campo aparece na barra, no centro) */
+    if (tituloConteudo) {
+      const editavel = ehLista() && podeRenomear();
+      tituloConteudo.toggleAttribute("data-renomear", editavel);
+      if (editavel) { tituloConteudo.title = "Clique para renomear"; tituloConteudo.onclick = () => comecarARenomear(); }
+      else { tituloConteudo.removeAttribute("title"); tituloConteudo.onclick = null; }
+    }
     /* barra em duas linhas, no computador (decisão do responsável, 12/11/2026):
        1ª linha, "o quê": o nome do espaço e, à direita, as atrasadas e o botão principal, iguais em todas as visualizações;
        2ª linha, "como vejo": as visualizações em abas, à vista, e, à direita delas, os controles da visualização atual.
@@ -714,9 +727,10 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           title="${atualNoMais ? `Visualização: ${atualNoMais[1]}` : "Mais visualizações"}">${atualNoMais ? `${ICONES[atualNoMais[2]]}<span>${atualNoMais[1]}</span>` : "<span>Mais</span>"}<span class="menu-topo-seta" aria-hidden="true">${ICONES.abrir}</span></button>` : ""}
         ${ui.pop === "modo" ? popoverHtml() : ""}
       </div>`;
+    montandoBarra = true; // trocar o conteúdo tira o foco do campo do nome sem que a pessoa tenha saído dele
     ferramentas.innerHTML = `
       <div class="topo-esquerda">
-        <span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>
+        ${tituloDaBarraHtml(todas.length < 2)}
         ${!doCentro && ui.pop !== "modo" ? popoverHtml() : ""}
       </div>
       <div class="topo-abas so-computador">
@@ -731,6 +745,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         </div>
       </div>
       <div class="topo-direita">
+        ${todas.length < 2 ? participantesHtml() : ""}
         ${!atrasadas ? "" : planilha
           /* nas visualizações sem filtro (12/11/2026, decisão do responsável): o chip leva à Lista já filtrada, em vez de ligar um filtro que a tela não aplica */
           ? `<button class="chip-atrasadas" type="button" data-atrasadas-na-lista title="Ver as atrasadas na Lista">${ICONES.atrasada}${atrasadas}<span class="chip-palavra"> ${plural(atrasadas, "atrasada", "atrasadas")}</span></button>`
@@ -739,15 +754,22 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${ui.modo === "entregas"
           /* nas Entregas, o botão cria entrega (12/11/2026, decisão do responsável), como o (+) do celular e a tecla N; quem não pode criar não o vê */
           ? (telaEntregas.podeCriar(perm) ? `<button class="botao principal so-computador" type="button" data-nova title="Nova entrega (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova entrega</button>` : "")
+          : ehLista() ? "" /* Lista de tarefas: a criação é a linha "Adicionar tarefa" no alto da lista (16/11/2026) */
           : `<button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>`}
       </div>`;
+    montandoBarra = false;
     modoDesenhado = ui.modo;
     document.body.dataset.vistaAtual = ui.modo; // largura da área conforme o modo (css)
     document.body.dataset.tipoEspaco = tipoDe(espaco); // Lista de tarefas: margem de leitura (css, 04/11/2026)
     document.body.toggleAttribute("data-abas", todas.length > 1); // barra em duas linhas só com mais de uma visualização (css, 12/11/2026)
+    document.body.toggleAttribute("data-visao-unica", todas.length < 2); // Quadro e Lista de tarefas: barra numa linha, com o nome (css, 13/11/2026)
     document.body.toggleAttribute("data-sem-nome", !ui.nomeNaBarra); // nome escondido pelo botão direito: uma linha só (css)
     ajustarBarra();
     ajustarMais();
+    if (ui.renomeando) {
+      const campo = ferramentas.querySelector("[data-campo-nome]");
+      if (campo && document.activeElement !== campo) { campo.focus(); campo.setSelectionRange(campo.value.length, campo.value.length); }
+    }
     const contador = inferior.filtros?.querySelector(".contador");
     if (contador) { contador.textContent = ativos() || ""; contador.hidden = !ativos(); }
     /* a legenda geral não vale na planilha, e a Rede e o Cronograma têm a sua (12/11/2026: antes, a regra das telas
@@ -756,9 +778,68 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (abriu) surgir(ferramentas.querySelector("[data-popover]"));
   }
 
+  /**
+   * Nome do espaço na barra do topo. Nos espaços de uma visualização só (Quadro e Lista de tarefas; 13/11/2026, decisão
+   * do responsável), quem pode configurar o espaço o renomeia ali mesmo, com um clique, como no Trello e no Todoist:
+   * Enter ou clicar fora grava; Esc desiste; nome vazio ou igual não grava.
+   */
+  let montandoBarra = false;
+  const podeRenomear = () => store.podeGravar !== false && Boolean(perm?.configurar);
+  function tituloDaBarraHtml(unica) {
+    if (!unica || !podeRenomear()) return `<span class="titulo-barra" title="${esc(espaco.nome)}">${esc(espaco.nome)}</span>`;
+    if (ui.renomeando) {
+      return `<input class="titulo-barra titulo-campo" type="text" data-campo-nome value="${esc(ui.nomeRascunho)}" aria-label="Nome do espaço" maxlength="200" autocomplete="off" spellcheck="false">`;
+    }
+    return `<button class="titulo-barra titulo-editavel" type="button" data-renomear title="${esc(espaco.nome)}. Clique para renomear">${esc(espaco.nome)}</button>`;
+  }
+  function comecarARenomear() {
+    ui.pop = null;
+    ui.renomeando = true;
+    ui.nomeRascunho = espaco.nome;
+    desenharFerramentas();
+    ferramentas.querySelector("[data-campo-nome]")?.select();
+  }
+  async function terminarDeRenomear(gravar) {
+    if (!ui.renomeando) return;
+    const nome = ui.nomeRascunho.trim();
+    ui.renomeando = false;
+    desenharFerramentas();
+    if (!gravar || !nome || nome === espaco.nome) return;
+    try { await store.alterarEspaco(espacoId, { nome }); } catch (falha) { avisar(falha.message); }
+  }
+  function aoSairDoNome(e) { if (e.target.matches("[data-campo-nome]") && !montandoBarra) terminarDeRenomear(true); }
+  function aoTeclarNaBarra(e) {
+    if (!e.target.matches("[data-campo-nome]")) return;
+    if (e.key === "Enter") { e.preventDefault(); terminarDeRenomear(true); }
+    else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); terminarDeRenomear(false); }
+  }
+
+  /**
+   * Quem participa, nos espaços de uma visualização só (13/11/2026, decisão do responsável, como no Trello): as pessoas
+   * responsáveis do espaço, em círculos, antes do chip das atrasadas. Só quando há mais de uma pessoa (o espaço de uma
+   * pessoa só não mostra nada) e só no computador. Até quatro círculos; as demais viram "+N". Para quem pode configurar,
+   * um clique abre "Configurar este espaço" na seção dos responsáveis, onde se escolhe o papel de cada pessoa.
+   */
+  const MAX_PARTICIPANTES = 4;
+  function participantesHtml() {
+    const gente = (responsaveis ?? []).filter((r) => r.tipo !== "unidade").sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+    if (gente.length < 2) return "";
+    const vistos = gente.length > MAX_PARTICIPANTES ? gente.slice(0, MAX_PARTICIPANTES - 1) : gente;
+    const resto = gente.slice(vistos.length);
+    const nomes = gente.map((r) => r.nome).join(", ");
+    const selos = donosHtml(vistos, { tons: espaco.tons, meus, todos: true })
+      + (resto.length ? `<span class="avatar mais" aria-hidden="true">+${resto.length}</span>` : "");
+    const rotulo = `${gente.length} pessoas neste espaço: ${nomes}`;
+    return aoConfigurar && podeRenomear()
+      ? `<button class="participantes-topo so-computador" type="button" data-participantes title="${esc(rotulo)}. Clique para ver os responsáveis e os papéis" aria-label="${esc(rotulo)}. Ver os responsáveis e os papéis">${selos}</button>`
+      : `<span class="participantes-topo so-computador" role="img" title="${esc(rotulo)}" aria-label="${esc(rotulo)}">${selos}</span>`;
+  }
+
   /** Botão direito na barra do topo, no computador e nos espaços com abas: abre o menu da barra junto ao ponteiro. */
   function aoMenuDaBarra(e) {
-    if (!document.body.hasAttribute("data-abas") || matchMedia("(max-width: 640px)").matches) return; // celular e espaços de uma visualização: menu do navegador
+    /* celular e espaços de uma visualização: menu do navegador (no Quadro e na Lista de tarefas, esconder o nome não
+       ganharia nada, porque a barra já tem uma linha só; decisão do responsável, 13/11/2026) */
+    if (!document.body.hasAttribute("data-abas") || matchMedia("(max-width: 640px)").matches) return;
     if (e.target.closest("[data-popover], input, textarea, select")) return;
     e.preventDefault();
     /* posição relativa ao grupo da esquerda (que contém o painel): a barra tem desfoque de fundo, e isso faz
@@ -781,7 +862,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* mede só os controles da barra (nome do espaço, menus, chip e Nova ação), e não os grupos: um menu aberto
        (o painel que desce dele) alargava o grupo e fazia os nomes sumirem (correção de 27/10/2026) */
     const encostam = () => {
-      const els = [...ferramentas.querySelectorAll(".titulo-barra, .aba-visao, .menu-topo, .chip-atrasadas, .botao[data-nova]")].filter((el) => el.getBoundingClientRect().width > 2); // o nome escondido (só para leitor de tela) mede 1 px
+      const els = [...ferramentas.querySelectorAll(".titulo-barra, .aba-visao, .menu-topo, .participantes-topo, .chip-atrasadas, .botao[data-nova]")].filter((el) => el.getBoundingClientRect().width > 2); // o nome escondido (só para leitor de tela) mede 1 px
       const grupo = (el) => el.closest(".abas-visao, .topo-esquerda, .topo-centro, .topo-direita");
       /* barra em duas linhas (12/11/2026): compara só controles da mesma linha */
       const rs = els.map((el) => ({ g: grupo(el), ...el.getBoundingClientRect().toJSON() }));
@@ -799,7 +880,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     if (!encostam()) return;
     topo.classList.add("barra-curta");
     if (!encostam()) return;
-    topo.classList.add("barra-icones");
+    topo.classList.add("barra-icones"); // e os círculos de quem participa (Quadro e Lista de tarefas, 13/11/2026) saem
     /* barra em duas linhas (12/11/2026): depois dos menus, as abas não escolhidas ficam só com o ícone (o nome na dica) */
     if (!encostam()) return;
     topo.classList.add("barra-abas-icones");
@@ -841,6 +922,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
 
   function aoClicarNaBarra(e) {
     const t = e.target;
+    if (t.closest("[data-renomear]")) return comecarARenomear();
+    if (t.closest("[data-campo-nome]")) return;
+    if (t.closest("[data-participantes]")) { ui.pop = null; desenharFerramentas(); return aoConfigurar?.("responsaveis"); }
     const pop = t.closest("[data-pop]");
     if (pop) { ui.pop = ui.pop === pop.dataset.pop ? null : pop.dataset.pop; return desenharFerramentas({ abriu: Boolean(ui.pop) }); }
     const modo = t.closest("[data-modo]");
@@ -933,6 +1017,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           ...(form.dataset.etapa ? { etapa: form.dataset.etapa } : {}),
           ...(naoAntesDe ? { naoAntesDe } : {}),
         });
+        /* Lista de tarefas (16/11/2026): a nova entra no alto, para a pessoa decidir depois o destino dela; sem permissão
+           de priorizar, ou se a gravação falhar, fica no fim, como antes */
+        if (ehLista() && usaPrioridade(espaco) && perm.priorizar) {
+          const primeira = [...acoes].filter((a) => a.numero !== numero).sort(compararPrioridade)[0];
+          if (primeira) { try { await store.priorizar(espacoId, numero, { depoisDe: null, antesDe: primeira.numero }); } catch { /* fica no fim */ } }
+        }
         /* Quadro de tarefas (passo 3.1): criada numa coluna personalizada, já fica nela */
         if (form.dataset.situacao) await store.mudarSituacao(espacoId, numero, form.dataset.situacao);
       } catch (falha) {
@@ -1073,14 +1163,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* prazo como texto, no lugar da barra de tempo (04/11/2026, pedido do responsável, como no Todoist): "Hoje", "Amanhã", o dia da semana ou a data */
     const prazo = ehLista() ? prazoDaTarefa(a.dataLimite, hoje, { concluida: l.situacao === "concluida" }) : null;
     const prazoSob = prazo ? `<span class="prazo-tarefa ${prazo.tom}" title="Data-limite: ${dataBr(a.dataLimite)}${prazo.tom === "vencida" ? " (venceu)" : ""}">${ICONES.barraTempo}<span>${prazo.texto}</span></span>` : "";
+    /* Lista de tarefas (16/11/2026): prazo, checklist e etiquetas lado a lado, numa linha só */
+    const metaSob = [prazoSob, checklistNota(a), etiquetasNota(a)].some(Boolean) ? `<span class="meta-tarefa">${prazoSob}${checklistNota(a)}${etiquetasNota(a)}</span>` : "";
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>${puxadores() ? `<button type="button" class="puxador" data-puxar="${a.numero}"
         aria-label="Mudar a prioridade de ${esc(a.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a prioridade">${ICONES.puxador}</button>` : ""}
         <div class="sit">${deTarefas() && l.situacao !== "naoLiberada" ? caixaHtml(l) : sit}</div>
-        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${prazoSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${ehLista() ? metaSob : prazoSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
-            continuaNota(l), l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a), etiquetasNota(a)].join("")}</div>
+            continuaNota(l), l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", ehLista() ? "" : checklistNota(a), ehLista() ? "" : etiquetasNota(a)].join("")}</div>
         ${c.descricao && !ehLista() ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
         ${c.participantes && !semPessoasNaLista() ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras && !ehLista() ? barraHtml(l) : ""}
@@ -1232,8 +1324,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
     } else {
       /* todas concluídas e escondidas pelo filtro (04/11/2026, pedido do responsável): o espaço tem tarefas, só não há pendentes */
-      corpo = (ls.length ? "" : linhas.length ? `<p class="lista-vazia">Nenhuma ${termos(espaco).acao} pendente.</p>` : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ${termos(espaco).acao}".</p>`)
-        + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "") + verConcluidasHtml();
+      corpo = (ehLista() && rapida ? rapidaHtml("lista") : "")
+        + (ls.length ? "" : linhas.length ? `<p class="lista-vazia">Nenhuma ${termos(espaco).acao} pendente.</p>` : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira acima e tecle Enter.</p>`)
+        + ls.map(linhaHtml).join("") + (rapida && !ehLista() ? rapidaHtml("lista") : "") + verConcluidasHtml();
     }
     const rolagemDoQuadro = lista.querySelector(".quadro")?.scrollLeft ?? 0; // o redesenho não volta o quadro para a primeira coluna
     /* nem a rolagem de cada coluna (rolagem própria, como no Trello; 27/10/2026) */
@@ -2489,6 +2582,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           return numero;
         } catch (f) { return falhar(f); }
       },
+      /*
+       * Criar pelo início (13/11/2026, pedido do responsável: a Rede como prancheta de elaboração do plano): uma ação
+       * sem anteriores. Sem `antesDe`, fica solta, ligada ao início e ao término; com `antesDe`, a de chegada passa a
+       * depender dela (o "+" na linha que sai do início: Início → nova → seguinte). A etapa vem de quem chama.
+       */
+      async criarNoInicio(etapa, antesDe = null) {
+        const naoAntesDe = dataMinimaPadrao(espaco, hoje);
+        try {
+          const numero = await store.criarAcao(espacoId, {
+            rotulo: `Nova ${termos(espaco).acao}`,
+            dependeDe: [],
+            ...(etapa ? { etapa } : {}),
+            ...(naoAntesDe ? { naoAntesDe } : {}),
+          });
+          if (antesDe != null) await store.acrescentarDependencia(espacoId, antesDe, numero);
+          /* desfazer: a ação criada vai para a lixeira, e a ligação à seguinte sai junto */
+          desfazivel(`${antesDe != null ? "inserção" : "criação"} da ${termos(espaco).acao}`, () => store.excluirAcao(espacoId, numero));
+          return numero;
+        } catch (f) { return falhar(f); }
+      },
       ligar: (de, para) => store.acrescentarDependencia(espacoId, para, de).then(() => {
         desfazivel(`ligação entre "${nomeDe(de)}" e "${nomeDe(para)}"`, () => store.retirarDependencia(espacoId, para, de));
         return true;
@@ -2561,6 +2674,72 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         try {
           await store.alterarAcao(espacoId, numero, { etapa: id ?? null });
           desfazivel(`mudança da etapa de "${acao.rotulo}"`, () => store.alterarAcao(espacoId, numero, { etapa: antes }));
+        } catch (f) { falhar(f); }
+      },
+      /*
+       * Fases e etapas pela Rede (17/11/2026, pedido do responsável: o editor da Rede mais completo, sem ir às
+       * configurações). Só para quem configura o espaço (o mesmo papel que edita fases e etapas nas configurações) e
+       * nunca nos espaços de tarefas, que não têm fases. Criar e renomear; excluir e reordenar seguem nas configurações.
+       */
+      podeEstruturar: store.podeGravar !== false && perm.configurar && !ehDeTarefas(espaco),
+      fases: (espaco.estrutura ?? []).map((f) => ({ id: f.id, nome: f.nome })),
+      faseDaEtapa: (id) => (espaco.estrutura ?? []).find((f) => (f.etapas ?? []).some((e) => e.id === id))?.id ?? null,
+      /**
+       * Posição sugerida para uma fase nova (17/11/2026): logo depois da fase mais adiantada entre as das ações
+       * `anteriores` (as de que a ação nova ou movida depende); sem anteriores em fases, no começo. Assim a fase nova não
+       * puxa para depois dela as ações que vêm em seguida (seção 8.4, item xxvi, "fase efetiva").
+       */
+      posicaoDaFaseNova(anteriores = []) {
+        const estrutura = espaco.estrutura ?? [];
+        const posicoes = anteriores.map((n) => acoes.find((a) => a.numero === n)?.etapa).filter(Boolean)
+          .map((id) => estrutura.findIndex((f) => (f.etapas ?? []).some((e) => e.id === id))).filter((i) => i >= 0);
+        return posicoes.length ? Math.max(...posicoes) + 1 : 0;
+      },
+      /** Cria a etapa (e, com `novaFase`, a fase, na `posicao` dada, ou no fim) e liga as fases no espaço; devolve o id da etapa. */
+      async criarEtapa(nome, { fase = null, novaFase = null, posicao = null } = {}) {
+        const novoId = (prefixo) => `${prefixo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        const estrutura = structuredClone(espaco.estrutura ?? []);
+        let f = estrutura.find((x) => x.id === fase);
+        const criouFase = !f;
+        if (!f) {
+          f = { id: novoId("f"), nome: (novaFase ?? "").trim(), etapas: [] };
+          estrutura.splice(Number.isInteger(posicao) ? Math.max(0, Math.min(posicao, estrutura.length)) : estrutura.length, 0, f);
+        }
+        const etapa = { id: novoId("e"), nome: nome.trim() };
+        (f.etapas ??= []).push(etapa);
+        const ligou = espaco.camposOpcionais?.fasesEtapas !== true;
+        try {
+          await store.alterarEspaco(espacoId, { estrutura, camposOpcionais: { ...(espaco.camposOpcionais ?? {}), fasesEtapas: true } });
+        } catch (erro) { falhar(erro); return null; }
+        /* desfazer: tira a etapa (e a fase criada junto, se ficou vazia) da estrutura do momento, desde que nenhuma
+           ação esteja nela; desliga as fases se foi esta criação que as ligou e a estrutura ficou vazia */
+        desfazivel(`criação da etapa "${etapa.nome}"`, async () => {
+          if (acoes.some((a) => a.etapa === etapa.id)) throw new Error(`a etapa "${etapa.nome}" tem ações`);
+          const atual = structuredClone(espaco.estrutura ?? []).map((x) => ({ ...x, etapas: (x.etapas ?? []).filter((e) => e.id !== etapa.id) }))
+            .filter((x) => !(criouFase && x.id === f.id && !x.etapas.length));
+          await store.alterarEspaco(espacoId, { estrutura: atual,
+            ...(ligou && !atual.length ? { camposOpcionais: { ...(espaco.camposOpcionais ?? {}), fasesEtapas: false } } : {}) });
+        });
+        return etapa.id;
+      },
+      /** Renomeia uma fase ou uma etapa (o id diz qual); nome vazio ou igual não grava. */
+      async renomearNaEstrutura(id, nome) {
+        const novo = nome.trim();
+        const estrutura = structuredClone(espaco.estrutura ?? []);
+        const item = estrutura.flatMap((f) => [f, ...(f.etapas ?? [])]).find((x) => x.id === id);
+        if (!item || !novo || item.nome === novo) return;
+        const antes = item.nome;
+        const ehFase = estrutura.some((f) => f.id === id);
+        item.nome = novo;
+        try {
+          await store.alterarEspaco(espacoId, { estrutura });
+          desfazivel(`novo nome da ${ehFase ? "fase" : "etapa"} "${novo}"`, () => {
+            const atual = structuredClone(espaco.estrutura ?? []);
+            const x = atual.flatMap((f) => [f, ...(f.etapas ?? [])]).find((y) => y.id === id);
+            if (!x) throw new Error(`a ${ehFase ? "fase" : "etapa"} não existe mais`);
+            x.nome = antes;
+            return store.alterarEspaco(espacoId, { estrutura: atual });
+          });
         } catch (f) { falhar(f); }
       },
       usaDataLimite: usaDataLimite(espaco),
@@ -2829,6 +3008,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     for (const b of [inferior.nova, inferior.filtros]) if (b) { b.onclick = null; b.hidden = true; }
     parar();
     janela?.fechar();
+    ferramentas?.removeEventListener("focusout", aoSairDoNome);
     document.removeEventListener("click", fecharPop);
     document.removeEventListener("keydown", fecharPop);
     document.removeEventListener("click", fecharColunas);
@@ -2841,6 +3021,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     document.body.classList.remove("alt-edicao");
     delete document.body.dataset.vistaAtual;
     document.body.removeAttribute("data-abas");
+    document.body.removeAttribute("data-visao-unica");
     document.body.removeAttribute("data-sem-nome");
     const topoEl = ferramentas?.closest(".topo");
     if (topoEl) topoEl.oncontextmenu = null;

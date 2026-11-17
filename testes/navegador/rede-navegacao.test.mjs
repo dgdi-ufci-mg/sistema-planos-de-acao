@@ -285,6 +285,28 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  test("a régua das fases acompanha a altura da barra do topo (nome do espaço e largura da janela)", async () => {
+    const p = await abrirRede();
+    const distancia = () => p.evaluate(() => document.querySelector("[data-fases-topo]").getBoundingClientRect().top - document.querySelector(".topo").getBoundingClientRect().bottom);
+    const inicial = await distancia();
+    assert.ok(inicial >= 0 && inicial <= 14, `régua logo abaixo da barra (${inicial})`);
+    const alternarNome = async () => {
+      await p.click(".topo", { button: "right", position: { x: 700, y: 20 } });
+      await p.waitForTimeout(300);
+      await p.click("[data-nome-barra]");
+      await p.waitForTimeout(400);
+    };
+    await alternarNome(); // esconde o nome: a barra fica numa linha só
+    assert.equal(Math.round(await distancia()), Math.round(inicial), "sem vão ao esconder o nome do espaço");
+    await alternarNome(); // mostra de novo: a régua não fica atrás da barra
+    assert.equal(Math.round(await distancia()), Math.round(inicial), "visível ao mostrar o nome do espaço");
+    await p.setViewportSize({ width: 520, height: 800 }); // janela estreita: barra do celular
+    await p.waitForTimeout(500);
+    const estreita = await distancia();
+    assert.ok(estreita >= 0 && estreita <= 14, `régua logo abaixo da barra na janela estreita (${estreita})`);
+    assert.deepEqual(p.erros, []);
+  });
+
   test("no celular, a Rede é só de consulta: sem edição, e tocar numa ação a abre", async () => {
     const p = await sessao.abrir({ largura: 390, altura: 800 });
     await p.locator('.barra-inferior button:has-text("Filtros")').click();
