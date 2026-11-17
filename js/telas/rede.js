@@ -103,7 +103,7 @@ export function abrirFlutuante(html, { classe, posicionar, aoFechar = null, rotu
  * Escolha da etapa da ação nova, junto ao botão que a cria (13/11/2026: "+" do início e plano vazio), no mesmo
  * desenho da escolha ao inserir numa seta entre etapas diferentes. `opcoes`: {id, nome}[], com "Sem etapa" no fim.
  */
-function escolherEtapa(botao, edicao, opcoes, aoEscolher, { acima = false, faseSugerida = null } = {}) {
+function escolherEtapa(botao, edicao, opcoes, aoEscolher, { acima = false, faseSugerida = null, anteriores = [] } = {}) {
   const nomeAcao = edicao.nomeAcao;
   const ponto = botao.getBoundingClientRect();
   const posicionar = (caixaEl) => colocar(caixaEl, ponto.left + ponto.width / 2 - caixaEl.offsetWidth / 2, acima ? ponto.top - 14 : ponto.bottom + 10);
@@ -127,7 +127,7 @@ function escolherEtapa(botao, edicao, opcoes, aoEscolher, { acima = false, faseS
     const b = e.target.closest("[data-escolher-etapa]");
     if (!b) return;
     flutuante?.fechar("escolha");
-    if (b.dataset.escolherEtapa === NOVA_ETAPA) return abrirNovaEtapa(posicionar, edicao, faseSugerida, aoEscolher);
+    if (b.dataset.escolherEtapa === NOVA_ETAPA) return abrirNovaEtapa(posicionar, edicao, { faseSugerida, anteriores }, aoEscolher);
     aoEscolher(b.dataset.escolherEtapa || null);
   });
 }
@@ -137,27 +137,33 @@ const NOVA_ETAPA = "__nova-etapa";
 /**
  * Caixinha "Nova etapa" (17/11/2026, pedido do responsável: criar fases e etapas na própria Rede): nome da etapa e,
  * se o espaço já tiver fases, a fase dela (a sugerida, ou a última), com "Nova fase…" no fim da lista, que pede o nome
- * da fase; sem fases, pede logo o nome da fase. Enter cria; Esc desiste. `aoCriar` recebe o id da etapa criada.
+ * da fase e a posição dela entre as outras (ajuste do mesmo dia: antes, a fase nova ia sempre para o fim e puxava as
+ * ações seguintes para lá); sem fases, pede logo o nome da fase. Enter cria; Esc desiste. `anteriores`: as ações de
+ * que a ação depende, para sugerir a posição. `aoCriar` recebe o id da etapa criada.
  */
-function abrirNovaEtapa(posicionar, edicao, faseSugerida, aoCriar) {
+function abrirNovaEtapa(posicionar, edicao, { faseSugerida = null, anteriores = [] } = {}, aoCriar) {
   const fases = edicao.fases ?? [];
   const escolhida = fases.some((f) => f.id === faseSugerida) ? faseSugerida : fases.at(-1)?.id;
+  const posicao = edicao.posicaoDaFaseNova(anteriores);
+  const posicoes = fases.length ? `<label class="rede-nova-campo" data-nova-fase hidden><span>Posição</span><select name="posicao">${
+    Array.from({ length: fases.length + 1 }, (_, i) => `<option value="${i}"${i === posicao ? " selected" : ""}>${i === 0 ? `No começo, antes de ${esc(fases[0].nome)}` : `Depois de ${esc(fases[i - 1].nome)}`}</option>`).join("")}</select></label>` : "";
   const el = abrirFlutuante(`
     <form class="rede-estimar-forma rede-nova-etapa" novalidate>
       <p class="rede-estimar-titulo">Nova etapa</p>
       <label class="rede-nova-campo"><span>Nome da etapa</span><input name="etapa" autocomplete="off" maxlength="120"></label>
       ${fases.length ? `<label class="rede-nova-campo"><span>Fase</span><select name="fase">${fases.map((f) => `<option value="${esc(f.id)}"${f.id === escolhida ? " selected" : ""}>${esc(f.nome)}</option>`).join("")}<option value="">Nova fase…</option></select></label>` : ""}
       <label class="rede-nova-campo" data-nova-fase${fases.length ? " hidden" : ""}><span>Nome da ${fases.length ? "nova " : ""}fase</span><input name="novaFase" autocomplete="off" maxlength="120"></label>
+      ${posicoes}
       <p class="rede-estimar-erro" role="alert" hidden></p>
       <p class="rede-estimar-dica">Enter cria · Esc desiste</p>
     </form>`, { classe: "rede-estimar rede-campo rede-campo-nova-etapa", rotulo: "Nova etapa", fechaAoRolar: true, posicionar });
   const forma = el.querySelector("form");
   const erro = el.querySelector(".rede-estimar-erro");
-  const rotuloFase = el.querySelector("[data-nova-fase]");
+  const camposDaFase = [...el.querySelectorAll("[data-nova-fase]")];
   forma.etapa.focus({ preventScroll: true });
   forma.fase?.addEventListener("change", () => {
-    rotuloFase.hidden = forma.fase.value !== "";
-    if (!rotuloFase.hidden) forma.novaFase.focus();
+    for (const c of camposDaFase) c.hidden = forma.fase.value !== "";
+    if (forma.fase.value === "") forma.novaFase.focus();
     flutuante?.posicionar(el);
   });
   const avisar = (texto, campo) => { erro.textContent = texto; erro.hidden = false; campo?.focus(); flutuante?.posicionar(el); };
@@ -171,7 +177,7 @@ function abrirNovaEtapa(posicionar, edicao, faseSugerida, aoCriar) {
     if (!nome) return avisar("Dê um nome à etapa.", forma.etapa);
     if (!fase && !novaFase) return avisar("Dê um nome à fase.", forma.novaFase);
     gravando = true;
-    const id = await edicao.criarEtapa(nome, { fase, novaFase });
+    const id = await edicao.criarEtapa(nome, { fase, novaFase, posicao: forma.posicao ? Number(forma.posicao.value) : null });
     gravando = false;
     if (!id) return;
     flutuante?.fechar("gravou");
@@ -1064,7 +1070,7 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
     /* como no Bizagi: a caixa da ação aparece no ponto da seta, e a pessoa diz em qual etapa ela fica (17/11/2026: com
        "Nova etapa…" para quem configura o espaço) */
     escolherEtapa(botao, edicao, [ea, eb].map((id) => ({ id, nome: nomeEtapa(id) })),
-      (etapa) => criarE(botao, () => edicao.inserirEntre(de, para, etapa)), { acima: true, faseSugerida: edicao.faseDaEtapa(eb) });
+      (etapa) => criarE(botao, () => edicao.inserirEntre(de, para, etapa)), { acima: true, faseSugerida: edicao.faseDaEtapa(eb), anteriores: [de] });
   }
 
   /* as caixinhas abrem sempre no mesmo lugar, logo abaixo do cartão (11/11/2026, decisão do responsável); se não
@@ -1113,7 +1119,7 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
     abrirLista(n, { titulo: "Etapa", classe: "rede-campo-etapa",
       itens: [...edicao.etapas.map((e) => ({ ...e, atual: e.id === atual })), { id: null, nome: "Sem etapa", atual: atual == null },
         ...(edicao.podeEstruturar ? [{ id: NOVA_ETAPA, nome: "Nova etapa…" }] : [])],
-      escolher: (i) => (i.id === NOVA_ETAPA ? abrirNovaEtapa(abaixoDe(n), edicao, edicao.faseDaEtapa(atual), (id) => edicao.mudarEtapa(n, id)) : edicao.mudarEtapa(n, i.id)) });
+      escolher: (i) => (i.id === NOVA_ETAPA ? abrirNovaEtapa(abaixoDe(n), edicao, { faseSugerida: edicao.faseDaEtapa(atual), anteriores: acoes.find((a) => a.numero === n)?.dependeDe ?? [] }, (id) => edicao.mudarEtapa(n, id)) : edicao.mudarEtapa(n, i.id)) });
   }
   function abrirResponsaveis(n) {
     if (!edicao.podeAlterar(n) || !no(n)) return;

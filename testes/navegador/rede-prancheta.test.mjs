@@ -183,4 +183,32 @@ describe("Rede: prancheta do plano", { skip: pular }, () => {
     await p.waitForSelector(".rede-cerca-nome:has-text('Sondagem')");
     assert.deepEqual(p.erros, []);
   });
+
+  test("fase nova: a posição sugerida não puxa as ações seguintes (antes da primeira fase, para a primeira ação)", async () => {
+    const p = await sessao.abrir({ largura: 1440, altura: 860 });
+    await irParaVisualizacao(p, "rede");
+    await p.waitForSelector(".rede-no");
+    await assentar(p);
+    const fasesAntes = await p.locator(".rede-fase-nome").allTextContents();
+    const card = p.locator(".rede-no").first();
+    await card.click({ button: "right" });
+    await assentar(p, 300);
+    await p.locator(".rede-menu button", { hasText: "Etapa" }).click();
+    await p.locator(".rede-campo-etapa .rede-opcao-nova").click();
+    await p.waitForSelector(".rede-nova-etapa");
+    assert.ok(await p.locator(".rede-nova-etapa [name=posicao]").isHidden(), "a posição só aparece com \"Nova fase…\"");
+    await p.fill(".rede-nova-etapa [name=etapa]", "Preparação");
+    await p.selectOption(".rede-nova-etapa [name=fase]", "");
+    const posicoes = await p.locator(".rede-nova-etapa [name=posicao] option").allTextContents();
+    assert.equal(posicoes.length, fasesAntes.length + 1);
+    assert.match(posicoes[0], /^No começo, antes de /);
+    assert.equal(await p.locator(".rede-nova-etapa [name=posicao]").inputValue(), "0", "sem anteriores, no começo");
+    await p.fill(".rede-nova-etapa [name=novaFase]", "Fase 0 · Arranque");
+    await p.press(".rede-nova-etapa [name=novaFase]", "Enter");
+    await p.waitForSelector(".rede-cerca-nome:has-text('Preparação')");
+    await assentar(p, 800);
+    assert.deepEqual(await p.locator(".rede-fase-nome").allTextContents(), ["Fase 0 · Arranque", ...fasesAntes], "as outras fases continuam com as suas ações");
+    assert.deepEqual(p.erros, []);
+  });
 });
+

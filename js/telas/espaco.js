@@ -2664,13 +2664,27 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       podeEstruturar: store.podeGravar !== false && perm.configurar && !ehDeTarefas(espaco),
       fases: (espaco.estrutura ?? []).map((f) => ({ id: f.id, nome: f.nome })),
       faseDaEtapa: (id) => (espaco.estrutura ?? []).find((f) => (f.etapas ?? []).some((e) => e.id === id))?.id ?? null,
-      /** Cria a etapa (e, com `novaFase`, a fase, no fim da sequência) e liga as fases no espaço; devolve o id da etapa. */
-      async criarEtapa(nome, { fase = null, novaFase = null } = {}) {
+      /**
+       * Posição sugerida para uma fase nova (17/11/2026): logo depois da fase mais adiantada entre as das ações
+       * `anteriores` (as de que a ação nova ou movida depende); sem anteriores em fases, no começo. Assim a fase nova não
+       * puxa para depois dela as ações que vêm em seguida (seção 8.4, item xxvi, "fase efetiva").
+       */
+      posicaoDaFaseNova(anteriores = []) {
+        const estrutura = espaco.estrutura ?? [];
+        const posicoes = anteriores.map((n) => acoes.find((a) => a.numero === n)?.etapa).filter(Boolean)
+          .map((id) => estrutura.findIndex((f) => (f.etapas ?? []).some((e) => e.id === id))).filter((i) => i >= 0);
+        return posicoes.length ? Math.max(...posicoes) + 1 : 0;
+      },
+      /** Cria a etapa (e, com `novaFase`, a fase, na `posicao` dada, ou no fim) e liga as fases no espaço; devolve o id da etapa. */
+      async criarEtapa(nome, { fase = null, novaFase = null, posicao = null } = {}) {
         const novoId = (prefixo) => `${prefixo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
         const estrutura = structuredClone(espaco.estrutura ?? []);
         let f = estrutura.find((x) => x.id === fase);
         const criouFase = !f;
-        if (!f) { f = { id: novoId("f"), nome: (novaFase ?? "").trim(), etapas: [] }; estrutura.push(f); }
+        if (!f) {
+          f = { id: novoId("f"), nome: (novaFase ?? "").trim(), etapas: [] };
+          estrutura.splice(Number.isInteger(posicao) ? Math.max(0, Math.min(posicao, estrutura.length)) : estrutura.length, 0, f);
+        }
         const etapa = { id: novoId("e"), nome: nome.trim() };
         (f.etapas ??= []).push(etapa);
         const ligou = espaco.camposOpcionais?.fasesEtapas !== true;
