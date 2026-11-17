@@ -83,20 +83,18 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
       const j = janela(p);
       assert.equal(await j.locator(".janela-atividade, .janela-abas").count(), 0, "sem a coluna e as abas de atividade");
       assert.deepEqual(await j.locator(".janela-lado [data-atributo]").evaluateAll((els) => els.map((el) => el.dataset.atributo).slice(0, 5)),
-        ["situacao", "naoAntesDe", "responsaveis", "dependeDe", "etapa"]);
-      const bloco = j.locator(".bloco-prazo");
-      assert.match(await bloco.innerText(), /Conclusão prevista/);
-      assert.match(await bloco.innerText(), /Índice de criticidade/);
-      assert.equal(await bloco.getByRole("button", { name: "Reestimar" }).count(), 1);
-      assert.equal(await bloco.getByRole("button", { name: /Registrar conclusão/ }).count(), 0, "a conclusão é o círculo antes do nome");
-      assert.equal(await j.locator('.caixa-janela[data-abrir-form="concluir"]').count(), 1);
-      assert.equal(await bloco.locator(".barra-medidor").count(), 0, "índices sem barras, só o ponto de cor");
-      assert.equal(await bloco.locator(".ponto-indice").count(), 2);
-      assert.equal(await bloco.evaluate((el) => getComputedStyle(el).borderTopStyle), "none", "sem moldura de cartão");
+        ["situacao", "prazo", "indices", "naoAntesDe", "responsaveis"]);
+      /* 17/11/2026: o prazo e os índices na coluna, logo abaixo da Situação; no conteúdo, nada (sem aviso nem formulário) */
+      assert.equal(await j.locator(".bloco-prazo").count(), 0);
+      assert.match(await j.locator('[data-atributo="prazo"]').innerText(), /26\/11\/2026|\d{2}\/\d{2}\/\d{4}/);
+      assert.match(await j.locator('[data-atributo="indices"]').innerText(), /Índice de criticidade/);
+      assert.equal(await j.locator('[data-atributo="indices"] .ponto-indice').count(), 2, "índices sem barras, só o ponto de cor");
+      assert.equal(await j.locator('[data-abrir-form="reestimar"]').count(), 0, "Reestimar só dentro da janelinha do prazo");
+      assert.equal(await j.locator('.caixa-janela[data-abrir-form="concluir"]').count(), 1, "a conclusão é o círculo antes do nome");
       assert.doesNotMatch(await j.locator("header h2").innerText(), /Fase|Etapa/, "o título é o nome do espaço; fase e etapa ficam na coluna");
       if (largura <= 640) {
         const y = async (sel) => (await j.locator(sel).first().boundingBox()).y;
-        assert.ok(await y(".bloco-prazo") < await y(".janela-lado"), "no celular, o prazo vem antes dos atributos");
+        assert.ok(await y('[data-atributo="prazo"]') < await y('[data-atributo="responsaveis"]'), "no celular, o prazo vem antes dos responsáveis");
       }
       /* "Depende de" abre a janelinha de marcar várias, com a anterior marcada */
       const pop = await abrirAtributo(p, "dependeDe");
@@ -111,21 +109,23 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     });
   }
 
-  test("no plano, Reestimar abre o formulário no bloco do prazo e grava", async () => {
+  test("no plano, a linha do prazo abre a janelinha com a estimativa; Reestimar troca pelo formulário e grava", async () => {
     const p = await sessao.abrir({ largura: 1280 });
     await p.locator(".linha[data-abrir-acao]").filter({ hasText: "Redigir a norma" }).first().click();
     await p.waitForSelector(".camada.aberta .janela-grade");
     await assentar(p);
     const j = janela(p);
-    await j.getByRole("button", { name: "Reestimar" }).click();
+    const pop = await abrirAtributo(p, "prazo");
+    assert.match(await pop.innerText(), /5 · 8 · 15/);
+    await pop.getByRole("button", { name: "Reestimar" }).click();
     await assentar(p);
-    const form = j.locator('.bloco-prazo [data-salvar="reestimar"]');
+    const form = j.locator('[data-popover="prazo"] [data-salvar="reestimar"]');
     assert.equal(await form.count(), 1);
     for (const [k, v] of [["o", "2"], ["m", "4"], ["p", "6"]]) await form.locator(`[name="${k}"]`).fill(v);
     await form.locator('[type="submit"]').click();
     await assentar(p, 400);
     assert.match(await p.locator(".aviso-curto").innerText(), /Reestimativa registrada/);
-    assert.match(await j.locator(".bloco-prazo").innerText(), /2 · 4 · 6/);
+    assert.match(await j.locator('[data-popover="prazo"]').innerText(), /2 · 4 · 6/);
     assert.deepEqual(p.erros, []);
   });
 
@@ -210,7 +210,7 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     await assentar(plano, 400);
     assert.match(await plano.locator(".aviso-curto").innerText(), /Conclusão registrada/);
     assert.equal(await jp.locator(".caixa-janela.marcada").count(), 1);
-    assert.match(await jp.locator(".bloco-prazo").innerText(), /Concluída em/);
+    assert.match(await jp.locator('[data-atributo="prazo"]').innerText(), /Concluída em/);
     await jp.locator(".caixa-janela.marcada").click();
     await assentar(plano, 400);
     assert.equal(await jp.locator(".caixa-janela.marcada").count(), 0, "o círculo marcado desfaz a conclusão");

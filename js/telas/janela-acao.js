@@ -49,7 +49,7 @@ const PREFIXO_CP = "cp-";
 const DO_CONTEUDO = new Set(["descricao", "checklist", "notas", "justificativa", "documentos"]);
 /** Ícone de cada atributo na linha do celular (05/11/2026). */
 const ICONE_DO_ATRIBUTO = {
-  situacao: "colunas", marcada: "concluida", dataLimite: "calendario", naoAntesDe: "inicio", responsaveis: "pessoa",
+  situacao: "colunas", marcada: "concluida", prazo: "calendario", indices: "indicador", dataLimite: "calendario", naoAntesDe: "inicio", responsaveis: "pessoa",
   etiquetas: "etiqueta", dependeDe: "elo", comecaCom: "inicio", terminaCom: "concluida", etapa: "legenda", local: "local", codigo: "codigo", entregaDoPlano: "modoEntregas",
 };
 
@@ -373,9 +373,6 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const l = d.linhaDe.get(numero);
     const c = d.caminho.porAcao.get(numero);
     const pend = l.situacao === "naoLiberada" ? pendencias(acao, d.acoes, hoje) : null;
-    const resumoEst = resumoDasEstimativas(acao, c);
-    const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
-    const comEstimativas = usaEstimativas(d.espaco);
 
     const valores = guardarValores();
     const caixa = caixaHtml(l);
@@ -388,7 +385,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
      * à direita, como no Todoist. Nos planos e projetos, o bloco do prazo (estimativa, conclusão prevista, índices,
      * Reestimar e Registrar conclusão) vem logo abaixo da descrição; comentários e históricos ficam no fim do conteúdo.
      */
-    corpo.innerHTML = tarefaHtml(acao, l, caixa, pend, historicoAlteracoes, blocoDoPrazoHtml(acao, l, c, resumoEst, revisao, comEstimativas));
+    corpo.innerHTML = tarefaHtml(acao, l, caixa, pend, historicoAlteracoes, blocoDoPrazoHtml(acao, l, c));
     /* em todos os espaços, o nome do espaço, como o projeto no Todoist (05/11/2026): fase, etapa e código ficam na coluna de atributos */
     const titulo = d.espaco.nome || termos(d.espaco).Acao;
     const cabeca = corpo.closest(".painel").querySelector("header h2");
@@ -417,43 +414,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
    * com busca, lista de escolha única ou caixa de texto). No celular, a coluna desce para logo abaixo da descrição.
    */
   /**
-   * Bloco do prazo, só nos planos e projetos (05/11/2026; enxugado em 17/11/2026, decisão do responsável): sem moldura
-   * de cartão, para não disputar a atenção com o nome e o checklist. Uma linha de dados (conclusão prevista ou data da
-   * conclusão, estimativa e o link "Reestimar") e, abaixo, os dois índices em letra pequena, sempre visíveis, cada um
-   * com um ponto cuja cor se intensifica de forma contínua com o valor (sem limite de corte: 29% e 31% parecem quase
-   * iguais, como são). A conclusão é o círculo antes do nome (circuloDoPlanoHtml). Enquanto a estimativa é livre,
-   * os três campos editáveis continuam abaixo da linha.
+   * Bloco do prazo, só nos planos e projetos. Desde 17/11/2026 (decisão do responsável), a conclusão prevista, a
+   * estimativa, Reestimar e os índices ficam na coluna de atributos (atributosDoPrazo); aqui, no alto do conteúdo, só
+   * o que é excepcional ou passageiro: o aviso de prazo vencido sem reestimativa e o formulário da data de conclusão,
+   * aberto pelo círculo antes do nome. Sem nenhum dos dois, o bloco não aparece.
    */
-  function blocoDoPrazoHtml(acao, l, c, resumoEst, revisao, comEstimativas) {
+  function blocoDoPrazoHtml(acao, l, c) {
     if (ehDeTarefas(d.espaco)) return "";
     if (l.continua) return blocoDaContinuaHtml(acao, l, c);
-    const dados = [];
-    if (l.situacao === "concluida") dados.push(dadoHtml("Concluída em", `<span class="mono">${dataBr(l.conclusao)}</span>`));
-    else if (comEstimativas) {
-      dados.push(dadoHtml("Conclusão prevista", l.semEstimativa ? `<span class="falta-estimar">Falta estimar</span>`
-        : `<span class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}`));
-    }
-    const livre = comEstimativas && estimativaLivre(acao, l.situacao, hoje);
-    if (comEstimativas && !livre) {
-      const e = acao.estimativas?.at(-1);
-      if (e) {
-        dados.push(dadoHtml("Estimativa", `<span class="mono" title="otimista · mais provável · pessimista"
-          aria-label="otimista ${decimal(e.o)}, mais provável ${decimal(e.m)}, pessimista ${decimal(e.p)} dias úteis">${decimal(e.o)} · ${decimal(e.m)} · ${decimal(e.p)}</span> <span class="tec">dias úteis</span>`));
-      }
-      if (l.situacao === "liberada" && !somenteLeitura()) {
-        dados.push(`<button type="button" class="botao-texto link-reestimar${l.atrasada || c.regraDoPassado ? " pedido" : ""}" data-abrir-form="reestimar"
-          title="Liberada: a estimativa muda por reestimativa">Reestimar</button>`);
-      }
-    }
-    const indices = l.situacao !== "concluida" && l.execucao != null ? `<p class="linha-indices">
-        ${indiceHtml("exec", "Índice de criticidade", l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}
-        ${indiceHtml("rev", "Contribuição para a incerteza", l.revisao ?? 0, "var(--laranja)", revisao)}</p>` : "";
     const partes = [
-      dados.length ? `<p class="linha-prazo">${dados.join("")}</p>` : "",
-      indices,
-      c.regraDoPassado ? `<p class="alerta">${ICONES.atrasada}<span><b>Prazo vencido sem reestimativa:</b> o cálculo considera conclusão a partir de hoje. Reestime a ação para informar quanto falta. <a href="#" class="oque" data-termo="regra">o que é?</a></span></p>` : "",
-      livre ? `<div class="janela-campos">${estimativaHtml(acao, l)}</div>` : "",
-      editando === "reestimar" ? reestimativaHtml() : "",
+      c.regraDoPassado && l.situacao === "liberada" ? `<p class="alerta">${ICONES.atrasada}<span><b>Prazo vencido sem reestimativa:</b> o cálculo considera conclusão a partir de hoje. Reestime a ação para informar quanto falta. <a href="#" class="oque" data-termo="regra">o que é?</a></span></p>` : "",
       editando === "concluir" ? conclusaoHtml(acao) : "",
     ].filter(Boolean);
     return partes.length ? `<section class="bloco-prazo" aria-label="Prazo">${partes.join("")}</section>` : "";
@@ -578,6 +548,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     }
     /* ação contínua (seção 5.9): os dois marcos no lugar de "Não começa antes de" e de "Depende de" */
     const continua = usaContinuas(d.espaco) && ehContinua(acao);
+    if (!ehDeTarefas(d.espaco) && usaEstimativas(d.espaco) && !continua) for (const a of atributosDoPrazo(acao, l)) incluir(a);
     if (continua) {
       for (const [campo, nome, lado] of [["comecaCom", "Começa com", "inicio"], ["terminaCom", "Termina com", "fim"]]) {
         incluir({ campo, nome, tipo: "unica", termo: "continua", vazio: false, valor: esc(nomeDoMarco(acao[campo], lado, d.espaco, d.acoes)) });
@@ -623,6 +594,49 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return lista;
   }
 
+  /**
+   * Prazo na coluna de atributos (17/11/2026, decisão do responsável), logo abaixo da Situação, que dá sentido à data:
+   * "Conclusão prevista" (ou "Concluída em", só leitura) abre a janelinha com a estimativa em três pontos e o botão
+   * Reestimar; na ação liberada atrasada ou com prazo vencido sem reestimativa, a linha mostra o aviso "Reestimar".
+   * Abaixo, os dois índices em letra pequena, sem nome de linha, com o ponto de cor contínua (sem limite de corte).
+   */
+  function atributosDoPrazo(acao, l) {
+    const c = d.caminho.porAcao.get(numero);
+    if (l.situacao === "concluida") {
+      return [{ campo: "prazo", nome: "Concluída em", tipo: "fixo", vazio: false, prefixo: "Concluída em ", valor: `<span class="mono">${dataBr(l.conclusao)}</span>` }];
+    }
+    const pedeReestimar = l.situacao === "liberada" && (l.atrasada || c?.regraDoPassado) && !somenteLeitura();
+    const data = l.semEstimativa ? `<span class="falta-estimar">Falta estimar</span>`
+      : `<span class="mono${l.atrasada ? " atrasada" : ""}">${dataBr(l.conclusao)}</span>${l.atrasada ? `<span class="carimbo"><span class="icone-atrasada">${ICONES.atrasada}</span>Atrasada</span>` : ""}`;
+    const lista = [{ campo: "prazo", nome: "Conclusão prevista", tipo: "prazo", vazio: false, prefixo: "Conclusão prevista ",
+      valor: `${data}${pedeReestimar ? `<span class="pede-reestimar">${ICONES.atrasada}Reestimar</span>` : ""}` }];
+    if (l.execucao != null) {
+      const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
+      lista.push({ campo: "indices", nome: "Índices", semNome: true, tipo: "fixo", vazio: false,
+        valor: `<span class="indices-lado">${indiceHtml("exec", "Índice de criticidade", l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}
+          ${indiceHtml("rev", "Contribuição para a incerteza", l.revisao ?? 0, "var(--laranja)", revisao)}</span>` });
+    }
+    return lista;
+  }
+
+  /**
+   * Janelinha do prazo: antes de a ação ser liberada (ou no dia da correção de digitação), os três campos editáveis;
+   * depois, os três números só para leitura. Na liberada, o botão Reestimar, que troca o conteúdo pelo formulário.
+   */
+  function popoverPrazoHtml(acao, l) {
+    const e = acao.estimativas?.at(-1);
+    if (editando === "reestimar") return reestimativaHtml();
+    const livre = estimativaLivre(acao, l.situacao, hoje);
+    const numeros = livre ? `<div class="janela-campos">${estimativaHtml(acao, l)}</div>`
+      : e ? `<p class="prazo-tres"><span class="mono">${decimal(e.o)} · ${decimal(e.m)} · ${decimal(e.p)}</span> dias úteis
+          <small class="tec">otimista · mais provável · pessimista · prazo previsto (PERT): ${diasUteis(duracaoPert(e))}</small></p>`
+        : `<p class="tec popover-aviso">Sem estimativa.</p>`;
+    const reestimar = l.situacao === "liberada" && !somenteLeitura()
+      ? `<div class="botoes"><button class="botao${l.atrasada || d.caminho.porAcao.get(numero)?.regraDoPassado ? " principal" : ""}" type="button" data-abrir-form="reestimar">Reestimar</button></div>
+         <p class="tec popover-aviso">Liberada: a estimativa muda por reestimativa, a partir de hoje.</p>` : "";
+    return `${livre ? "" : `<p class="campo-nome popover-subtitulo">Estimativa</p>`}${numeros}${reestimar}`;
+  }
+
   /** Uma linha da coluna de atributos: um botão que ocupa a linha inteira (ou só texto, sem permissão de alterar). */
   function linhaDeAtributo(a) {
     const aberto = popover === a.campo;
@@ -633,11 +647,11 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
      */
     const vazioCurto = a.campo === "dependeDe" ? `Adicionar ${termos(d.espaco).acao} anterior`
       : a.tipo === "multipla" || a.tipo === "texto" ? `Adicionar ${a.campo.startsWith(PREFIXO_CP) ? a.nome : a.nome.toLowerCase()}` : a.nome;
-    const prefixo = a.campo === "naoAntesDe" ? "A partir de " : a.campo.startsWith(PREFIXO_CP) ? `${a.nome}: ` : "";
+    const prefixo = a.prefixo ?? (a.campo === "naoAntesDe" ? "A partir de " : a.campo.startsWith(PREFIXO_CP) ? `${a.nome}: ` : "");
     const icone = `<span class="atributo-icone" aria-hidden="true">${ICONES[ICONE_DO_ATRIBUTO[a.campo] ?? (a.campo.startsWith(PREFIXO_CP) ? "campo" : "legenda")]}</span>`;
-    const cabeca = `${icone}<span class="atributo-cabeca"><span class="atributo-nome">${a.nome}</span>${a.vazio ? `<span class="atributo-vazio-curto">${vazioCurto}</span>` : ""}${statusHtml(a.campo)}${a.clicavel && a.vazio ? `<span class="atributo-mais">${ICONES.mais}</span>` : ""}</span>`;
+    const cabeca = a.semNome ? icone : `${icone}<span class="atributo-cabeca"><span class="atributo-nome">${a.nome}</span>${a.vazio ? `<span class="atributo-vazio-curto">${vazioCurto}</span>` : ""}${statusHtml(a.campo)}${a.clicavel && a.vazio ? `<span class="atributo-mais">${ICONES.mais}</span>` : ""}</span>`;
     const valor = a.vazio ? "" : `<span class="atributo-valor">${prefixo ? `<span class="atributo-prefixo">${prefixo}</span>` : ""}${a.valor}</span>`;
-    if (!a.clicavel) return `<div class="atributo" data-atributo="${esc(a.campo)}">${cabeca}${valor}</div>`;
+    if (!a.clicavel) return `<div class="atributo${a.semNome ? " sem-nome" : ""}" data-atributo="${esc(a.campo)}">${cabeca}${valor}</div>`;
     return `<button type="button" class="atributo${a.vazio ? " vazio" : ""}${aberto ? " aberto" : ""}" data-atributo="${esc(a.campo)}" data-tipo="${a.tipo}"
       aria-haspopup="dialog" aria-expanded="${aberto}" title="${a.vazio ? "Adicionar" : "Alterar"}: ${esc(textoSimples(a.nome))}">${cabeca}${valor}</button>`;
   }
@@ -658,7 +672,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (!a || !a.clicavel) { popover = null; return ""; }
     const ajuda = a.termo ? ` <a href="#" class="oque" data-termo="${a.termo}" aria-label="O que é?" title="O que é?">${ICONES.ajuda}</a>` : "";
     let miolo;
-    if (a.tipo === "data") miolo = popoverDataHtml(a, acao);
+    if (a.tipo === "prazo") miolo = popoverPrazoHtml(acao, d.linhaDe.get(numero));
+    else if (a.tipo === "data") miolo = popoverDataHtml(a, acao);
     else if (a.tipo === "texto") miolo = popoverTextoHtml(a, acao);
     else if (a.tipo === "unica") miolo = `<div class="popover-lista" role="listbox" aria-label="${a.nome}">${opcoesUnicas(a.campo, acao).map((o) => o.grupo
       ? `<p class="popover-grupo">${esc(o.grupo)}</p>`
@@ -819,6 +834,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (pop?.contains(document.activeElement)) document.activeElement.blur();
     popover = null;
     focoPopover = null;
+    if (editando === "reestimar") editando = null; // o formulário de Reestimar vive na janelinha do prazo
     pop?.remove();
     const linha = corpo.querySelector(`[data-atributo="${CSS.escape(campo)}"]`);
     linha?.classList.remove("aberto");
