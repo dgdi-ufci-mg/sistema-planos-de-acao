@@ -10,7 +10,7 @@
  * No celular (10/11/2026), só para consulta: arrastar move, a pinça aproxima e afasta, tocar numa ação a abre.
  * Níveis de detalhe (10/11/2026): afastando, o cartão mostra só o nome, em letra maior; mais longe, vira um bloco de cor.
  */
-import { montarRede, abrirEspaco, caminhoDaSeta, MEDIDAS } from "../rede.js";
+import { montarRede, abrirEspaco, caminhoDaSeta, MEDIDAS, INICIO, TERMINO } from "../rede.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { ICONES } from "../icones.js";
 import { surgir, DURACAO as MOV_DURACAO, CURVA as MOV_CURVA } from "./movimento.js";
@@ -99,6 +99,128 @@ export function abrirFlutuante(html, { classe, posicionar, aoFechar = null, rotu
   posicionar(el);
   return el;
 }
+/**
+ * Escolha da etapa da ação nova, junto ao botão que a cria (13/11/2026: "+" do início e plano vazio), no mesmo
+ * desenho da escolha ao inserir numa seta entre etapas diferentes. `opcoes`: {id, nome}[], com "Sem etapa" no fim.
+ */
+function escolherEtapa(botao, edicao, opcoes, aoEscolher, { acima = false, faseSugerida = null, anteriores = [] } = {}) {
+  const nomeAcao = edicao.nomeAcao;
+  const ponto = botao.getBoundingClientRect();
+  const posicionar = (caixaEl) => colocar(caixaEl, ponto.left + ponto.width / 2 - caixaEl.offsetWidth / 2, acima ? ponto.top - 14 : ponto.bottom + 10);
+  /* "Nova etapa…" (17/11/2026): para quem configura o espaço, cria a etapa ali mesmo e põe a ação nela */
+  const comNova = edicao.podeEstruturar ? [...opcoes, { id: NOVA_ETAPA, nome: "Nova etapa…" }] : opcoes;
+  const el = abrirFlutuante(`
+    <div class="rede-fantasma" aria-hidden="true">Nova ${esc(nomeAcao)}</div>
+    <p class="rede-escolha-titulo">Em qual etapa ela fica?</p>
+    <div class="rede-escolha-opcoes">${comNova.map((o) => `<button type="button" data-escolher-etapa="${esc(o.id ?? "")}"${o.id === NOVA_ETAPA ? ' class="rede-opcao-nova"' : ""}>${esc(o.nome)}</button>`).join("")}</div>`, {
+    classe: "rede-escolha", rotulo: `Em qual etapa fica a nova ${nomeAcao}?`, fechaAoRolar: true, posicionar,
+  });
+  el.querySelector("button")?.focus();
+  el.addEventListener("keydown", (e) => {
+    if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+    e.preventDefault();
+    const bs = [...el.querySelectorAll("button")];
+    const passo = e.key === "ArrowUp" || e.key === "ArrowLeft" ? bs.length - 1 : 1;
+    bs[(bs.indexOf(document.activeElement) + passo) % bs.length].focus();
+  });
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-escolher-etapa]");
+    if (!b) return;
+    flutuante?.fechar("escolha");
+    if (b.dataset.escolherEtapa === NOVA_ETAPA) return abrirNovaEtapa(posicionar, edicao, { faseSugerida, anteriores }, aoEscolher);
+    aoEscolher(b.dataset.escolherEtapa || null);
+  });
+}
+const opcoesDeEtapa = (etapas) => [...etapas, { id: null, nome: "Sem etapa" }];
+const NOVA_ETAPA = "__nova-etapa";
+
+/**
+ * Caixinha "Nova etapa" (17/11/2026, pedido do responsável: criar fases e etapas na própria Rede): nome da etapa e,
+ * se o espaço já tiver fases, a fase dela (a sugerida, ou a última), com "Nova fase…" no fim da lista, que pede o nome
+ * da fase e a posição dela entre as outras (ajuste do mesmo dia: antes, a fase nova ia sempre para o fim e puxava as
+ * ações seguintes para lá); sem fases, pede logo o nome da fase. Enter cria; Esc desiste. `anteriores`: as ações de
+ * que a ação depende, para sugerir a posição. `aoCriar` recebe o id da etapa criada.
+ */
+function abrirNovaEtapa(posicionar, edicao, { faseSugerida = null, anteriores = [] } = {}, aoCriar) {
+  const fases = edicao.fases ?? [];
+  const escolhida = fases.some((f) => f.id === faseSugerida) ? faseSugerida : fases.at(-1)?.id;
+  const posicao = edicao.posicaoDaFaseNova(anteriores);
+  const posicoes = fases.length ? `<label class="rede-nova-campo" data-nova-fase hidden><span>Posição</span><select name="posicao">${
+    Array.from({ length: fases.length + 1 }, (_, i) => `<option value="${i}"${i === posicao ? " selected" : ""}>${i === 0 ? `No começo, antes de ${esc(fases[0].nome)}` : `Depois de ${esc(fases[i - 1].nome)}`}</option>`).join("")}</select></label>` : "";
+  const el = abrirFlutuante(`
+    <form class="rede-estimar-forma rede-nova-etapa" novalidate>
+      <p class="rede-estimar-titulo">Nova etapa</p>
+      <label class="rede-nova-campo"><span>Nome da etapa</span><input name="etapa" autocomplete="off" maxlength="120"></label>
+      ${fases.length ? `<label class="rede-nova-campo"><span>Fase</span><select name="fase">${fases.map((f) => `<option value="${esc(f.id)}"${f.id === escolhida ? " selected" : ""}>${esc(f.nome)}</option>`).join("")}<option value="">Nova fase…</option></select></label>` : ""}
+      <label class="rede-nova-campo" data-nova-fase${fases.length ? " hidden" : ""}><span>Nome da ${fases.length ? "nova " : ""}fase</span><input name="novaFase" autocomplete="off" maxlength="120"></label>
+      ${posicoes}
+      <p class="rede-estimar-erro" role="alert" hidden></p>
+      <p class="rede-estimar-dica">Enter cria · Esc desiste</p>
+    </form>`, { classe: "rede-estimar rede-campo rede-campo-nova-etapa", rotulo: "Nova etapa", fechaAoRolar: true, posicionar });
+  const forma = el.querySelector("form");
+  const erro = el.querySelector(".rede-estimar-erro");
+  const camposDaFase = [...el.querySelectorAll("[data-nova-fase]")];
+  forma.etapa.focus({ preventScroll: true });
+  forma.fase?.addEventListener("change", () => {
+    for (const c of camposDaFase) c.hidden = forma.fase.value !== "";
+    if (forma.fase.value === "") forma.novaFase.focus();
+    flutuante?.posicionar(el);
+  });
+  const avisar = (texto, campo) => { erro.textContent = texto; erro.hidden = false; campo?.focus(); flutuante?.posicionar(el); };
+  let gravando = false;
+  forma.addEventListener("keydown", async (e) => {
+    if (e.key !== "Enter" || gravando) return;
+    e.preventDefault();
+    const nome = forma.etapa.value.trim();
+    const fase = forma.fase?.value || null;
+    const novaFase = fase ? null : forma.novaFase.value.trim();
+    if (!nome) return avisar("Dê um nome à etapa.", forma.etapa);
+    if (!fase && !novaFase) return avisar("Dê um nome à fase.", forma.novaFase);
+    gravando = true;
+    const id = await edicao.criarEtapa(nome, { fase, novaFase, posicao: forma.posicao ? Number(forma.posicao.value) : null });
+    gravando = false;
+    if (!id) return;
+    flutuante?.fechar("gravou");
+    aoCriar(id);
+  });
+}
+
+/**
+ * Renomear fase ou etapa no lugar (17/11/2026): clique duplo no nome da etapa, no alto da cerca, ou no nome da fase,
+ * na régua do topo. Enter ou sair do campo grava; Esc desiste; vazio volta ao nome anterior.
+ */
+function renomearRotulo(span, edicao) {
+  if (span.querySelector("input")) return;
+  const antes = span.textContent;
+  const campo = document.createElement("input");
+  campo.className = "rede-rotulo-campo";
+  campo.value = antes;
+  campo.maxLength = 120;
+  campo.setAttribute("aria-label", span.dataset.renomearFase ? "Nome da fase" : "Nome da etapa");
+  campo.size = Math.max(10, antes.length + 2);
+  span.classList.add("editando");
+  span.replaceChildren(campo);
+  campo.focus();
+  campo.select();
+  let feito = false;
+  const fim = (gravar) => {
+    if (feito) return;
+    feito = true;
+    const novo = campo.value.trim();
+    span.classList.remove("editando");
+    span.textContent = gravar && novo ? novo : antes;
+    if (gravar && novo && novo !== antes) edicao.renomearNaEstrutura(span.dataset.renomearFase ?? span.dataset.renomearEtapa, novo);
+  };
+  campo.addEventListener("input", () => { campo.size = Math.max(10, campo.value.length + 2); });
+  campo.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") { e.preventDefault(); fim(true); }
+    if (e.key === "Escape") { e.preventDefault(); fim(false); }
+  });
+  campo.addEventListener("blur", () => fim(true));
+  ["pointerdown", "click", "dblclick"].forEach((tipo) => campo.addEventListener(tipo, (e) => e.stopPropagation()));
+}
+
 /** Põe a caixa no ponto (x, y) da tela, sem sair dela. */
 export function colocar(el, x, y) {
   const r = el.getBoundingClientRect();
@@ -210,8 +332,12 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   const temContinuas = continuas && todas.some((a) => linhaDaAcao.get(a.numero)?.continua);
   const acoes = temContinuas && ocultarContinuas ? todas.filter((a) => !linhaDaAcao.get(a.numero)?.continua) : todas;
   if (!acoes.length) {
-    alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
     arranjo = null;
+    if (!edicao?.podeCriar) {
+      alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. A rede aparece quando houver ações.</p>`;
+      return;
+    }
+    desenharPrancheta(alvo, edicao);
     return;
   }
   /*
@@ -241,11 +367,11 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   arranjo = { coluna: desenho.coluna, pos: desenho.pos, etapas: new Map(acoes.map((a) => [a.numero, a.etapa ?? null])) };
   const { pos, arestas, cercas, fases, pontas, topo, largura, altura, ligacoesContinuas } = desenho;
   const cercasHtml = cercas.map((c) => `<div class="rede-cerca" data-anima="cerca:${esc(c.id)}" style="left:${c.x}px;top:${c.y}px;width:${c.largura}px;height:${c.altura}px">
-      <span class="rede-cerca-nome" title="${esc(c.titulo)}">${esc(c.nome)}</span></div>`).join("");
+      <span class="rede-cerca-nome"${edicao?.podeEstruturar && c.id ? ` data-renomear-etapa="${esc(c.id)}"` : ""} title="${esc(c.titulo)}${edicao?.podeEstruturar && c.id ? " · clique duas vezes para renomear" : ""}">${esc(c.nome)}</span></div>`).join("");
   /* fases em faixas (11/11/2026, como os milestones do Bizagi): uma linha onde cada fase termina; o nome fica numa
      régua fixa no alto da tela, centralizado no trecho visível da faixa (mais abaixo, `atualizarFases`) */
   const fasesHtml = [...new Set(fases.map((f) => f.x))].map((x) => `<div class="rede-fase-marco" style="left:${x}px;top:${topo}px;height:${altura - topo * 2}px"></div>`).join("");
-  const reguaDasFases = fases.length ? `<div class="rede-fases-topo" data-fases-topo aria-hidden="true">${fases.map((f) => `<div class="rede-fase-faixa" data-x0="${f.x0}" data-x1="${f.x1}"><span class="rede-fase-nome" title="${esc(f.nome)}">${esc(f.nome)}</span></div>`).join("")}</div>` : "";
+  const reguaDasFases = fases.length ? `<div class="rede-fases-topo" data-fases-topo aria-hidden="true">${fases.map((f) => `<div class="rede-fase-faixa" data-x0="${f.x0}" data-x1="${f.x1}"><span class="rede-fase-nome"${edicao?.podeEstruturar ? ` data-renomear-fase="${esc(f.id)}"` : ""} title="${esc(f.nome)}${edicao?.podeEstruturar ? " · clique duas vezes para renomear" : ""}">${esc(f.nome)}</span></div>`).join("")}</div>` : "";
 
   const linhaDe = new Map(linhas.map((l) => [l.acao.numero, l]));
 
@@ -287,7 +413,9 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   /* início e término (27/10/2026, pedido do responsável): círculos verdes e vermelhos com as datas */
   const circulo = (classe, { x: cx, y: cy }, rotulo, data, extra = "") => `<div class="rede-ponto ${classe}" data-anima="ponto:${classe}" style="left:${cx - RAIO}px;top:${cy - RAIO}px;width:${RAIO * 2}px;height:${RAIO * 2}px">
       <span class="rede-ponto-rotulo">${rotulo}</span><span class="rede-ponto-data mono">${data ? dataBr(data) : "—"}</span>${extra}</div>`;
-  const pontosHtml = circulo("inicio", pontas.inicio, "Início", inicio)
+  /* "+" no início (13/11/2026, pedido do responsável: conceber o plano pela Rede): cria uma ação no começo do plano */
+  const maisDoInicio = edicao?.podeCriar ? `<button type="button" class="rede-mais rede-mais-inicio" data-rede-inicio title="Criar uma ação no começo do plano" aria-label="Criar uma ação no começo do plano">${ICONES.mais}</button>` : "";
+  const pontosHtml = circulo("inicio", pontas.inicio, "Início", inicio, maisDoInicio)
     + circulo("termino", pontas.termino, "Término", termino, prazoFinal ? `<span class="rede-ponto-prazo">prazo ${dataBr(prazoFinal)}</span>` : "");
 
   /* seta pelo índice (11/11/2026): o menor índice entre as duas ações ligadas; é uma aproximação, porque o índice é
@@ -297,7 +425,9 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   const indiceDaSeta = (de, para) => Math.min(indiceDe(de), indiceDe(para));
   const setasPeloIndice = porCriticidade && indicador === "execucao";
   const setas = arestas.map(({ de, para, critica, volta, ligacao, pontos, saltos }) => {
-    if (ligacao) return `<path class="rede-ligacao" data-de="${de}" data-para="${para}" d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>`;
+    /* linhas do início e do término: com edição, uma faixa invisível mais larga mostra o "+" ao passar o mouse (13/11/2026) */
+    if (ligacao) return `<path class="rede-ligacao" data-de="${de}" data-para="${para}" d="${caminhoDaSeta(pontos, saltos)}" marker-end="url(#rede-ponta)"/>${edicao?.podeCriar ? `
+      <path class="rede-ligacao-alvo" data-seta-de="${de}" data-seta-para="${para}" d="${caminhoDaSeta(pontos, saltos)}"/>` : ""}`;
     /* só com o índice de criticidade no menu Indicador (12/11/2026, pedido do responsável); com os outros, setas
        uniformes: a contribuição para a incerteza é da ação e o tempo restante, da data, e não da ligação */
     const v = setasPeloIndice ? indiceDaSeta(de, para) : null;
@@ -323,10 +453,15 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     }
     return melhor;
   };
-  const insercoes = edicao?.podeCriar ? arestas.filter((a) => !a.ligacao).map(({ de, para, pontos }) => {
+  /* também nas linhas do início e do término (13/11/2026): antes da primeira ação ou depois da última */
+  const nomeDoNo = (n) => esc(acoes.find((a) => a.numero === n)?.rotulo ?? `ação ${n}`);
+  const insercoes = edicao?.podeCriar ? arestas.map(({ de, para, pontos }) => {
     const { x, y } = meioDaSeta(pontos);
+    const [titulo, rotulo] = de === INICIO ? ["Inserir uma ação antes desta, no começo do plano", `Inserir uma ação antes de ${nomeDoNo(para)}`]
+      : para === TERMINO ? ["Criar uma ação depois desta, no fim do plano", `Criar uma ação depois de ${nomeDoNo(de)}`]
+      : ["Inserir uma ação entre estas duas", `Inserir uma ação entre a ${de} e a ${para}`];
     return `<button type="button" class="rede-inserir" data-inserir-de="${de}" data-inserir-para="${para}" style="left:${x}px;top:${y}px"
-      title="Inserir uma ação entre estas duas" aria-label="Inserir uma ação entre a ${de} e a ${para}">${ICONES.mais}</button>`;
+      title="${titulo}" aria-label="${rotulo}">${ICONES.mais}</button>`;
   }).join("") : "";
 
   const anterior = alvo.querySelector("[data-rede-rolagem]");
@@ -349,7 +484,10 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
       ["Clique numa ação", "seleciona; aparecem os botões ao lado dela"],
       ["Clique nos responsáveis ou na data da ação selecionada", "muda só aquele campo, numa caixinha"],
       ["Botão de abrir, ou Enter", "abre a ação"],
-      ...(edicao.podeCriar ? [["+ ao lado da ação", "cria a próxima, já ligada"], ["+ no meio de uma seta", "insere uma ação entre as duas"]] : []),
+      ...(edicao.podeCriar ? [["+ no Início", "cria uma ação no começo do plano"], ["+ ao lado da ação", "cria a próxima, já ligada"],
+        ["+ no meio de uma seta ou de uma linha tracejada", "insere uma ação ali"]] : []),
+      ...(edicao.podeEstruturar ? [["“Nova etapa…”, na escolha da etapa", "cria a etapa (e a fase, se preciso)"],
+        ["Clique duplo no nome da etapa ou da fase", "renomeia"]] : []),
       ["Bolinha, arrastada até outra ação", "liga as duas"],
       ["Duplo clique", "muda o nome"],
       ["Clique numa seta e Delete", "retira a ligação"],
@@ -597,7 +735,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   let moveuFundo = false;
   rolagem.addEventListener("pointerdown", (e) => {
     if (e.pointerType === "touch") return; // no toque, o próprio navegador rola a rede
-    if ((e.button !== 0 && e.button !== 1) || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-abrir], [data-rede-alca], [data-rede-situacao], .rede-seta-alvo, [data-inserir-de]")) return;
+    if ((e.button !== 0 && e.button !== 1) || e.target.closest("[data-rede-no], [data-rede-mais], [data-rede-inicio], [data-renomear-etapa], [data-renomear-fase], [data-rede-abrir], [data-rede-alca], [data-rede-situacao], .rede-seta-alvo, [data-inserir-de]")) return;
     if (e.button === 1) e.preventDefault(); // botão do meio também arrasta, sem a rolagem automática do navegador
     parar();
     const inicio = { x: e.clientX, y: e.clientY, l: rolagem.scrollLeft, t: rolagem.scrollTop };
@@ -818,6 +956,11 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
       selecionarNo(Number(pilula.dataset.redeSituacao), false);
       return abrirSituacao(Number(pilula.dataset.redeSituacao));
     }
+    const maisInicio = e.target.closest("[data-rede-inicio]");
+    if (maisInicio) {
+      e.stopPropagation();
+      return criarNoInicio(maisInicio);
+    }
     const mais = e.target.closest("[data-rede-mais]");
     if (mais) {
       e.stopPropagation();
@@ -851,6 +994,8 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
     if (e.target.closest(".rede-rolagem") && !moveuFundo()) desmarcar();
   }, true);
   caixa.addEventListener("dblclick", (e) => {
+    const rotulo = edicao.podeEstruturar && e.target.closest("[data-renomear-etapa], [data-renomear-fase]");
+    if (rotulo) { e.preventDefault(); return renomearRotulo(rotulo, edicao); }
     const cartao = e.target.closest("[data-rede-no]");
     if (!cartao || e.target.closest("[data-editando], .donos, .rede-data")) return;
     e.preventDefault();
@@ -895,13 +1040,13 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
     botao?.classList.add("visivel");
   };
   caixa.addEventListener("pointerover", (e) => {
-    const alvoSeta = e.target.closest(".rede-seta-alvo");
+    const alvoSeta = e.target.closest(".rede-seta-alvo, .rede-ligacao-alvo");
     if (alvoSeta) return mostrarInserir(inserir(alvoSeta.dataset.setaDe, alvoSeta.dataset.setaPara));
     const botao = e.target.closest("[data-inserir-de]");
     if (botao) mostrarInserir(botao);
   });
   caixa.addEventListener("pointerout", (e) => {
-    if (!e.target.closest(".rede-seta-alvo, [data-inserir-de]")) return;
+    if (!e.target.closest(".rede-seta-alvo, .rede-ligacao-alvo, [data-inserir-de]")) return;
     clearTimeout(esconder);
     esconder = setTimeout(() => { sobSeta?.classList.remove("visivel"); sobSeta = null; }, 350);
   });
@@ -909,33 +1054,23 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
   const etapaDe = new Map(acoes.map((a) => [a.numero, a.etapa || null]));
   const infoEtapa = new Map((etapas ?? []).map((e) => [e.id, e]));
   const nomeEtapa = (id) => (id ? infoEtapa.get(id)?.titulo ?? infoEtapa.get(id)?.nome ?? "Etapa" : "Sem etapa");
+  /* "+" do início (13/11/2026): com fases, a pessoa escolhe a etapa da ação nova */
+  function criarNoInicio(botao) {
+    if (!edicao.etapas?.length) return criarE(botao, () => edicao.criarNoInicio(null));
+    escolherEtapa(botao, edicao, opcoesDeEtapa(edicao.etapas), (etapa) => criarE(botao, () => edicao.criarNoInicio(etapa)));
+  }
   function inserirEntre(botao) {
     const de = Number(botao.dataset.inserirDe);
     const para = Number(botao.dataset.inserirPara);
+    /* linhas do início e do término (13/11/2026): a ação nova fica na etapa da ação da outra ponta */
+    if (de === INICIO) return criarE(botao, () => edicao.criarNoInicio(etapaDe.get(para) ?? null, para));
+    if (para === TERMINO) return criarE(botao, () => edicao.criarDepois(de));
     const [ea, eb] = [etapaDe.get(de) ?? null, etapaDe.get(para) ?? null];
     if (!etapas || ea === eb) return criarE(botao, () => edicao.inserirEntre(de, para, ea));
-    /* como no Bizagi: a caixa da ação aparece no ponto da seta, e a pessoa diz em qual etapa ela fica */
-    const ponto = botao.getBoundingClientRect();
-    const el = abrirFlutuante(`
-      <div class="rede-fantasma" aria-hidden="true">Nova ${esc(edicao.nomeAcao)}</div>
-      <p class="rede-escolha-titulo">Em qual etapa ela fica?</p>
-      <div class="rede-escolha-opcoes">${[ea, eb].map((id) => `<button type="button" data-escolher-etapa="${esc(id ?? "")}">${esc(nomeEtapa(id))}</button>`).join("")}</div>`, {
-      classe: "rede-escolha", rotulo: `Em qual etapa fica a nova ${edicao.nomeAcao}?`, fechaAoRolar: true,
-      posicionar: (caixaEl) => colocar(caixaEl, ponto.left + ponto.width / 2 - caixaEl.offsetWidth / 2, ponto.top - 14),
-    });
-    el.querySelector("button")?.focus();
-    el.addEventListener("keydown", (e) => {
-      if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
-      e.preventDefault();
-      const bs = [...el.querySelectorAll("button")];
-      bs[(bs.indexOf(document.activeElement) + 1) % bs.length].focus();
-    });
-    el.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-escolher-etapa]");
-      if (!b) return;
-      flutuante?.fechar("escolha");
-      criarE(botao, () => edicao.inserirEntre(de, para, b.dataset.escolherEtapa || null));
-    });
+    /* como no Bizagi: a caixa da ação aparece no ponto da seta, e a pessoa diz em qual etapa ela fica (17/11/2026: com
+       "Nova etapa…" para quem configura o espaço) */
+    escolherEtapa(botao, edicao, [ea, eb].map((id) => ({ id, nome: nomeEtapa(id) })),
+      (etapa) => criarE(botao, () => edicao.inserirEntre(de, para, etapa)), { acima: true, faseSugerida: edicao.faseDaEtapa(eb), anteriores: [de] });
   }
 
   /* as caixinhas abrem sempre no mesmo lugar, logo abaixo do cartão (11/11/2026, decisão do responsável); se não
@@ -956,7 +1091,7 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
     if (!no(n) || !itens.length) return;
     const el = abrirFlutuante(`
       <p class="rede-escolha-titulo">${esc(titulo)}</p>
-      <div class="rede-escolha-opcoes" role="listbox">${itens.map((i, k) => `<button type="button" role="option" aria-selected="${Boolean(i.atual)}" data-opcao="${k}">${esc(i.nome)}</button>`).join("")}</div>`, {
+      <div class="rede-escolha-opcoes" role="listbox">${itens.map((i, k) => `<button type="button" role="option" aria-selected="${Boolean(i.atual)}" data-opcao="${k}"${i.id === NOVA_ETAPA ? ' class="rede-opcao-nova"' : ""}>${esc(i.nome)}</button>`).join("")}</div>`, {
       classe: `rede-escolha rede-campo ${classe}`, rotulo: `${titulo}: ${rotuloDe(n)}`, posicionar: abaixoDe(n),
       aoFechar: (motivo) => { if (motivo === "esc" || motivo === "escolha") focarCartao(n); },
     });
@@ -981,8 +1116,10 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
   function abrirEtapa(n) {
     if (!edicao.podeAlterar(n)) return;
     const atual = edicao.etapaDe(n);
-    abrirLista(n, { titulo: "Etapa", classe: "rede-campo-etapa", itens: [...edicao.etapas.map((e) => ({ ...e, atual: e.id === atual })), { id: null, nome: "Sem etapa", atual: atual == null }],
-      escolher: (i) => edicao.mudarEtapa(n, i.id) });
+    abrirLista(n, { titulo: "Etapa", classe: "rede-campo-etapa",
+      itens: [...edicao.etapas.map((e) => ({ ...e, atual: e.id === atual })), { id: null, nome: "Sem etapa", atual: atual == null },
+        ...(edicao.podeEstruturar ? [{ id: NOVA_ETAPA, nome: "Nova etapa…" }] : [])],
+      escolher: (i) => (i.id === NOVA_ETAPA ? abrirNovaEtapa(abaixoDe(n), edicao, { faseSugerida: edicao.faseDaEtapa(atual), anteriores: acoes.find((a) => a.numero === n)?.dependeDe ?? [] }, (id) => edicao.mudarEtapa(n, id)) : edicao.mudarEtapa(n, i.id)) });
   }
   function abrirResponsaveis(n) {
     if (!edicao.podeAlterar(n) || !no(n)) return;
@@ -1069,7 +1206,7 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
         edicao.usaDataLimite && edicao.podeAlterar(n) && { rotulo: "Data-limite", fazer: () => abrirDataLimite(n) },
         edicao.podeAlterar(n) && { rotulo: "Responsáveis", fazer: () => abrirResponsaveis(n) },
         edicao.podeAlterar(n) && edicao.situacoesDe(n).length && { rotulo: "Situação", fazer: () => abrirSituacao(n) },
-        edicao.podeAlterar(n) && edicao.etapas.length && { rotulo: "Etapa", fazer: () => abrirEtapa(n) },
+        edicao.podeAlterar(n) && (edicao.etapas.length || edicao.podeEstruturar) && { rotulo: "Etapa", fazer: () => abrirEtapa(n) },
         mais && { rotulo: `Nova ${t} depois desta`, fazer: () => mais.click() },
         edicao.podeExcluir && { rotulo: `Excluir a ${t}`, perigo: true, fazer: () => edicao.excluir(n) },
       ].filter(Boolean);
@@ -1192,5 +1329,44 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
     alca.addEventListener("pointermove", mover);
     alca.addEventListener("pointerup", soltar);
     alca.addEventListener("pointercancel", soltar);
+  });
+}
+
+/**
+ * Plano sem ações, na Rede (13/11/2026, pedido do responsável: a Rede como a prancheta onde o plano é concebido):
+ * em vez do aviso de rede vazia, o início e o término ligados por uma linha tracejada, com um "+" no meio que cria a
+ * primeira ação (com fases, a pessoa escolhe a etapa). A ação criada aparece na rede, com o nome aberto para digitar
+ * e, depois, a caixinha de prazos, como no "+" do cartão.
+ */
+function desenharPrancheta(alvo, edicao) {
+  const nome = esc(edicao.nomeAcao);
+  alvo.innerHTML = `
+    <div class="rede rede-editavel rede-prancheta" data-rede tabindex="-1">
+      <div class="rede-rolagem" data-rede-rolagem>
+        <div class="rede-prancheta-palco">
+          <div class="rede-prancheta-trilho">
+            <div class="rede-ponto inicio" style="width:${RAIO * 2}px;height:${RAIO * 2}px"><span class="rede-ponto-rotulo">Início</span></div>
+            <span class="rede-prancheta-linha" aria-hidden="true"></span>
+            <button type="button" class="rede-prancheta-mais" data-prancheta-mais title="Criar a primeira ${nome}" aria-label="Criar a primeira ${nome}">${ICONES.mais}</button>
+            <span class="rede-prancheta-linha" aria-hidden="true"></span>
+            <div class="rede-ponto termino" style="width:${RAIO * 2}px;height:${RAIO * 2}px"><span class="rede-ponto-rotulo">Término</span></div>
+          </div>
+          <p class="rede-prancheta-dica">Comece pelo <b>+</b>: ele cria a primeira ${nome}. Depois, o <b>+</b> ao lado de cada ${nome} cria a seguinte, e o <b>+</b> no meio das setas insere uma entre duas.</p>
+        </div>
+      </div>
+    </div>`;
+  const botao = alvo.querySelector("[data-prancheta-mais]");
+  const criar = (etapa) => {
+    botao.disabled = true;
+    edicao.criarNoInicio(etapa).then((numero) => {
+      botao.disabled = false;
+      if (numero == null) return;
+      /* o desenho seguinte, já com a ação, abre o nome para digitar e depois a caixinha de prazos */
+      if (!renomearNoAtual(numero, true)) { renomearAoDesenhar = numero; estimarDepois = true; selecao = { tipo: "no", numero }; }
+    });
+  };
+  botao.addEventListener("click", () => {
+    if (!edicao.etapas?.length) return criar(null);
+    escolherEtapa(botao, edicao, opcoesDeEtapa(edicao.etapas), criar);
   });
 }

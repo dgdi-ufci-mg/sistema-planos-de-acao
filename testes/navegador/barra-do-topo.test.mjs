@@ -308,7 +308,7 @@ describe("Barra do topo do Quadro e da Lista de tarefas", { skip: pular }, () =>
     });
   }
 
-  test("o nome tem a mesma letra, o mesmo tamanho e a mesma posição que nos planos; na Lista também, na largura toda", async () => {
+  test("o nome tem a mesma letra, o mesmo tamanho e a mesma posição que nos planos, no Quadro (a Lista leva o nome para a coluna central, em 16/11/2026)", async () => {
     const medir = (p) => p.locator(".topo .titulo-barra").evaluate((el) => {
       const c = getComputedStyle(el), r = document.createRange();
       r.selectNodeContents(el);
@@ -317,7 +317,6 @@ describe("Barra do topo do Quadro e da Lista de tarefas", { skip: pular }, () =>
     });
     const plano = await medir(await sessao.abrir({ largura: 1600, altura: 760 }));
     assert.deepEqual(await medir(await abrirQuadro({ largura: 1600 })), plano, "Quadro");
-    assert.deepEqual(await medir(await abrirLista({ largura: 1600 })), plano, "Lista");
   });
 
   test("o nome se edita com um clique: Enter grava, Esc desiste, clicar fora grava", async () => {

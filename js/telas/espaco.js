@@ -12,7 +12,7 @@ import { colunasDoQuadro, nomeInicial, nomeDoFluxo, personalizadasDe, estaConclu
 import { usaEtiquetas, etiquetasDe, etiquetasDaAcao } from "../etiquetas.js";
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { modeloDe, usaSimulacao, usaEstimativas, usaDataLimite, usaDependencias, opcoesDoCalculo, acoesParaCalculo, usaContinuas } from "../modelos.js";
-import { usaPrioridade } from "../prioridade.js";
+import { usaPrioridade, compararPrioridade } from "../prioridade.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir, prazoDaTarefa } from "../lista.js";
@@ -32,7 +32,7 @@ import { desenharCarga } from "./carga.js";
 import { desenharRede } from "./rede.js";
 import { criarTelaDeEntregas } from "./entregas.js";
 import { esqueletoHtml } from "./esqueleto.js";
-import { tipoDe } from "../tipos.js";
+import { tipoDe, ehDeTarefas } from "../tipos.js";
 import { termos } from "../vocabulario.js";
 import { registrarFonte } from "./busca.js";
 import { registrarTecla } from "./atalhos.js";
@@ -702,6 +702,13 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const doCentro = ui.pop === "painel";
     const tituloConteudo = alvo.querySelector("[data-titulo-conteudo]");
     if (tituloConteudo) tituloConteudo.textContent = espaco.nome; // o nome pode ter mudado em "Configurar este espaço"
+    /* Lista de tarefas (17/11/2026): o nome da coluna também se renomeia com um clique (o campo aparece na barra, no centro) */
+    if (tituloConteudo) {
+      const editavel = ehLista() && podeRenomear();
+      tituloConteudo.toggleAttribute("data-renomear", editavel);
+      if (editavel) { tituloConteudo.title = "Clique para renomear"; tituloConteudo.onclick = () => comecarARenomear(); }
+      else { tituloConteudo.removeAttribute("title"); tituloConteudo.onclick = null; }
+    }
     /* barra em duas linhas, no computador (decisão do responsável, 12/11/2026):
        1ª linha, "o quê": o nome do espaço e, à direita, as atrasadas e o botão principal, iguais em todas as visualizações;
        2ª linha, "como vejo": as visualizações em abas, à vista, e, à direita delas, os controles da visualização atual.
@@ -744,6 +751,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         ${ui.modo === "entregas"
           /* nas Entregas, o botão cria entrega (12/11/2026, decisão do responsável), como o (+) do celular e a tecla N; quem não pode criar não o vê */
           ? (telaEntregas.podeCriar(perm) ? `<button class="botao principal so-computador" type="button" data-nova title="Nova entrega (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova entrega</button>` : "")
+          : ehLista() ? "" /* Lista de tarefas: a criação é a linha "Adicionar tarefa" no alto da lista (16/11/2026) */
           : `<button class="botao principal so-computador" type="button" data-nova title="Nova ${termos(espaco).acao} (tecla N)" aria-keyshortcuts="N">${ICONES.mais}Nova ${termos(espaco).acao}</button>`}
       </div>`;
     montandoBarra = false;
@@ -1006,6 +1014,12 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           ...(form.dataset.etapa ? { etapa: form.dataset.etapa } : {}),
           ...(naoAntesDe ? { naoAntesDe } : {}),
         });
+        /* Lista de tarefas (16/11/2026): a nova entra no alto, para a pessoa decidir depois o destino dela; sem permissão
+           de priorizar, ou se a gravação falhar, fica no fim, como antes */
+        if (ehLista() && usaPrioridade(espaco) && perm.priorizar) {
+          const primeira = [...acoes].filter((a) => a.numero !== numero).sort(compararPrioridade)[0];
+          if (primeira) { try { await store.priorizar(espacoId, numero, { depoisDe: null, antesDe: primeira.numero }); } catch { /* fica no fim */ } }
+        }
         /* Quadro de tarefas (passo 3.1): criada numa coluna personalizada, já fica nela */
         if (form.dataset.situacao) await store.mudarSituacao(espacoId, numero, form.dataset.situacao);
       } catch (falha) {
@@ -1146,14 +1160,16 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     /* prazo como texto, no lugar da barra de tempo (04/11/2026, pedido do responsável, como no Todoist): "Hoje", "Amanhã", o dia da semana ou a data */
     const prazo = ehLista() ? prazoDaTarefa(a.dataLimite, hoje, { concluida: l.situacao === "concluida" }) : null;
     const prazoSob = prazo ? `<span class="prazo-tarefa ${prazo.tom}" title="Data-limite: ${dataBr(a.dataLimite)}${prazo.tom === "vencida" ? " (venceu)" : ""}">${ICONES.barraTempo}<span>${prazo.texto}</span></span>` : "";
+    /* Lista de tarefas (16/11/2026): prazo, checklist e etiquetas lado a lado, numa linha só */
+    const metaSob = [prazoSob, checklistNota(a), etiquetasNota(a)].some(Boolean) ? `<span class="meta-tarefa">${prazoSob}${checklistNota(a)}${etiquetasNota(a)}</span>` : "";
     return `<div class="item${l.situacao === "concluida" ? " feita" : ""}" data-numero="${a.numero}" style="--calor:${corDe(l)}">
       <div class="linha" role="button" tabindex="0" data-abrir-acao>${puxadores() ? `<button type="button" class="puxador" data-puxar="${a.numero}"
         aria-label="Mudar a prioridade de ${esc(a.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a prioridade">${ICONES.puxador}</button>` : ""}
         <div class="sit">${deTarefas() && l.situacao !== "naoLiberada" ? caixaHtml(l) : sit}</div>
-        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${prazoSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
+        <div class="acao-nome"><span class="nome-linha">${idHtml(a)}<span class="rotulo" data-editar="rotulo">${esc(a.rotulo)}</span></span>${descSob}${ehLista() ? metaSob : prazoSob}${!agrupado() && etapaDe.get(a.etapa) ? `<span class="etapa">${esc(etapaDe.get(a.etapa))}</span>` : ""}${
           /* avisos pequenos sob o nome; o ícone da situação fica antes do nome, numa coluna estreita (22/10/2026) */
           [l.situacao === "liberada" && l.fluxo !== "inicial" ? `<span class="tag-situacao">${ICONES.personalizada}${esc(nomeDoFluxo(espaco, l.fluxo))}</span>` : "",
-            continuaNota(l), l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", checklistNota(a), etiquetasNota(a)].join("")}</div>
+            continuaNota(l), l.aPartirDe ? `<span class="tec">a partir de ${dataBr(l.aPartirDe)}</span>` : "", l.semEstimativa && !(c.barras && ui.barra === "tempo") ? FALTA_ESTIMAR : "", nota ? `<small class="nota-reprog">${nota}</small>` : "", ehLista() ? "" : checklistNota(a), ehLista() ? "" : etiquetasNota(a)].join("")}</div>
         ${c.descricao && !ehLista() ? `<div class="desc" data-editar="descricao">${esc(a.descricao ?? "")}</div>` : ""}
         ${c.participantes && !semPessoasNaLista() ? `<div class="donos" data-editar="responsaveis">${donos}</div>` : ""}
         ${c.barras && !ehLista() ? barraHtml(l) : ""}
@@ -1305,8 +1321,9 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         + (g.semEtapa.length ? grupoHtml("fase", "sem-etapa", "Sem fase nem etapa", g.semEtapa, g.semEtapa.map(linhaHtml).join("")) : "");
     } else {
       /* todas concluídas e escondidas pelo filtro (04/11/2026, pedido do responsável): o espaço tem tarefas, só não há pendentes */
-      corpo = (ls.length ? "" : linhas.length ? `<p class="lista-vazia">Nenhuma ${termos(espaco).acao} pendente.</p>` : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira abaixo e tecle Enter, ou use "Nova ${termos(espaco).acao}".</p>`)
-        + ls.map(linhaHtml).join("") + (rapida ? rapidaHtml("lista") : "") + verConcluidasHtml();
+      corpo = (ehLista() && rapida ? rapidaHtml("lista") : "")
+        + (ls.length ? "" : linhas.length ? `<p class="lista-vazia">Nenhuma ${termos(espaco).acao} pendente.</p>` : `<p class="lista-vazia">Este espaço ainda não tem ${termos(espaco).acoes}. Digite o nome da primeira acima e tecle Enter.</p>`)
+        + ls.map(linhaHtml).join("") + (rapida && !ehLista() ? rapidaHtml("lista") : "") + verConcluidasHtml();
     }
     const rolagemDoQuadro = lista.querySelector(".quadro")?.scrollLeft ?? 0; // o redesenho não volta o quadro para a primeira coluna
     /* nem a rolagem de cada coluna (rolagem própria, como no Trello; 27/10/2026) */
@@ -2562,6 +2579,26 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
           return numero;
         } catch (f) { return falhar(f); }
       },
+      /*
+       * Criar pelo início (13/11/2026, pedido do responsável: a Rede como prancheta de elaboração do plano): uma ação
+       * sem anteriores. Sem `antesDe`, fica solta, ligada ao início e ao término; com `antesDe`, a de chegada passa a
+       * depender dela (o "+" na linha que sai do início: Início → nova → seguinte). A etapa vem de quem chama.
+       */
+      async criarNoInicio(etapa, antesDe = null) {
+        const naoAntesDe = dataMinimaPadrao(espaco, hoje);
+        try {
+          const numero = await store.criarAcao(espacoId, {
+            rotulo: `Nova ${termos(espaco).acao}`,
+            dependeDe: [],
+            ...(etapa ? { etapa } : {}),
+            ...(naoAntesDe ? { naoAntesDe } : {}),
+          });
+          if (antesDe != null) await store.acrescentarDependencia(espacoId, antesDe, numero);
+          /* desfazer: a ação criada vai para a lixeira, e a ligação à seguinte sai junto */
+          desfazivel(`${antesDe != null ? "inserção" : "criação"} da ${termos(espaco).acao}`, () => store.excluirAcao(espacoId, numero));
+          return numero;
+        } catch (f) { return falhar(f); }
+      },
       ligar: (de, para) => store.acrescentarDependencia(espacoId, para, de).then(() => {
         desfazivel(`ligação entre "${nomeDe(de)}" e "${nomeDe(para)}"`, () => store.retirarDependencia(espacoId, para, de));
         return true;
@@ -2634,6 +2671,72 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         try {
           await store.alterarAcao(espacoId, numero, { etapa: id ?? null });
           desfazivel(`mudança da etapa de "${acao.rotulo}"`, () => store.alterarAcao(espacoId, numero, { etapa: antes }));
+        } catch (f) { falhar(f); }
+      },
+      /*
+       * Fases e etapas pela Rede (17/11/2026, pedido do responsável: o editor da Rede mais completo, sem ir às
+       * configurações). Só para quem configura o espaço (o mesmo papel que edita fases e etapas nas configurações) e
+       * nunca nos espaços de tarefas, que não têm fases. Criar e renomear; excluir e reordenar seguem nas configurações.
+       */
+      podeEstruturar: store.podeGravar !== false && perm.configurar && !ehDeTarefas(espaco),
+      fases: (espaco.estrutura ?? []).map((f) => ({ id: f.id, nome: f.nome })),
+      faseDaEtapa: (id) => (espaco.estrutura ?? []).find((f) => (f.etapas ?? []).some((e) => e.id === id))?.id ?? null,
+      /**
+       * Posição sugerida para uma fase nova (17/11/2026): logo depois da fase mais adiantada entre as das ações
+       * `anteriores` (as de que a ação nova ou movida depende); sem anteriores em fases, no começo. Assim a fase nova não
+       * puxa para depois dela as ações que vêm em seguida (seção 8.4, item xxvi, "fase efetiva").
+       */
+      posicaoDaFaseNova(anteriores = []) {
+        const estrutura = espaco.estrutura ?? [];
+        const posicoes = anteriores.map((n) => acoes.find((a) => a.numero === n)?.etapa).filter(Boolean)
+          .map((id) => estrutura.findIndex((f) => (f.etapas ?? []).some((e) => e.id === id))).filter((i) => i >= 0);
+        return posicoes.length ? Math.max(...posicoes) + 1 : 0;
+      },
+      /** Cria a etapa (e, com `novaFase`, a fase, na `posicao` dada, ou no fim) e liga as fases no espaço; devolve o id da etapa. */
+      async criarEtapa(nome, { fase = null, novaFase = null, posicao = null } = {}) {
+        const novoId = (prefixo) => `${prefixo}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+        const estrutura = structuredClone(espaco.estrutura ?? []);
+        let f = estrutura.find((x) => x.id === fase);
+        const criouFase = !f;
+        if (!f) {
+          f = { id: novoId("f"), nome: (novaFase ?? "").trim(), etapas: [] };
+          estrutura.splice(Number.isInteger(posicao) ? Math.max(0, Math.min(posicao, estrutura.length)) : estrutura.length, 0, f);
+        }
+        const etapa = { id: novoId("e"), nome: nome.trim() };
+        (f.etapas ??= []).push(etapa);
+        const ligou = espaco.camposOpcionais?.fasesEtapas !== true;
+        try {
+          await store.alterarEspaco(espacoId, { estrutura, camposOpcionais: { ...(espaco.camposOpcionais ?? {}), fasesEtapas: true } });
+        } catch (erro) { falhar(erro); return null; }
+        /* desfazer: tira a etapa (e a fase criada junto, se ficou vazia) da estrutura do momento, desde que nenhuma
+           ação esteja nela; desliga as fases se foi esta criação que as ligou e a estrutura ficou vazia */
+        desfazivel(`criação da etapa "${etapa.nome}"`, async () => {
+          if (acoes.some((a) => a.etapa === etapa.id)) throw new Error(`a etapa "${etapa.nome}" tem ações`);
+          const atual = structuredClone(espaco.estrutura ?? []).map((x) => ({ ...x, etapas: (x.etapas ?? []).filter((e) => e.id !== etapa.id) }))
+            .filter((x) => !(criouFase && x.id === f.id && !x.etapas.length));
+          await store.alterarEspaco(espacoId, { estrutura: atual,
+            ...(ligou && !atual.length ? { camposOpcionais: { ...(espaco.camposOpcionais ?? {}), fasesEtapas: false } } : {}) });
+        });
+        return etapa.id;
+      },
+      /** Renomeia uma fase ou uma etapa (o id diz qual); nome vazio ou igual não grava. */
+      async renomearNaEstrutura(id, nome) {
+        const novo = nome.trim();
+        const estrutura = structuredClone(espaco.estrutura ?? []);
+        const item = estrutura.flatMap((f) => [f, ...(f.etapas ?? [])]).find((x) => x.id === id);
+        if (!item || !novo || item.nome === novo) return;
+        const antes = item.nome;
+        const ehFase = estrutura.some((f) => f.id === id);
+        item.nome = novo;
+        try {
+          await store.alterarEspaco(espacoId, { estrutura });
+          desfazivel(`novo nome da ${ehFase ? "fase" : "etapa"} "${novo}"`, () => {
+            const atual = structuredClone(espaco.estrutura ?? []);
+            const x = atual.flatMap((f) => [f, ...(f.etapas ?? [])]).find((y) => y.id === id);
+            if (!x) throw new Error(`a ${ehFase ? "fase" : "etapa"} não existe mais`);
+            x.nome = antes;
+            return store.alterarEspaco(espacoId, { estrutura: atual });
+          });
         } catch (f) { falhar(f); }
       },
       usaDataLimite: usaDataLimite(espaco),

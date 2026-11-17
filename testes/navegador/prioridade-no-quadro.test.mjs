@@ -288,6 +288,9 @@ describe("Prioridade da equipe no Quadro", { skip: pular }, () => {
   test("lista: arrastar pelo puxador muda a ordem; as setas também", async () => {
     const p = await sessao.abrir({ largura: 1280 });
     await p.click('.menu-topo[data-pop="painel"]');
+    /* espera o painel terminar de abrir: clicar na opção com ele ainda em movimento fazia o Playwright rolar a página
+       (cerca de 180 px, em 4 de cada 15 execuções) e a primeira ação ficava atrás da barra do topo (17/11/2026) */
+    await assentar(p);
     await p.click('[data-ordem="prioridade"]');
     await assentar(p);
     const nomes = () => p.locator(".lista .item .rotulo").allInnerTexts();
