@@ -3367,11 +3367,27 @@ button.atributo:hover .atributo-mais { color: var(--accent-ink); }
   .janela-grade.tarefa .botao-texto.adicionar-conteudo .icone { width: 20px; height: 20px; }
 }
 /* planos e projetos na mesma janela (05/11/2026): o bloco do prazo em destaque no alto do conteúdo */
-.bloco-prazo { display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; border: 1px solid var(--grid); border-radius: 10px; background: var(--surface); }
-.bloco-prazo .janela-resumo { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-.bloco-prazo .janela-resumo > div { background: none; border: 0; padding: 0; }
-.bloco-prazo .botoes { margin: 0; }
-.bloco-prazo .cartao-form { margin: 0; }
+/* 17/11/2026 (decisão do responsável): sem moldura de cartão; uma linha de dados e os índices em letra pequena */
+.bloco-prazo { display: flex; flex-direction: column; gap: 6px; }
+.bloco-prazo .cartao-form { margin: 4px 0 0; }
+.linha-prazo { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; font-size: .9rem; }
+.dado-prazo { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.dado-rotulo { color: var(--muted); font-size: .8rem; }
+.dado-prazo .mono { color: var(--ink); }
+.dado-prazo .mono.atrasada { color: var(--crit-ink); }
+.dado-prazo .carimbo { align-self: center; }
+.link-reestimar { font-size: .85rem; padding: 0; min-height: 0; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklab, currentColor 40%, transparent); }
+.link-reestimar.pedido { text-decoration-color: currentColor; } /* atrasada ou prazo vencido: reestimar é o pedido do momento */
+.linha-indices { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 16px; font-size: .78rem; color: var(--muted); }
+.indice-prazo { display: inline-flex; align-items: center; gap: 6px; }
+/* ponto de cor contínua: transparente em 0%, cor plena em 100%; o contorno fraco mantém o lugar quando o valor é baixo */
+.ponto-indice { flex: none; width: 9px; height: 9px; border-radius: 50%;
+  background: color-mix(in oklab, var(--cor-indice) var(--forca), transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--cor-indice) 45%, transparent); }
+.nome-indice { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: color-mix(in oklab, currentColor 45%, transparent); }
+.nome-indice:hover { color: var(--ink); }
+.indice-prazo .num { font-family: var(--f-dados); }
+.caixa-concluida.caixa-janela.em-uso { border-color: var(--ok); }
 /* ação contínua (seção 5.9): o tipo no alto do bloco do prazo e o aviso "Pode ser encerrada" */
 .continua-tipo { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 600; }
 .pode-encerrar { display: flex; gap: 8px; align-items: flex-start; color: var(--ink); }

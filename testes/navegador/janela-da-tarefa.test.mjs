@@ -88,7 +88,11 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
       assert.match(await bloco.innerText(), /Conclusão prevista/);
       assert.match(await bloco.innerText(), /Índice de criticidade/);
       assert.equal(await bloco.getByRole("button", { name: "Reestimar" }).count(), 1);
-      assert.equal(await bloco.getByRole("button", { name: /Registrar conclusão/ }).count(), 1);
+      assert.equal(await bloco.getByRole("button", { name: /Registrar conclusão/ }).count(), 0, "a conclusão é o círculo antes do nome");
+      assert.equal(await j.locator('.caixa-janela[data-abrir-form="concluir"]').count(), 1);
+      assert.equal(await bloco.locator(".barra-medidor").count(), 0, "índices sem barras, só o ponto de cor");
+      assert.equal(await bloco.locator(".ponto-indice").count(), 2);
+      assert.equal(await bloco.evaluate((el) => getComputedStyle(el).borderTopStyle), "none", "sem moldura de cartão");
       assert.doesNotMatch(await j.locator("header h2").innerText(), /Fase|Etapa/, "o título é o nome do espaço; fase e etapa ficam na coluna");
       if (largura <= 640) {
         const y = async (sel) => (await j.locator(sel).first().boundingBox()).y;
@@ -185,7 +189,7 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
-  test("o círculo de concluída fica antes do nome, na mesma linha, e o plano continua com Registrar conclusão", async () => {
+  test("o círculo de concluída fica antes do nome, na mesma linha, também no plano", async () => {
     const p = await abrirTarefa(sessao, "Ler o relatório", { largura: 1280 });
     const j = janela(p);
     const circulo = await j.locator(".caixa-janela").boundingBox();
@@ -193,10 +197,25 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     assert.ok(circulo.x < nome.x, "círculo à esquerda do nome");
     assert.ok(circulo.y >= nome.y && circulo.y + circulo.height <= nome.y + nome.height, "na altura do nome");
     const plano = await sessao.abrir({ largura: 1280 });
-    await plano.locator(".linha[data-abrir-acao]").first().click();
+    /* no plano (17/11/2026), a ação liberada também tem o círculo; não liberada, não */
+    await plano.locator(".linha[data-abrir-acao]").filter({ hasText: "Redigir a norma" }).first().click();
     await plano.waitForSelector(".camada.aberta .janela-grade");
-    assert.equal(await janela(plano).locator(".caixa-janela").count(), 0);
+    await assentar(plano);
+    const jp = janela(plano);
+    await jp.locator(".caixa-janela").click();
+    await assentar(plano);
+    const form = jp.locator('.bloco-prazo [data-salvar="concluir"]');
+    assert.equal(await form.count(), 1, "o círculo abre a data de conclusão no bloco do prazo");
+    await form.locator('[type="submit"]').click();
+    await assentar(plano, 400);
+    assert.match(await plano.locator(".aviso-curto").innerText(), /Conclusão registrada/);
+    assert.equal(await jp.locator(".caixa-janela.marcada").count(), 1);
+    assert.match(await jp.locator(".bloco-prazo").innerText(), /Concluída em/);
+    await jp.locator(".caixa-janela.marcada").click();
+    await assentar(plano, 400);
+    assert.equal(await jp.locator(".caixa-janela.marcada").count(), 0, "o círculo marcado desfaz a conclusão");
     assert.deepEqual(p.erros, []);
+    assert.deepEqual(plano.erros, []);
   });
 
   test("situação: lista com a atual marcada; escolher grava e fecha; sem o ícone de cadeado; no plano, o resumo continua", async () => {
