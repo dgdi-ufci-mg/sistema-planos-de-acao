@@ -73,6 +73,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let focoNoChecklist = false;
   /** botão de subir/descer a devolver ao foco depois que o item muda de lugar (passo 3.7): { id, direcao } */
   let focoNoMover = null;
+  /** item que está sendo arrastado pela alça (só com mouse), e o lugar onde cairia: { id, antesDe } (passo 3.7) */
+  let arrasto = null;
 
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
@@ -1034,7 +1036,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return `<div class="campo-acao checklist">
       <span class="campo-nome">Checklist${itens.length ? ` <span class="checklist-progresso">${feitos}/${itens.length}</span>` : ""}</span>
       ${itens.length ? `<span class="checklist-barra" aria-hidden="true"><i style="width:${Math.round((100 * feitos) / itens.length)}%"></i></span>` : ""}
-      <ul class="checklist-itens">${itens.map((i, n) => `<li class="${i.feito ? "feito" : ""}">
+      <ul class="checklist-itens">${itens.map((i, n) => `<li class="${i.feito ? "feito" : ""}" data-item="${esc(i.id)}">
+        ${pode && itens.length > 1 ? `<span class="checklist-alca" draggable="true" data-alca-item="${esc(i.id)}" title="Arrastar para mudar de lugar" aria-hidden="true">${ICONES.alca}</span>` : ""}
         <input type="checkbox" data-marcar-item="${esc(i.id)}"${i.feito ? " checked" : ""}${pode ? "" : " disabled"} aria-label="${esc(i.texto)}">
         <span class="checklist-texto"${pode ? ` data-texto-item="${esc(i.id)}" tabindex="0" title="Clique para mudar o texto"` : ""}>${esc(i.texto)}</span>
         ${responsavelDoItemHtml(acao, i, pode)}
@@ -1505,6 +1508,54 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       aoTerminar: () => {},
     });
   }
+
+  /**
+   * Arrastar um item do checklist pela alça (passo 3.7), só com mouse: a alça não aparece em tela de toque, onde
+   * valem as setas. O traço mostra onde o item cai; soltar grava a nova ordem, a mesma operação das setas.
+   */
+  const limparArrasto = () => {
+    corpo.querySelectorAll(".checklist-itens li.arrastando, .checklist-itens li.solta-antes, .checklist-itens li.solta-depois")
+      .forEach((li) => li.classList.remove("arrastando", "solta-antes", "solta-depois"));
+    arrasto = null;
+  };
+  corpo.addEventListener("dragstart", (e) => {
+    const alca = e.target.closest?.("[data-alca-item]");
+    if (!alca) return;
+    const li = alca.closest("li");
+    arrasto = { id: alca.dataset.alcaItem, alvo: null, depois: false };
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "");
+    e.dataTransfer.setDragImage(li, 12, 12);
+    li.classList.add("arrastando");
+  });
+  corpo.addEventListener("dragover", (e) => {
+    const li = e.target.closest?.(".checklist-itens li[data-item]");
+    if (!arrasto || !li) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const caixa = li.getBoundingClientRect();
+    const depois = e.clientY > caixa.top + caixa.height / 2;
+    arrasto.alvo = li.dataset.item;
+    arrasto.depois = depois;
+    corpo.querySelectorAll(".checklist-itens li.solta-antes, .checklist-itens li.solta-depois")
+      .forEach((x) => x.classList.remove("solta-antes", "solta-depois"));
+    if (li.dataset.item !== arrasto.id) li.classList.add(depois ? "solta-depois" : "solta-antes");
+  });
+  corpo.addEventListener("drop", (e) => {
+    if (!arrasto) return;
+    e.preventDefault();
+    const { id, alvo, depois } = arrasto;
+    limparArrasto();
+    const lista = acaoAtual()?.checklist ?? [];
+    const de = lista.findIndex((i) => i.id === id);
+    const n = lista.findIndex((i) => i.id === alvo);
+    if (de < 0 || n < 0) return;
+    let para = n + (depois ? 1 : 0);
+    if (de < para) para -= 1; /* ao tirar o item de cima, tudo abaixo dele sobe um lugar */
+    if (para === de) return;
+    executar(() => store.moverItemDoChecklist(espacoId, numero, id, para));
+  });
+  corpo.addEventListener("dragend", limparArrasto);
 
   /* ---------- eventos ---------- */
   corpo.addEventListener("click", async (e) => {
