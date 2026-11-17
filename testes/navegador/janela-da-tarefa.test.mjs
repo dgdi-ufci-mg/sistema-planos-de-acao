@@ -88,7 +88,7 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
       assert.equal(await j.locator(".bloco-prazo").count(), 0);
       assert.match(await j.locator('[data-atributo="prazo"]').innerText(), /26\/11\/2026|\d{2}\/\d{2}\/\d{4}/);
       assert.match(await j.locator('[data-atributo="indices"]').innerText(), /Índice de criticidade/);
-      assert.equal(await j.locator('[data-atributo="indices"] .ponto-indice').count(), 2, "índices sem barras, só o ponto de cor");
+      assert.equal(await j.locator('[data-atributo="indices"] .icone-indice svg').count(), 2, "índices sem barras, com o símbolo de cada um");
       assert.equal(await j.locator('[data-abrir-form="reestimar"]').count(), 0, "Reestimar só dentro da janelinha do prazo");
       assert.equal(await j.locator('.caixa-janela[data-abrir-form="concluir"]').count(), 1, "a conclusão é o círculo antes do nome");
       assert.doesNotMatch(await j.locator("header h2").innerText(), /Fase|Etapa/, "o título é o nome do espaço; fase e etapa ficam na coluna");

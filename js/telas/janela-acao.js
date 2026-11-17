@@ -435,12 +435,14 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }
 
   /**
-   * Índice na linha pequena: ponto de cor contínua (transparente em 0%, cor plena em 100%), o nome, que abre a
-   * explicação do glossário (no lugar do "?"), e o valor.
+   * Índice na linha pequena: o símbolo do índice (o raio da criticidade, a curva de sino da incerteza, os mesmos da
+   * Lista e do Quadro), com cor contínua (cinza em 0%, a cor plena em 100%; sem limite de corte); o nome, que abre a
+   * explicação do glossário (no lugar do "?"); e o valor.
    */
   function indiceHtml(termo, nome, valor, cor, texto) {
     const forca = Math.round(Math.max(0, Math.min(1, valor)) * 100);
-    return `<span class="indice-prazo"><i class="ponto-indice" style="--cor-indice:${cor};--forca:${forca}%" aria-hidden="true"></i><a href="#"
+    const icone = termo === "exec" ? ICONES.barraExecucao : ICONES.barraRevisao;
+    return `<span class="indice-prazo"><span class="icone-indice" style="--cor-indice:${cor};--forca:${forca}%" aria-hidden="true">${icone}</span><a href="#"
       class="nome-indice" data-termo="${termo}" title="O que é?">${nome}</a> <span class="num">${texto}</span></span>`;
   }
 
@@ -598,7 +600,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
    * Prazo na coluna de atributos (17/11/2026, decisão do responsável), logo abaixo da Situação, que dá sentido à data:
    * "Conclusão prevista" (ou "Concluída em", só leitura) abre a janelinha com a estimativa em três pontos e o botão
    * Reestimar; na ação liberada atrasada ou com prazo vencido sem reestimativa, a linha mostra o aviso "Reestimar".
-   * Abaixo, os dois índices em letra pequena, sem nome de linha, com o ponto de cor contínua (sem limite de corte).
+   * Abaixo, os dois índices em letra pequena, sem nome de linha, com o símbolo em cor contínua (sem limite de corte).
    */
   function atributosDoPrazo(acao, l) {
     const c = d.caminho.porAcao.get(numero);
