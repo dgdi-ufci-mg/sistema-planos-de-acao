@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 16/11/2026 (versão 315.1 da página)
+**Última atualização deste documento:** 17/11/2026 (versão 315.2 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2747,3 +2747,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 314.1 | Cronograma, impressão: a página impressa podia passar 1 px da altura útil da folha A4 deitada (719 px contra 718 px, conforme a quebra de linha da legenda), o que arriscava empurrar a legenda para uma folha a mais. O espaço do título e o da legenda caíram de 6 px para 4 px, dando folga. Sem mudança no banco nem nos cálculos |
 | 315 | Lista de tarefas no padrão do Todoist (16/11/2026; seção 8, "Lista de tarefas", item "Padrão do Todoist completo"): fundo branco, nome do espaço na coluna central, sem a linha sob a barra e sem o botão "Nova tarefa"; "Adicionar tarefa" no começo da lista, com a tarefa nova entrando no alto; prazo, checklist e etiquetas numa linha só. (O nome volta a ser editável na versão 315.1.) Teste novo: `testes/navegador/lista-estilo-todoist.test.mjs`; `barra-do-topo.test.mjs` deixa de medir o nome da Lista na barra. |
 | 315.1 | Lista de tarefas: o nome do espaço passa para o centro da barra quando o da coluna rola para baixo dela, e o nome se renomeia com um clique na coluna ou na barra (17/11/2026; seção 8, "Lista de tarefas", itens "Nome na barra ao rolar" e "Nome editável com um clique"). Testes novos em `testes/navegador/lista-estilo-todoist.test.mjs`. |
+| 315.2 | Teste de navegador, sem mudança no sistema (17/11/2026; seção 3.2): "lista: arrastar pelo puxador muda a ordem" (`prioridade-no-quadro.test.mjs`) falhava de vez em quando porque clicava na opção "Prioridade da equipe" com o painel "Filtros e exibição" ainda abrindo; o Playwright rolava a página cerca de 180 px e a primeira ação ficava atrás da barra do topo. O teste agora espera o painel assentar. Conferido: com o clique feito pela própria página (sem o Playwright), a rolagem nunca aconteceu em 10 tentativas; ou seja, não é defeito da tela. |
