@@ -57,8 +57,10 @@ export function problemaDaConfiguracao({ apresentacao = "" } = {}) {
 function situacaoDaLinha(l) {
   if (l.situacao === "concluida") return "concluida";
   if (l.atrasada) return "atrasada";
-  if (l.continua) return "continua";
-  return l.situacao === "naoLiberada" ? "naoLiberada" : "liberada";
+  /* a contínua que ainda não começou (o marco de início não chegou) é Não liberada, como no Sextante (seção 5.9);
+     até 18/11/2026 ela contava como em andamento, e o painel mostrava mais ações liberadas do que havia */
+  if (l.situacao === "naoLiberada") return "naoLiberada";
+  return l.continua ? "continua" : "liberada";
 }
 
 /**
