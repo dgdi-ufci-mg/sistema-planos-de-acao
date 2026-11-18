@@ -435,14 +435,14 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   }
 
   /**
-   * Índice na linha pequena: o símbolo do índice (o raio da criticidade, a curva de sino da incerteza, os mesmos da
-   * Lista e do Quadro), com cor contínua (cinza em 0%, a cor plena em 100%; sem limite de corte); o nome, que abre a
-   * explicação do glossário (no lugar do "?"); e o valor.
+   * Índice na linha pequena (18/11/2026, decisão do responsável): o símbolo do índice (o raio da criticidade, a curva
+   * de sino da incerteza, os mesmos da Lista e do Quadro), sempre na cor própria do índice, para dizer qual é; o nome,
+   * que abre a explicação do glossário (no lugar do "?"); e o valor, que diz quanto é. Nada na aparência varia com o
+   * valor: só o número muda de uma ação para outra.
    */
-  function indiceHtml(termo, nome, valor, cor, texto) {
-    const forca = Math.round(Math.max(0, Math.min(1, valor)) * 100);
+  function indiceHtml(termo, nome, cor, texto) {
     const icone = termo === "exec" ? ICONES.barraExecucao : ICONES.barraRevisao;
-    return `<span class="indice-prazo"><span class="icone-indice" style="--cor-indice:${cor};--forca:${forca}%" aria-hidden="true">${icone}</span><a href="#"
+    return `<span class="indice-prazo"><span class="icone-indice" style="--cor-indice:${cor}" aria-hidden="true">${icone}</span><a href="#"
       class="nome-indice" data-termo="${termo}" title="O que é?">${nome}</a> <span class="num">${texto}</span></span>`;
   }
 
@@ -600,7 +600,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
    * Prazo na coluna de atributos (17/11/2026, decisão do responsável), logo abaixo da Situação, que dá sentido à data:
    * "Conclusão prevista" (ou "Concluída em", só leitura) abre a janelinha com a estimativa em três pontos e o botão
    * Reestimar; na ação liberada atrasada ou com prazo vencido sem reestimativa, a linha mostra o aviso "Reestimar".
-   * Abaixo, os dois índices em letra pequena, sem nome de linha, com o símbolo em cor contínua (sem limite de corte).
+   * Abaixo, os dois índices em letra pequena, sem nome de linha, cada um com o seu símbolo na cor própria e o valor.
    */
   function atributosDoPrazo(acao, l) {
     const c = d.caminho.porAcao.get(numero);
@@ -615,8 +615,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (l.execucao != null) {
       const revisao = l.revisao == null ? null : l.revisao < 0.01 ? "<1%" : `${Math.round(l.revisao * 100)}%`;
       lista.push({ campo: "indices", nome: "Índices", semNome: true, tipo: "fixo", vazio: false,
-        valor: `<span class="indices-lado">${indiceHtml("exec", "Índice de criticidade", l.execucao, "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}
-          ${indiceHtml("rev", "Contribuição para a incerteza", l.revisao ?? 0, "var(--laranja)", revisao)}</span>` });
+        valor: `<span class="indices-lado">${indiceHtml("exec", "Índice de criticidade", "var(--execucao)", `${Math.round(l.execucao * 100)}%`)}
+          ${indiceHtml("rev", "Contribuição para a incerteza", "var(--laranja)", revisao)}</span>` });
     }
     return lista;
   }

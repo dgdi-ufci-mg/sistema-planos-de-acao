@@ -3381,8 +3381,8 @@ button.atributo:hover .atributo-mais { color: var(--accent-ink); }
 .atributo.sem-nome { padding-top: 2px; }
 .indices-lado { display: flex; flex-direction: column; gap: 3px; font-size: .78rem; color: var(--muted); }
 .indice-prazo { display: inline-flex; align-items: center; gap: 6px; }
-/* símbolo do índice em cor contínua: cinza em 0%, a cor plena em 100% (sem limite de corte) */
-.icone-indice { flex: none; display: inline-flex; color: color-mix(in oklab, var(--cor-indice) var(--forca), var(--muted)); }
+/* símbolo do índice, sempre na cor própria do índice (18/11/2026): diz qual é; o número diz quanto */
+.icone-indice { flex: none; display: inline-flex; color: var(--cor-indice); }
 .icone-indice .icone { width: 13px; height: 13px; stroke-width: 2.2; }
 .nome-indice { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: color-mix(in oklab, currentColor 45%, transparent); }
 .nome-indice:hover { color: var(--ink); }
