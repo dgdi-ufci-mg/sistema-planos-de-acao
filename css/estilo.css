@@ -3338,6 +3338,8 @@ select.grade-editor { margin: -4px -6px; }
   transition: background-color var(--mov, .2s);
 }
 button.atributo { cursor: pointer; }
+/* a coluna lateral da janela tem altura limitada e rola; sem isto, com muitos responsáveis o atributo encolhia e o conteúdo vazava por cima do seguinte (18/11/2026) */
+.janela-lado > .atributo { flex-shrink: 0; }
 button.atributo:hover, button.atributo.aberto { background: color-mix(in oklab, var(--accent) 9%, transparent); border-radius: var(--raio); border-bottom-color: transparent; }
 button.atributo:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--raio); }
 .atributo-cabeca { display: flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 700; color: var(--muted); min-height: 1.3em; }

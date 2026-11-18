@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 18/11/2026 (versão 328 da página)
+**Última atualização deste documento:** 18/11/2026 (versão 329 da página)
 
 Sistema da DGDI da UFCIMG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -2912,3 +2912,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 327 | Painel público do Plano de Ação ou do Projeto, parte 1 (pedido e decisões do responsável, 18/11/2026; seções 3.6, 4.13 e 8.8): cópia-resumo em `paineis/{código}`, lida por qualquer pessoa; configuração em "Configurar este espaço" (ligar, endereço, novo endereço, apresentação, responsáveis por área ou por nome, prévia); página `painel/?p=<código>`; atualização pelo navegador de quem é Administrador ou Usuário; regras novas no `firestore.rules`, a publicar no console. |
 | 327.1 | Painel público (relato do responsável, 18/11/2026; seção 4.13): a ação contínua cujo marco de início ainda não chegou passa a contar como Não liberada, como no Sextante; antes, contava como em andamento, e o "Andamento das ações por fase" mostrava mais ações liberadas do que havia. |
 | 328 | Correção da sigla da instituição: **UFCIMG**, sem hífen (pedido do responsável, 18/11/2026). Trocada em `js/identidade.js` (constante `INSTITUICAO`), no painel público, nos manifestos do Sextante e do Strata, na amostra de dados, em comentários, no teste de navegador, no README, no AGENTS.md e nesta documentação. Não mudaram os endereços do GitHub (`dgdi-ufci-mg`), que são nomes técnicos. O manual do usuário (congelado) e a cópia congelada da versão 1 (`testes/dados/versao1-index.html`) ficaram como estavam. |
+| 329 | Correção (relato do responsável, 18/11/2026; seção 8): na coluna de atributos da janela da ação ou da tarefa, com muitos responsáveis a lista passava por cima de "Etiquetas". A coluna tem altura limitada e rola; os atributos encolhiam até 44 px e o conteúdo vazava. Em `css/estilo.css`, `.janela-lado > .atributo` ganhou `flex-shrink: 0`: o atributo cresce com o conteúdo e a coluna rola. |
