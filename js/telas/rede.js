@@ -399,15 +399,19 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     const dica = etapaDe.get(a.etapa) ? `${etapaDe.get(a.etapa)}: ${a.rotulo}` : a.rotulo;
     /* barra do indicador (12/11/2026, pedido do responsável): a mesma da lista e do quadro, escolhida no menu Indicador */
     const barraHtml = barra(l);
+    /* campos editáveis (18/11/2026, pedido do responsável): marcados só onde o clique de fato edita; a data, só onde abre
+       a caixinha (data-limite, estimativa livre ou reestimativa) */
+    const podeMudar = Boolean(edicao?.podeAlterar(a.numero));
+    const dataEditavel = podeMudar && (edicao.usaDataLimite || edicao.podeEstimar(a.numero) || Boolean(edicao.podeReestimar?.(a.numero)));
     return `<div class="rede-no ${classe}${agora ? " agora" : ""}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}"${indice != null ? ` data-indice="${indice}"` : ""}>
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         aria-label="${esc(dica)}">
-        <span class="rede-topo">${situacao(l)}<span class="rede-rotulo">${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
-        <span class="rede-base"><span class="donos">${donos(a)}</span>
-          <span class="rede-data${l.atrasada ? " atrasada" : ""}"><span class="mono">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}${data}</span>${folga ? `<small>${folga}</small>` : ""}</span></span>
+        <span class="rede-topo">${situacao(l)}<span class="rede-rotulo"${podeMudar ? ' data-campo="nome"' : ""}>${edicao ? '<span class="rede-abrir-vaga" aria-hidden="true"></span>' : ""}${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
+        <span class="rede-base"><span class="donos"${podeMudar ? ' data-campo="responsaveis"' : ""}>${donos(a)}</span>
+          <span class="rede-data${l.atrasada ? " atrasada" : ""}"${dataEditavel ? ' data-campo="data"' : ""}><span class="mono">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}${data}</span>${folga ? `<small>${folga}</small>` : ""}</span></span>
         <span class="rede-indicador" data-indicador="${indicador}">${barraHtml.replace(/^<div class="pr">|<\/div>$/g, "")}</span>
       </div>${pilula ? `<span class="rede-agora" aria-hidden="true"${edicao ? ` data-rede-situacao="${a.numero}" title="Mudar a situação"` : ""}>${esc(pilula)}</span>` : ""}${edicao ? `
-      <button type="button" class="rede-abrir" data-rede-abrir="${a.numero}" title="Abrir a ${esc(edicao.nomeAcao)} (Enter)" aria-label="Abrir ${esc(a.rotulo)}">${ICONES.expandir}</button>
+      <button type="button" class="rede-abrir" data-rede-abrir="${a.numero}" title="Abrir a ${esc(edicao.nomeAcao)} (Enter ou clique duplo fora dos campos)" aria-label="Abrir ${esc(a.rotulo)}">${ICONES.expandir}<span>Abrir</span></button>
       ${edicao.podeCriar ? `<button type="button" class="rede-mais" data-rede-mais="${a.numero}" title="Criar a próxima ação, ligada a esta" aria-label="Criar a próxima ação depois de ${esc(a.rotulo)}">${ICONES.mais}</button>` : ""}
       <span class="rede-alca" data-rede-alca="${a.numero}" title="Arraste até outra ação para ligá-las"></span>` : ""}
     </div>`;
@@ -484,15 +488,14 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     ["Arraste o fundo", "também move a rede"],
     ["Passe o mouse numa ação", "destaca o que vem antes e depois dela"],
     ...(edicao ? [
-      ["Clique numa ação", "seleciona; aparecem os botões ao lado dela"],
-      ["Clique nos responsáveis ou na data da ação selecionada", "muda só aquele campo, numa caixinha"],
-      ["Botão de abrir, ou Enter", "abre a ação"],
+      ["Clique no nome, nos responsáveis ou na data", "muda só aquele campo (eles ficam cinza ao passar o mouse)"],
+      ["Clique no resto da ação", "seleciona; aparecem os botões ao lado dela"],
+      ["Abrir, clique duplo fora dos campos, ou Enter", "abre a ação"],
       ...(edicao.podeCriar ? [["+ no Início", "cria uma ação no começo do plano"], ["+ ao lado da ação", "cria a próxima, já ligada"],
         ["+ no meio de uma seta ou de uma linha tracejada", "insere uma ação ali"]] : []),
       ...(edicao.podeEstruturar ? [["“Nova etapa…”, na escolha da etapa", "cria a etapa (e a fase, se preciso)"],
         ["Clique duplo no nome da etapa ou da fase", "renomeia"]] : []),
       ["Bolinha, arrastada até outra ação", "liga as duas"],
-      ["Duplo clique", "muda o nome"],
       ["Clique numa seta e Delete", "retira a ligação"],
       ["Ctrl+Z", "desfaz a última mudança feita aqui"],
       ["Botão direito", "mostra as opções, com uma caixinha para cada campo"],
@@ -878,7 +881,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
 
 /**
  * Edição dentro da Rede (09/11/2026, pedido do responsável; documentação técnica, seção 8.4).
- * Clique seleciona (não abre); duplo clique ou F2 renomeia; Enter abre a ação; o "+" cria a próxima ação, já
+ * Clique seleciona (não abre); clique no nome ou F2 renomeia (18/11/2026); Enter ou clique duplo fora dos campos abre a ação; o "+" cria a próxima ação, já
  * ligada e com o nome aberto para digitar; a bolinha, arrastada até outro cartão, cria a dependência; uma seta
  * selecionada sai com Delete. Esc tira a seleção.
  */
@@ -994,12 +997,14 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
       if (e.altKey) return; // Alt+clique continua editando no lugar (22/10/2026)
       e.stopPropagation();
       const n = Number(cartao.dataset.redeNo);
-      /* caixinhas de um campo só (11/11/2026): na ação já selecionada, o clique nos responsáveis ou na data */
-      if (selecionadaAntes === n && edicao.podeAlterar(n)) {
-        if (e.target.closest(".donos")) return abrirResponsaveis(n);
-        if (e.target.closest(".rede-data")) return edicao.usaDataLimite ? abrirDataLimite(n) : abrirEstimativa(n);
-        /* o nome, sombreado como os outros dois campos, também se edita com um clique (17/11/2026) */
-        if (e.target.closest(".rede-rotulo") && !e.target.closest("[data-editando]")) return renomear(n);
+      /* campos editáveis (18/11/2026, pedido do responsável): um clique no nome, nos responsáveis ou na data edita direto,
+         sem selecionar antes; só na rede completa, porque de longe esses campos não aparecem (o nome é só para ler) */
+      const campo = caixa.dataset.detalhe === "completo" && !e.target.closest("[data-editando]") && e.target.closest("[data-campo]");
+      if (campo) {
+        selecionarNo(n, false);
+        if (campo.dataset.campo === "nome") return renomear(n);
+        if (campo.dataset.campo === "responsaveis") return abrirResponsaveis(n);
+        return edicao.usaDataLimite ? abrirDataLimite(n) : edicao.podeEstimar(n) ? abrirEstimativa(n) : abrirReestimativa(n);
       }
       return selecionarNo(n);
     }
@@ -1008,10 +1013,13 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
   caixa.addEventListener("dblclick", (e) => {
     const rotulo = edicao.podeEstruturar && e.target.closest("[data-renomear-etapa], [data-renomear-fase]");
     if (rotulo) { e.preventDefault(); return renomearRotulo(rotulo, edicao); }
+    /* clique duplo fora dos campos abre a ação (18/11/2026, pedido do responsável); nos campos, o primeiro clique já
+       começou a edição */
     const cartao = e.target.closest("[data-rede-no]");
-    if (!cartao || e.target.closest("[data-editando], .donos, .rede-data")) return;
+    if (!cartao || e.target.closest("[data-editando]")) return;
+    if (caixa.dataset.detalhe === "completo" && e.target.closest("[data-campo]")) return;
     e.preventDefault();
-    renomear(Number(cartao.dataset.redeNo));
+    edicao.abrir(Number(cartao.dataset.redeNo));
   });
   caixa.addEventListener("keydown", (e) => {
     if (e.target.closest("[data-editando]")) return;
@@ -1161,20 +1169,27 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
   }
 
   /* ---------- caixinha de prazos junto ao cartão (09/11/2026) ---------- */
-  function abrirEstimativa(n) {
-    if (!edicao.usaEstimativas || !edicao.podeEstimar(n) || !no(n)) return;
-    const atual = edicao.estimativaDe(n);
+  /* reestimativa pela caixinha (18/11/2026, pedido do responsável): a ação já liberada; quanto falta a partir de hoje,
+     com motivo opcional, e a anterior fica no histórico (seção 5.3) */
+  function abrirReestimativa(n) {
+    if (!edicao.usaEstimativas || !edicao.podeReestimar?.(n) || !no(n)) return;
+    abrirEstimativa(n, { reestimar: true });
+  }
+  function abrirEstimativa(n, { reestimar = false } = {}) {
+    if (!edicao.usaEstimativas || !(reestimar || edicao.podeEstimar(n)) || !no(n)) return;
+    const atual = reestimar ? null : edicao.estimativaDe(n);
     const rotulo = acoes.find((a) => a.numero === n)?.rotulo ?? "";
     const campo = (nome, texto) => `<label><span>${texto}</span><input name="${nome}" type="number" min="0" step="1" inputmode="numeric" value="${atual?.[nome] ?? ""}"></label>`;
     const el = abrirFlutuante(`
       <form class="rede-estimar-forma" novalidate>
-        <p class="rede-estimar-titulo">Prazo em dias úteis</p>
+        <p class="rede-estimar-titulo">${reestimar ? "Reestimar: quanto falta, a partir de hoje, em dias úteis" : "Prazo em dias úteis"}</p>
         <div class="rede-estimar-campos">${campo("o", "Otimista")}${campo("m", "Mais provável")}${campo("p", "Pessimista")}</div>
+        ${reestimar ? `<div class="rede-estimar-campos um"><label><span>Motivo <small>(opcional)</small></span><input name="motivo" maxlength="200" placeholder="Por exemplo: atraso do fornecedor"></label></div>` : ""}
         <p class="rede-estimar-previsao" data-previsao hidden></p>
         <p class="rede-estimar-erro" role="alert" hidden></p>
-        <p class="rede-estimar-dica">Enter grava · Esc deixa para depois</p>
+        <p class="rede-estimar-dica">${reestimar ? "Enter grava · Esc deixa para depois · a estimativa anterior fica no histórico" : "Enter grava · Esc deixa para depois"}</p>
       </form>`, {
-      classe: "rede-estimar", rotulo: `Prazo de ${rotulo}`, posicionar: abaixoDe(n),
+      classe: `rede-estimar${reestimar ? " rede-reestimar" : ""}`, rotulo: `${reestimar ? "Reestimar" : "Prazo de"} ${rotulo}`, posicionar: abaixoDe(n),
       aoFechar: (motivo) => { if (motivo === "esc" || motivo === "gravou") focarCartao(n); },
     });
     const forma = el.querySelector("form");
@@ -1183,7 +1198,7 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
     const previsao = el.querySelector("[data-previsao]");
     const prever = () => {
       const [o, m, p] = ["o", "m", "p"].map((k) => (forma[k].value.trim() === "" ? NaN : Number(forma[k].value)));
-      const data = edicao.previsaoCom?.(n, { o, m, p }) ?? null;
+      const data = edicao.previsaoCom?.(n, { o, m, p }, { reestimativa: reestimar }) ?? null;
       previsao.hidden = !data;
       if (data) previsao.innerHTML = `Com estes prazos, termina em <b>${dataBr(data)}</b>`;
       flutuante?.posicionar(el);
@@ -1199,7 +1214,7 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
       const valores = ["o", "m", "p"].map((k) => forma[k].value.trim());
       if (valores.every((v) => v === "")) return flutuante?.fechar("vazio");
       const [o, m, p] = valores.map((v) => (v === "" ? NaN : Number(v)));
-      const falha = await edicao.estimar(n, { o, m, p });
+      const falha = reestimar ? await edicao.reestimar(n, { o, m, p, motivo: forma.motivo.value }) : await edicao.estimar(n, { o, m, p });
       if (falha) { erro.textContent = falha; erro.hidden = false; flutuante?.posicionar(el); return; }
       flutuante?.fechar("gravou");
     });
@@ -1215,6 +1230,7 @@ function ativarEdicao({ acoes, etapas, caixa, rolagem, conteudo, fator, edicao, 
         { rotulo: `Abrir a ${t}`, tecla: "Enter", fazer: () => edicao.abrir(n) },
         { rotulo: "Renomear", tecla: "F2", fazer: () => renomear(n) },
         edicao.usaEstimativas && edicao.podeEstimar(n) && { rotulo: "Prazo em dias úteis", fazer: () => abrirEstimativa(n) },
+        edicao.usaEstimativas && edicao.podeReestimar?.(n) && { rotulo: "Reestimar", fazer: () => abrirReestimativa(n) },
         edicao.usaDataLimite && edicao.podeAlterar(n) && { rotulo: "Data-limite", fazer: () => abrirDataLimite(n) },
         edicao.podeAlterar(n) && { rotulo: "Responsáveis", fazer: () => abrirResponsaveis(n) },
         edicao.podeAlterar(n) && edicao.situacoesDe(n).length && { rotulo: "Situação", fazer: () => abrirSituacao(n) },

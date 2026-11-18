@@ -1,7 +1,7 @@
 /**
  * Edição dentro da Rede (09/11/2026, pedido do responsável; documentação técnica, seção 8.4): clique seleciona,
  * o "+" cria a próxima ação já ligada e com o nome aberto, a bolinha arrastada liga duas ações, Delete numa seta
- * a retira, duplo clique renomeia e Enter abre a ação.
+ * a retira, um clique no nome o renomeia e Enter (ou o clique duplo fora dos campos) abre a ação.
  */
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -263,31 +263,30 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
-  test("duplo clique renomeia; Esc tira a seleção", async () => {
+  test("um clique no nome renomeia, sem selecionar antes; Esc tira a seleção", async () => {
     const p = await abrirRede();
+    await aCem(p);
     const no = p.locator(".rede-no").nth(1);
     const numero = await no.getAttribute("data-numero");
-    await no.locator(".rede-cartao").dblclick();
+    await no.locator('[data-editar="rotulo"]').click();
     await p.waitForSelector(".rede [data-editando]");
     await p.keyboard.type("Nome trocado na rede");
     await p.keyboard.press("Enter");
     await p.waitForFunction((n) => document.querySelector(`.rede-no[data-numero="${n}"]`)?.textContent.includes("Nome trocado na rede"), numero);
-    /* no canto do cartão, fora dos campos: desde 17/11/2026, o clique no nome da ação selecionada o edita */
+    /* no canto do cartão, fora dos campos: o clique no nome o edita */
     await p.locator(`.rede-no[data-numero="${numero}"] .rede-cartao`).click({ position: { x: 4, y: 4 } });
     await p.keyboard.press("Escape");
     assert.equal(await p.locator(".rede-no.selecionada").count(), 0);
     assert.deepEqual(p.erros, []);
   });
 
-  test("campos editáveis: sombreados ao passar o mouse; um clique no nome da selecionada o edita; dica só no nome cortado", async () => {
+  test("campos editáveis: sombreados ao passar o mouse, sem selecionar; dica só no nome cortado", async () => {
     const p = await abrirRede();
-    await p.locator('[data-escala="normal"]').click(); // de longe, a data some do cartão
-    await assentar(p);
-    const no = p.locator(".rede-no").nth(1);
+    await aCem(p); // de longe, a data some do cartão
+    /* uma ação que ainda espera outra: a data abre a caixinha de prazos */
+    const no = p.locator(".rede-no.indice:not(.agora)").first();
     const fundo = (sel) => no.locator(sel).evaluate((el) => getComputedStyle(el).backgroundColor);
     assert.equal(await no.locator(".rede-cartao").getAttribute("title"), null, "o cartão inteiro não tem dica");
-    await no.locator(".rede-cartao").click({ position: { x: 4, y: 4 } });
-    await assentar(p);
     for (const sel of [".rede-rotulo", ".rede-data"]) {
       const antes = await fundo(sel);
       await no.locator(sel).hover();
@@ -319,15 +318,51 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
   /* ---------- ajustes da avaliação de 10/11/2026 ---------- */
-  test("o botão de abrir, ao lado do cartão selecionado, abre a ação com o mouse", async () => {
+  test("\"Abrir\", dentro do cartão, sem cobrir o nome; o clique duplo fora dos campos também abre", async () => {
     const p = await abrirRede();
+    await aCem(p);
     const no = p.locator(".rede-no").nth(1);
-    await no.locator(".rede-cartao").click();
+    await no.hover();
     await assentar(p);
-    assert.ok(await no.locator(".rede-abrir").isVisible());
-    await no.locator(".rede-abrir").click();
+    const abrir = no.locator(".rede-abrir");
+    assert.ok(await abrir.isVisible());
+    assert.match(await abrir.innerText(), /Abrir/);
+    const [b, c, nome] = await Promise.all([abrir.boundingBox(), no.locator(".rede-cartao").boundingBox(), no.locator('[data-editar="rotulo"]').evaluate((el) => [...el.getClientRects()].map((r) => ({ x: r.x, y: r.y, w: r.width, h: r.height })))]);
+    assert.ok(b.x >= c.x && b.x + b.width <= c.x + c.width && b.y >= c.y, "dentro do cartão");
+    assert.ok(nome.every((r) => r.x + r.w <= b.x + 1 || r.y >= b.y + b.height - 1), "o nome não passa por baixo do botão");
+    await abrir.click();
     await assentar(p);
     assert.ok(await p.locator(".camada.aberta").count() >= 1, "abriu a janela da ação");
+    await p.keyboard.press("Escape");
+    await assentar(p);
+    await p.locator(".camada.aberta").waitFor({ state: "detached" }).catch(() => {});
+    await no.locator(".rede-cartao").dblclick({ position: { x: 6, y: 100 } });
+    await assentar(p);
+    assert.ok(await p.locator(".camada.aberta").count() >= 1, "o clique duplo fora dos campos abriu a janela");
+    assert.deepEqual(p.erros, []);
+  });
+
+  test("reestimar pela data da ação liberada: quanto falta a partir de hoje, com motivo, no histórico", async () => {
+    const p = await abrirRede();
+    await aCem(p);
+    const alvo = p.locator(".rede-no.agora").filter({ has: p.locator('[data-campo="data"]') }).first();
+    const n = await alvo.getAttribute("data-numero");
+    await alvo.locator(".rede-data").click();
+    await p.waitForSelector(".rede-reestimar input[name=o]");
+    assert.equal(await p.locator(".rede-reestimar input[name=o]").inputValue(), "", "começa vazia, como na janela");
+    await p.locator(".rede-reestimar input[name=o]").fill("3");
+    await p.locator(".rede-reestimar input[name=m]").fill("5");
+    await p.locator(".rede-reestimar input[name=p]").fill("8");
+    assert.match(await p.locator(".rede-reestimar [data-previsao]").innerText(), /termina em/);
+    await p.locator(".rede-reestimar input[name=motivo]").fill("Teste da caixinha");
+    await p.keyboard.press("Enter");
+    await p.locator(".rede-reestimar").waitFor({ state: "detached" });
+    /* a reestimativa aparece no histórico da janela da ação */
+    await p.locator(`.rede-no[data-numero="${n}"] .rede-cartao`).click({ position: { x: 4, y: 4 } });
+    await p.keyboard.press("Enter");
+    await p.waitForSelector(".camada.aberta");
+    await assentar(p);
+    assert.match(await p.locator(".camada.aberta").innerText(), /Teste da caixinha/);
     assert.deepEqual(p.erros, []);
   });
 
@@ -420,7 +455,6 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     await aCem(p);
     /* uma ação que ainda espera outra: a estimativa dela pode ser corrigida sem histórico (js/acao.js) */
     const alvo = p.locator(".rede-no.indice:not(.agora)").first();
-    await alvo.locator(".rede-cartao").click();
     await alvo.locator(".rede-data").click();
     await p.waitForSelector(".rede-estimar input[name=o]");
     await assentar(p, 300);
@@ -509,19 +543,16 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
-  test("clique nos responsáveis da ação selecionada abre a escolha; quem não cabe vira +N, sem cobrir a data", async () => {
+  test("clique nos responsáveis abre a escolha; quem não cabe vira +N, sem cobrir a data", async () => {
     const p = await abrirRede();
     await aCem(p);
     const alvo = p.locator(".rede-no.agora").first();
     const n = await alvo.getAttribute("data-numero");
     const no = p.locator(`.rede-no[data-numero="${n}"]`);
-    /* o primeiro clique só seleciona */
-    await no.locator(".donos").click();
-    await assentar(p, 200);
-    assert.equal(await p.locator(".escolher-participantes").count(), 0);
+    /* desde 18/11/2026, um clique basta, sem selecionar antes */
     await no.locator(".donos").click();
     await p.waitForSelector(".escolher-participantes");
-    assert.equal(await p.locator(".rede [data-editando]").count(), 0, "o duplo clique nos responsáveis não abre o nome");
+    assert.equal(await p.locator(".rede [data-editando]").count(), 0, "o clique nos responsáveis não abre o nome");
     /* marca todos os responsáveis do espaço */
     const caixas = p.locator(".escolher-participantes input[type=checkbox]");
     const total = await caixas.count();
