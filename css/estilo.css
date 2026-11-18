@@ -3409,11 +3409,33 @@ button.atributo:hover .atributo-mais { color: var(--accent-ink); }
   .janela-grade.tarefa .botao-texto.adicionar-conteudo .icone { width: 20px; height: 20px; }
 }
 /* planos e projetos na mesma janela (05/11/2026): o bloco do prazo em destaque no alto do conteúdo */
-.bloco-prazo { display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; border: 1px solid var(--grid); border-radius: 10px; background: var(--surface); }
-.bloco-prazo .janela-resumo { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-.bloco-prazo .janela-resumo > div { background: none; border: 0; padding: 0; }
-.bloco-prazo .botoes { margin: 0; }
-.bloco-prazo .cartao-form { margin: 0; }
+/* 17/11/2026 (decisão do responsável): sem moldura de cartão; no alto do conteúdo, só o aviso de prazo vencido e a data
+   de conclusão; a conclusão prevista e os índices ficam na coluna de atributos */
+.bloco-prazo { display: flex; flex-direction: column; gap: 6px; }
+.bloco-prazo .cartao-form { margin: 4px 0 0; }
+.linha-prazo { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; font-size: .9rem; }
+.dado-prazo { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.dado-rotulo { color: var(--muted); font-size: .8rem; }
+.dado-prazo .mono { color: var(--ink); }
+/* aviso na linha do prazo: atrasada ou prazo vencido sem reestimativa; o Reestimar fica na janelinha */
+.pede-reestimar { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; font-weight: 700; color: var(--crit-ink); }
+.pede-reestimar .icone { width: 14px; height: 14px; }
+.atributo.sem-nome { padding-top: 2px; }
+.indices-lado { display: flex; flex-direction: column; gap: 3px; font-size: .78rem; color: var(--muted); }
+.indice-prazo { display: inline-flex; align-items: center; gap: 6px; }
+/* símbolo do índice, sempre na cor própria do índice (18/11/2026): diz qual é; o número diz quanto */
+.icone-indice { flex: none; display: inline-flex; color: var(--cor-indice); }
+.icone-indice .icone { width: 13px; height: 13px; stroke-width: 2.2; }
+.nome-indice { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: color-mix(in oklab, currentColor 45%, transparent); }
+.nome-indice:hover { color: var(--ink); }
+.indice-prazo .num { font-family: var(--f-dados); }
+.popover-subtitulo { margin: 0 0 2px; }
+.prazo-tres { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.prazo-tres .mono { font-size: 1.05rem; }
+.prazo-tres small.tec { flex-basis: 100%; }
+[data-popover="prazo"] .botoes { margin: 8px 0 0; }
+[data-popover="prazo"] .cartao-form { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.caixa-concluida.caixa-janela.em-uso { border-color: var(--ok); }
 /* ação contínua (seção 5.9): o tipo no alto do bloco do prazo e o aviso "Pode ser encerrada" */
 .continua-tipo { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 600; }
 .pode-encerrar { display: flex; gap: 8px; align-items: flex-start; color: var(--ink); }
