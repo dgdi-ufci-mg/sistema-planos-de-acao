@@ -3281,6 +3281,16 @@ select.grade-editor { margin: -4px -6px; }
 .planilha .planilha-grupo.nivel-etapa th { background: color-mix(in srgb, var(--bg) 50%, var(--surface)); }
 .planilha .planilha-grupo .grade-grupo-botao { position: sticky; left: 0; }
 .planilha .planilha-grupo.nivel-etapa .grade-grupo-botao { padding-left: 30px; font: 600 .84rem var(--f-texto); }
+/* planilha: quebra de texto, menu do título e marca de coluna escondida (18/11/2026) */
+.planilha td textarea { display: block; width: 100%; border: 0; background: transparent; font: inherit; color: inherit; padding: 7px 10px; min-height: 34px; resize: none; overflow: hidden; line-height: 1.35; box-sizing: border-box; }
+.planilha td textarea:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--surface); }
+.planilha td.quebra > span { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.35; }
+.menu-coluna { display: flex; flex-direction: column; padding: 4px; }
+.menu-coluna .opcao-caixa { text-align: left; width: 100%; }
+.menu-coluna hr { border: 0; border-top: 1px solid var(--grid); margin: 4px 0; }
+.planilha th .marca-oculta { position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; padding: 0; border: 0; border-left: 2px solid var(--accent); border-right: 2px solid var(--accent); background: var(--sunk); cursor: pointer; z-index: 3; box-sizing: border-box; }
+.planilha th .marca-oculta.fim { left: auto; right: 0; width: 6px; border-right: 0; }
+.planilha th .marca-oculta:hover, .planilha th .marca-oculta:focus-visible { background: var(--accent-soft); }
 .caixa-planilha .grade-colunas { overflow-y: auto; min-height: 0; flex: 1; padding-right: 4px; }
 
 /* janela da tarefa: o círculo de concluída antes do nome, como na linha da lista e no Todoist (04/11/2026) */

@@ -1,7 +1,7 @@
 /** Testes das regras do modo "Editar em planilha" (js/planilha.js). */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData } from "../js/planilha.js";
+import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData, ocultasAoLado, larguraAoConteudo } from "../js/planilha.js";
 
 const acoes = [{ numero: 1, codigo: "LEV" }, { numero: 2 }, { numero: 5, codigo: "ARQ" }];
 const responsaveis = [{ id: "a", nome: "Ana Souza", sigla: "ANA" }, { id: "p", nome: "Pró-Reitoria de Graduação", sigla: "PROGRAD" }, { id: "s", nome: "Sem Sigla" }];
@@ -48,5 +48,26 @@ describe("Planilha: colagem e datas", () => {
     assert.equal(lerData("5/1/2027"), "2027-01-05");
     assert.equal(lerData(""), null);
     assert.equal(lerData("amanhã"), undefined);
+  });
+});
+
+describe("Planilha: colunas escondidas e largura ao conteúdo", () => {
+  const cols = ["a", "b", "c", "d", "e"].map((chave) => ({ chave }));
+  it("agrupa as escondidas pela coluna visível que vem depois, e guarda as do fim", () => {
+    const r = ocultasAoLado(cols, new Set(["b", "c", "e"]));
+    assert.deepEqual([...r.antes], [["d", ["b", "c"]]]);
+    assert.deepEqual(r.fim, ["e"]);
+  });
+  it("sem escondidas, não marca nada; obrigatória nunca conta como escondida", () => {
+    assert.equal(ocultasAoLado(cols, new Set()).antes.size, 0);
+    const r = ocultasAoLado([{ chave: "a" }, { chave: "b", obrigatoria: true }], new Set(["b"]));
+    assert.equal(r.antes.size, 0);
+    assert.deepEqual(r.fim, []);
+  });
+  it("largura ao conteúdo: respiro, meio em e limites", () => {
+    assert.equal(larguraAoConteudo(100, 10), 12);
+    assert.equal(larguraAoConteudo(0, 10), 3);
+    assert.equal(larguraAoConteudo(5000, 10), 60);
+    assert.equal(larguraAoConteudo(10, 10, 3, 60), 3);
   });
 });

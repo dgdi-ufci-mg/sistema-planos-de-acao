@@ -141,6 +141,33 @@ export function moverColuna(colunas, ordem, chave, sentido) {
   return lista;
 }
 
+/**
+ * Colunas escondidas, agrupadas pela coluna visível que vem logo depois delas (como o traço duplo do Excel entre as
+ * letras das colunas). `ordenadas`: todas as colunas na ordem da grade; `ocultas`: conjunto de chaves escondidas.
+ * Devolve {antes: Map(chave visível → chaves escondidas logo antes dela), fim: chaves escondidas depois da última visível}.
+ * Colunas obrigatórias nunca contam como escondidas.
+ */
+export function ocultasAoLado(ordenadas, ocultas) {
+  const antes = new Map();
+  let pendentes = [];
+  for (const c of ordenadas) {
+    if (!c.obrigatoria && ocultas.has(c.chave)) { pendentes.push(c.chave); continue; }
+    if (pendentes.length) antes.set(c.chave, pendentes);
+    pendentes = [];
+  }
+  return { antes, fim: pendentes };
+}
+
+/**
+ * Largura (em em) que cabe o conteúdo de uma coluna: a maior largura medida (`maior`, em px, entre o título com o botão
+ * e o texto das células) mais o respiro das células, arredondada para meio em e limitada entre `minimo` e `maximo`.
+ */
+export function larguraAoConteudo(maior, emPx, minimo = 3, maximo = 60) {
+  if (!(maior > 0) || !(emPx > 0)) return minimo;
+  const em = Math.ceil((maior / emPx + 1.6) * 2) / 2;
+  return Math.max(minimo, Math.min(maximo, em));
+}
+
 /** Sem acentos e em minúsculas, para a busca. */
 const semAcentos = (t) => String(t ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 

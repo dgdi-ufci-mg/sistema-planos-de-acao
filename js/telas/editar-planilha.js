@@ -19,7 +19,7 @@ import { esc, dataBr } from "../formato.js";
 import { estimativaLivre, normalizarCodigo } from "../acao.js";
 import {
   lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData,
-  agruparPorFaseEEtapa, ordenarColunas, moverColuna, passaNaBusca, criarDesfazer,
+  agruparPorFaseEEtapa, ordenarColunas, moverColuna, passaNaBusca, criarDesfazer, ocultasAoLado, larguraAoConteudo,
 } from "../planilha.js";
 import { avisar } from "./painel.js";
 import { usaEstimativas, usaDependencias, usaSimulacao } from "../modelos.js";
@@ -109,6 +109,13 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   const CHAVE_LARGURAS = "sextante.largurasPlanilha";
   const larguras = (() => { try { return JSON.parse(localStorage.getItem(CHAVE_LARGURAS) || "{}"); } catch { return {}; } })();
   const lembrarLarguras = () => { try { localStorage.setItem(CHAVE_LARGURAS, JSON.stringify(larguras)); } catch { /* sem armazenamento */ } };
+  /* quebra de texto por coluna (18/11/2026): a linha cresce para mostrar o conteúdo inteiro; lembrada neste aparelho */
+  const CHAVE_QUEBRAS = "sextante.quebraPlanilha";
+  const quebras = new Set((() => { try { return JSON.parse(localStorage.getItem(CHAVE_QUEBRAS) || "[]"); } catch { return []; } })());
+  const lembrarQuebras = () => { try { localStorage.setItem(CHAVE_QUEBRAS, JSON.stringify([...quebras])); } catch { /* sem armazenamento */ } };
+  /** Colunas de texto que aceitam quebra: as de data, número, lista de uma escolha e as de várias escolhas ficam de fora. */
+  const SEM_QUEBRA = ["numero", "etapa", "o", "m", "p", "naoAntesDe", "dataLimite", "concluidaEm", "checklist", "prioridade", "responsaveis", "dependeDe"];
+  const aceitaQuebra = (chave) => !SEM_QUEBRA.includes(chave);
   function colunas() {
     const ocultas = d.ocultas ?? new Set();
     return ordenarColunas(colunasDaPlanilha(d), ordemColunas).filter((c) => c.obrigatoria || !ocultas.has(c.chave))
@@ -194,7 +201,8 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const motivo = acao ? bloqueio(acao, coluna.chave) : coluna.chave === "rotulo" ? "" : coluna.calculada ? "Calculado pelo sistema." : "Escreva o nome da ação para criar a linha.";
     const v = acao ? valor(acao, coluna.chave) : "";
     const erro = erros.get(`${acao ? acao.numero : "nova"}|${coluna.chave}`);
-    const classes = [coluna.calculada && "calculada", coluna.inicioCalculados && "inicio-calculados", esquerda != null && "fixa", coluna.ultimaFixa && "ultima-fixa", !motivo && erro && "com-erro"].filter(Boolean);
+    const quebra = quebras.has(coluna.chave) && aceitaQuebra(coluna.chave);
+    const classes = [quebra && "quebra", coluna.calculada && "calculada", coluna.inicioCalculados && "inicio-calculados", esquerda != null && "fixa", coluna.ultimaFixa && "ultima-fixa", !motivo && erro && "com-erro"].filter(Boolean);
     const estilo = esquerda != null ? ` style="--esq:${esquerda}"` : "";
     const comum = `data-linha="${linha}" data-col="${indice}" data-chave="${coluna.chave}" aria-label="${esc(coluna.titulo)}"`;
     if (motivo) {
@@ -213,6 +221,9 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     if (acao && ["responsaveis", "dependeDe"].includes(coluna.chave)) {
       return `${td.replace("<td", '<td data-com-escolha')}<span class="celula-escolha"><input ${comum} value="${esc(v)}" data-original="${esc(v)}"${inteiro}>
         <button type="button" class="abrir-escolha" data-escolher tabindex="-1" aria-label="Escolher na lista (Alt+↓)" title="Escolher na lista (Alt+↓)">${ICONES.abrir}</button></span></td>`;
+    }
+    if (quebra && !tipo) { // texto que quebra: caixa de várias linhas, que cresce com o conteúdo (Alt+Enter, nova linha)
+      return `${td}<textarea rows="1" ${comum} data-original="${esc(v)}"${dica}>${esc(v)}</textarea></td>`;
     }
     const vazia = tipo.includes("date") && !v ? " data-vazia" : ""; // data vazia: sem a máscara dd/mm/aaaa até receber o cursor
     return `${td}<input${tipo} ${comum} value="${esc(v)}" data-original="${esc(v)}"${dica}${inteiro}${vazia}${coluna.chave === "concluidaEm" ? ` max="${hoje}"` : ""}></td>`;
@@ -420,8 +431,12 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     let soma = 0;
     cols.forEach((c, j) => { esquerdas[j] = c.fixa ? soma : null; if (c.fixa) soma += c.largura; });
     cols.forEach((c) => { c.ultimaFixa = c === fixas.at(-1); c.inicioCalculados = c === cols.find((x) => x.calculada); });
+    /* colunas escondidas: um traço duplo entre as vizinhas, como no Excel; clicar nele mostra de novo (18/11/2026) */
+    const lado = ocultasAoLado(ordenarColunas(colunasDaPlanilha(d), ordemColunas), d.ocultas ?? new Set());
+    const titulos = new Map(colunasDaPlanilha(d).map((c) => [c.chave, c.titulo]));
+    const marca = (chaves, fim) => `<button type="button" class="marca-oculta${fim ? " fim" : ""}" data-mostrar-colunas="${chaves.join(",")}" aria-label="Mostrar ${chaves.length === 1 ? "a coluna escondida" : `as ${chaves.length} colunas escondidas`}: ${esc(chaves.map((k) => titulos.get(k)).join(", "))}" title="Mostrar ${chaves.length === 1 ? "a coluna escondida" : "as colunas escondidas"}: ${esc(chaves.map((k) => titulos.get(k)).join(", "))}"></button>`;
     const cabecalho = (c, j) => `<th scope="col" class="${[c.calculada && "calculada", c.inicioCalculados && "inicio-calculados", c.fixa && "fixa", c.ultimaFixa && "ultima-fixa"].filter(Boolean).join(" ")}"
-      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}><span class="titulo-coluna-planilha">${c.titulo}</span>${botaoFiltro(c, j)}<span class="redimensionar" data-redimensionar="${j}" title="Arraste para alargar ou estreitar; clique duas vezes para voltar ao tamanho original" aria-hidden="true"></span></th>`;
+      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}>${lado.antes.has(c.chave) ? marca(lado.antes.get(c.chave), false) : ""}${j === cols.length - 1 && lado.fim.length ? marca(lado.fim, true) : ""}<span class="titulo-coluna-planilha">${c.titulo}</span>${botaoFiltro(c, j)}<span class="redimensionar" data-redimensionar="${j}" title="Arraste para alargar ou estreitar; clique duas vezes para ajustar ao conteúdo" aria-hidden="true"></span></th>`;
     let i = 0;
     const linhaHtml = (a) => { const n = i++; return `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, n, j, esquerdas[j])).join("")}</tr>`; };
     const cabecaDeGrupo = (chave, nivel, nome, quantos) => `<tr class="planilha-grupo ${nivel}"><th colspan="${cols.length}" scope="rowgroup">
@@ -458,6 +473,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const rolagem = alvo.querySelector(".planilha-rolagem");
     if (posicao) [rolagem.scrollLeft, rolagem.scrollTop] = posicao;
     ajustarAltura();
+    ajustarTextareas();
     restaurarFoco(foco);
     if (buscaComFoco != null) { const b = alvo.querySelector("[data-busca-planilha]"); b.focus(); b.setSelectionRange(buscaComFoco, buscaComFoco); }
     if (trocouAlvo) ligar();
@@ -508,6 +524,83 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     alvoDoFoco?.focus();
   }
 
+  /** Ajusta a largura da coluna ao conteúdo (clique duplo na borda do título, ou pelo menu), como no Excel. */
+  function ajustarLargura(chave) {
+    const tabela = alvo.querySelector(".planilha");
+    if (!tabela) return;
+    const emPx = parseFloat(getComputedStyle(tabela).fontSize);
+    const ctx = document.createElement("canvas").getContext("2d");
+    const medir = (texto, ref) => { const cs = getComputedStyle(ref); ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`; return ctx.measureText(texto).width; };
+    const th = tabela.querySelector("th[scope=col]");
+    const celula = tabela.querySelector("td input, td span, td textarea") ?? th;
+    const titulo = colunasDaPlanilha(d).find((c) => c.chave === chave)?.titulo ?? "";
+    let maior = medir(titulo, th) + 26; // o botão de filtro e a alça ocupam espaço no título
+    for (const a of d.acoes) {
+      const v = chave === "etapa" ? etapas().find((x) => x.id === a.etapa)?.nome ?? "" : valor(a, chave);
+      for (const linha of String(v).split("\n")) maior = Math.max(maior, medir(linha, celula));
+    }
+    larguras[chave] = larguraAoConteudo(maior, emPx, 3, quebras.has(chave) ? 40 : 60);
+    lembrarLarguras();
+    desenhar(alvo, d);
+  }
+
+  /** Mostra colunas escondidas (as de uma marca ou todas). */
+  function mostrarColunas(chaves) {
+    if (!d.ocultas) return;
+    for (const k of chaves) d.ocultas.delete(k);
+    lembrarOcultas();
+    desenhar(alvo, d);
+  }
+
+  /** Menu do botão direito no título da coluna (como no Excel). */
+  function abrirMenuColuna(th, x, y) {
+    const j = [...th.parentElement.children].indexOf(th);
+    const c = colunas()[j];
+    if (!c) return;
+    const ancora = { getBoundingClientRect: () => ({ left: x, top: y, bottom: y }), contains: () => false };
+    const valores = [...new Set(d.acoes.map((a) => valor(a, c.chave)))];
+    const numerica = valores.some((v) => chaveDeOrdem(v)?.tipo <= 1);
+    const sentido = (n) => ordenacao?.chave === c.chave && ordenacao.sentido === n;
+    const temEscondidas = (d.ocultas?.size ?? 0) > 0;
+    const item = (acao, texto, extra = "") => `<button type="button" role="menuitem" class="opcao-caixa${extra}" data-menu="${acao}">${texto}</button>`;
+    const caixa = abrirCaixa(ancora, `<div role="menu" aria-label="Coluna ${esc(c.titulo)}" class="menu-coluna">
+      ${item("az", numerica ? "Classificar do menor para o maior" : "Classificar de A a Z", sentido(1) ? " ativa" : "")}
+      ${item("za", numerica ? "Classificar do maior para o menor" : "Classificar de Z a A", sentido(-1) ? " ativa" : "")}
+      ${ordenacao?.chave === c.chave ? item("semordem", "Voltar à ordem do espaço") : ""}
+      ${item("filtrar", "Filtrar…")}
+      <hr>
+      ${aceitaQuebra(c.chave) ? item("quebra", `${quebras.has(c.chave) ? "✓ " : ""}Quebrar texto`) : ""}
+      ${item("ajustar", "Ajustar largura ao conteúdo")}
+      ${larguras[c.chave] != null ? item("padrao", "Largura padrão") : ""}
+      <hr>
+      ${c.obrigatoria ? "" : item("ocultar", "Ocultar coluna")}
+      ${temEscondidas ? item("mostrar", "Mostrar colunas escondidas…") : ""}
+    </div>`, 250);
+    caixa.dataset.de = "menu";
+    caixa.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-menu]");
+      if (!b) return;
+      const acao = b.dataset.menu;
+      fecharCaixa();
+      if (acao === "az" || acao === "za") { ordenacao = { chave: c.chave, sentido: acao === "az" ? 1 : -1 }; return desenhar(alvo, d); }
+      if (acao === "semordem") { ordenacao = null; return desenhar(alvo, d); }
+      if (acao === "filtrar") { const bf = th.querySelector("[data-filtro-col]"); abrirFiltro(bf); caixaAberta.dataset.de = bf.dataset.filtroCol; return; }
+      if (acao === "quebra") { if (quebras.has(c.chave)) quebras.delete(c.chave); else quebras.add(c.chave); lembrarQuebras(); return desenhar(alvo, d); }
+      if (acao === "ajustar") return ajustarLargura(c.chave);
+      if (acao === "padrao") { delete larguras[c.chave]; lembrarLarguras(); return desenhar(alvo, d); }
+      if (acao === "ocultar") { d.ocultas?.add(c.chave); lembrarOcultas(); return desenhar(alvo, d); }
+      if (acao === "mostrar") { const bc = alvo.querySelector("[data-colunas-planilha]"); if (bc) abrirColunas(bc); }
+    });
+    caixa.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+      const bs = [...caixa.querySelectorAll("button")];
+      const i = bs.indexOf(document.activeElement);
+      bs[(i + (e.key === "ArrowDown" ? 1 : bs.length - 1)) % bs.length]?.focus();
+    });
+    caixa.querySelector("button")?.focus();
+  }
+
   /** Desfazer (ou refazer) o último passo: regrava, na ordem, o valor de antes (ou o de depois) de cada célula. */
   function desfazerOuRefazer(refazendo) {
     const passo = refazendo ? historico.refazer() : historico.desfazer();
@@ -544,6 +637,14 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
   }
 
   /* ---------- foco: mantido quando a grade é redesenhada por uma gravação ---------- */
+  /** Textos que quebram: cada caixa cresce até mostrar o conteúdo inteiro (sem barra de rolagem). */
+  function ajustarTextareas(pai = alvo) {
+    for (const t of pai.querySelectorAll(".planilha textarea")) {
+      t.style.height = "auto";
+      if (t.scrollHeight > 0) t.style.height = `${t.scrollHeight}px`;
+    }
+  }
+
   function guardarFoco() {
     const el = document.activeElement;
     if (!alvo?.contains(el) || !el.dataset?.linha) return null;
@@ -725,9 +826,15 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     alvo.addEventListener("dblclick", (e) => {
       const alca = e.target.closest?.("[data-redimensionar]");
       if (!alca) return;
-      delete larguras[colunas()[Number(alca.dataset.redimensionar)].chave];
-      lembrarLarguras();
-      desenhar(alvo, d);
+      ajustarLargura(colunas()[Number(alca.dataset.redimensionar)].chave); // como no Excel; "Largura padrão" fica no menu do botão direito
+    });
+    /* botão direito (ou a tecla de menu) no título da coluna */
+    alvo.addEventListener("contextmenu", (e) => {
+      const th = e.target.closest?.("th[scope=col]");
+      if (!th || !th.querySelector("[data-filtro-col]")) return;
+      e.preventDefault();
+      const r = th.getBoundingClientRect();
+      abrirMenuColuna(th, e.clientX || r.left, e.clientY || r.bottom);
     });
     /* texto cortado: aparece inteiro ao passar o mouse */
     alvo.addEventListener("mouseover", (e) => {
@@ -741,6 +848,8 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     alvo.addEventListener("click", (e) => {
       const filtro = e.target.closest?.("[data-filtro-col]");
       if (filtro) { e.preventDefault(); return caixaAberta && caixaAberta.dataset.de === filtro.dataset.filtroCol ? fecharCaixa() : (abrirFiltro(filtro), caixaAberta.dataset.de = filtro.dataset.filtroCol); }
+      const marcaOculta = e.target.closest?.("[data-mostrar-colunas]");
+      if (marcaOculta) return mostrarColunas(marcaOculta.dataset.mostrarColunas.split(","));
       const escolher = e.target.closest?.("[data-escolher]");
       if (escolher) return abrirEscolha(escolher.parentElement.querySelector("input"));
       if (e.target.closest?.("[data-limpar-tudo]")) { filtros.clear(); ordenacao = null; busca = ""; desenhar(alvo, d); return; }
@@ -761,6 +870,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     alvo.addEventListener("input", (e) => {
       if (e.target.matches?.("[data-busca-planilha]")) { busca = e.target.value; desenhar(alvo, d); return; }
       if (e.target.type === "date") e.target.toggleAttribute("data-vazia", !e.target.value);
+      if (e.target.tagName === "TEXTAREA") ajustarTextareas(e.target.parentElement);
     });
     addEventListener("resize", () => { if (alvo.isConnected) ajustarAltura(); });
     alvo.addEventListener("keydown", (e) => {
@@ -780,17 +890,23 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         if (alvoCel.select && alvoCel.type !== "date" && alvoCel.type !== "number") alvoCel.select();
         return true;
       };
-      const texto = el.tagName === "INPUT" && !["date", "number"].includes(el.type);
+      const texto = (el.tagName === "INPUT" && !["date", "number"].includes(el.type)) || el.tagName === "TEXTAREA";
+      /* texto que quebra: Alt+Enter começa outra linha na célula (como no Excel), só onde faz sentido */
+      if (el.tagName === "TEXTAREA" && e.key === "Enter" && e.altKey && ["descricao", "justificativa"].includes(el.dataset.chave)) {
+        e.preventDefault();
+        el.setRangeText("\n", el.selectionStart, el.selectionEnd, "end");
+        return ajustarTextareas(el.parentElement);
+      }
       const naPonta = (lado) => !texto || (el.selectionStart === el.selectionEnd && el.selectionStart === (lado < 0 ? 0 : el.value.length));
       let andou = null;
       if (e.altKey && e.key === "ArrowDown" && ["responsaveis", "dependeDe"].includes(el.dataset.chave)) { e.preventDefault(); return abrirEscolha(el); }
       if (e.key === "Enter") andou = ir(e.shiftKey ? -1 : 1, 0) || true;
-      else if (e.key === "ArrowDown" && !e.altKey) andou = ir(1, 0);
-      else if (e.key === "ArrowUp" && !e.altKey) andou = ir(-1, 0);
+      else if (e.key === "ArrowDown" && !e.altKey && (el.tagName !== "TEXTAREA" || el.selectionStart === el.value.length)) andou = ir(1, 0);
+      else if (e.key === "ArrowUp" && !e.altKey && (el.tagName !== "TEXTAREA" || el.selectionEnd === 0)) andou = ir(-1, 0);
       else if (e.key === "ArrowLeft" && naPonta(-1)) andou = ir(0, -1);
       else if (e.key === "ArrowRight" && naPonta(1)) andou = ir(0, 1);
       if (andou !== null) {
-        if (andou || e.key === "Enter" || el.tagName !== "INPUT" || !texto) e.preventDefault();
+        if (andou || e.key === "Enter" || !texto) e.preventDefault();
       } else if (e.key === "Escape" && "value" in el && el.value !== el.dataset.original) {
         e.preventDefault();
         el.value = el.dataset.original;

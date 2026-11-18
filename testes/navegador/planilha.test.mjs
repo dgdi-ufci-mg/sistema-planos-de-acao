@@ -147,3 +147,88 @@ describe("Planilha: classificar, filtrar e escolher vários", { skip: pular }, (
     assert.deepEqual(p.erros, []);
   });
 });
+
+describe("Planilha: menu do título, colunas escondidas e quebra de texto (18/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  async function abrirPlanilha() {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irParaVisualizacao(p, "planilha");
+    await p.waitForSelector(".planilha");
+    return p;
+  }
+  const titulo = (p, t) => p.locator(".planilha th[scope=col]").filter({ hasText: t }).first();
+  const menu = (p, acao) => p.locator(`.menu-coluna [data-menu="${acao}"]`);
+
+  test("botão direito no título abre o menu; classificar de Z a A funciona", async () => {
+    const p = await abrirPlanilha();
+    await p.click("[data-agrupar-planilha]");
+    await titulo(p, "Ação").click({ button: "right" });
+    await p.waitForSelector(".menu-coluna");
+    await menu(p, "za").click();
+    await assentar(p, 200);
+    const nomes = await p.locator('.planilha tbody tr[data-numero] [data-chave="rotulo"]').evaluateAll((els) => els.map((e) => e.value ?? e.textContent));
+    assert.deepEqual(nomes, [...nomes].sort((a, b) => b.localeCompare(a, "pt-BR")));
+  });
+
+  test("ocultar pelo menu deixa um traço entre as vizinhas, que mostra a coluna de novo", async () => {
+    const p = await abrirPlanilha();
+    await titulo(p, "Descrição").click({ button: "right" });
+    await menu(p, "ocultar").click();
+    await assentar(p, 200);
+    assert.equal(await p.locator(".planilha th[scope=col]").filter({ hasText: "Descrição" }).count(), 0);
+    const marca = p.locator(".marca-oculta");
+    assert.equal(await marca.count(), 1);
+    assert.match(await marca.getAttribute("title"), /Descrição/);
+    await marca.click();
+    await assentar(p, 200);
+    assert.equal(await p.locator(".marca-oculta").count(), 0);
+    assert.equal(await p.locator(".planilha th[scope=col]").filter({ hasText: "Descrição" }).count(), 1);
+  });
+
+  test("a coluna da ação não tem 'Ocultar coluna' no menu", async () => {
+    const p = await abrirPlanilha();
+    await titulo(p, "Ação").click({ button: "right" });
+    await p.waitForSelector(".menu-coluna");
+    assert.equal(await menu(p, "ocultar").count(), 0);
+  });
+
+  test("quebrar texto: a célula vira caixa de várias linhas e a linha cresce com o conteúdo; Enter ainda desce", async () => {
+    const p = await abrirPlanilha();
+    const col = p.locator(".planilha th[scope=col]").filter({ hasText: "Descrição" }).first();
+    const antes = await p.locator('.planilha tbody tr[data-numero] [data-chave="descricao"]').first().evaluate((e) => e.closest("tr").offsetHeight);
+    await col.click({ button: "right" });
+    await menu(p, "quebra").click();
+    await assentar(p, 200);
+    assert.ok(await p.locator('.planilha textarea[data-chave="descricao"]').count() > 0);
+    const maior = await p.locator('.planilha tbody tr[data-numero] textarea[data-chave="descricao"]').evaluateAll((els) => Math.max(...els.map((e) => e.closest("tr").offsetHeight)));
+    assert.ok(maior >= antes, "a linha não encolhe");
+    const primeira = p.locator('.planilha textarea[data-chave="descricao"]').first();
+    await primeira.focus();
+    await p.keyboard.press("Enter");
+    const ativo = await p.evaluate(() => ({ chave: document.activeElement.dataset.chave, linha: document.activeElement.dataset.linha }));
+    assert.deepEqual(ativo, { chave: "descricao", linha: "1" });
+    // desligar volta ao campo de uma linha
+    await titulo(p, "Descrição").click({ button: "right" });
+    await menu(p, "quebra").click();
+    await assentar(p, 200);
+    assert.equal(await p.locator('.planilha textarea[data-chave="descricao"]').count(), 0);
+  });
+
+  test("clique duplo na borda do título ajusta a largura ao conteúdo; 'Largura padrão' desfaz", async () => {
+    const p = await abrirPlanilha();
+    const larg = () => p.evaluate(() => [...document.querySelectorAll(".planilha col")].map((c) => c.style.width));
+    const antes = await larg();
+    const j = await p.locator(".planilha th[scope=col]").evaluateAll((ths) => ths.findIndex((t) => t.textContent.includes("Descrição")));
+    await p.locator(`[data-redimensionar="${j}"]`).dblclick();
+    await assentar(p, 200);
+    const depois = await larg();
+    assert.notEqual(depois[j], antes[j]);
+    await titulo(p, "Descrição").click({ button: "right" });
+    await menu(p, "padrao").click();
+    await assentar(p, 200);
+    assert.equal((await larg())[j], antes[j]);
+  });
+});
