@@ -34,7 +34,7 @@ describe("Strata: Mapa em tela cheia como porta de entrada", { skip: pular }, ()
       test("no alto: o título e a universidade à esquerda, o filtro e o menu à direita; nenhum ponto fica sob eles nem sob os botões", async () => {
         const p = await sessao.abrir({ ...o, ...ABRIR });
         const instituicao = await p.locator("[data-instituicao]").innerText();
-        assert.equal(instituicao.trim(), o.largura > 640 ? "Universidade Federal de Ciência e Inovação de Minas Gerais" : "UFCI-MG");
+        assert.equal(instituicao.trim(), o.largura > 640 ? "Universidade Federal de Ciência e Inovação de Minas Gerais" : "UFCIMG");
         const marca = await p.locator(".strata-cima .superior-marca").boundingBox();
         const menu = await p.locator("[data-alternar-menu]").boundingBox();
         const filtro = await p.locator("[data-alternar-filtros]").boundingBox();

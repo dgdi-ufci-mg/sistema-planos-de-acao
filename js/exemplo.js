@@ -47,7 +47,7 @@ const RESPONSAVEIS = [
   { tipo: "pessoa", sigla: "CAM", nome: "Carla Mendes", setor: "DGDI", usuario: "carla.mendes@ufci.edu.br" },
   { tipo: "pessoa", sigla: "DRO", nome: "Diego Rocha", setor: "DTI", usuario: "diego.rocha@ufci.edu.br" },
   { tipo: "unidade", sigla: "DTI", nome: "Diretoria de Tecnologia da Informação" },
-  { tipo: "unidade", sigla: "PF", nome: "Procuradoria Federal junto à UFCI-MG" },
+  { tipo: "unidade", sigla: "PF", nome: "Procuradoria Federal junto à UFCIMG" },
   { tipo: "unidade", sigla: "PROGRAD", nome: "Pró-Reitoria de Graduação" },
 ];
 

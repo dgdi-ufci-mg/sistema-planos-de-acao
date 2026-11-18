@@ -6,6 +6,6 @@
  * (`testes/aplicativo.test.js`) confere que estão iguais.
  */
 export const NOME = "Sextante";
-export const INSTITUICAO = "UFCI-MG";
+export const INSTITUICAO = "UFCIMG";
 /** Nome da instituição por extenso: aparece sob o título do Strata, no alto do Mapa em tela cheia (29/10/2026). */
 export const INSTITUICAO_POR_EXTENSO = "Universidade Federal de Ciência e Inovação de Minas Gerais";

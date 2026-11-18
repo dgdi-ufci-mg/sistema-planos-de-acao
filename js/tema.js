@@ -10,7 +10,7 @@
  *
  * Paleta (desde 11/11/2026, pedido do responsável): além do modo (claro, escuro ou automático), o Sextante
  * tem a escolha da paleta, guardada à parte ("sextante.paleta") e aplicada pelo atributo data-paleta na raiz:
- * "ufcimg", a identidade visual da UFCI-MG (padrão), "original", a paleta verde-azulada de sempre, ou, desde
+ * "ufcimg", a identidade visual da UFCIMG (padrão), "original", a paleta verde-azulada de sempre, ou, desde
  * 12/11/2026, "neutro", "papel" e "alto-contraste". O Strata não
  * recebe as paletas por enquanto. A cor da barra do navegador acompanha a paleta e o modo.
  */

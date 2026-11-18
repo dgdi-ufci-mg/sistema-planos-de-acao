@@ -2,7 +2,7 @@
   "id": "/sistema-planos-de-acao/strata/",
   "name": "Strata",
   "short_name": "Strata",
-  "description": "Gestão da estratégia da UFCI-MG: o desdobramento do PEI/PDI até os Planos de Ação.",
+  "description": "Gestão da estratégia da UFCIMG: o desdobramento do PEI/PDI até os Planos de Ação.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",

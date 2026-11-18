@@ -11,7 +11,7 @@ import { visibilidadeDe, nomeDaVisibilidade } from "../papeis.js";
 import { programaDoEspaco } from "../estrategia.js";
 
 /** Explicação no alto da página (texto combinado com o responsável em 24/10/2026). */
-export const EXPLICACAO_CONSULTA = "Espaços de que você não participa, mas que os administradores abriram para consulta: os <b>públicos</b>, que qualquer pessoa vê, e os <b>institucionais</b>, que quem tem login na UFCI-MG vê. Os espaços restritos não aparecem aqui.";
+export const EXPLICACAO_CONSULTA = "Espaços de que você não participa, mas que os administradores abriram para consulta: os <b>públicos</b>, que qualquer pessoa vê, e os <b>institucionais</b>, que quem tem login na UFCIMG vê. Os espaços restritos não aparecem aqui.";
 
 /**
  * @param {{espacos: object[], comLogin: boolean, aoAbrir: (id: string) => any, catalogo?: object|null}} opcoes
