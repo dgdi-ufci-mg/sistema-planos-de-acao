@@ -417,6 +417,23 @@ export function criarStore(banco, opcoes = {}) {
    * Refaz os tons das pessoas do espaço depois de mudar quem é responsável (seção 4.1).
    * Grava só o campo `tons`, sem carimbo de alteração: é arrumação do sistema, não edição de alguém.
    */
+  /**
+   * Tira dos itens do checklist quem deixou de ser responsável pela tarefa (passo 3.7): quem cuida de um passo
+   * faz parte da tarefa. Item que fica sem ninguém perde a chave. Chamada depois de toda mudança que retira
+   * responsável da ação; não grava nada se nenhum item está fora da regra.
+   */
+  async function podarResponsaveisDoChecklist(espacoId, numero) {
+    const acao = (await banco.listarAcoes(espacoId)).find((a) => a.numero === numero);
+    const daTarefa = new Set(acao?.responsaveis ?? []);
+    if (!(acao?.checklist ?? []).some((i) => (i.responsaveis ?? []).some((r) => !daTarefa.has(r)))) return;
+    await banco.mudarChecklist(espacoId, numero, (itens) => itens.map((i) => {
+      if (!i.responsaveis) return i;
+      const { responsaveis: _antes, ...resto } = i;
+      const ficam = i.responsaveis.filter((r) => daTarefa.has(r));
+      return ficam.length ? { ...resto, responsaveis: ficam } : resto;
+    }), carimbo(), hist);
+  }
+
   async function arrumarTons(espacoId) {
     const [espaco, acoes, responsaveis] = await Promise.all([
       banco.lerEspaco(espacoId), banco.listarAcoes(espacoId), banco.listarResponsaveis(espacoId),
@@ -795,7 +812,7 @@ export function criarStore(banco, opcoes = {}) {
       conferirPosicao(campos);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
       await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario }, hist);
-      if ("responsaveis" in campos) await arrumarTons(espacoId);
+      if ("responsaveis" in campos) { await podarResponsaveisDoChecklist(espacoId, numero); await arrumarTons(espacoId); }
     },
 
     // --- listas da ação: item a item (seção 4.6) ---
@@ -807,6 +824,7 @@ export function criarStore(banco, opcoes = {}) {
     async retirarResponsavelDaAcao(espacoId, numero, responsavelId) {
       await exigir(espacoId, "atualizar", numero);
       await banco.retirarDaLista(espacoId, numero, "responsaveis", [responsavelId], carimbo(), hist);
+      await podarResponsaveisDoChecklist(espacoId, numero);
       await arrumarTons(espacoId);
     },
     // --- campos personalizados (passo 3.6; seções 4.1.14 e 16.8): catálogo do espaço e valores da ação, um a um ---
@@ -1002,6 +1020,47 @@ export function criarStore(banco, opcoes = {}) {
     async retirarItemDoChecklist(espacoId, numero, id) {
       await exigir(espacoId, "atualizar", numero);
       await banco.mudarChecklist(espacoId, numero, (lista) => lista.filter((i) => i.id !== id), carimbo(), hist);
+    },
+    /**
+     * Anda com um item na lista (reordenar): `para` é a posição de destino, de 0 ao último. O item que já está
+     * ali e os demais se ajustam; uma posição fora da lista leva o item ao começo ou ao fim.
+     */
+    async moverItemDoChecklist(espacoId, numero, id, para) {
+      await exigir(espacoId, "atualizar", numero);
+      await banco.mudarChecklist(espacoId, numero, (lista) => {
+        const de = lista.findIndex((i) => i.id === id);
+        if (de < 0) return lista;
+        const destino = Math.max(0, Math.min(lista.length - 1, Math.trunc(Number(para))));
+        if (!Number.isFinite(destino) || destino === de) return lista;
+        const nova = [...lista];
+        const [item] = nova.splice(de, 1);
+        nova.splice(destino, 0, item);
+        return nova;
+      }, carimbo(), hist);
+    },
+    /**
+     * Define quem cuida de um item do checklist (passo 3.7): uma lista de responsáveis, vazia para tirar todos.
+     * Só vale quem é responsável pela própria tarefa (e ativo no espaço); a lista fica na ordem da tarefa, para
+     * marcar e desmarcar não mudar a ordem nem gerar registro à toa.
+     */
+    async atribuirItemDoChecklist(espacoId, numero, id, responsaveis) {
+      await exigir(espacoId, "atualizar", numero);
+      const pedidos = new Set(responsaveis ?? []);
+      let lista = [];
+      if (pedidos.size) {
+        const acao = (await banco.listarAcoes(espacoId)).find((a) => a.numero === numero);
+        const ativos = new Set((await banco.listarResponsaveis(espacoId)).filter(ativo).map((r) => r.id));
+        for (const r of pedidos) {
+          if (!ativos.has(r)) throw new ErroDeDados("nao-encontrado", "Responsável não encontrado.");
+          if (!(acao?.responsaveis ?? []).includes(r)) throw new ErroDeDados("fora-da-tarefa", "Só quem é responsável pela tarefa pode cuidar de um item dela.");
+        }
+        lista = (acao.responsaveis ?? []).filter((r) => pedidos.has(r));
+      }
+      await banco.mudarChecklist(espacoId, numero, (itens) => itens.map((i) => {
+        if (i.id !== id) return i;
+        const { responsaveis: _antes, ...resto } = i;
+        return lista.length ? { ...resto, responsaveis: lista } : resto;
+      }), carimbo(), hist);
     },
     // --- comentários da ação (passo 2.9; seção 16.5): com autor e data; nunca apagados do banco ---
     /** Comentários da ação, do mais antigo ao mais novo, inclusive os apagados (a tela mostra só o aviso). */
@@ -1324,6 +1383,15 @@ export function criarStore(banco, opcoes = {}) {
       for (const a of (await banco.listarAcoes(espacoId)).filter((x) => ativa(x) && (x.responsaveis ?? []).includes(id))) {
         await banco.retirarDaLista(espacoId, a.numero, "responsaveis", [id], carimbo(), hist);
         if (substituto) await banco.acrescentarNaLista(espacoId, a.numero, "responsaveis", [substituto], carimbo(), hist);
+      }
+      /* nos itens de checklist, o substituto entra no lugar (já está na tarefa, abaixo), ou o item perde o responsável (passo 3.7) */
+      for (const a of (await banco.listarAcoes(espacoId)).filter((x) => (x.checklist ?? []).some((i) => (i.responsaveis ?? []).includes(id)))) {
+        await banco.mudarChecklist(espacoId, a.numero, (lista) => lista.map((i) => {
+          if (!(i.responsaveis ?? []).includes(id)) return i;
+          const { responsaveis: _fora, ...resto } = i;
+          const novos = [...new Set(i.responsaveis.flatMap((r) => (r !== id ? [r] : substituto ? [substituto] : [])))];
+          return novos.length ? { ...resto, responsaveis: novos } : resto;
+        }), carimbo(), hist);
       }
       await banco.alterarResponsavel(espacoId, id, { excluidoEm: agora(), excluidoPor: usuario, alteradoEm: agora(), alteradoPor: usuario });
       await arrumarTons(espacoId);
@@ -1838,6 +1906,7 @@ export function criarStore(banco, opcoes = {}) {
     "excluirAcao", "restaurarAcao", "excluirResponsavel", "restaurarResponsavel", "excluirEtapas", "excluirEspaco", "restaurarEspaco",
     "salvarRetrato", "importarAcoes", "restaurarCopia", "importarResponsaveis",
     "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist",
+    "moverItemDoChecklist", "atribuirItemDoChecklist",
     "criarEtiqueta", "alterarEtiqueta", "retirarEtiqueta", "acrescentarEtiquetaNaAcao", "retirarEtiquetaDaAcao", "etiquetarAcao",
     "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao", "priorizar",
     "criarCampoPersonalizado", "alterarCampoPersonalizado", "definirValorPersonalizado",

@@ -77,6 +77,8 @@ export const ICONES = Object.freeze({
   /** Ação anterior e seguinte, na janela da ação (05/11/2026). */
   acima: svg('<path d="m6 15 6-6 6 6"/>'),
   abaixo: svg('<path d="m6 9 6 6 6-6"/>'),
+  /** Alça de arrastar (checklist, 17/11/2026): seis pontos. */
+  alca: svg('<path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01" stroke-width="3"/>'),
   /** Menu lateral: três linhas iguais. */
   /** Mais opções (menu da coluna do quadro): três pontos. */
   opcoes: svg('<circle cx="5.5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18.5" cy="12" r="1.2"/>'),
