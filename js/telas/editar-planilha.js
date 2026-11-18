@@ -49,7 +49,7 @@ export function colunasDaPlanilha(d) {
     { chave: "numero", titulo: "Nº", largura: 3, fixa: true },
     d.usaCodigos && { chave: "codigo", titulo: "Código", largura: 6, fixa: true },
     { chave: "rotulo", titulo: termos(d.espaco).Acao, largura: 16, fixa: true, obrigatoria: true },
-    d.usaFases && { chave: "fase", titulo: "Fase", largura: 9 },
+    d.usaFases && { chave: "fase", titulo: "Fase", largura: 9, dica: "Vem da etapa: mude a etapa e a fase muda junto." },
     d.usaFases && { chave: "etapa", titulo: "Etapa", largura: 10 },
     campos.descricao !== false && { chave: "descricao", titulo: "Descrição", largura: 18 },
     campos.justificativa === true && { chave: "justificativa", titulo: "Justificativa", largura: 16 },
@@ -184,7 +184,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     /* papéis (passo 2.1): Leitor, sem papel, ou Usuário numa ação alheia do espaço fechado */
     if (d.perm && !d.perm.atualizar(acao)) return d.perm.papel === "usuario" ? "Espaço fechado: você atualiza só as ações em que é responsável." : "Você não pode alterar as ações deste espaço.";
     if (chave === "numero") return "O número é dado pelo sistema e não muda.";
-    if (chave === "fase") return "A fase vem da etapa: mude a etapa.";
+    if (chave === "fase") return "A fase vem da etapa: mude a etapa e a fase muda junto.";
     if (chave === "checklist") return "Itens feitos / total. Edite o checklist na janela da ação.";
     if (chave === "etiquetas") return "Edite as etiquetas na janela da ação.";
     if (chave === "documentos") return "Edite os documentos e links na janela da ação.";
@@ -212,8 +212,12 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     }
     const td = `<td${classes.length ? ` class="${classes.join(" ")}"` : ""}${estilo}${erro ? ` title="${esc(erro)}"` : ""}>`;
     if (coluna.chave === "etapa") {
-      return `${td}<select ${comum} data-original="${esc(v)}"><option value=""></option>${etapas().map((e) =>
-        `<option value="${esc(e.id)}"${e.id === v ? " selected" : ""}>${esc(e.nome)}</option>`).join("")}</select></td>`;
+      /* a lista vem agrupada por fase, para a escolha mostrar também a fase (18/11/2026) */
+      const opcao = (e) => `<option value="${esc(e.id)}"${e.id === v ? " selected" : ""}>${esc(e.nome)}</option>`;
+      const lista = d.usaFases
+        ? (d.espaco.estrutura ?? []).filter((f) => f.etapas.length).map((f) => `<optgroup label="${esc(f.nome)}">${f.etapas.map(opcao).join("")}</optgroup>`).join("")
+        : etapas().map(opcao).join("");
+      return `${td}<select ${comum} data-original="${esc(v)}"><option value=""></option>${lista}</select></td>`;
     }
     const tipo = ["naoAntesDe", "dataLimite", "concluidaEm"].includes(coluna.chave) ? ' type="date"' : ["o", "m", "p"].includes(coluna.chave) ? ' type="number" min="0" step="1"' : "";
     const dica = !acao && coluna.chave === "rotulo" ? ` placeholder="Nova ${termos(d.espaco).acao}: escreva o nome"` : "";
@@ -437,7 +441,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     const titulos = new Map(colunasDaPlanilha(d).map((c) => [c.chave, c.titulo]));
     const marca = (chaves, fim) => `<button type="button" class="marca-oculta${fim ? " fim" : ""}" data-mostrar-colunas="${chaves.join(",")}" aria-label="Mostrar ${chaves.length === 1 ? "a coluna escondida" : `as ${chaves.length} colunas escondidas`}: ${esc(chaves.map((k) => titulos.get(k)).join(", "))}" title="Mostrar ${chaves.length === 1 ? "a coluna escondida" : "as colunas escondidas"}: ${esc(chaves.map((k) => titulos.get(k)).join(", "))}"></button>`;
     const cabecalho = (c, j) => `<th scope="col" class="${[c.calculada && "calculada", c.inicioCalculados && "inicio-calculados", c.fixa && "fixa", c.ultimaFixa && "ultima-fixa"].filter(Boolean).join(" ")}"
-      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : ""}>${lado.antes.has(c.chave) ? marca(lado.antes.get(c.chave), false) : ""}${j === cols.length - 1 && lado.fim.length ? marca(lado.fim, true) : ""}<span class="titulo-coluna-planilha">${c.titulo}</span>${botaoFiltro(c, j)}<span class="redimensionar" data-redimensionar="${j}" title="Arraste para alargar ou estreitar; clique duas vezes para ajustar ao conteúdo" aria-hidden="true"></span></th>`;
+      ${c.fixa ? ` style="--esq:${esquerdas[j]}"` : ""}${c.calculada ? ' title="Calculado pelo sistema"' : c.dica ? ` title="${esc(c.dica)}"` : ""}>${lado.antes.has(c.chave) ? marca(lado.antes.get(c.chave), false) : ""}${j === cols.length - 1 && lado.fim.length ? marca(lado.fim, true) : ""}<span class="titulo-coluna-planilha">${c.titulo}</span>${botaoFiltro(c, j)}<span class="redimensionar" data-redimensionar="${j}" title="Arraste para alargar ou estreitar; clique duas vezes para ajustar ao conteúdo" aria-hidden="true"></span></th>`;
     let i = 0;
     const linhaHtml = (a) => { const n = i++; return `<tr data-numero="${a.numero}">${cols.map((c, j) => celulaHtml(a, c, n, j, esquerdas[j])).join("")}</tr>`; };
     const cabecaDeGrupo = (chave, nivel, nome, quantos) => `<tr class="planilha-grupo ${nivel}"><th colspan="${cols.length}" scope="rowgroup">
@@ -1084,7 +1088,14 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         if (texto && el.scrollWidth > el.clientWidth + 1) el.title = texto;
       }
     });
-    alvo.addEventListener("change", (e) => { if (e.target.dataset?.chave) gravarCelula(e.target); });
+    alvo.addEventListener("change", (e) => {
+      if (!e.target.dataset?.chave) return;
+      if (e.target.dataset.chave === "etapa") { // a fase da linha acompanha a etapa escolhida, antes mesmo de gravar
+        const fase = e.target.closest("tr")?.querySelector('[data-chave="fase"]');
+        if (fase) fase.textContent = e.target.selectedOptions[0]?.parentElement?.label ?? "";
+      }
+      gravarCelula(e.target);
+    });
     alvo.addEventListener("click", (e) => {
       const filtro = e.target.closest?.("[data-filtro-col]");
       if (filtro) { e.preventDefault(); return caixaAberta && caixaAberta.dataset.de === filtro.dataset.filtroCol ? fecharCaixa() : (abrirFiltro(filtro), caixaAberta.dataset.de = filtro.dataset.filtroCol); }

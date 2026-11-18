@@ -344,3 +344,28 @@ describe("Planilha: limpar a faixa com as linhas agrupadas por etapa (18/11/2026
     }
   });
 });
+
+describe("Planilha: lista de etapas agrupada por fase (18/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  test("a lista de etapas vem agrupada por fase, a fase da linha acompanha a etapa e o cabeçalho explica", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irParaVisualizacao(p, "planilha");
+    await p.waitForSelector(".planilha");
+    await p.click("[data-agrupar-planilha]");
+    const grupos = await p.locator('.planilha [data-linha="0"][data-chave="etapa"] optgroup').evaluateAll((gs) => gs.map((g) => g.label));
+    assert.ok(grupos.length >= 2, "uma lista por fase");
+    assert.match(await p.locator(".planilha th[scope=col]").filter({ hasText: "Fase" }).first().getAttribute("title"), /Vem da etapa/);
+    const seletor = p.locator('.planilha [data-linha="0"][data-chave="etapa"]');
+    const outraFase = await seletor.evaluate((s, atual) => {
+      const o = [...s.querySelectorAll("optgroup")].find((g) => g.label !== atual)?.querySelector("option");
+      return { valor: o.value, fase: o.parentElement.label };
+    }, await p.locator('.planilha [data-linha="0"][data-chave="fase"]').evaluate((e) => e.textContent));
+    await seletor.selectOption(outraFase.valor);
+    await p.waitForFunction((f) => document.querySelector('.planilha tr[data-numero] [data-chave="fase"]'), null);
+    const fases = await p.locator('.planilha tbody tr[data-numero] [data-chave="fase"]').evaluateAll((es) => es.map((e) => e.textContent));
+    assert.ok(fases.includes(outraFase.fase));
+  });
+});
