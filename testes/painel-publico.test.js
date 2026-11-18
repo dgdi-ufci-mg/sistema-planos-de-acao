@@ -68,6 +68,13 @@ describe("Painel público: o resumo", () => {
     assert.equal(a2.fase, "f2");
   });
 
+  it("ação contínua: antes do marco de início, Não liberada; depois, Contínua, em andamento (correção de 18/11/2026)", () => {
+    const linha = (numero, situacao) => ({ acao: { numero, rotulo: `Contínua ${numero}`, etapa: "t2", responsaveis: [] }, situacao, fluxo: situacao === "naoLiberada" ? "naoLiberada" : "inicial", atrasada: false, continua: true, conclusao: "2027-01-10" });
+    const r = montarResumo({ espaco: espacoBase, linhas: [linha(1, "naoLiberada"), linha(2, "liberada")], responsaveis });
+    assert.deepEqual(r.acoes.map((a) => [a.situacao, a.rotulo]), [["naoLiberada", "Não liberada"], ["continua", "Contínua"]]);
+    assert.deepEqual(r.fases.map((f) => [f.id, f.total, f.emAndamento]), [["f2", 2, 1]], "só a que já começou conta como em andamento");
+  });
+
   it("fases: contagem por fase, na ordem do espaço; sem fases ligadas, nenhuma", () => {
     const r = montarResumo({ espaco: espacoBase, linhas: linhasDe(espacoBase), responsaveis });
     assert.deepEqual(r.fases.map((f) => [f.id, f.total, f.concluidas, f.atrasadas]), [["f1", 1, 1, 0], ["f2", 2, 0, 1]]);

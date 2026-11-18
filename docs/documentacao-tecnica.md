@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 18/11/2026 (versão 327 da página)
+**Última atualização deste documento:** 18/11/2026 (versão 327.1 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -966,7 +966,7 @@ Passo 2.6 (seção 16.7). Duas coleções dentro do espaço, só no **Plano de A
 
 **Responsáveis como o público vê** (escolha do administrador; padrão **só a área**, pela LGPD; decisão do responsável, 18/11/2026): unidade, pelo nome; pessoa, com "Nome da pessoa e área", como "Nome · setor" (ou só o nome, sem setor); pessoa, com "Só a área", pelo setor, e, sem setor, a pessoa não aparece.
 
-**Situação simplificada da ação:** `concluida`; `atrasada` (carimbo da seção 6.2); `continua` (seção 5.9); `liberada` (pode começar ou já começou, inclusive nas situações personalizadas); `naoLiberada`. O **rótulo** é o mesmo texto que o Sextante mostra (inclusive o nome da situação personalizada, como "Em andamento"), para o painel e o sistema falarem igual. A data é a conclusão registrada, na concluída, ou a conclusão prevista, nas demais (a mesma da Lista, seção 8.3).
+**Situação simplificada da ação:** `concluida`; `atrasada` (carimbo da seção 6.2); `continua` (seção 5.9), só depois que o marco de início chega; `liberada` (pode começar ou já começou, inclusive nas situações personalizadas); `naoLiberada`, inclusive a contínua cujo marco de início ainda não chegou (correção de 18/11/2026: antes, toda contínua contava como em andamento, e o painel mostrava mais ações liberadas do que havia). O **rótulo** é o mesmo texto que o Sextante mostra (inclusive o nome da situação personalizada, como "Em andamento"), para o painel e o sistema falarem igual. A data é a conclusão registrada, na concluída, ou a conclusão prevista, nas demais (a mesma da Lista, seção 8.3).
 
 <!-- dicionario: configuracaoDoPainel -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
@@ -2910,3 +2910,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 325 | Planilha parecida com o Excel, lote 2 (pedido do responsável, 18/11/2026): escolher várias células (Shift+clique, arrastar, Shift+setas), copiar, recortar, colar e limpar a faixa, Ctrl+D para repetir para baixo, e botão direito na célula (Copiar, Colar, Limpar conteúdo, Abrir a ação, Excluir a ação com confirmação). Seção 8.3 (planilha do Sextante). Testes em `testes/navegador/planilha.test.mjs`. |
 | 326 | Minhas tarefas: tocar numa tarefa abre a janela por cima da lista, sem ir ao espaço de origem (pedido do responsável, 18/11/2026). O nome do espaço no cabeçalho da janela, e "Abrir no espaço" no menu "…", abrem o espaço com a ação; as setas seguem a ordem da lista, de um espaço a outro; ao fechar, a lista é refeita se algo mudou. Novo `js/telas/janela-fora-do-espaco.js`; a janela da ação (`js/telas/janela-acao.js`) aceita vizinha de outro espaço (`trocarDeEspaco`) e o link do espaço (`aoAbrirEspaco`). Seções 3.1, 8 ("Minhas tarefas") e 10. Testes em `testes/navegador/minhas-tarefas.test.mjs`. |
 | 327 | Painel público do Plano de Ação ou do Projeto, parte 1 (pedido e decisões do responsável, 18/11/2026; seções 3.6, 4.13 e 8.8): cópia-resumo em `paineis/{código}`, lida por qualquer pessoa; configuração em "Configurar este espaço" (ligar, endereço, novo endereço, apresentação, responsáveis por área ou por nome, prévia); página `painel/?p=<código>`; atualização pelo navegador de quem é Administrador ou Usuário; regras novas no `firestore.rules`, a publicar no console. |
+| 327.1 | Painel público (relato do responsável, 18/11/2026; seção 4.13): a ação contínua cujo marco de início ainda não chegou passa a contar como Não liberada, como no Sextante; antes, contava como em andamento, e o "Andamento das ações por fase" mostrava mais ações liberadas do que havia. |
