@@ -1,8 +1,8 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 18/11/2026 (versão 327.1 da página)
+**Última atualização deste documento:** 18/11/2026 (versão 328 da página)
 
-Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
+Sistema da DGDI da UFCIMG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
 **Sumário:** 1. Visão geral · 2. Princípios · 3. Arquitetura · 4. Modelo de dados (dicionário de dados) · 5. Regras de cálculo · 6. Situações e carimbo · 7. Indicadores por ação · 8. Interface · 9. O que saiu da versão 1 · 10. Decisões tomadas · 11. Migração dos dados da versão 1 · 12. Plano de trabalho · 13. Pendências e ideias futuras · 14. Pontos para reavaliação · 15. Fundamentos matemáticos dos indicadores · 16. Ampliação do escopo · 17. Histórico de versões da página
 
@@ -12,7 +12,7 @@ Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-
 
 ### 1.1 Objetivo
 
-Planejar e acompanhar planos de ação institucionais da DGDI (Diretoria de Governança e Desenvolvimento Institucional) da UFCI-MG. Cada plano é um **espaço de planejamento**, com ações ligadas por dependências. O sistema calcula:
+Planejar e acompanhar planos de ação institucionais da DGDI (Diretoria de Governança e Desenvolvimento Institucional) da UFCIMG. Cada plano é um **espaço de planejamento**, com ações ligadas por dependências. O sistema calcula:
 
 - quando o espaço deve terminar e quais ações não podem atrasar (caminho crítico, em dias úteis);
 - a chance de cumprir o prazo final e as datas prováveis de conclusão (simulação de Monte Carlo com a distribuição beta-PERT);
@@ -22,7 +22,7 @@ E mostra o espaço em sete visualizações: lista, quadro, rede, cronograma, pla
 
 ### 1.2 Natureza: protótipo
 
-O sistema é um **protótipo, uma prova de conceito** (decisão do responsável, 23/10/2026). Ele não vai para o Data Center da UFCI-MG: o sistema definitivo será desenvolvido do zero pela equipe de TI da instituição, com as linguagens e ferramentas dela e com a participação dela desde o início. O protótipo pode ser usado e testado fora da instituição e serve de **modelo conceitual**: regras, cálculos, modelo de dados, telas e decisões descritos aqui valem como requisitos; o código não é reaproveitado. Por isso, esta documentação deve permitir reconstruir o comportamento do sistema sem ler o código. Onde o texto e o código divergirem, a divergência é um defeito a corrigir, em um ou no outro.
+O sistema é um **protótipo, uma prova de conceito** (decisão do responsável, 23/10/2026). Ele não vai para o Data Center da UFCIMG: o sistema definitivo será desenvolvido do zero pela equipe de TI da instituição, com as linguagens e ferramentas dela e com a participação dela desde o início. O protótipo pode ser usado e testado fora da instituição e serve de **modelo conceitual**: regras, cálculos, modelo de dados, telas e decisões descritos aqui valem como requisitos; o código não é reaproveitado. Por isso, esta documentação deve permitir reconstruir o comportamento do sistema sem ler o código. Onde o texto e o código divergirem, a divergência é um defeito a corrigir, em um ou no outro.
 
 ### 1.3 Público
 
@@ -162,7 +162,7 @@ O sistema evolui na ordem da seção 12. Desde 27/10/2026 (decisão do responsá
 
 ### 3.4 Preparação para a troca de banco
 
-*Revisto em 23/10/2026:* o protótipo não irá para o servidor da UFCI-MG (seção 1.2). O que segue continua valendo como orientação ao sistema definitivo: separar o domínio do banco facilita reproduzir as regras sobre o PostgreSQL ou outro banco que a equipe de TI escolher.
+*Revisto em 23/10/2026:* o protótipo não irá para o servidor da UFCIMG (seção 1.2). O que segue continua valendo como orientação ao sistema definitivo: separar o domínio do banco facilita reproduzir as regras sobre o PostgreSQL ou outro banco que a equipe de TI escolher.
 
 - **O `Store` fala a língua do sistema, não a do banco.** Oferece operações com nomes do domínio, como `criarAcao`, `alterarCampo`, `acrescentarResponsavel`, `retirarResponsavel`, `registrarEstimativa`, `concluirAcao`, `salvarRetrato` e `acompanharPlano`. Nenhum termo do Firestore (coleção, documento, `onSnapshot`, `arrayUnion`) aparece fora de `js/banco/firestore.js`.
 - **Cada banco é um arquivo** em `js/banco/`, que executa as mesmas operações. Hoje: Firestore e memória local. No sistema definitivo, o banco escolhido pela equipe de TI.
@@ -317,7 +317,7 @@ Saíram da versão 1: `dist` (escolha de distribuição), `statusDate` (a data d
 | `nome` | texto | sim | Nome do documento | `Plano aprovado` |
 | `data` | data | não | Data do documento | `2026-08-01` |
 | `identificacao` | texto | não | Número no sistema de protocolo da instituição (SIPAC/Protocolo) | `23062.001234/2026-11` |
-| `link` | texto (endereço web) | não | Endereço para abrir o documento. O envio do arquivo fica para o servidor da UFCI-MG (passo 4.3) | `https://…` |
+| `link` | texto (endereço web) | não | Endereço para abrir o documento. O envio do arquivo fica para o servidor da UFCIMG (passo 4.3) | `https://…` |
 
 #### 4.1.3 Fase e etapa: cada item de `estrutura` e de `etapas`
 
@@ -642,7 +642,7 @@ O retrato é guardado em duas partes: o cabeçalho, abaixo, e um registro por a�
 | `entregas` | lista de entrega (4.12) | sim | Cópia das entregas ativas do Plano de Ação naquele momento (passo 2.6); vazia no Projeto | |
 | `alcances` | lista de registro de alcance (4.12) | sim | Cópia dos registros de alcance naquele momento (passo 2.6); vazia no Projeto | |
 
-Os retratos **automáticos não podem ser excluídos** à mão, para o histórico usado no Data Lakehouse não ter buracos. O retrato automático depende de um programa no servidor; chega com o servidor da UFCI-MG (passo 4.4). No Firebase gratuito, só há retratos manuais.
+Os retratos **automáticos não podem ser excluídos** à mão, para o histórico usado no Data Lakehouse não ter buracos. O retrato automático depende de um programa no servidor; chega com o servidor da UFCIMG (passo 4.4). No Firebase gratuito, só há retratos manuais.
 
 Se um dia for preciso apagar algum texto de um retrato por exigência legal, isso será tratado caso a caso pela equipe de TI, fora do sistema (decisão de 20/10/2026: situação extremamente rara, que não justifica uma função própria).
 
@@ -756,7 +756,7 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 
 ### 4.9 Onde cada entidade é guardada
 
-| Entidade | Firebase (versão 2, segundo projeto) | PostgreSQL (servidor da UFCI-MG, proposta) |
+| Entidade | Firebase (versão 2, segundo projeto) | PostgreSQL (servidor da UFCIMG, proposta) |
 |---|---|---|
 | Espaço | `espacos/{id}` | tabela `espaco` |
 | Data excluída, documento | listas dentro do espaço | tabelas `espaco_data_excluida`, `espaco_documento` |
@@ -950,7 +950,7 @@ Passo 2.6 (seção 16.7). Duas coleções dentro do espaço, só no **Plano de A
 |---|---|---|---|---|
 | `descricao` | texto | sim | O que a evidência mostra | `Portaria de publicação` |
 | `identificacao` | texto | não | Número no SIPAC/Protocolo. Obrigatório quando não há link | `23062.000001/2026-10` |
-| `link` | texto (endereço web) | não | Começa com `https://` ou `http://`. Obrigatório quando não há identificação. O envio de arquivo vem com o servidor da UFCI-MG (passo 4.3) | |
+| `link` | texto (endereço web) | não | Começa com `https://` ou `http://`. Obrigatório quando não há identificação. O envio de arquivo vem com o servidor da UFCIMG (passo 4.3) | |
 
 ### 4.13 Painel público do Plano de Ação ou do Projeto
 
@@ -1528,7 +1528,7 @@ Os painéis abrem sob o menu, com a transição padrão. Os menus do centro most
 
 **Visibilidade** (passo 2.2; seção 16.3):
 - **Barra lateral:** só os espaços de que a pessoa participa, e o exemplo. Sem login, a barra diz "Entre com seu e-mail e senha para ver os seus espaços"; com login e nenhum espaço, "Nenhum espaço seu ainda".
-- **Espaços abertos à consulta:** item da barra lateral, com o número de espaços. Desde 27/10/2026 fica no grupo recolhível **Mais**, como o primeiro item (decisão do responsável: logo abaixo de "Novo espaço", parecia fazer parte da lista de espaços e deixava a barra confusa); antes, ficava logo abaixo de "Novo espaço". Continua também na busca (Ctrl+K). Abre um painel com a explicação "Espaços de que você não participa, mas que os administradores abriram para consulta: os públicos, que qualquer pessoa vê, e os institucionais, que quem tem login na UFCI-MG vê. Os espaços restritos não aparecem aqui."; os espaços vêm agrupados por tipo, com a visibilidade e o Programa; com mais de seis, há busca pelo nome ou pelo Programa. Sem login, uma nota diz que aparecem só os públicos.
+- **Espaços abertos à consulta:** item da barra lateral, com o número de espaços. Desde 27/10/2026 fica no grupo recolhível **Mais**, como o primeiro item (decisão do responsável: logo abaixo de "Novo espaço", parecia fazer parte da lista de espaços e deixava a barra confusa); antes, ficava logo abaixo de "Novo espaço". Continua também na busca (Ctrl+K). Abre um painel com a explicação "Espaços de que você não participa, mas que os administradores abriram para consulta: os públicos, que qualquer pessoa vê, e os institucionais, que quem tem login na UFCIMG vê. Os espaços restritos não aparecem aqui."; os espaços vêm agrupados por tipo, com a visibilidade e o Programa; com mais de seis, há busca pelo nome ou pelo Programa. Sem login, uma nota diz que aparecem só os públicos.
 - **Sem acesso:** quem chega por link a um espaço restrito de que não participa (ou a um institucional, sem login) vê "Espaço restrito" (ou "Espaço institucional"), com a explicação de como participar, "Entrar" (sem login) e "Ir para o início". O sistema esquece esse espaço como "último aberto".
 - **Configurar este espaço > Acesso ao espaço**, para o administrador: "Quem consulta", com Pública, Institucional e Restrita (grava ao escolher), antes de "Quem atualiza as ações".
 - **Cópia de segurança:** o aviso diz quantos espaços restritos ficaram de fora.
@@ -2143,7 +2143,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
 - Fica para o sistema definitivo: integração automática com o GitHub ou outro sistema (commits e branches na tarefa, como no Redmine); no protótipo, o campo do tipo link cobre o essencial.
 3.7. ✔ Checklist: reordenar e responsáveis do item (17/11/2026; seções 4.2.2 e 8; decisões provisórias na seção 10). Feito em branch (`checklist-reordenar-responsavel`), para teste do responsável antes de ir à `main`. `moverItemDoChecklist` e `atribuirItemDoChecklist` no `Store`; campo `responsaveis` (lista, só de quem é da tarefa) no item; quem sai da tarefa ou é excluído sai dos itens; histórico com as duas mudanças; na janela da ação, círculos dos responsáveis com escolha em caixas de marcar, setas de subir e descer e, com mouse, alça de arrastar em cada item. Testes em `testes/checklist.test.js`.
 
-### Fase 4: passagem do protótipo à equipe de TI da UFCI-MG
+### Fase 4: passagem do protótipo à equipe de TI da UFCIMG
 
 *Revista em 23/10/2026 (decisão do responsável):* o protótipo não vai para o servidor da instituição (veja "Natureza do sistema", no alto). Os antigos passos desta fase (PostgreSQL e programa do servidor; login institucional pela Identificação Única; envio de arquivos dos documentos; retratos automáticos; carga para o Data Lakehouse por Apache Spark ou Apache Hop) deixam de ser passos do protótipo e passam a ser **requisitos do sistema definitivo**, a combinar com a equipe de TI. Onde este texto citar passos 4.1 a 4.5 antigos (IU, unidades oficiais, PostgreSQL, envio de arquivos, retratos automáticos, Data Lakehouse), leia "sistema definitivo". Conteúdo aprovado pelo responsável em 23/10/2026:
 
@@ -2195,7 +2195,7 @@ Aprovada pelo responsável em 19/10/2026, para execução um passo por vez, com 
   2. **Sugestão de estimativa:** o sistema propõe os três pontos já corrigidos pela razão entre prazo real e estimado, observada em ações semelhantes (mesma equipe, responsável ou tipo de ação). Quando houver poucos dados de um grupo, usa a média geral e se aproxima do grupo conforme os dados aumentam (estimativa bayesiana hierárquica).
   - **Dados necessários:** as estimativas originais e as datas reais de liberação e conclusão. O histórico de estimativas da ação (seção 4.3) já guarda a estimativa original e todas as revisões.
   - Referências: KAHNEMAN, D.; TVERSKY, A. Intuitive prediction: biases and corrective procedures (1979); LOVALLO, D.; KAHNEMAN, D. Delusions of success. *Harvard Business Review* (2003); FLYVBJERG, B. From Nobel Prize to project management: getting risks right. *Project Management Journal* (2006); KAHNEMAN, D. *Rápido e devagar* (2011).
-- **Aplicativo para celular, com acesso restrito à instituição.** Objetivo: distribuição gratuita, com uso só por pessoas da UFCI-MG. Proposta em etapas:
+- **Aplicativo para celular, com acesso restrito à instituição.** Objetivo: distribuição gratuita, com uso só por pessoas da UFCIMG. Proposta em etapas:
   1. ✔ **Primeiro, aplicativo instalável pelo navegador** (feito em 24/10/2026, a pedido do responsável; seção 8, "Instalar como aplicativo") (*Termo técnico: PWA, progressive web app*): manifesto e ícones para instalar o site na tela inicial do Android e do iPhone, sem lojas, sem custo e sem revisão da Apple ou do Google.
   2. **Restrição pelo login, não pela loja.** Mesmo a distribuição "não listada" da Apple deixa o app disponível para quem tiver o link. O controle de acesso fica no Firebase: mudar o `firestore.rules` para exigir login também na leitura (hoje pública, seção 3.6) e, se desejado, aceitar só e-mails do domínio institucional.
   3. **Lojas, se necessárias:** empacotar o site (por exemplo, com o Capacitor). **iPhone:** distribuição não listada, que exige aprovação na revisão da Apple, conta de teste para os revisores e funções além de um site embrulhado. **Android:** publicação comum na Play Store, com login obrigatório; a opção "privada" exige celulares gerenciados pela instituição.
@@ -2344,7 +2344,7 @@ Decisões acordadas com o responsável em 19/10/2026. A fase em que cada uma ent
 
 **Nomes na tela (decisão de 20/10/2026):** cada tipo é chamado pelo próprio nome, para não se confundir com o "Plano de Entregas" e o "Plano de Trabalho" do PGD. **Palavra geral: Espaço de Planejamento** (decisão de 20/10/2026), o conjunto que reúne um Plano de Ação, um Projeto ou um Quadro de tarefas. Na fala do dia a dia, "espaço"; na tela, o nome completo sempre que couber, e "Espaço" nas telas estreitas. Exemplos: "Meus espaços"; "Novo espaço de planejamento: Plano de Ação, Projeto ou Quadro de tarefas". O qualificativo "de Planejamento" afasta o sentido físico e as colisões com outros "espaços", como os do Google Chat. Foram descartados: Espaço (colide com o PGD), Projeto (errado para o quadro), Painel (já significa *dashboard*), Rota (não combina com o quadro de tarefas, de destinos difusos) e outros. Nesta documentação, o conjunto é sempre chamado de "espaço"; no código e no banco, `espaco`. Na criação, escolhe-se o tipo, com explicação clara de cada um na tela:
 
-1. **Plano de Ação:** só os estrategicamente formalizados, derivados do PEI/PDI. Mantém o sentido institucional exato. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano de Ação; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCI-MG.
+1. **Plano de Ação:** só os estrategicamente formalizados, derivados do PEI/PDI. Mantém o sentido institucional exato. Exige escolher o Programa que o prevê, num catálogo (Objetivo Estratégico → Objetivo de Desenvolvimento → Política → Portfólio, opcional → Programa → Plano de Ação; cadeia confirmada pelo responsável), e informar o documento que o aprovou: a identificação no SIPAC/Protocolo e, opcionalmente, o link. Enviar o arquivo só será possível no servidor da UFCIMG.
 2. **Projeto:** os de propósito geral; mesmo motor do tipo 1, sem vínculo obrigatório ao catálogo.
 3. **Quadro de tarefas:** gestão de tarefas no estilo Trello, Planner e Todoist. Sem dependências nem previsões. Experiência a mais simples e fluida possível. Pode ser **individual** (uma pessoa organiza as próprias tarefas) e ser compartilhado depois, quando alguém chega à equipe: é só um espaço restrito em que o criador convida outras pessoas (papéis e visibilidade, seção 16.3). O nome era "Quadro de equipe" até 21/10/2026; mudou porque "de equipe" excluía o uso individual. **Revisto em 27/10/2026** (decisão do responsável, como no Trello): uma visualização só, o Quadro; colunas todas iguais e livres, sem a coluna Concluídas; a conclusão é uma **caixinha** que registra o momento da marcação, e não a data em que o trabalho terminou, que não é conhecida (seção 8, "Quadro de tarefas"). Um quarto tipo, **Lista de tarefas**, com a visualização Lista e a mesma caixinha, e a troca entre os dois tipos estão no plano de trabalho (passos 3.4 e 3.5).
 
@@ -2382,7 +2382,7 @@ O carimbo **Atrasada** continua independente das situações.
 
 **Papéis e espaço aberto ou fechado: feitos no passo 2.1; visibilidade, no passo 2.2; encerrar e reabrir, último administrador, Administrador do Sistema e espaço órfão, no passo 2.3** (24/10/2026; seções 3.6, 4.1.10 a 4.1.12 e 12). As exigências sobre as entregas ao encerrar o Plano de Ação entraram no passo 2.6 (seções 4.12 e 16.7).
 
-- **Login institucional** (Identificação Única) quando houver o servidor da UFCI-MG. Todo usuário institucional pode criar espaços e é administrador dos espaços que cria.
+- **Login institucional** (Identificação Única) quando houver o servidor da UFCIMG. Todo usuário institucional pode criar espaços e é administrador dos espaços que cria.
 - **Papéis por espaço:** Administrador do espaço, Usuário do espaço, Leitor. Sem papel no espaço, a pessoa vê o espaço só se a visibilidade permitir.
 - **Responsáveis sem login** continuam existindo: pessoa, equipe ou unidade.
 - **Administrador do Sistema:** sem passe livre. Acessa as telas de administração e, nos espaços, tem os mesmos papéis de qualquer usuário. Única exceção: nomear um novo administrador para um espaço órfão, com registro de quem fez e quando.
@@ -2447,7 +2447,7 @@ Pedido do responsável em 19/10/2026; detalhado em 20/10/2026.
 - **Metas numéricas:** a situação também é escolhida pelo administrador; o valor alcançado aparece ao lado, como barra. Se os dois não combinarem (por exemplo, "Alcançada" com valor abaixo da meta), o sistema avisa antes de gravar.
 - **Entregas que atravessam espaços (caminho A, decisão de 20/10/2026):** a entrega pertence a um espaço, que responde pelo seu período. Ao criar o espaço seguinte, é possível "continuar" uma entrega do anterior: ela é trazida para o novo espaço com uma ligação "continua a entrega X". A cadeia de ligações mostra a trajetória completa ao painel do Programa e ao Data Lakehouse. Foi descartado o caminho B (entrega independente, ligada a vários espaços), pela dificuldade de definir quem a administra, onde se registra o alcance e como conciliar visibilidades diferentes.
 - **Registro do alcance:** feito pelo administrador do espaço, numa tela própria. Cada registro tem data, valor alcançado (ou sim/não), descrição e **pelo menos uma evidência**. Os registros se acumulam como histórico (um registro novo não apaga o anterior); o mais recente é o alcance atual.
-- **Evidência:** descrição obrigatória e, pelo menos, um entre link ou arquivo. O envio de arquivo, o ideal, vem com o servidor da UFCI-MG (passo 4.3); até lá, link e identificação no SIPAC/Protocolo.
+- **Evidência:** descrição obrigatória e, pelo menos, um entre link ou arquivo. O envio de arquivo, o ideal, vem com o servidor da UFCIMG (passo 4.3); até lá, link e identificação no SIPAC/Protocolo.
 - **Quem registrou × quem realizou:** quem registrou é o usuário logado, gravado automaticamente. Quem realizou é uma lista livre de responsáveis (pessoas, equipes ou unidades, seção 4.5), sem limite de tamanho.
 - **Sem validação por terceiros:** o registro é uma declaração do administrador do espaço. A confiabilidade vem da evidência, aberta a quem quiser conferir, e do histórico, que ninguém altera nem apaga (seção 16.4).
 - **Ligação com as ações:** opcional e discreta. Na janela da ação, um campo "Entrega do Plano de Ação", escondido sob "Mais opções", como os atributos avançados dos cartões do Trello.
@@ -2483,7 +2483,7 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 1 | Primeira versão: CPM, PERT, Monte Carlo, Gantt, linha de base, valor agregado, importação TSV e Mermaid, base compartilhada |
 | 2 | Setas de dependência no Gantt |
 | 3 | Paleta do Relatório de Gestão |
-| 4–5 | Nome "Sistema de Gerenciamento de Planos de Ação" e identificação da UFCI-MG |
+| 4–5 | Nome "Sistema de Gerenciamento de Planos de Ação" e identificação da UFCIMG |
 | 6 | Linguagem simples, termos técnicos em itálico e aba "Entenda os termos" |
 | 7 | Legenda do índice de criticidade esclarecida; ações 100% exibidas como concluídas sem data de status |
 | 8 | Índice de criticidade retirado do Gantt |
@@ -2672,7 +2672,7 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 116.1 | Versão 2: ajuste da planilha, a pedido do responsável. A ordem passa a começar por Nº e Ação (o rótulo, com nome de coluna mudado só na planilha), seguidos de Fase, Etapa e demais; ficam parados à esquerda só Nº, Código e Ação, em qualquer largura de tela. Sem mudança na versão atual |
 | 117 | Versão 2: a palavra "rótulo" sai da interface, a pedido do responsável. Nos títulos de coluna, "Ação"; nos campos, mensagens e histórico, "Nome da ação" (por exemplo, "Mudou o nome da ação de … para …"). O campo no banco continua `rotulo`, e a importação já aceitava o título "Ação". Sem mudança na versão atual |
 | 118 | Versão 2: ajustes da planilha aprovados pelo responsável. Setas, Enter e Shift+Enter andam entre as células (num texto, ← e → só saem com o cursor na ponta; Alt+↓ continua abrindo a lista da etapa); data vazia sem a máscara até receber o cursor; células bloqueadas mais escuras que as calculadas, visíveis também no tema claro; explicação do alto reduzida a uma linha, com "Mais dicas"; a grade vai até o fim da tela. Correção: cada gravação redesenhava a grade e a rolagem voltava ao começo; agora a posição é mantida. Sem mudança na versão atual |
-| 119 | Decisões do responsável, só em documentação: o sistema passa a ser tratado como protótipo (prova de conceito e modelo conceitual para o sistema definitivo, a ser desenvolvido do zero pela equipe de TI da UFCI-MG), registrado no AGENTS.md e na especificação; fase 4 revista (passagem à equipe de TI, com os recursos institucionais como requisitos do sistema definitivo); decisões da execução em lote aprovadas; barra do topo em três grupos aprovada; migração da versão 1 cancelada, com descarte dos dados, e a versão 2 indo para a raiz com o banco `sextante-v2`; manual do usuário parado; piloto detalhado. Sem mudança no código |
+| 119 | Decisões do responsável, só em documentação: o sistema passa a ser tratado como protótipo (prova de conceito e modelo conceitual para o sistema definitivo, a ser desenvolvido do zero pela equipe de TI da UFCIMG), registrado no AGENTS.md e na especificação; fase 4 revista (passagem à equipe de TI, com os recursos institucionais como requisitos do sistema definitivo); decisões da execução em lote aprovadas; barra do topo em três grupos aprovada; migração da versão 1 cancelada, com descarte dos dados, e a versão 2 indo para a raiz com o banco `sextante-v2`; manual do usuário parado; piloto detalhado. Sem mudança no código |
 | 120 | Versão 2: com a barra lateral recolhida, no computador, o nome do espaço vai para o alto do conteúdo e o canto esquerdo da barra do topo fica vazio; um puxador na borda esquerda abre a barra lateral, e Ctrl+B (⌘B) abre e recolhe. Correção: na rede e na planilha, a folga de baixo da página fazia a tela rolar um pouco e esconder o alto sob a barra do topo. Sem mudança na versão atual |
 | 121 | **Troca (passo 1.20).** A versão 2 passa a ser o sistema, na raiz do site, com o banco `sextante-v2`; os dados da versão 1 são descartados e `/v2/` redireciona para a raiz. Esta documentação é refeita a partir da especificação da reescrita (seções 2 a 16, com a mesma numeração), do rascunho e da documentação da versão 1 (histórico e ideias futuras); a especificação e o rascunho são apagados. O teste do dicionário passa a ler a seção 4 deste arquivo. O programa de migração sai. O teste de comparação usa uma cópia congelada da versão 1 |
 | 122 | Passo 2.4a: tipos de espaço. Plano de Ação ou Projeto na criação e em "Configurar este espaço"; no Plano de Ação, o Programa do PEI/PDI (texto livre até o catálogo) e o documento de aprovação; menu lateral agrupado por tipo. Campos novos `tipo`, `programa` e `aprovacao` no dicionário de dados (4.1 e 4.1.6). Os espaços existentes, como a PI², valem como Projeto. Passo 2.4 dividido em 2.4a e 2.4b; definição do cronograma aberto registrada na seção 16.1 |
@@ -2885,7 +2885,7 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 308 | Exibir reorganizado (pedido do responsável, 12/11/2026; seção 8, barra do topo): indicador no alto, depois colunas, identificador e mostrar até; escolhas curtas numa linha de botões lado a lado; dias ou data logo abaixo de "Tempo restante"; sai a caixa travada "Nome e situação". Correção: na Rede e no Cronograma, "Legenda dos símbolos" não fazia nada; agora liga e desliga a legenda própria de cada um, ligada de início. Testes em `testes/navegador/indicador-exibir.test.mjs`. |
 | 309 | Chaves de ligar e desligar no lugar das caixinhas nos menus Exibir e Classificar e filtrar (pedido do responsável, 13/11/2026; seção 8, barra do topo), com a regra de uso de cada tipo de controle. Testes em `testes/navegador/indicador-exibir.test.mjs`. |
 | 310 | Painel único "Filtros e exibição" no computador (pedido do responsável, 13/11/2026; seção 8, barra do topo): um botão no lugar de "Classificar e filtrar" e "Exibir", abrindo um painel largo por cima do conteúdo com Filtrar, Classificar e Exibir lado a lado; em janelas estreitas, Exibir embaixo. Novo teste de navegador `testes/navegador/painel-unico.test.mjs`; os demais testes passam a abrir o painel. |
-| 311 | Temas à escolha no Sextante (pedido do responsável, 11 a 13/11/2026; testados no ramo `claude/tema-ufcimg` e aprovados pelo responsável): **Tema** (paleta) separado do **Modo** claro/escuro, no menu da conta e, sem login, no "Mais" da barra lateral; temas UFCIMG (padrão, identidade visual da UFCI-MG, com destaque marinho no claro), Original, Neutro, Papel e Alto contraste, todos no molde completo do tema original; cores próprias para "com folga" (`--folga`) e para a ação liberada (`--liberada`, verde em todos os temas), separadas da cor dos botões (seção 8.0). Strata sem temas. Escolha guardada no aparelho. Sem mudança no banco |
+| 311 | Temas à escolha no Sextante (pedido do responsável, 11 a 13/11/2026; testados no ramo `claude/tema-ufcimg` e aprovados pelo responsável): **Tema** (paleta) separado do **Modo** claro/escuro, no menu da conta e, sem login, no "Mais" da barra lateral; temas UFCIMG (padrão, identidade visual da UFCIMG, com destaque marinho no claro), Original, Neutro, Papel e Alto contraste, todos no molde completo do tema original; cores próprias para "com folga" (`--folga`) e para a ação liberada (`--liberada`, verde em todos os temas), separadas da cor dos botões (seção 8.0). Strata sem temas. Escolha guardada no aparelho. Sem mudança no banco |
 | 312 | Rede: a régua com os nomes das fases acompanha a altura da barra do topo (defeito relatado pelo responsável, 13/11/2026; seção 8.4). Causa: a posição era medida só ao abrir a Rede; mostrar o nome do espaço depois de escondido deixava os nomes das fases atrás da barra, escondê-lo deixava um vão grande, e estreitar a janela até o layout de celular também deixava o vão. Agora um observador de tamanho refaz a posição. Teste de navegador novo em `rede-navegacao.test.mjs`. |
 | 313 | Barra do topo do Quadro e da Lista de tarefas no esqueleto da barra dos planos (decisão do responsável, 13/11/2026; seção 8, barra do topo; seção 10): uma linha com o nome à esquerda (fora do alto do conteúdo) e, à direita, "Filtros e exibição", quem participa, as atrasadas e "Nova tarefa"; na Lista, a barra acompanha a coluna de 800 px; nome editável com um clique; círculos de quem participa (com mais de uma pessoa) abrindo a configuração nos Responsáveis (`abrirConfiguracao` aceita `secao`); botão direito para esconder o nome também aqui. Novos testes de navegador em `testes/navegador/barra-do-topo.test.mjs`; o da coluna de 800 px da Lista mede o nome na barra. |
 | 313.1 | Ajustes da barra do Quadro e da Lista de tarefas, depois do teste do responsável (13/11/2026; seção 8, barra do topo; seção 10): na Lista, a barra ocupa a largura toda, como nas outras telas, em vez de acompanhar a coluna de 800 px; o nome usa a mesma letra do nome dos planos; o botão direito na barra volta a valer só nos espaços com abas. Testes de navegador ajustados. |
@@ -2911,3 +2911,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 326 | Minhas tarefas: tocar numa tarefa abre a janela por cima da lista, sem ir ao espaço de origem (pedido do responsável, 18/11/2026). O nome do espaço no cabeçalho da janela, e "Abrir no espaço" no menu "…", abrem o espaço com a ação; as setas seguem a ordem da lista, de um espaço a outro; ao fechar, a lista é refeita se algo mudou. Novo `js/telas/janela-fora-do-espaco.js`; a janela da ação (`js/telas/janela-acao.js`) aceita vizinha de outro espaço (`trocarDeEspaco`) e o link do espaço (`aoAbrirEspaco`). Seções 3.1, 8 ("Minhas tarefas") e 10. Testes em `testes/navegador/minhas-tarefas.test.mjs`. |
 | 327 | Painel público do Plano de Ação ou do Projeto, parte 1 (pedido e decisões do responsável, 18/11/2026; seções 3.6, 4.13 e 8.8): cópia-resumo em `paineis/{código}`, lida por qualquer pessoa; configuração em "Configurar este espaço" (ligar, endereço, novo endereço, apresentação, responsáveis por área ou por nome, prévia); página `painel/?p=<código>`; atualização pelo navegador de quem é Administrador ou Usuário; regras novas no `firestore.rules`, a publicar no console. |
 | 327.1 | Painel público (relato do responsável, 18/11/2026; seção 4.13): a ação contínua cujo marco de início ainda não chegou passa a contar como Não liberada, como no Sextante; antes, contava como em andamento, e o "Andamento das ações por fase" mostrava mais ações liberadas do que havia. |
+| 328 | Correção da sigla da instituição: **UFCIMG**, sem hífen (pedido do responsável, 18/11/2026). Trocada em `js/identidade.js` (constante `INSTITUICAO`), no painel público, nos manifestos do Sextante e do Strata, na amostra de dados, em comentários, no teste de navegador, no README, no AGENTS.md e nesta documentação. Não mudaram os endereços do GitHub (`dgdi-ufci-mg`), que são nomes técnicos. O manual do usuário (congelado) e a cópia congelada da versão 1 (`testes/dados/versao1-index.html`) ficaram como estavam. |

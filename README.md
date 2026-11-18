@@ -2,7 +2,7 @@
 
 # Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Diretoria de Governança e Desenvolvimento Institucional (DGDI) · Universidade Federal de Ciência e Inovação de Minas Gerais (UFCI-MG)**
+**Diretoria de Governança e Desenvolvimento Institucional (DGDI) · Universidade Federal de Ciência e Inovação de Minas Gerais (UFCIMG)**
 
 Ferramenta online para planejar e acompanhar planos de ação institucionais, pensada para pessoas sem formação em gerenciamento de projetos.
 
@@ -18,7 +18,7 @@ Todos os termos aparecem em linguagem simples, com o nome técnico ao lado para 
 
 ## Situação atual
 
-**Protótipo, em fase de testes.** Este sistema é uma prova de conceito: serve de modelo conceitual para o sistema definitivo, que será desenvolvido do zero pela equipe de TI da UFCI-MG. Ele está online, conectado ao Firebase da DGDI (projeto `sextante-v2`). Qualquer pessoa consulta; só usuários cadastrados editam.
+**Protótipo, em fase de testes.** Este sistema é uma prova de conceito: serve de modelo conceitual para o sistema definitivo, que será desenvolvido do zero pela equipe de TI da UFCIMG. Ele está online, conectado ao Firebase da DGDI (projeto `sextante-v2`). Qualquer pessoa consulta; só usuários cadastrados editam.
 
 A versão 2 substituiu a versão 1 em 23/10/2026. O endereço antigo da versão 2 (`/v2/`) leva para o endereço principal.
 

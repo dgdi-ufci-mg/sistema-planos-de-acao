@@ -6,7 +6,7 @@ Leia este arquivo inteiro antes de qualquer tarefa. Ele vale para **qualquer pes
 
 ## 1. O que é este projeto
 
-**Sistema de Gerenciamento de Planos de Ação** da DGDI, da Diretoria de Governança e Desenvolvimento Institucional da UFCI-MG (Universidade Federal de Ciência e Inovação de Minas Gerais). Nome provisório na tela: **Sextante** (definido em `js/identidade.js`).
+**Sistema de Gerenciamento de Planos de Ação** da DGDI, da Diretoria de Governança e Desenvolvimento Institucional da UFCIMG (Universidade Federal de Ciência e Inovação de Minas Gerais). Nome provisório na tela: **Sextante** (definido em `js/identidade.js`).
 
 O sistema serve para planejar e acompanhar planos de ação institucionais:
 
@@ -22,7 +22,7 @@ Além disso, ele tem estes atributos:
 - **Público:** gestores e equipes **leigos** em gerenciamento de projetos.
 - **Licença:** GPL v3.
 
-**Este sistema é um protótipo** (decisão do responsável, 23/10/2026): uma prova de conceito, que não irá para o Data Center da instituição. O sistema definitivo será desenvolvido do zero pela equipe de TI da UFCI-MG, com as tecnologias dela, tendo este protótipo como **modelo conceitual**. Por isso, a documentação precisa descrever regras, cálculos, dados e decisões com rigor suficiente para reconstruir o comportamento sem ler o código.
+**Este sistema é um protótipo** (decisão do responsável, 23/10/2026): uma prova de conceito, que não irá para o Data Center da instituição. O sistema definitivo será desenvolvido do zero pela equipe de TI da UFCIMG, com as tecnologias dela, tendo este protótipo como **modelo conceitual**. Por isso, a documentação precisa descrever regras, cálculos, dados e decisões com rigor suficiente para reconstruir o comportamento sem ler o código.
 
 **Versão 2 na raiz desde 23/10/2026** (troca, passo 1.20). A versão 1, de arquivo único, saiu do ar, e os dados dela foram descartados; uma cópia congelada do `index.html` dela fica em `testes/dados/versao1-index.html`, só para o teste de comparação. A pasta `v2/` guarda apenas o redirecionamento do endereço antigo. A versão publicada como artefato no claude.ai está **descontinuada**. O repositório é a única fonte da verdade.
 
