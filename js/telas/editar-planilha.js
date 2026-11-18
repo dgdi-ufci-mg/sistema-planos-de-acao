@@ -892,12 +892,14 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
 
   /** Grava vários valores de uma vez, como um passo só do Desfazer. `itens`: {linha, chave, texto}. */
   function gravarLote(itens, rotulo) {
+    /* as ações são fixadas já, pelo número: gravar uma etapa muda a ordem das linhas e redesenha a grade no meio do lote,
+       e a posição das linhas deixaria de apontar para as ações escolhidas (corrigido em 18/11/2026) */
+    const alvos = itens.map((i) => ({ ...i, acao: acaoDaLinha(i.linha) }));
     ocupado = ocupado.then(async () => {
       const passo = [];
       let falhas = 0;
       let feitas = 0;
-      for (const { linha, chave, texto } of itens) {
-        const acao = acaoDaLinha(linha);
+      for (const { linha, chave, texto, acao } of alvos) {
         if (!acao || bloqueio(acao, chave)) continue;
         try {
           const atual = (await store.listarAcoes(espacoId)).find((a) => a.numero === acao.numero);

@@ -318,3 +318,29 @@ describe("Planilha: várias células, menu da célula e Ctrl+D (lote 2, 18/11/20
     assert.ok((await valorDe(p, 0, "rotulo")).length > 0);
   });
 });
+
+describe("Planilha: limpar a faixa com as linhas agrupadas por etapa (18/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  test("Delete numa faixa com a Etapa limpa só as ações escolhidas, mesmo com as linhas mudando de lugar", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irParaVisualizacao(p, "planilha"); // agrupada por etapa, como abre
+    await p.waitForSelector(".planilha");
+    const lerDescricoes = () => p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".planilha tbody tr[data-numero]")]
+      .map((tr) => [tr.dataset.numero, tr.querySelector('[data-chave="descricao"]').value ?? ""])));
+    const antes = await lerDescricoes();
+    const escolhidas = await p.evaluate(() => [...document.querySelectorAll(".planilha tbody tr[data-numero]")].slice(1, 3).map((tr) => tr.dataset.numero));
+    await p.locator('.planilha [data-linha="1"][data-chave="descricao"]').focus();
+    await p.keyboard.press("Shift+ArrowDown");
+    await p.keyboard.press("Shift+ArrowLeft"); // a coluna da Etapa, que tira a ação do grupo
+    await p.keyboard.press("Delete");
+    await assentar(p, 1200);
+    const depois = await lerDescricoes();
+    for (const [n, texto] of Object.entries(antes)) {
+      if (escolhidas.includes(n)) assert.equal(depois[n], "", `a ação ${n} devia ficar sem descrição`);
+      else assert.equal(depois[n], texto, `a ação ${n} não foi escolhida e não devia mudar`);
+    }
+  });
+});
