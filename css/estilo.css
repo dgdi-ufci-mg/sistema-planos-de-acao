@@ -3567,20 +3567,21 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .rede-no.concluida .rede-rotulo { color: var(--muted); }
 /* "agora": a ação liberada, que pode ser feita neste momento, ganha contorno e uma pílula com o nome da situação */
 .rede-no.agora .rede-cartao { border-top-color: var(--liberada); border-right-color: var(--liberada); border-bottom-color: var(--liberada); }
-.rede-agora { position: absolute; top: -9px; right: 10px; z-index: 1; max-width: 60%; box-sizing: border-box; padding: 1px 8px; border-radius: 999px;
+.rede-agora { position: absolute; top: -9px; left: 10px; z-index: 1; max-width: 60%; box-sizing: border-box; padding: 1px 8px; border-radius: 999px;
   background: var(--liberada); color: var(--liberada-texto); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
-/* botão de abrir a ação, abaixo do "+", com o mesmo desenho */
-.rede.rede-editavel .rede-no::after { height: 72px; }
-.rede-abrir { position: absolute; z-index: 2; top: 26px; right: -38px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--surface); color: var(--accent-ink); box-shadow: var(--relevo); cursor: pointer;
-  opacity: 0; pointer-events: none; transform: scale(.85); transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
-.rede-abrir svg { width: 15px; height: 15px; }
+/* botão "Abrir" (18/11/2026, pedidos do responsável): pílula na borda de cima do cartão, à direita, ao passar o mouse
+   ou com a ação selecionada; a pílula da situação (Liberada) fica na mesma borda, à esquerda. Assim a pílula não cobre
+   o nome nem toma lugar dele. Só na rede completa: de longe, abre-se com o clique duplo, Enter ou o botão direito */
+.rede-abrir { position: absolute; z-index: 2; top: -10px; right: 10px; height: 20px; padding: 0 8px 0 6px; display: inline-flex; align-items: center; gap: 4px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--accent-ink); font: inherit; font-size: .7rem; font-weight: 600;
+  box-shadow: var(--relevo); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva), background-color var(--mov-rapido); }
+.rede-abrir svg { width: 12px; height: 12px; }
 .rede-abrir:hover, .rede-abrir:focus-visible { background: var(--accent); color: var(--surface); border-color: var(--accent); }
-.rede.rede-editavel:not(.ligando) .rede-no:hover .rede-abrir, .rede.rede-editavel .rede-no.selecionada .rede-abrir { opacity: 1; pointer-events: auto; transform: none; }
+.rede.rede-editavel[data-detalhe="completo"]:not(.ligando) .rede-no:hover .rede-abrir, .rede.rede-editavel[data-detalhe="completo"] .rede-no.selecionada .rede-abrir,
+.rede.rede-editavel[data-detalhe="completo"] .rede-abrir:focus-visible { opacity: 1; pointer-events: auto; }
 /* os botões do cartão não encolhem com o zoom (até 1,8 vez no desenho; js/telas/rede.js) */
 .rede-mais { scale: var(--rede-inv, 1); transform-origin: 0 100%; }
-.rede-abrir { scale: var(--rede-inv, 1); transform-origin: 0 0; }
 .rede-alca, .rede-inserir { scale: var(--rede-inv, 1); }
 /* níveis de detalhe conforme o zoom: "nome" (35% a 60%) mostra só o nome, em letra maior; "cor" (abaixo de 35%)
    preenche o cartão com a cor da situação */
@@ -3684,14 +3685,28 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
 /* caixinhas: campos com fundo branco (não parecem bloqueados), previsão da data e listas de um campo só */
 .rede-estimar-campos input { background: var(--surface); border-color: color-mix(in srgb, var(--ink) 28%, var(--line)); }
 .rede-estimar-campos.um { grid-template-columns: minmax(0, 1fr); }
+.rede-reestimar input[name="motivo"] { font-family: inherit; }
 .rede-estimar-previsao { margin: 0; font-size: .78rem; color: var(--ink); }
 .rede-estimar-previsao[hidden] { display: none; }
 .rede-campo .rede-escolha-opcoes { max-height: min(280px, 46vh); overflow: auto; }
 .rede-campo .rede-escolha-opcoes button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 /* na ação selecionada, os responsáveis e a data abrem a caixinha do campo */
-.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data) { cursor: pointer; border-radius: 6px; outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color var(--mov-rapido); }
-.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data):hover { outline-color: color-mix(in srgb, var(--accent) 60%, transparent); }
-.rede.rede-editavel .rede-no.selecionada .donos:empty { min-width: 24px; min-height: 22px; }
+/* campos editáveis (17 e 18/11/2026, pedidos do responsável): fundo sombreado ao passar o mouse, em qualquer cartão, só
+   onde o clique de fato edita (atributo data-campo) e só na rede completa; a sombra sem desfoque faz a margem do fundo
+   sem mexer no desenho e não é cortada pelo limite de duas linhas do nome */
+.rede.rede-editavel[data-detalhe="completo"] [data-campo] { border-radius: 4px; cursor: pointer; transition: background-color var(--mov-rapido), box-shadow var(--mov-rapido); }
+.rede.rede-editavel[data-detalhe="completo"] [data-campo="nome"] { cursor: text; }
+.rede.rede-editavel[data-detalhe="completo"]:not(.ligando) [data-campo]:hover:not(:has([data-editando])) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 8%, transparent); }
+.rede.rede-editavel .donos[data-campo]:empty { min-width: 24px; min-height: 22px; }
+/* nome em edição (18/11/2026): o contorno vai na caixa do nome inteira, e não em cada linha do texto (o limite de duas
+   linhas cortava o contorno e deixava um traço solto à direita); o texto longo rola dentro das duas linhas */
+.rede .rede-rotulo:has([data-editando]) { display: block; max-height: 2.6em; overflow-y: auto; scrollbar-width: none; cursor: text;
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; background: var(--surface); }
+.rede .rede-rotulo [data-editando] { outline: none; background: transparent; }
+/* com Alt, o mesmo traço nos três campos; no nome, em volta da caixa inteira, e não de cada linha do texto */
+.alt-edicao .rede.rede-editavel [data-editar="rotulo"] { outline: none; }
+.alt-edicao .rede.rede-editavel[data-detalhe="completo"] [data-campo] { outline: 1px dashed var(--accent); outline-offset: 2px; border-radius: 4px; }
 .rede.rede-editavel .rede-agora[data-rede-situacao] { cursor: pointer; pointer-events: auto; }
 /* acabamento: datas na letra do cartão, com algarismos alinhados */
 .rede-data .mono, .rede-ponto-data.mono { font-family: inherit; font-variant-numeric: tabular-nums; letter-spacing: 0; }
