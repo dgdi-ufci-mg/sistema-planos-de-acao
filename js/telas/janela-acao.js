@@ -40,7 +40,11 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
  * @param {{store: object, espacoId: string, numero: number, hoje: string, usuario?: string|null,
  *   dados: object, aoFechar: () => void, abrirCom?: string|null}} opcoes  dados: ver dadosDaJanela em espaco.js;
  *   abrirCom: formulário já aberto, como "concluir"; abrirOutra: abre a janela de outra ação (a cópia recém-criada);
- *   vizinha(número, passo): a ação anterior (-1) ou seguinte (1) na tela, ou null (setas da janela)
+ *   vizinha(número, passo, espacoId): a ação anterior (-1) ou seguinte (1) na tela, ou null (setas da janela); fora do
+ *   espaço, como em "Minhas tarefas" (18/11/2026), pode devolver {espacoId, numero}, de outro espaço;
+ *   trocarDeEspaco(espacoId): promessa dos dados da janela de outro espaço, pedida quando a seta leva a ele;
+ *   aoAbrirEspaco(espacoId, numero): fora do espaço, o nome do espaço no cabeçalho e o item "Abrir no espaço" do menu
+ *   fecham a janela e abrem o espaço com a ação
  * @returns {{atualizar: (dados: object) => void, fechar: () => void}}
  */
 /** Prefixo dos campos personalizados na janela (passo 3.6): "cp-" mais o id do campo. */
@@ -53,8 +57,11 @@ const ICONE_DO_ATRIBUTO = {
   etiquetas: "etiqueta", dependeDe: "elo", comecaCom: "inicio", terminaCom: "concluida", etapa: "legenda", local: "local", codigo: "codigo", entregaDoPlano: "modoEntregas",
 };
 
-export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null, vizinha = null }) {
+export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados, aoFechar, abrirCom = null, usuario = null, abrirOutra = null, vizinha = null,
+  trocarDeEspaco = null, aoAbrirEspaco = null }) {
   let d = dados;
+  /** espaço da ação mostrada: muda quando a seta leva a uma ação de outro espaço (Minhas tarefas, 18/11/2026) */
+  let espacoId = espacoInicial;
   /** Quem acabou de alterar a ação, se não foi quem está com a janela aberta (seção 4.6). */
   let alheia = null;
   let tempoAlheia = null;
@@ -107,7 +114,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       fechada = true; pararComentarios?.(); medirDeNovo.disconnect(); document.removeEventListener("click", fecharMenuFora, true);
       document.removeEventListener("click", fecharPopoverFora, true); document.removeEventListener("keydown", escNaJanelinha, true);
       removeEventListener("resize", posicionarPopover);
-      aoFechar(numero);
+      aoFechar(numero, espacoId);
     },
   });
 
@@ -123,6 +130,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     <button type="button" class="botao discreto seta-janela" data-ir="1">${ICONES.abaixo}</button>` : ""}<span class="menu-janela-lugar"><button type="button" class="botao discreto menu-janela" data-menu-janela
     aria-haspopup="menu" aria-expanded="false" aria-label="Mais opções" title="Mais opções">${ICONES.opcoes}</button></span>`;
   cabecaDaJanela.querySelector("[data-fechar]").before(ferramentas);
+  cabecaDaJanela.addEventListener("click", (e) => { if (aoAbrirEspaco && e.target.closest("h2 [data-abrir-espaco]")) abrirNoEspaco(); });
   let menuAberto = false;
   const podeDuplicar = () => ehDeTarefas(d.espaco) && store.podeGravar && d.perm.criarAcao;
   const podeExcluir = () => store.podeGravar && d.perm.excluirAcao;
@@ -136,6 +144,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       ? `${criada.toLocaleDateString("pt-BR")} às ${String(criada.getHours()).padStart(2, "0")}h${String(criada.getMinutes()).padStart(2, "0")}` : "";
     return `<div class="menu-da-janela" role="menu" aria-label="Opções da ${t.acao}">
       ${quandoCriada ? `<p class="menu-info">Criada em ${quandoCriada}</p>` : ""}
+      ${aoAbrirEspaco ? `<button type="button" role="menuitem" data-abrir-espaco>Abrir no espaço</button>` : ""}
       <button type="button" role="menuitem" data-copiar-link>Copiar link</button>
       <button type="button" role="menuitem" data-ver-historico>Histórico de alterações</button>
       ${podeDuplicar() ? `<button type="button" role="menuitem" data-duplicar>Duplicar</button>` : ""}
@@ -152,6 +161,12 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     if (!abrir) return;
     lugar.insertAdjacentHTML("beforeend", menuHtml());
     lugar.querySelector(".menu-da-janela button")?.focus();
+  }
+  /** Fora do espaço (Minhas tarefas, 18/11/2026): fecha a janela e abre o espaço, com a ação. */
+  function abrirNoEspaco() {
+    const [id, n] = [espacoId, numero];
+    fecharPainel();
+    aoAbrirEspaco(id, n);
   }
   /** Endereço que abre esta ação: o do espaço, com "/acao/<número>" (rota em js/app.js). */
   const linkDaAcao = () => `${location.origin}${location.pathname}#/espaco/${espacoId}/acao/${numero}`;
@@ -211,7 +226,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const t = termos(d.espaco);
     for (const b of ferramentas.querySelectorAll("[data-ir]")) {
       const anterior = b.dataset.ir === "-1";
-      const alvo = vizinha(numero, Number(b.dataset.ir));
+      const alvo = vizinha(numero, Number(b.dataset.ir), espacoId);
       const texto = `${anterior ? `${t.Acao} anterior` : `Próxima ${t.acao}`}`;
       b.disabled = alvo == null;
       b.setAttribute("aria-label", texto);
@@ -222,12 +237,25 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
    * Troca a ação mostrada pela vizinha, na mesma janela. Quem estava digitando já gravou ao sair do campo (o clique
    * na seta tira o foco antes). O estado da janela volta ao de uma janela recém-aberta.
    */
-  function irPara(passo) {
-    const alvo = vizinha?.(numero, passo);
+  /** quantas trocas de ação já foram pedidas: a resposta atrasada de outro espaço não passa por cima da mais nova */
+  let trocas = 0;
+  async function irPara(passo) {
+    const alvo = vizinha?.(numero, passo, espacoId);
     if (alvo == null || fechada) return;
     /* o campo em edição grava ao perder o foco; o foco fica nas ferramentas do cabeçalho, para as teclas seguirem valendo */
     if (corpo.contains(document.activeElement)) document.activeElement.blur();
-    numero = alvo;
+    /* fora do espaço (Minhas tarefas, 18/11/2026), a vizinha pode ser de outro espaço: a janela troca de dados */
+    const destino = typeof alvo === "object" ? alvo : { espacoId, numero: alvo };
+    const vez = ++trocas;
+    if (destino.espacoId !== espacoId) {
+      if (!trocarDeEspaco) return;
+      let novos;
+      try { novos = await trocarDeEspaco(destino.espacoId); } catch (falha) { avisar(falha.message); return; }
+      if (fechada || vez !== trocas || !novos) return;
+      d = novos;
+      espacoId = destino.espacoId;
+    }
+    numero = destino.numero;
     editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
     buscando = null; editandoDoc = null; mostrados.clear(); status = null;
     alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
@@ -252,7 +280,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const item = t.closest(".menu-da-janela button");
     if (!item) return;
     abrirMenu(false);
-    if (item.matches("[data-copiar-link]")) copiarLink();
+    if (item.matches("[data-abrir-espaco]")) abrirNoEspaco();
+    else if (item.matches("[data-copiar-link]")) copiarLink();
     else if (item.matches("[data-duplicar]")) duplicar();
     else if (item.matches("[data-ver-historico]")) verHistorico();
     else if (item.matches("[data-continua]")) tornarContinua(item.dataset.continua === "true");
@@ -417,8 +446,14 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     /* em todos os espaços, o nome do espaço, como o projeto no Todoist (05/11/2026): fase, etapa e código ficam na coluna de atributos */
     const titulo = d.espaco.nome || termos(d.espaco).Acao;
     const cabeca = corpo.closest(".painel").querySelector("header h2");
-    cabeca.textContent = titulo;
-    cabeca.title = titulo;
+    /* fora do espaço (Minhas tarefas, 18/11/2026), o nome do espaço é um link que abre o espaço com a ação */
+    if (aoAbrirEspaco) {
+      cabeca.innerHTML = `<button type="button" class="janela-espaco" data-abrir-espaco title="Abrir no espaço ${esc(titulo)}">${esc(titulo)}</button>`;
+      cabeca.removeAttribute("title");
+    } else {
+      cabeca.textContent = titulo;
+      cabeca.title = titulo;
+    }
     restaurarValores(valores);
     ajustarAlturas();
     if (popover) {

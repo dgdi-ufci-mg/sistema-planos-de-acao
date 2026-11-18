@@ -985,6 +985,11 @@ body.sem-criar-acao [data-nova] { display: none !important; } /* só o administr
   .camada.janela .painel { max-height: 94%; }
 }
 .camada.janela .painel header h2 { font-family: var(--f-texto); font-size: .9rem; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* fora do espaço (Minhas tarefas, 18/11/2026): o nome do espaço no cabeçalho é um link que abre o espaço */
+.janela-espaco { font: inherit; color: var(--accent-ink); background: none; border: 0; padding: 0; cursor: pointer; max-width: 100%;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px;
+  transition: text-decoration-color var(--mov-rapido) var(--mov-curva); }
+.janela-espaco:hover, .janela-espaco:focus-visible { text-decoration-color: currentColor; }
 .janela-cabeca { display: flex; flex-direction: column; gap: 2px; }
 .janela-rotulo { font-family: var(--f-titulo); font-size: 1.45rem; margin: 0; }
 .janela-resumo { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }

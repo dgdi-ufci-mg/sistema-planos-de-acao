@@ -18,6 +18,7 @@ import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
 import { mostrarMinhasTarefas, mostrarCarregandoMinhas } from "./telas/minhas-tarefas.js";
 import { montarMinhasTarefas } from "./minhas-tarefas.js";
+import { abrirAcaoForaDoEspaco } from "./telas/janela-fora-do-espaco.js";
 import { mostrarNavegacao } from "./telas/navegacao.js";
 import { mostrarAjuda } from "./telas/ajuda.js";
 import { avisar, fecharPainel } from "./telas/painel.js";
@@ -171,9 +172,43 @@ function recontarMinhas() {
 }
 const esquecerContagem = () => { contagemMinhas = null; contadoEm = 0; };
 
+/** Janela da ação aberta por cima de "Minhas tarefas" (18/11/2026), ou null. */
+let janelaDasMinhas = null;
+/** Mostra a lista de Minhas tarefas; tocar numa tarefa abre a janela dela por cima da lista. */
+function desenharMinhas(resultado) {
+  mostrarMinhasTarefas(principal, { resultado, hoje, aoAbrir: (id, numero) => abrirDasMinhas(resultado, id, numero) });
+}
+/**
+ * Abre a janela da ação por cima de "Minhas tarefas" (pedido do responsável, 18/11/2026), sem ir ao espaço de origem.
+ * As setas da janela seguem a ordem da lista, de um espaço a outro; o nome do espaço, no cabeçalho, abre o espaço.
+ * Ao fechar, se algo mudou, a lista é refeita (a tarefa concluída sai), e o foco volta à linha tocada.
+ */
+function abrirDasMinhas(resultado, espacoId, numero) {
+  const ordem = resultado.grupos.flatMap((g) => g.itens.map((i) => ({ espacoId: i.espacoId, numero: i.numero })));
+  const vizinha = (n, passo, id) => {
+    const i = ordem.findIndex((o) => o.espacoId === id && o.numero === n);
+    return i < 0 ? null : ordem[i + passo] ?? null;
+  };
+  janelaDasMinhas = abrirAcaoForaDoEspaco({
+    store, espacoId, numero, hoje, usuario, vizinha,
+    aoAbrirEspaco: (id, n) => abrirEspaco(id, { acao: n }),
+    aoFechar: async (id, n, mudou) => {
+      janelaDasMinhas = null;
+      if (!naMinhas) return;
+      if (mudou) {
+        const novo = await tentar(lerMinhasTarefas, null);
+        if (!naMinhas || janelaDasMinhas) return; // saiu da tela, ou abriu outra janela, enquanto lia
+        if (novo) { desenharMinhas(novo); atualizarTopo(); }
+      }
+      principal.querySelector(`.minhas-item[data-espaco="${CSS.escape(id)}"][data-numero="${n}"]`)?.focus({ preventScroll: true });
+    },
+  });
+}
+
 /** Abre "Minhas tarefas": a tela vem no lugar do espaço aberto, com endereço próprio (Voltar e recarregar funcionam). */
 async function abrirMinhasTarefas() {
   if (!usuario) return boasVindas();
+  janelaDasMinhas?.fechar();
   await historicoPronto();
   const vindoDeEspaco = Boolean(abertoId);
   pararEspaco();
@@ -189,7 +224,7 @@ async function abrirMinhasTarefas() {
   window.scrollTo(0, 0);
   const resultado = await tentar(lerMinhasTarefas, null);
   if (!naMinhas) return; // a pessoa saiu da tela enquanto lia
-  if (resultado) mostrarMinhasTarefas(principal, { resultado, hoje, aoAbrir: (id, numero) => abrirEspaco(id, { acao: numero }) });
+  if (resultado) desenharMinhas(resultado);
   atualizarTopo();
 }
 
