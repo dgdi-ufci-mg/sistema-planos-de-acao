@@ -3289,6 +3289,8 @@ select.grade-editor { margin: -4px -6px; }
 /* planilha: mover coluna arrastando o título (lote 3) */
 .coluna-soltar { position: fixed; z-index: 70; width: 3px; background: var(--accent); pointer-events: none; border-radius: 2px; }
 .movendo-coluna, .movendo-coluna * { cursor: grabbing; user-select: none; }
+/* durante o arrasto, a alça de largura da coluna sob o ponteiro não aparece (aparecia como uma linha solta no título) */
+body.movendo-coluna .planilha th .redimensionar::after { background: transparent; }
 /* planilha: faixa de células escolhidas (lote 2, 18/11/2026) */
 .planilha td.sel { background: var(--accent-soft); }
 .planilha td.sel > input, .planilha td.sel > select, .planilha td.sel > textarea { background: transparent; }

@@ -392,6 +392,8 @@ describe("Planilha: mover a coluna arrastando o título (lote 3, 18/11/2026)", {
     const antes = await titulos(p);
     await arrastar(p, "Descrição", "Etapa");
     assert.equal(await p.locator(".coluna-soltar").count(), 1, "a linha de soltar aparece no arrasto");
+    const alca = await p.locator(".planilha th[scope=col]").filter({ hasText: "Etapa" }).first().locator(".redimensionar").evaluate((e) => getComputedStyle(e, "::after").backgroundColor);
+    assert.match(alca, /rgba\(0, 0, 0, 0\)|transparent/, "a alça de largura não aparece durante o arrasto");
     await p.mouse.up();
     await assentar(p, 300);
     const depois = await titulos(p);
