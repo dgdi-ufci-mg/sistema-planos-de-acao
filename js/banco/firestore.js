@@ -16,6 +16,7 @@
  *   sistema/calendario              calendário geral
  *   sistema/administradores         e-mails dos Administradores do Sistema (passo 2.3), editado só no console
  *   usuarios/{email}/preferencias/mapa  ordem pessoal do Mapa do Strata (lote 6)
+ *   paineis/{codigo}                painel público (18/11/2026): cópia-resumo de um espaço, lida por qualquer pessoa
  *   usuarios/{email}                usuários cadastrados pela tela do Administrador do Sistema (27/10/2026)
  *   sistema/estrategia              camadas do catálogo da estratégia (passo 2.5)
  *   instrumentos/{id}               instrumentos da estratégia (PEI, PDI, políticas…), comuns a todos os espaços
@@ -356,6 +357,14 @@ export function criarBancoFirestore(db) {
     },
     async apagarPreferenciaDoMapa(email) {
       await db.collection("usuarios").doc(email).collection("preferencias").doc("mapa").delete();
+    },
+    // --- painel público (18/11/2026; seção 4.13): paineis/{código do endereço} ---
+    async lerPainelPublico(codigo) {
+      const s = await db.collection("paineis").doc(codigo).get();
+      return s.exists ? s.data() : null;
+    },
+    async gravarPainelPublico(codigo, dados) {
+      await db.collection("paineis").doc(codigo).set(copia({ ...dados, codigo }));
     },
     // --- estratégia: catálogo do desdobramento (passo 2.5; seção 4.11) ---
     async lerModeloEstrategia() {

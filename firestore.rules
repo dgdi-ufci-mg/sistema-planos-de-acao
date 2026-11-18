@@ -27,6 +27,10 @@
 //   qualquer pessoa consulta; só o Gestor da Estratégia altera (provisoriamente, o Administrador do Sistema);
 // - entregas do Plano de Ação (passo 2.6): só o administrador do espaço cadastra, altera e muda a situação;
 //   registros de alcance só de acréscimo, pelo administrador, em nome próprio; nada disso no espaço encerrado;
+// - painel público (18/11/2026): paineis/{código}, cópia-resumo de um espaço, lida por qualquer pessoa; gravada por
+//   quem é Administrador ou Usuário do espaço indicado em `espacoId`, só para o código que o espaço guarda em
+//   `painelPublico.codigo` e com o painel ligado; o administrador do espaço também esvazia (ligado false, sem resumo)
+//   qualquer painel do seu espaço, ao desligar ou trocar o endereço; o espaço de um painel nunca muda;
 // - ninguém apaga documentos: a exclusão é lógica (passo 1.15); histórico e retratos só recebem registros novos;
 // - fora destes caminhos, nada.
 rules_version = '2';
@@ -192,6 +196,33 @@ service cloud.firestore {
           allow create: if aberto() && atua();
         }
       }
+    }
+    // painel público (18/11/2026; documentação técnica, seção 4.13): leitura livre; gravação pelo espaço de origem
+    match /paineis/{codigo} {
+      function espacoDoPainel(id) {
+        return get(/databases/$(database)/documents/espacos/$(id)).data;
+      }
+      function papelNoEspaco(e) {
+        return livre(e) || papelNo(e) in ['administrador', 'usuario'];
+      }
+      // publicar: o código é o que o espaço guarda, o painel está ligado e o resumo vem junto
+      function publica(d) {
+        let e = espacoDoPainel(d.espacoId);
+        return logado() && papelNoEspaco(e) && e.get('encerradoEm', null) == null
+          && e.get('painelPublico', {}).get('codigo', '') == codigo
+          && e.get('painelPublico', {}).get('ligado', false) == true
+          && d.ligado == true && d.codigo == codigo;
+      }
+      // esvaziar: o administrador do espaço desliga o painel ou troca o endereço
+      function esvazia(d) {
+        let e = espacoDoPainel(d.espacoId);
+        return logado() && (livre(e) || papelNo(e) == 'administrador')
+          && d.ligado == false && d.resumo == null && d.codigo == codigo;
+      }
+      allow read: if true;
+      allow create: if publica(request.resource.data) || esvazia(request.resource.data);
+      allow update: if request.resource.data.espacoId == resource.data.espacoId
+        && (publica(request.resource.data) || esvazia(request.resource.data));
     }
     // calendário geral: só o Administrador do Sistema altera (passo 2.3)
     match /sistema/calendario {
