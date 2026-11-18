@@ -406,7 +406,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
     return `<div class="rede-no ${classe}${agora ? " agora" : ""}" style="left:${x}px;top:${y}px;width:${MEDIDAS.largura}px;height:${MEDIDAS.altura}px" data-numero="${a.numero}" data-etapa="${esc(a.etapa ?? "")}"${indice != null ? ` data-indice="${indice}"` : ""}>
       <div class="rede-cartao" role="button" tabindex="0" data-abrir-acao data-rede-no="${a.numero}"
         aria-label="${esc(dica)}">
-        <span class="rede-topo">${situacao(l)}<span class="rede-rotulo"${podeMudar ? ' data-campo="nome"' : ""}>${edicao ? '<span class="rede-abrir-vaga" aria-hidden="true"></span>' : ""}${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
+        <span class="rede-topo">${situacao(l)}<span class="rede-rotulo"${podeMudar ? ' data-campo="nome"' : ""}>${identificador(a)}<span data-editar="rotulo">${esc(a.rotulo)}</span></span></span>
         <span class="rede-base"><span class="donos"${podeMudar ? ' data-campo="responsaveis"' : ""}>${donos(a)}</span>
           <span class="rede-data${l.atrasada ? " atrasada" : ""}"${dataEditavel ? ' data-campo="data"' : ""}><span class="mono">${l.atrasada ? `<span class="icone-atrasada">${ICONES.atrasada}</span>` : ""}${data}</span>${folga ? `<small>${folga}</small>` : ""}</span></span>
         <span class="rede-indicador" data-indicador="${indicador}">${barraHtml.replace(/^<div class="pr">|<\/div>$/g, "")}</span>

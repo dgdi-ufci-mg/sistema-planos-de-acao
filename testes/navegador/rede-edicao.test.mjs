@@ -273,6 +273,12 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     await p.keyboard.type("Nome trocado na rede");
     await p.keyboard.press("Enter");
     await p.waitForFunction((n) => document.querySelector(`.rede-no[data-numero="${n}"]`)?.textContent.includes("Nome trocado na rede"), numero);
+    /* o contorno da edição fica na caixa do nome, e não no texto (18/11/2026) */
+    await no.locator('[data-editar="rotulo"]').click();
+    await p.waitForSelector(".rede [data-editando]");
+    assert.equal(await no.locator(".rede-rotulo").evaluate((el) => getComputedStyle(el).outlineStyle), "solid");
+    assert.equal(await no.locator("[data-editando]").evaluate((el) => getComputedStyle(el).outlineStyle), "none");
+    await p.keyboard.press("Escape");
     /* no canto do cartão, fora dos campos: o clique no nome o edita */
     await p.locator(`.rede-no[data-numero="${numero}"] .rede-cartao`).click({ position: { x: 4, y: 4 } });
     await p.keyboard.press("Escape");
@@ -318,7 +324,7 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
   /* ---------- ajustes da avaliação de 10/11/2026 ---------- */
-  test("\"Abrir\", dentro do cartão, sem cobrir o nome; o clique duplo fora dos campos também abre", async () => {
+  test("\"Abrir\" na borda de cima, sem cobrir o nome; a pílula da situação à esquerda; o clique duplo fora dos campos também abre", async () => {
     const p = await abrirRede();
     await aCem(p);
     const no = p.locator(".rede-no").nth(1);
@@ -328,8 +334,11 @@ describe("Rede: edição fluida", { skip: pular }, () => {
     assert.ok(await abrir.isVisible());
     assert.match(await abrir.innerText(), /Abrir/);
     const [b, c, nome] = await Promise.all([abrir.boundingBox(), no.locator(".rede-cartao").boundingBox(), no.locator('[data-editar="rotulo"]').evaluate((el) => [...el.getClientRects()].map((r) => ({ x: r.x, y: r.y, w: r.width, h: r.height })))]);
-    assert.ok(b.x >= c.x && b.x + b.width <= c.x + c.width && b.y >= c.y, "dentro do cartão");
-    assert.ok(nome.every((r) => r.x + r.w <= b.x + 1 || r.y >= b.y + b.height - 1), "o nome não passa por baixo do botão");
+    assert.ok(b.x + b.width <= c.x + c.width && b.y < c.y && b.y + b.height > c.y, "na borda de cima, à direita");
+    assert.ok(nome.every((r) => r.y >= b.y + b.height - 1), "o nome não passa por baixo do botão");
+    const situacao = await p.locator(".rede-no.agora .rede-agora").first().boundingBox();
+    const cartaoLiberada = await p.locator(".rede-no.agora .rede-cartao").first().boundingBox();
+    assert.ok(situacao.x < cartaoLiberada.x + cartaoLiberada.width / 2, "a pílula da situação fica à esquerda");
     await abrir.click();
     await assentar(p);
     assert.ok(await p.locator(".camada.aberta").count() >= 1, "abriu a janela da ação");
