@@ -110,10 +110,13 @@ export function descreverRegistro(r, nomes) {
         else {
           if (velho.texto !== i.texto) partes.push(`mudou “${velho.texto}” para “${i.texto}”`);
           if (velho.feito !== i.feito) partes.push(i.feito ? `marcou “${i.texto}” como feito` : `desmarcou “${i.texto}”`);
-          /* passo 3.7: responsável do item; o nome vem do espaço, e um responsável já excluído aparece como tal */
-          if ((velho.responsavel ?? null) !== (i.responsavel ?? null)) {
-            const quem = (id) => nomes.responsavel?.(id) ?? "um responsável excluído";
-            partes.push(i.responsavel ? `passou “${i.texto}” para ${quem(i.responsavel)}` : `tirou o responsável de “${i.texto}”`);
+          /* passo 3.7: responsáveis do item; o nome vem do espaço, e um responsável já excluído aparece como tal */
+          const antes = velho.responsaveis ?? [];
+          const depois = i.responsaveis ?? [];
+          if (antes.join() !== depois.join()) {
+            const quem = (r) => nomes.responsavel?.(r) ?? "um responsável excluído";
+            const lista = new Intl.ListFormat("pt-BR", { style: "long", type: "conjunction" }).format(depois.map(quem));
+            partes.push(depois.length ? `passou “${i.texto}” para ${lista}` : `tirou os responsáveis de “${i.texto}”`);
           }
         }
       }

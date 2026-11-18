@@ -76,70 +76,105 @@ for (const [nome, criarBanco] of [
       assert.equal(await textos(), "CBA");
     });
 
+    /* responsáveis do item (passo 3.7): uma lista, só de quem é responsável pela tarefa */
+    const comEquipe = async () => {
+      const ctx = await novo();
+      const { store, id, a } = ctx;
+      const quem = {};
+      for (const [chave, nome] of [["bia", "Beatriz Lima"], ["carlos", "Carlos Souza"], ["dani", "Daniela Reis"]]) {
+        quem[chave] = await store.criarResponsavel(id, { nome, tipo: "pessoa" });
+      }
+      await store.acrescentarResponsavelNaAcao(id, a, quem.bia);
+      await store.acrescentarResponsavelNaAcao(id, a, quem.carlos);
+      const itens = async () => (await store.listarAcoes(id)).find((x) => x.numero === a).checklist;
+      return { ...ctx, quem, itens };
+    };
+
     it("reordenar mantém marcas e responsáveis dos itens e entra no histórico", async () => {
-      const { store, id, a } = await novo();
-      const r = await store.criarResponsavel(id, { nome: "Beatriz Lima", tipo: "pessoa" });
+      const { store, id, a, quem, itens } = await comEquipe();
       const i1 = await store.acrescentarItemNoChecklist(id, a, "A");
       const i2 = await store.acrescentarItemNoChecklist(id, a, "B");
       await store.marcarItemDoChecklist(id, a, i1, true);
-      await store.atribuirItemDoChecklist(id, a, i1, r);
+      await store.atribuirItemDoChecklist(id, a, i1, [quem.bia]);
       await store.moverItemDoChecklist(id, a, i1, 1);
-      const acao = (await store.listarAcoes(id)).find((x) => x.numero === a);
-      assert.deepEqual(acao.checklist, [{ id: i2, texto: "B", feito: false }, { id: i1, texto: "A", feito: true, responsavel: r }]);
+      assert.deepEqual(await itens(), [{ id: i2, texto: "B", feito: false }, { id: i1, texto: "A", feito: true, responsaveis: [quem.bia] }]);
       const rs = (await store.listarHistorico(id, a)).filter((x) => x.campo === "checklist");
       assert.equal(descreverRegistro(rs.at(-1), { acao: String, responsavel: String, etapa: String }), "Reordenou o checklist.");
     });
 
-    it("atribui e tira o responsável de um item, só de quem existe no espaço", async () => {
-      const { store, id, a } = await novo();
-      const r = await store.criarResponsavel(id, { nome: "Beatriz Lima", tipo: "pessoa" });
+    it("atribui um ou mais responsáveis da tarefa a um item, e tira todos com a lista vazia", async () => {
+      const { store, id, a, quem, itens } = await comEquipe();
       const i1 = await store.acrescentarItemNoChecklist(id, a, "Enviar minuta");
-      await store.atribuirItemDoChecklist(id, a, i1, r);
-      let acao = (await store.listarAcoes(id)).find((x) => x.numero === a);
-      assert.equal(acao.checklist[0].responsavel, r);
-      await assert.rejects(store.atribuirItemDoChecklist(id, a, i1, "naoexiste"), { codigo: "nao-encontrado" });
-      await store.atribuirItemDoChecklist(id, a, i1, null);
-      acao = (await store.listarAcoes(id)).find((x) => x.numero === a);
-      assert.deepEqual(acao.checklist, [{ id: i1, texto: "Enviar minuta", feito: false }]); // sem a chave, e não `responsavel: null`
-      const nomes = { acao: String, responsavel: (x) => (x === r ? "Beatriz Lima" : x), etapa: String };
+      await store.atribuirItemDoChecklist(id, a, i1, [quem.bia]);
+      assert.deepEqual((await itens())[0].responsaveis, [quem.bia]);
+      /* a lista sai na ordem da tarefa, não na do pedido, e sem repetidos */
+      await store.atribuirItemDoChecklist(id, a, i1, [quem.carlos, quem.bia, quem.carlos]);
+      assert.deepEqual((await itens())[0].responsaveis, [quem.bia, quem.carlos]);
+      await store.atribuirItemDoChecklist(id, a, i1, []);
+      assert.deepEqual(await itens(), [{ id: i1, texto: "Enviar minuta", feito: false }]); // sem a chave, e não `responsaveis: []`
+      const nomes = { acao: String, responsavel: (x) => Object.entries(quem).find(([, v]) => v === x)?.[0] ?? x, etapa: String };
       const frases = (await store.listarHistorico(id, a)).filter((x) => x.campo === "checklist").map((x) => descreverRegistro(x, nomes));
-      assert.deepEqual(frases.slice(-2), [
-        "Checklist: passou “Enviar minuta” para Beatriz Lima.",
-        "Checklist: tirou o responsável de “Enviar minuta”.",
+      assert.deepEqual(frases.slice(-3), [
+        "Checklist: passou “Enviar minuta” para bia.",
+        "Checklist: passou “Enviar minuta” para bia e carlos.",
+        "Checklist: tirou os responsáveis de “Enviar minuta”.",
       ]);
     });
 
-    it("não atribui a responsável já excluído", async () => {
-      const { store, id, a } = await novo();
-      const r = await store.criarResponsavel(id, { nome: "Beatriz Lima", tipo: "pessoa" });
+    it("não atribui a quem não é responsável pela tarefa, nem a quem não existe ou foi excluído", async () => {
+      const { store, id, a, quem } = await comEquipe();
       const i1 = await store.acrescentarItemNoChecklist(id, a, "Item");
-      await store.excluirResponsavel(id, r);
-      await assert.rejects(store.atribuirItemDoChecklist(id, a, i1, r), { codigo: "nao-encontrado" });
+      await assert.rejects(store.atribuirItemDoChecklist(id, a, i1, [quem.dani]), { codigo: "fora-da-tarefa" });
+      await assert.rejects(store.atribuirItemDoChecklist(id, a, i1, [quem.bia, quem.dani]), { codigo: "fora-da-tarefa" });
+      await assert.rejects(store.atribuirItemDoChecklist(id, a, i1, ["naoexiste"]), { codigo: "nao-encontrado" });
+      await store.excluirResponsavel(id, quem.carlos);
+      await assert.rejects(store.atribuirItemDoChecklist(id, a, i1, [quem.carlos]), { codigo: "nao-encontrado" });
     });
 
-    it("excluir o responsável tira dos itens, ou passa ao substituto", async () => {
-      const { store, id, a } = await novo();
-      const r1 = await store.criarResponsavel(id, { nome: "Beatriz Lima", tipo: "pessoa" });
-      const r2 = await store.criarResponsavel(id, { nome: "Carlos Souza", tipo: "pessoa" });
-      const r3 = await store.criarResponsavel(id, { nome: "Daniela Reis", tipo: "pessoa" });
+    it("tirar o responsável da tarefa tira dos itens, e o item sem ninguém perde a chave", async () => {
+      const { store, id, a, quem, itens } = await comEquipe();
       const i1 = await store.acrescentarItemNoChecklist(id, a, "Um");
       const i2 = await store.acrescentarItemNoChecklist(id, a, "Dois");
       const i3 = await store.acrescentarItemNoChecklist(id, a, "Três");
-      await store.atribuirItemDoChecklist(id, a, i1, r1);
-      await store.atribuirItemDoChecklist(id, a, i2, r2);
-      await store.atribuirItemDoChecklist(id, a, i3, r1);
-      await store.excluirResponsavel(id, r1, { substituto: r3 });
-      let it = (await store.listarAcoes(id)).find((x) => x.numero === a).checklist;
-      assert.deepEqual(it.map((i) => i.responsavel), [r3, r2, r3]);
-      await store.excluirResponsavel(id, r2);
-      it = (await store.listarAcoes(id)).find((x) => x.numero === a).checklist;
-      assert.deepEqual(it.map((i) => i.responsavel), [r3, undefined, r3]);
+      await store.atribuirItemDoChecklist(id, a, i1, [quem.bia, quem.carlos]);
+      await store.atribuirItemDoChecklist(id, a, i2, [quem.carlos]);
+      await store.retirarResponsavelDaAcao(id, a, quem.carlos);
+      assert.deepEqual(await itens(), [
+        { id: i1, texto: "Um", feito: false, responsaveis: [quem.bia] },
+        { id: i2, texto: "Dois", feito: false },
+        { id: i3, texto: "Três", feito: false },
+      ]);
+    });
+
+    it("trocar a lista de responsáveis da tarefa por alterarAcao também poda os itens", async () => {
+      const { store, id, a, quem, itens } = await comEquipe();
+      const i1 = await store.acrescentarItemNoChecklist(id, a, "Um");
+      await store.atribuirItemDoChecklist(id, a, i1, [quem.bia, quem.carlos]);
+      await store.alterarAcao(id, a, { responsaveis: [quem.carlos, quem.dani] });
+      assert.deepEqual((await itens())[0].responsaveis, [quem.carlos]);
+      /* recolocar a pessoa na tarefa não a devolve ao item */
+      await store.alterarAcao(id, a, { responsaveis: [quem.bia, quem.carlos, quem.dani] });
+      assert.deepEqual((await itens())[0].responsaveis, [quem.carlos]);
+    });
+
+    it("excluir o responsável passa os itens dele ao substituto, sem repetir, ou os deixa sem ele", async () => {
+      const { store, id, a, quem, itens } = await comEquipe();
+      const i1 = await store.acrescentarItemNoChecklist(id, a, "Um");
+      const i2 = await store.acrescentarItemNoChecklist(id, a, "Dois");
+      const i3 = await store.acrescentarItemNoChecklist(id, a, "Três");
+      await store.atribuirItemDoChecklist(id, a, i1, [quem.bia]);
+      await store.atribuirItemDoChecklist(id, a, i2, [quem.bia, quem.carlos]);
+      await store.atribuirItemDoChecklist(id, a, i3, [quem.carlos]);
+      await store.excluirResponsavel(id, quem.bia, { substituto: quem.carlos });
+      assert.deepEqual((await itens()).map((i) => i.responsaveis), [[quem.carlos], [quem.carlos], [quem.carlos]]);
+      await store.excluirResponsavel(id, quem.carlos);
+      assert.deepEqual((await itens()).map((i) => i.responsaveis), [undefined, undefined, undefined]);
     });
 
     it("sem permissão de gravar, não reordena nem atribui", async () => {
       const semLogin = criarStore(criarBanco(), { exigirLogin: true });
       await assert.rejects(semLogin.moverItemDoChecklist("x", 1, "i", 0));
-      await assert.rejects(semLogin.atribuirItemDoChecklist("x", 1, "i", null));
+      await assert.rejects(semLogin.atribuirItemDoChecklist("x", 1, "i", []));
     });
 
     it("sem login, não grava", async () => {

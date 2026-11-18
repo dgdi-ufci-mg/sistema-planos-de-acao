@@ -12,7 +12,7 @@ import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { excluirAcao } from "./exclusao.js";
 import { surgir, trocarSuave, abrirSuave, fecharSuave, reduzirMovimento } from "./movimento.js";
-import { seloHtml } from "./pessoas.js";
+import { seloHtml, donosHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 import { descreverRegistro } from "../historico.js";
 import { editarTexto } from "./edicao-no-lugar.js";
@@ -75,6 +75,10 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let focoNoMover = null;
   /** item do checklist sendo arrastado pela alça (só com mouse; passo 3.7); null quando não há arrasto */
   let arrasto = null;
+  /** item do checklist com a escolha de responsáveis aberta (passo 3.7), ou null */
+  let itemEscolhendo = null;
+  /** seletor do elemento a devolver ao foco depois de redesenhar a janela, ou null */
+  let focoPendente = null;
 
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
@@ -207,7 +211,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
     buscando = null; editandoDoc = null; mostrados.clear(); status = null;
     alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
-    popover = null; focoPopover = null; historicoVisivel = false;
+    popover = null; focoPopover = null; historicoVisivel = false; itemEscolhendo = null; focoPendente = null;
     abrirMenu(false);
     pararComentarios?.();
     comentarios = null;
@@ -405,6 +409,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       if (focoPopover) { corpo.querySelector(`[data-popover] [${focoPopover}]`)?.focus({ preventScroll: true }); focoPopover = null; }
     }
     if (focoNoChecklist) { focoNoChecklist = false; corpo.querySelector('[name="novoItemChecklist"]')?.focus(); }
+    if (focoPendente) { corpo.querySelector(focoPendente)?.focus({ preventScroll: true }); focoPendente = null; }
     if (focoNoMover) {
       /* no primeiro ou no último lugar o botão fica desligado: o foco vai para o outro, e não se perde */
       const { id, direcao } = focoNoMover;
@@ -998,24 +1003,34 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   /** Notas: mostradas já formatadas; ao clicar, editor visual com negrito, itálico, link e lista (seção 8.5). */
   /**
-   * Responsável de um item do checklist (passo 3.7): o círculo da pessoa (ou o quadrado da unidade), ou um círculo
-   * tracejado quando não há responsável. É uma lista nativa do aparelho por cima do círculo, que no celular abre a
-   * lista do próprio sistema. A lista traz primeiro os responsáveis da tarefa e depois os demais do espaço.
-   * Quem só consulta vê o círculo sem poder mudar; item sem responsável, nada.
+   * Responsáveis de um item do checklist (passo 3.7): os círculos das pessoas (e os quadrados das unidades) no
+   * mesmo desenho dos cartões, ou um círculo tracejado quando não há ninguém. Tocar abre a escolha logo abaixo do
+   * item. Quem só consulta vê os círculos, sem poder mudar; item sem responsável, nada.
    */
   function responsavelDoItemHtml(acao, item, pode) {
-    const dono = item.responsavel ? d.pessoas.get(item.responsavel) : null;
     const contexto = { tons: d.espaco.tons, meus: d.meus };
-    if (!pode) return dono ? `<span class="checklist-resp somente">${seloHtml(dono, contexto)}</span>` : "";
+    const donos = (item.responsaveis ?? []).map((id) => d.pessoas.get(id)).filter(Boolean);
+    const selos = donos.length ? donosHtml(donos, contexto) : `<span class="checklist-sem-resp" aria-hidden="true">${ICONES.pessoa}</span>`;
+    if (!pode) return donos.length ? `<span class="checklist-resp somente">${selos}</span>` : "";
+    const nomes = donos.map((r) => r.nome).join(", ");
+    return `<button type="button" class="checklist-resp${donos.length ? "" : " vazio"}" data-escolher-resp-item="${esc(item.id)}"
+      aria-expanded="${itemEscolhendo === item.id}" aria-label="Responsáveis por ${esc(item.texto)}: ${esc(nomes) || "ninguém"}" title="${esc(nomes) || "Atribuir a alguém"}">${selos}</button>`;
+  }
+
+  /**
+   * A escolha de responsáveis de um item: caixas de marcar com quem é responsável pela tarefa, e só eles (quem cuida
+   * de um passo faz parte da tarefa). Gravam na hora, uma marca por vez. Sem responsáveis na tarefa, um aviso.
+   */
+  function escolhaDoItemHtml(acao, item) {
+    if (itemEscolhendo !== item.id) return "";
+    const contexto = { tons: d.espaco.tons, meus: d.meus };
     const daTarefa = d.responsaveis.filter((r) => acao.responsaveis.includes(r.id));
-    const outros = d.responsaveis.filter((r) => !acao.responsaveis.includes(r.id));
-    const opcao = (r) => `<option value="${esc(r.id)}"${r.id === dono?.id ? " selected" : ""}>${esc(r.nome)}</option>`;
-    const grupo = (nome, lista) => (lista.length ? `<optgroup label="${nome}">${lista.map(opcao).join("")}</optgroup>` : "");
-    return `<label class="checklist-resp${dono ? "" : " vazio"}" title="${dono ? esc(dono.nome) : "Atribuir a alguém"}">
-      ${dono ? seloHtml(dono, contexto) : `<span class="checklist-sem-resp" aria-hidden="true">${ICONES.pessoa}</span>`}
-      <select data-responsavel-item="${esc(item.id)}" aria-label="Responsável por ${esc(item.texto)}">
-        <option value=""${dono ? "" : " selected"}>Sem responsável</option>${grupo("Da tarefa", daTarefa)}${grupo("Outros do espaço", outros)}
-      </select></label>`;
+    const marcados = item.responsaveis ?? [];
+    const miolo = daTarefa.length
+      ? daTarefa.map((r) => `<label class="checklist-escolha-opcao"><input type="checkbox" data-resp-item="${esc(item.id)}" value="${esc(r.id)}"${marcados.includes(r.id) ? " checked" : ""}>
+          ${seloHtml(r, contexto)}<span>${esc(r.nome)}</span></label>`).join("")
+      : `<p class="tec">Primeiro, indique os responsáveis pela tarefa.</p>`;
+    return `<div class="checklist-escolha" role="group" aria-label="Responsáveis por ${esc(item.texto)}">${miolo}</div>`;
   }
 
   /**
@@ -1042,7 +1057,8 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
         ${pode && itens.length > 1 ? `<span class="checklist-mover">
           <button type="button" class="mover" data-mover-item="${esc(i.id)}" data-direcao="-1"${n === 0 ? " disabled" : ""} aria-label="Subir ${esc(i.texto)}" title="Subir">${ICONES.acima}</button>
           <button type="button" class="mover" data-mover-item="${esc(i.id)}" data-direcao="1"${n === itens.length - 1 ? " disabled" : ""} aria-label="Descer ${esc(i.texto)}" title="Descer">${ICONES.abaixo}</button></span>` : ""}
-        ${pode ? `<button type="button" class="tirar" data-tirar-item="${esc(i.id)}" aria-label="Retirar ${esc(i.texto)}">${ICONES.fechar}</button>` : ""}</li>`).join("")}</ul>
+        ${pode ? `<button type="button" class="tirar" data-tirar-item="${esc(i.id)}" aria-label="Retirar ${esc(i.texto)}">${ICONES.fechar}</button>` : ""}
+        ${pode ? escolhaDoItemHtml(acao, i) : ""}</li>`).join("")}</ul>
       ${pode ? `<form class="checklist-novo" data-checklist-form><input name="novoItemChecklist" maxlength="200" autocomplete="off"
         placeholder="Novo item: escreva e tecle Enter" aria-label="Novo item do checklist"></form>` : ""}
     </div>`;
@@ -1648,6 +1664,19 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       focoNoChecklist = true;
       return desenhar();
     }
+    const escolherResp = t.closest("[data-escolher-resp-item]");
+    if (escolherResp) {
+      const id = escolherResp.dataset.escolherRespItem;
+      itemEscolhendo = itemEscolhendo === id ? null : id;
+      focoPendente = itemEscolhendo ? `[data-resp-item="${CSS.escape(id)}"]` : `[data-escolher-resp-item="${CSS.escape(id)}"]`;
+      return desenhar();
+    }
+    if (itemEscolhendo && !t.closest(".checklist-escolha")) {
+      /* clique fora fecha a escolha, sem redesenhar: o clique continua valendo para o que foi tocado */
+      itemEscolhendo = null;
+      corpo.querySelectorAll(".checklist-escolha").forEach((x) => x.remove());
+      corpo.querySelectorAll("[data-escolher-resp-item]").forEach((x) => x.setAttribute("aria-expanded", "false"));
+    }
     const moverItem = t.closest("[data-mover-item]");
     if (moverItem) {
       const lista = acaoAtual()?.checklist ?? [];
@@ -1746,8 +1775,13 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   corpo.addEventListener("change", (e) => {
     const marca = e.target.closest("[data-marcar-item]");
     if (marca) return executar(() => store.marcarItemDoChecklist(espacoId, numero, marca.dataset.marcarItem, marca.checked));
-    const dono = e.target.closest("[data-responsavel-item]");
-    if (dono) return executar(() => store.atribuirItemDoChecklist(espacoId, numero, dono.dataset.responsavelItem, dono.value || null));
+    const marcaResp = e.target.closest("[data-resp-item]");
+    if (marcaResp) {
+      const id = marcaResp.dataset.respItem;
+      const lista = [...corpo.querySelectorAll(`[data-resp-item="${CSS.escape(id)}"]:checked`)].map((c) => c.value);
+      focoPendente = `[data-resp-item="${CSS.escape(id)}"][value="${CSS.escape(marcaResp.value)}"]`;
+      return executar(() => store.atribuirItemDoChecklist(espacoId, numero, id, lista));
+    }
     if (e.target.matches("[data-mudar-situacao]")) {
       const nome = e.target.selectedOptions[0]?.textContent.trim();
       return executar(() => store.mudarSituacao(espacoId, numero, e.target.value || null), `Situação: ${nome}.`);
