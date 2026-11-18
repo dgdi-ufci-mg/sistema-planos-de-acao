@@ -6,7 +6,7 @@
  * conclusão prevista com início e prazo) e três blocos que começam recolhidos: andamento por fase (só com duas ou
  * mais fases), entregas (só com entregas) e ações, com filtro por situação.
  *
- * Parte 2 (18/11/2026): o cartão "Ver as ações de outro jeito" leva às duas visões só de leitura, "No tempo" (o
+ * Parte 2 (18/11/2026): o cartão "Ver as ações de outro jeito", no fim da página (como no esboço), leva às duas visões só de leitura, "No tempo" (o
  * Cronograma do Sextante) e "Em rede" (a Rede), desenhadas pelas mesmas telas do Sextante (js/telas/cronograma.js e
  * js/telas/rede.js), sem edição, com os dados do resumo. Cada visão tem endereço próprio (#no-tempo e #em-rede), para
  * o botão Voltar do navegador e do celular levar de volta ao painel.
@@ -106,13 +106,6 @@ export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Se
       [resumo.inicio ? `<b>Início:</b> ${dataBr(resumo.inicio)}` : "", resumo.prazoFinal ? `<b>Prazo:</b> ${dataBr(resumo.prazoFinal)}` : ""].filter(Boolean).join("<br>") || "&nbsp;")}
   </section>
 
-  ${visoesDoResumo(resumo).length ? `<section class="pp-visoes" aria-labelledby="pp-visoes-titulo">
-    <span class="pp-bloco-nome"><span class="pp-h2" id="pp-visoes-titulo">Ver as ações de outro jeito</span></span>
-    <span class="pp-visoes-botoes">${visoesDoResumo(resumo).map((v) => (previa
-      ? `<button type="button" class="botao" disabled title="Na prévia, as visões não abrem. Abra o endereço do painel para vê-las.">${ICONES[VISOES[v].icone]}${VISOES[v].nome}</button>`
-      : `<a class="botao" href="${VISOES[v].hash}" title="${esc(VISOES[v].frase)}">${ICONES[VISOES[v].icone]}${VISOES[v].nome}</a>`)).join("")}</span>
-  </section>` : ""}
-
   ${comFases ? `<details class="pp-bloco" data-bloco="fases"${aberto("fases")}>
     ${resumoDoBloco("Andamento das ações por fase", `${fases.length} fases · ${fases.filter((f) => f.concluidas === f.total).length} ${plural(fases.filter((f) => f.concluidas === f.total).length, "concluída", "concluídas")}`, "Ver fases")}
     <div class="pp-bloco-corpo">
@@ -142,6 +135,15 @@ export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Se
         || `<p class="pp-vazio">Nenhuma ação ${acoes.length ? "nesta situação" : "cadastrada ainda"}.</p>`}
     </div>
   </details>
+
+  ${visoesDoResumo(resumo).length ? `<section class="pp-visoes" aria-labelledby="pp-visoes-titulo">
+    <svg class="pp-visoes-desenho" width="56" height="40" viewBox="0 0 56 40" aria-hidden="true"><rect class="ok" x="1" y="14" width="14" height="12" rx="3"/><rect class="and" x="21" y="2" width="14" height="12" rx="3"/><rect class="atr" x="21" y="26" width="14" height="12" rx="3"/><rect class="nao" x="41" y="14" width="14" height="12" rx="3"/><path d="M15 20 L21 8 M15 20 L21 32 M35 8 L41 20 M35 32 L41 20"/></svg>
+    <span class="pp-visoes-texto"><span class="pp-h2" id="pp-visoes-titulo">Ver as ações de outro jeito</span>
+      <span class="pp-bloco-resumo">No tempo, com as barras de cada ação ao longo dos meses, ou em rede, com o que precisa terminar antes de cada uma começar. Somente leitura.</span></span>
+    <span class="pp-visoes-botoes">${visoesDoResumo(resumo).map((v) => (previa
+      ? `<button type="button" class="botao" disabled title="Na prévia, as visões não abrem. Abra o endereço do painel para vê-las.">${ICONES[VISOES[v].icone]}${VISOES[v].nome}</button>`
+      : `<a class="botao" href="${VISOES[v].hash}" title="${esc(VISOES[v].frase)}">${ICONES[VISOES[v].icone]}${VISOES[v].nome}</a>`)).join("")}</span>
+  </section>` : ""}
 
   <footer class="pp-rodape">
     ${atualizadoEm ? `<span><b>Atualizado em ${dataBr(atualizadoEm.slice(0, 10))}, às ${new Date(atualizadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.</b> O painel se atualiza quando a equipe mexe no plano.</span>` : ""}

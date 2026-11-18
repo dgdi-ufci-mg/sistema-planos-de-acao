@@ -3992,8 +3992,16 @@ body.painel-publico { padding: 0; }
 a.botao { text-decoration: none; display: inline-flex; align-items: center; }
 
 /* ---------- painel público, parte 2 (18/11/2026): "Ver as ações de outro jeito" e as visões só de leitura ---------- */
-.pp-visoes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 14px 20px; background: var(--surface); border-radius: 12px; box-shadow: var(--relevo); }
-.pp-visoes-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-visoes { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 20px; padding: 20px; background: var(--surface); border-radius: 12px; box-shadow: var(--relevo); }
+.pp-visoes-desenho { flex: none; }
+.pp-visoes-desenho rect { stroke-width: 1.5; fill: var(--sunk); stroke: var(--muted); }
+.pp-visoes-desenho rect.ok { fill: var(--ok-soft); stroke: var(--ok); }
+.pp-visoes-desenho rect.and { fill: var(--accent-soft); stroke: var(--liberada); }
+.pp-visoes-desenho rect.atr { fill: var(--crit-soft); stroke: var(--crit); }
+.pp-visoes-desenho path { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.pp-visoes-texto { display: flex; flex-direction: column; gap: 4px; flex: 1 1 320px; min-width: 0; }
+.pp-visoes-texto .pp-bloco-resumo { line-height: 1.45; }
+.pp-visoes-botoes { display: flex; flex-wrap: wrap; gap: 10px; flex: none; }
 .pp-visoes-botoes .botao, .pp-voltar { min-height: 40px; color: var(--ink); }
 .pp-visoes-botoes .icone, .pp-voltar .icone { width: 18px; height: 18px; }
 .pp-voltar .icone { rotate: 90deg; }
