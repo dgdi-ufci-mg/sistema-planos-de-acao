@@ -26,7 +26,7 @@ describe("Responsáveis: ações ao mesmo tempo", () => {
     acao(3, 3, [1], { responsaveis: ["ana"] }), acao(4, 10, [3], { responsaveis: ["bia"] }),
   ];
 
-  it("semanas de hoje ao fim previsto; em cada uma, o maior número de ações no mesmo dia útil", () => {
+  it("sem passado, as semanas vão de hoje ao fim previsto; em cada uma, o maior número de ações no mesmo dia útil", () => {
     const c = montar(rede(), [ana, bia]);
     assert.deepEqual(c.semanas, ["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"]);
     assert.deepEqual(linha(c, "ana").porSemana, [2, 1, 0, 0]);
@@ -45,7 +45,7 @@ describe("Responsáveis: ações ao mesmo tempo", () => {
     assert.deepEqual(linha(c, "ana").porSemana, [1]);
   });
 
-  it("concluída fica de fora; contínua e sem estimativa aparecem, mas não entram no número", () => {
+  it("concluída com data entra com o período real; contínua e sem estimativa aparecem, mas não entram no número", () => {
     const acoes = [
       acao(1, 5, [], { responsaveis: ["ana"], concluidaEm: "2026-10-06" }),
       acao(2, 5, [], { responsaveis: ["ana"] }),
@@ -53,9 +53,31 @@ describe("Responsáveis: ações ao mesmo tempo", () => {
       acao(4, 0, [], { responsaveis: ["ana"], comecaCom: { tipo: "projeto" }, terminaCom: { tipo: "projeto" } }),
     ];
     const l = linha(montar(acoes, [ana], "2026-10-07"), "ana");
-    assert.deepEqual(l.barras.map((b) => b.numero).sort(), [2, 3, 4]);
-    assert.deepEqual([l.emAberto, l.semEstimativa, l.continuas, l.pico], [3, 1, 1, 1]);
-    assert.deepEqual(l.barras.filter((b) => b.conta).map((b) => b.numero), [2]);
+    assert.deepEqual(l.barras.map((b) => b.numero).sort(), [1, 2, 3, 4]);
+    assert.deepEqual([l.emAberto, l.concluidas, l.semEstimativa, l.continuas], [3, 1, 1, 1]);
+    const um = l.barras.find((b) => b.numero === 1);
+    assert.deepEqual([um.inicio, um.fim, um.concluida, um.conta], ["2026-10-05", "2026-10-06", true, true]);
+    assert.deepEqual(l.barras.filter((b) => b.conta).map((b) => b.numero).sort(), [1, 2]);
+  });
+
+  it("passado: semanas desde a primeira liberação; pico e máximo só de hoje em diante", () => {
+    /* 1 e 2 juntas na primeira semana (concluídas); 3, em aberto, começa depois de 1 e atrasou */
+    const acoes = [
+      acao(1, 5, [], { responsaveis: ["ana"], concluidaEm: "2026-10-09" }),
+      acao(2, 5, [], { responsaveis: ["ana"], concluidaEm: "2026-10-09" }),
+      acao(3, 3, [1], { responsaveis: ["ana"] }),
+    ];
+    const c = montar(acoes, [ana], "2026-10-21");
+    assert.deepEqual(c.semanas, ["2026-10-05", "2026-10-12", "2026-10-19"]);
+    assert.equal(c.atual, 2);
+    const l = linha(c, "ana");
+    assert.deepEqual(l.porSemana, [2, 1, 1], "a atrasada conta desde a liberação, em 12/10");
+    assert.deepEqual([l.pico, c.maximo], [1, 1], "o acúmulo antigo não entra no pico nem na cor");
+  });
+
+  it("tarefa concluída sem data (marcada no Quadro) fica de fora", () => {
+    const acoes = [acao(1, 2, [], { responsaveis: ["ana"], conclusaoMarcadaEm: "2026-10-06T10:00:00Z" }), acao(2, 2, [], { responsaveis: ["ana"] })];
+    assert.deepEqual(linha(montar(acoes, [ana], "2026-10-07"), "ana").barras.map((b) => b.numero), [2]);
   });
 
   it("sem responsável (ou com responsável excluído) vai para a última linha; quem não tem ação em aberto fica em livres", () => {
@@ -66,24 +88,26 @@ describe("Responsáveis: ações ao mesmo tempo", () => {
     assert.deepEqual(c.livres.map((r) => r.id), ["bia", "dti"]);
   });
 
-  it("atrasada conta na semana de hoje (nada termina no passado); dias antes de hoje não contam", () => {
+  it("atrasada conta da liberação até hoje (nada termina no passado)", () => {
     const hoje = "2026-10-21"; // quarta-feira da terceira semana; a ação venceu em 09/10
     const c = montar([acao(1, 5, [], { responsaveis: ["ana"] })], [ana], hoje);
-    assert.deepEqual(c.semanas, ["2026-10-19"]);
+    assert.deepEqual([c.semanas, c.atual], [["2026-10-05", "2026-10-12", "2026-10-19"], 2]);
     const l = linha(c, "ana");
-    assert.deepEqual([l.atrasadas, l.porSemana[0], l.barras[0].fim], [1, 1, hoje]);
+    assert.deepEqual([l.atrasadas, l.porSemana, l.barras[0].fim], [1, [1, 1, 1], hoje]);
   });
 
-  it("tudo concluído: nenhuma linha", () => {
-    const c = montar([acao(1, 2, [], { responsaveis: ["ana"], concluidaEm: "2026-10-06" })], [ana], "2026-10-07");
-    assert.deepEqual([c.linhas.length, c.maximo, c.livres.length], [0, 0, 1]);
+  it("tudo concluído: a linha fica, com o passado, sem pico; quem não tem ação vai para livres", () => {
+    const c = montar([acao(1, 2, [], { responsaveis: ["ana"], concluidaEm: "2026-10-06" })], [ana, bia], "2026-10-21");
+    const l = linha(c, "ana");
+    assert.deepEqual([c.linhas.length, l.emAberto, l.concluidas, l.porSemana, l.pico, c.maximo], [1, 0, 1, [1, 0, 0], 0, 0]);
+    assert.deepEqual(c.livres.map((r) => r.id), ["bia"]);
   });
 
   it("feriado não conta como dia de trabalho", () => {
     const comFeriado = criarCalendario({ inicio: INICIO, datasExcluidas: [{ data: "2026-10-12" }] });
     const barras = [{ inicio: "2026-10-12", fim: "2026-10-12" }];
-    assert.deepEqual(simultaneasPorSemana(barras, ["2026-10-12"], comFeriado, INICIO), [0]);
-    assert.deepEqual(simultaneasPorSemana(barras, ["2026-10-12"], cal, INICIO), [1]);
+    assert.deepEqual(simultaneasPorSemana(barras, ["2026-10-12"], comFeriado), [0]);
+    assert.deepEqual(simultaneasPorSemana(barras, ["2026-10-12"], cal), [1]);
   });
 
   it("intensidade da cor: um nível por ação até quatro; acima, proporcional ao maior número", () => {
