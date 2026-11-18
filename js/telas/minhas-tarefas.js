@@ -1,7 +1,8 @@
 /**
  * Tela "Minhas tarefas" (documentação técnica, seção 8, "Minhas tarefas"; 05/11/2026): as ações e tarefas atribuídas
  * a quem entrou, de todos os espaços, agrupadas por prazo (regras em js/minhas-tarefas.js). Cada linha mostra o nome,
- * o espaço de origem e o prazo; tocar abre o espaço com a janela da ação ou tarefa.
+ * o espaço de origem e o prazo; tocar abre a janela da ação ou tarefa por cima da lista, sem sair dela (18/11/2026;
+ * js/telas/janela-fora-do-espaco.js).
  */
 import { esc, dataBr } from "../formato.js";
 import { esqueletoHtml } from "./esqueleto.js";
