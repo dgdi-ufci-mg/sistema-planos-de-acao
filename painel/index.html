@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- Painel público de um Plano de Ação ou Projeto (18/11/2026; documentação técnica, seção 8.8): painel/?p=<código>.
+     Fica fora das pastas sextante/ e strata/ para não fazer parte de nenhum dos dois aplicativos instaláveis. -->
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Painel público</title>
+<link rel="icon" type="image/png" href="../logo.png">
+<meta name="theme-color" content="#F5F3EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1A19" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="../css/estilo.css">
+<!-- o tema escolhido neste aparelho no Sextante vale também aqui -->
+<script src="../js/tema-inicial.js"></script>
+</head>
+<body class="painel-publico">
+<header class="pp-topo">
+  <div class="pp-topo-linha">
+    <span class="pp-marca"><b data-nome-sistema>Sextante</b><small data-instituicao>UFCI-MG</small></span>
+    <span class="pp-selo">Painel público · somente leitura</span>
+  </div>
+</header>
+<main class="pp-conteudo" id="painel" aria-live="polite">
+  <div class="esqueleto esqueleto-lista" role="status" aria-label="Carregando"><span class="esqueleto-cartao linha"><span class="esqueleto-bloco grosso" style="width:60%"></span></span><span class="esqueleto-cartao linha"><span class="esqueleto-bloco grosso" style="width:45%"></span></span></div>
+</main>
+<script type="module" src="../js/painel.js"></script>
+</body>
+</html>

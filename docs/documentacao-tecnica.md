@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 18/11/2026 (versão 326 da página)
+**Última atualização deste documento:** 18/11/2026 (versão 327 da página)
 
 Sistema da DGDI da UFCI-MG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -96,6 +96,10 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/extracao.js`, `js/arquivo-planilha.js` | Extração personalizada: as tabelas (ações, entregas, alcances, histórico) e os arquivos CSV, .xlsx e .ods, feitos sem biblioteca |
 | `js/vocabulario.js` | Palavras da tela que mudam com o tipo do espaço: "ação" ou "tarefa" (passo 3.1) |
 | `js/tipos.js` | Tipos de espaço: nomes, tipo padrão, o que cada tipo exige, agrupamento do menu lateral |
+| `painel/index.html` | Página do painel público (seção 8.8): `painel/?p=<código>`, somente leitura, sem login. Fica fora de `sextante/` e `strata/` para não fazer parte de nenhum dos dois aplicativos instaláveis |
+| `js/painel.js` | Partida da página do painel público: liga o Firebase só para ler; sem configuração, um banco vazio na memória |
+| `js/painel-publico.js` | Regras puras do painel público (seção 4.13): quem tem painel, código do endereço, o resumo que vai a público (`montarResumo`), os responsáveis como o público vê e os números do alto |
+| `js/telas/painel-publico.js` | Desenho da página do painel público (`htmlDoPainel`, puro) e a ligação dela: blocos recolhíveis e filtro das ações. O mesmo desenho serve à prévia em "Configurar este espaço" |
 | `js/campos-personalizados.js` | Campos personalizados (passo 3.6): tipos, limite, conferência do catálogo e dos valores, conversão do que a pessoa digita e valor como texto |
 | `js/modelos.js` | Modelos do espaço: estruturado, aberto e personalizado; o que cada espaço usa (estimativas ou data-limite, dependências, simulação) e as opções do cálculo |
 | `js/cronograma.js`, `js/rede.js`, `js/linha-do-tempo.js` | Geometria do cronograma, da rede e da linha do tempo |
@@ -198,6 +202,7 @@ Regras complementares:
 - Comentários: o autor é sempre o e-mail do login, em minúsculas; o autor edita guardando as versões anteriores; apagado, o comentário não muda mais. Desde 12/11/2026, o banco confere a edição e o apagamento assim: **editar** muda só `texto`, `editadoEm` e `versoes`, e a lista ganha exatamente uma versão, cujo texto é o texto anterior; **apagar** muda só `apagadoEm`, `apagadoPor` (o e-mail de quem apaga) e `apagadoComo` (`autor` para o autor; `administrador` para o administrador do espaço). As versões mais antigas não são conferidas uma a uma pelo banco: quem as preserva é o `Store`. Até 12/11/2026, a regra comparava o começo da lista nova com a lista antiga (`versoes[0:n] == versoes`), e o Firestore recusava essa comparação: o autor não conseguia editar nem apagar os próprios comentários (encontrado no uso, com a mensagem "Sem permissão no banco de dados"); o apagamento pelo administrador, que não usava a comparação, funcionava. **Requisito do sistema definitivo:** conferir no servidor que as versões anteriores não mudam. A leitura é pública: um comentário "apagado" some da tela, mas continua legível por quem consultar o banco diretamente.
 - **Listas que só crescem** (correção de 12/11/2026): nas etiquetas acrescentadas pelo Usuário ao catálogo do espaço e nas nomeações do Administrador do Sistema num espaço órfão, o banco confere só que a lista não diminui (etiquetas) ou que ganha exatamente um item, o da nova nomeação (nomeações). Os itens que já existiam não são conferidos um a um pelo banco, e sim pelo Store. Até 12/11/2026, as duas regras comparavam o começo da lista nova com a lista antiga (`lista[0:n] == lista`), a mesma comparação que o Firestore recusava nos comentários; o Usuário provavelmente não conseguia acrescentar etiquetas, e a nomeação em espaço órfão provavelmente falhava. **Requisito do sistema definitivo:** conferir no servidor que os itens anteriores não mudam.
 - **Espaço encerrado** (passo 2.3): só leitura para todos, inclusive comentários e retratos; o administrador do espaço só reabre (apaga `encerradoEm`).
+- **Painel público** (18/11/2026; seção 4.13): `paineis/{código}` é lido por **qualquer pessoa**, sem login. Grava a cópia quem é Administrador ou Usuário do espaço indicado no campo `espacoId` do painel (ou qualquer pessoa com login, no espaço sem administração), só quando o código é o que o espaço guarda em `painelPublico.codigo`, o painel está ligado e o espaço não está encerrado. O administrador do espaço também **esvazia** qualquer painel do seu espaço (`ligado` falso e `resumo` vazio), ao desligar o painel ou trocar o endereço; por isso o endereço antigo deixa de mostrar o resumo na hora. O espaço de um painel nunca muda. Ligar, desligar, trocar o endereço e mudar a apresentação ou a forma de mostrar os responsáveis são configuração do espaço: só o administrador. O **conteúdo** da cópia não é conferido pelo banco, e sim pelo `Store` (só os campos da seção 4.13); **requisito do sistema definitivo:** montar a cópia no servidor, a partir do espaço, para que ninguém publique um resumo inventado. **Regra nova, a publicar no console do Firebase.**
 - **Entregas do Plano de Ação** (passo 2.6; seção 4.12): consultadas como o conteúdo do espaço; só o administrador do espaço cadastra, altera e muda a situação; os registros de alcance são só de acréscimo, pelo administrador e em nome próprio (`registradoPor` igual ao e-mail do login). Nada disso no espaço encerrado. As exigências da situação e do encerramento ficam só no Store.
 - **Catálogo da estratégia** (passo 2.5; seção 4.11): `sistema/estrategia`, `instrumentos` e `itensEstrategicos` são consultados por qualquer pessoa e gravados só pelo Gestor da Estratégia (provisoriamente, o Administrador do Sistema). O Store confere também as regras do catálogo (camadas permitidas nas ligações, códigos, vigência); o banco, só quem grava.
 - **Administrador do Sistema** (passo 2.3): os e-mails ficam no documento `sistema/administradores` (campo `emails`, do tipo lista, em minúsculas), **editado só no console do Firebase**; todos com login o leem. Ele altera o calendário geral e nomeia um administrador num espaço órfão (acrescenta a si mesmo como autor em `nomeacoes` e um único e-mail como administrador em `acessos`). Fora isso, não tem passe livre nos espaços.
@@ -281,6 +286,7 @@ erDiagram
 | `datasExcluidas` | lista de data excluída (4.1.1) | não | Datas sem expediente próprias do espaço (feriados locais, exclusões específicas), que complementam o calendário geral (4.1.5) | |
 | `datasGeraisDesconsideradas` | lista de data | não | Datas do calendário geral que este espaço não exclui (por exemplo, um ponto facultativo em que a equipe trabalha) | `["2027-02-08"]` |
 | `documentos` | lista de documento (4.1.2) | não | Documentos do espaço, como o espaço aprovado e suas revisões | |
+| `painelPublico` | configuração do painel (4.13) | não | Painel público do Plano de Ação ou do Projeto (18/11/2026): ligado ou não, código do endereço, apresentação e forma de mostrar os responsáveis. Muda só pelas operações do painel (`configurarPainelPublico`, `gerarNovoEnderecoDoPainel`), e não pela gravação comum do espaço. Ausente: painel nunca ligado | |
 | `simulacoes` | inteiro | sim | Número de simulações. Padrão 10.000. Definido na criação e **imutável** (seção 5.7) | `10000` |
 | `semente` | inteiro | sim | Semente da simulação. Padrão 20261014. Definida na criação e **imutável** (seção 5.7) | `20261014` |
 | `estrutura` | lista de fase (4.1.3) | não | Fases e etapas, na ordem de exibição (seção 8.3) | |
@@ -778,6 +784,8 @@ O banco guarda os fatos: estimativas, dependências, datas de conclusão. O que 
 | Item do catálogo, ligação | `itensEstrategicos/{id}`, com a lista `superiores` | tabelas `item_estrategico`, `ligacao` (superior, subordinado) |
 | Vínculo do Plano de Ação | lista `vinculos` dentro do espaço | tabela `espaco_vinculo` |
 | Responsável (criado no sistema) | `espacos/{id}/responsaveis/{id}` | tabela `responsavel`, com `espaco_id` |
+| Configuração do painel público | mapa `painelPublico` dentro do espaço | colunas na tabela `espaco` (ou tabela `painel_publico`, chave `espaco_id`) |
+| Painel público (cópia-resumo) | `paineis/{código}`, com o resumo dentro | dispensável: no sistema definitivo, o resumo é montado na hora, pelo servidor, a partir do espaço (seção 4.13) |
 
 Os nomes do Firebase passam a ser em português, porque a versão 2 usa um projeto novo (seção 3.3); os nomes da versão 1 (`projects`, `tasks`, `people`) não são usados. No PostgreSQL, as listas viram tabelas de ligação e as regras da seção 4.6 viram restrições do banco (seção 3.4).
 
@@ -943,6 +951,91 @@ Passo 2.6 (seção 16.7). Duas coleções dentro do espaço, só no **Plano de A
 | `descricao` | texto | sim | O que a evidência mostra | `Portaria de publicação` |
 | `identificacao` | texto | não | Número no SIPAC/Protocolo. Obrigatório quando não há link | `23062.000001/2026-10` |
 | `link` | texto (endereço web) | não | Começa com `https://` ou `http://`. Obrigatório quando não há identificação. O envio de arquivo vem com o servidor da UFCI-MG (passo 4.3) | |
+
+### 4.13 Painel público do Plano de Ação ou do Projeto
+
+**Feito em 18/11/2026** (pedido e decisões do responsável; esboço visual aprovado por ele, no claude.ai). Um painel **somente leitura**, com **endereço permanente** (`painel/?p=<código>`), para qualquer pessoa acompanhar um Plano de Ação ou um Projeto **sem conta** no Sextante. Quadros e Listas de tarefas não têm painel. A tela está na seção 8.8.
+
+**Por que uma cópia à parte, e não o próprio espaço** (decisão do responsável, 18/11/2026): um espaço público já é legível por qualquer pessoa no banco, inclusive comentários e histórico (seção 3.6). Ler o painel direto do espaço obrigaria um plano restrito a virar público, abrindo tudo. A cópia leva **só** o que foi combinado para o público e funciona em qualquer visibilidade. Um plano restrito pode ter painel: ligar o painel é a decisão de abrir o resumo (decisão do responsável, 18/11/2026); a tela avisa ao ligar.
+
+**Como a cópia se atualiza:** o protótipo não roda nada no servidor. Quando um Administrador ou Usuário do espaço abre o espaço no Sextante, ou quando algo muda nele (ações, responsáveis, entregas), o navegador dessa pessoa monta o resumo com o que já calculou para a tela (`js/telas/espaco.js` → `montarResumo`, de `js/painel-publico.js`) e o grava, **só se mudou** desde a última gravação daquele aparelho. Consequência: as situações que dependem do dia (por exemplo, uma ação que passa a estar atrasada) só mudam no painel quando alguém da equipe abre o espaço. Leitores e quem não participa não gravam. **Requisito do sistema definitivo:** montar o resumo no servidor, na hora da consulta.
+
+**Endereço:** um código de 20 letras e algarismos, sorteado (cerca de 119 bits), sem 0, O, 1, l e I, que se confundem; nunca o número nem o id do espaço. Ligar de novo um painel desligado volta ao mesmo endereço. **Gerar novo endereço** esvazia o antigo na hora e sorteia outro.
+
+**O que vai a público** (o `Store` recusa qualquer campo fora destas tabelas): nome, código do Plano de Ação, apresentação, Programa e documento de aprovação (só no Plano de Ação), início, prazo final, conclusão prevista, e, por ação, número, nome, fase, situação simplificada, rótulo, data e responsáveis como o público vê; as fases com as contagens; as entregas ativas com a situação e o prazo. **Nunca vão:** comentários, anotações, descrição, checklist, histórico, estimativas, índices técnicos, campos personalizados, etiquetas, e-mails e o id do espaço.
+
+**Responsáveis como o público vê** (escolha do administrador; padrão **só a área**, pela LGPD; decisão do responsável, 18/11/2026): unidade, pelo nome; pessoa, com "Nome da pessoa e área", como "Nome · setor" (ou só o nome, sem setor); pessoa, com "Só a área", pelo setor, e, sem setor, a pessoa não aparece.
+
+**Situação simplificada da ação:** `concluida`; `atrasada` (carimbo da seção 6.2); `continua` (seção 5.9); `liberada` (pode começar ou já começou, inclusive nas situações personalizadas); `naoLiberada`. O **rótulo** é o mesmo texto que o Sextante mostra (inclusive o nome da situação personalizada, como "Em andamento"), para o painel e o sistema falarem igual. A data é a conclusão registrada, na concluída, ou a conclusão prevista, nas demais (a mesma da Lista, seção 8.3).
+
+<!-- dicionario: configuracaoDoPainel -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `ligado` | sim/não | sim | O painel está ligado. Desligado, o endereço avisa que o painel foi desligado | `true` |
+| `codigo` | texto | não | Código do endereço, sorteado ao ligar pela primeira vez; muda só por "Gerar novo endereço". Vazio: nunca ligado | `K7Qm2xVb9rTeHp4sWc8n` |
+| `apresentacao` | texto | não | Apresentação para o público, até 400 caracteres, sem espaços nas pontas. Em branco: o painel mostra só o nome. Escrita na configuração do painel, porque o espaço não tem descrição própria e o texto é para o público, não para a equipe | |
+| `mostrarNomes` | sim/não | sim | Mostrar o nome das pessoas junto da área. Padrão: falso (só a área) | `false` |
+| `alteradoEm` | momento | sim | Última mudança da configuração | |
+| `alteradoPor` | usuário | não | Quem mudou | |
+
+<!-- dicionario: painelPublico -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `codigo` | texto | sim | O mesmo código do endereço, que é também o id do documento | |
+| `espacoId` | id | sim | Espaço de origem; nunca muda. Serve às regras do banco; a página do painel não o recebe | |
+| `ligado` | sim/não | sim | Falso: painel desligado ou endereço trocado | `true` |
+| `resumo` | resumo do painel | não | O resumo público (tabela abaixo). Vazio quando desligado | |
+| `atualizadoEm` | momento | sim | Última gravação da cópia; a página mostra "Atualizado em" | |
+| `atualizadoPor` | usuário | não | Quem gravou por último (o navegador dessa pessoa montou o resumo) | |
+
+<!-- dicionario: resumoDoPainel -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `nome` | texto | sim | Nome do espaço | |
+| `codigo` | texto | não | Código do Plano de Ação (4.1); nulo no Projeto | `PA-GR 2026-2027` |
+| `tipo` | texto | sim | `planoDeAcao` ou `projeto` | |
+| `apresentacao` | texto | sim | A apresentação da configuração; pode ser vazia | |
+| `programa` | texto | não | Programa do PEI/PDI (`programaDoEspaco`, seção 4.11), só no Plano de Ação | |
+| `aprovacao` | aprovação (4.1) | não | Documento de aprovação, só no Plano de Ação; o link só se começar com `https://` ou `http://` | |
+| `inicio` | data | não | Início do espaço | |
+| `prazoFinal` | data | não | Prazo final do espaço | |
+| `conclusaoPrevista` | data | não | A maior data prevista entre as ações (a mesma da Lista) | |
+| `acoes` | lista de ação do painel | sim | Ações ativas, na ordem do espaço | |
+| `fases` | lista de fase do painel | sim | Fases com ações, na ordem do espaço; vazia com "Fases e etapas" desligado | |
+| `entregas` | lista de entrega do painel | sim | Entregas ativas do Plano de Ação, na ordem; vazia no Projeto | |
+
+<!-- dicionario: acaoDoPainel -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `numero` | número | sim | Número da ação | `3` |
+| `nome` | texto | sim | Nome da ação (`rotulo`) | |
+| `fase` | id | não | Fase da etapa da ação; nula sem fases | |
+| `situacao` | texto | sim | `concluida`, `atrasada`, `continua`, `liberada` ou `naoLiberada` | `liberada` |
+| `rotulo` | texto | sim | Nome da situação como o Sextante mostra | `Em andamento` |
+| `data` | data | não | Concluída: a data registrada; demais: a conclusão prevista | |
+| `responsaveis` | lista de texto | sim | Responsáveis como o público vê (acima) | `["Governança"]` |
+
+<!-- dicionario: faseDoPainel -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Id da fase | |
+| `nome` | texto | sim | Nome da fase | |
+| `total` | número | sim | Ações da fase | |
+| `concluidas` | número | sim | Concluídas | |
+| `atrasadas` | número | sim | Com o carimbo Atrasada | |
+| `emAndamento` | número | sim | Liberadas e contínuas, sem atraso | |
+
+<!-- dicionario: entregaDoPainel -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `titulo` | texto | sim | Título da entrega | |
+| `situacao` | texto | sim | Situação da entrega (4.12) | `alcancada` |
+| `rotulo` | texto | sim | Nome da situação | `Alcançada` |
+| `prazo` | data | não | Prazo da entrega | |
+
+**Cópia de segurança e restauração:** a configuração (`painelPublico`) vai com o espaço; a cópia pública não vai, porque é refeita quando alguém da equipe abre o espaço.
+
+---
 
 ## 5. Regras de cálculo
 
@@ -1845,6 +1938,22 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 - **Etiquetas das entregas** (item 21): no celular, as etiquetas de situação das entregas ("Em andamento", "Não iniciada"…) passam de 12 para 13 px, com um pouco mais de folga interna.
 
+### 8.8 Painel público (18/11/2026)
+
+Pedido e decisões do responsável, sobre um esboço visual aprovado por ele (dados na seção 4.13).
+
+**Em "Configurar este espaço" › Painel público** (só o administrador; só Planos de Ação e Projetos): chave "Painel ligado"; aviso, no espaço restrito ou institucional, de que o resumo fica visível para qualquer pessoa com o endereço; o endereço, com "Copiar", "Abrir" (só no banco do sistema) e "Gerar novo endereço" (com confirmação: o antigo deixa de funcionar); "Apresentação para o público (opcional)", gravada ao sair do campo; "Como mostrar os responsáveis" (Só a área, padrão; Nome da pessoa e área); e **"Ver como o público verá"**, que abre a prévia do painel ali mesmo, com o mesmo desenho da página, inclusive no exemplo (em que o endereço não abre fora do aparelho).
+
+**A página `painel/?p=<código>`**, sem login e sem a barra do Sextante, no tema escolhido no aparelho:
+1. Faixa do topo com o nome do sistema, a instituição e o selo "Painel público · somente leitura".
+2. Nome como título; abaixo, o código do Plano de Ação, discreto (o Strata mostra os planos pelo código no Mapa); a apresentação; e uma caixa com "Faz parte do <Programa>" e "Aprovado por: <documento>" (com link, quando houver). Sem nada disso (num Projeto sem documento), a caixa some. O tipo não aparece.
+3. Três cartões: **Ações concluídas** e **Entregas alcançadas** no mesmo padrão (porcentagem, barra e "x de y"; o das entregas some sem entregas) e **Conclusão prevista**, com início e prazo. Sem comparação com o planejado no primeiro retrato e sem aviso de atenção no alto (decisão do responsável: o atraso aparece na lista das ações).
+4. Três blocos que **começam recolhidos**, com um resumo no cabeçalho e "Ver …"/"Recolher": **Andamento das ações por fase** (só com duas ou mais fases; com uma, repetiria o primeiro cartão), barras de concluídas, liberadas e atrasadas e a legenda; **Entregas** (só com entregas); **Ações**, agrupadas por fase (com duas ou mais), com nome, responsáveis, data e situação, e filtros Todas, Liberadas (inclui as contínuas), Atrasadas, Concluídas e Não liberadas, só os que têm ações.
+5. Rodapé com "Atualizado em …" e o aviso de que comentários e anotações não aparecem.
+6. Mensagens no lugar do painel: endereço incompleto, painel não encontrado (código que não existe ou foi trocado), painel desligado, painel em preparação (ligado, ainda sem resumo) e falha de conexão.
+
+**Previsto para depois** (combinado com o responsável em 18/11/2026, em partes separadas): (a) no Strata, o plano com painel passa a mostrar o nome no Mapa, mesmo restrito, e o "Abrir" leva ao painel, com "Abrir no Sextante" para os membros; (b) "Ver as ações de outro jeito", com o Cronograma ("No tempo") e a Rede ("Em rede") em modo só de leitura, a partir do painel.
+
 ## 9. O que saiu da versão 1
 
 | Item | Motivo |
@@ -1869,6 +1978,7 @@ Mudanças pedidas pelo responsável a partir da avaliação de usabilidade da in
 
 Cada decisão de detalhe está registrada, com a data e o motivo, na seção do assunto. As de arquitetura e de método, que orientam o sistema inteiro:
 
+- **Painel público por cópia-resumo, e não pela leitura do espaço** (18/11/2026, decisão do responsável; seção 4.13): o espaço público já abre comentários e histórico a qualquer pessoa no banco; a cópia leva só o que foi combinado e permite painel também em espaço restrito. Custo: uma regra nova no Firestore e uma cópia que se atualiza quando alguém da equipe abre o espaço.
 - **Fases e etapas pela Rede: criar e renomear, sim; excluir e reordenar, não** (17/11/2026, pedido do responsável, para o editor da Rede ficar mais completo; seção 8.4, itens xxxviii a xl; versão 317): a etapa nasce junto com uma ação, porque a Rede só desenha a cerca em volta das ações, e uma etapa vazia não teria onde aparecer. Excluir e mudar a ordem ficam nas configurações: são mudanças raras, de efeito grande (as ações da etapa excluída precisam de destino; a ordem das fases muda as faixas da Rede inteira), e a Rede não tem um jeito claro de mostrá-las. A fase nova entra na posição escolhida, sugerida pelas dependências da ação (versão 317.1).
 - **A Rede como prancheta do plano** (13/11/2026, registro do responsável: talvez a Rede seja a visualização mais interessante para conceber um plano, o lugar onde a pessoa está na "prancheta" de elaboração das ideias; seção 8.4, itens xxxiii a xxxvii; versão 316): o plano pode nascer e crescer inteiro pela Rede, sem passar por "Nova ação". Por isso o plano vazio mostra o início e o término já ligados, com o "+", e todo ponto e toda linha da rede oferecem o "+" que faz sentido nele. A ação criada pelo início nasce ligada ao início e ao término, para a rede nunca ter pontas soltas.
 - **Vários arquivos, sem compilação.** Vários arquivos dão separação de responsabilidades, testes automáticos dos cálculos e leitura mais fácil por pessoas e IAs; o custo, um servidor simples para testar localmente, é pequeno. Sem compilação, qualquer pessoa edita e vê o resultado, há menos ferramentas a manter numa instituição em que as equipes mudam e menos riscos de segurança. A checagem de tipos vem dos comentários JSDoc.
@@ -2799,3 +2909,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 324 | Planilha parecida com o Excel, lote 1 (pedido do responsável, 18/11/2026): botão direito no título da coluna (classificar, filtrar, quebrar texto, ajustar largura, largura padrão, ocultar, mostrar escondidas); traço duplo onde há colunas escondidas; quebra de texto por coluna, com Alt+Enter em Descrição e Justificativa; clique duplo na borda do título ajusta a largura ao conteúdo. Seção 8.3 (planilha do Sextante). Regras `ocultasAoLado` e `larguraAoConteudo` em `js/planilha.js`. Testes em `testes/planilha.test.js` e `testes/navegador/planilha.test.mjs`. |
 | 325 | Planilha parecida com o Excel, lote 2 (pedido do responsável, 18/11/2026): escolher várias células (Shift+clique, arrastar, Shift+setas), copiar, recortar, colar e limpar a faixa, Ctrl+D para repetir para baixo, e botão direito na célula (Copiar, Colar, Limpar conteúdo, Abrir a ação, Excluir a ação com confirmação). Seção 8.3 (planilha do Sextante). Testes em `testes/navegador/planilha.test.mjs`. |
 | 326 | Minhas tarefas: tocar numa tarefa abre a janela por cima da lista, sem ir ao espaço de origem (pedido do responsável, 18/11/2026). O nome do espaço no cabeçalho da janela, e "Abrir no espaço" no menu "…", abrem o espaço com a ação; as setas seguem a ordem da lista, de um espaço a outro; ao fechar, a lista é refeita se algo mudou. Novo `js/telas/janela-fora-do-espaco.js`; a janela da ação (`js/telas/janela-acao.js`) aceita vizinha de outro espaço (`trocarDeEspaco`) e o link do espaço (`aoAbrirEspaco`). Seções 3.1, 8 ("Minhas tarefas") e 10. Testes em `testes/navegador/minhas-tarefas.test.mjs`. |
+| 327 | Painel público do Plano de Ação ou do Projeto, parte 1 (pedido e decisões do responsável, 18/11/2026; seções 3.6, 4.13 e 8.8): cópia-resumo em `paineis/{código}`, lida por qualquer pessoa; configuração em "Configurar este espaço" (ligar, endereço, novo endereço, apresentação, responsáveis por área ou por nome, prévia); página `painel/?p=<código>`; atualização pelo navegador de quem é Administrador ou Usuário; regras novas no `firestore.rules`, a publicar no console. |

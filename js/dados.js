@@ -7,6 +7,7 @@
  */
 import { ErroDeDados } from "./banco/local.js";
 import { CAMPOS } from "./modelo.js";
+import { temPainel, configuracaoDoPainel, painelLigado, gerarCodigoDoPainel, codigoValido, problemaDaConfiguracao } from "./painel-publico.js";
 import { ajustarTons } from "./responsaveis.js";
 import { ordenarPorDependencia } from "./calculo.js";
 import { problemaDosMarcos, ehContinua } from "./continuas.js";
@@ -32,7 +33,7 @@ export const SEMENTE_PADRAO = 20261014;
 const CODIGO_VALIDO = /^[A-Z0-9]{2,8}$/;
 
 /** Campos que não mudam depois de criados. */
-const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero", "modelo", "acessos", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes"]; // acessos: por definirPapel e assumirAdministracao (passo 2.1); encerramento e nomeações: operações próprias (passo 2.3) // modelo: fixo depois de criado (passo 2.4b) // tons e proximoNumero: o sistema cuida deles
+const FIXOS_DO_ESPACO = ["id", "semente", "simulacoes", "criadoEm", "tons", "proximoNumero", "modelo", "acessos", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes", "painelPublico"]; // painelPublico: por configurarPainelPublico (18/11/2026) // acessos: por definirPapel e assumirAdministracao (passo 2.1); encerramento e nomeações: operações próprias (passo 2.3) // modelo: fixo depois de criado (passo 2.4b) // tons e proximoNumero: o sistema cuida deles
 const FIXOS_DA_ACAO = ["numero", "criadaEm"];
 
 /** Código mnemônico: de 2 a 8 letras maiúsculas ou números, sem repetir no espaço. */
@@ -128,6 +129,7 @@ function validarEspaco(e, recusarDesconhecidos) {
   const acessos = problemaDosAcessos(e);
   if (acessos) throw new ErroDeDados(acessos.codigo, acessos.mensagem);
   for (const n of e.nomeacoes ?? []) recusarDesconhecidos(n, "nomeacao"); // passo 2.3
+  if (e.painelPublico) recusarDesconhecidos(e.painelPublico, "configuracaoDoPainel"); // painel público (18/11/2026)
   const visibilidade = problemaDaVisibilidade(e); // passo 2.2
   if (visibilidade) throw new ErroDeDados(visibilidade.codigo, visibilidade.mensagem);
   if (e.fechado != null && typeof e.fechado !== "boolean") throw new ErroDeDados("valor-invalido", "Aberto ou fechado: informe sim ou não.");
@@ -444,6 +446,22 @@ export function criarStore(banco, opcoes = {}) {
     if (JSON.stringify(tons) !== JSON.stringify(espaco.tons ?? {})) await banco.alterarEspaco(espacoId, { tons });
   }
 
+  /* painel público (18/11/2026): o último resumo gravado por este aparelho, por código, para não regravar igual */
+  const ultimosPaineis = new Map();
+  /** Esvazia a cópia pública de um código (painel desligado ou endereço trocado). */
+  async function esvaziarPainel(espacoId, codigo) {
+    await banco.gravarPainelPublico(codigo, { espacoId, ligado: false, resumo: null, atualizadoEm: agora(), atualizadoPor: usuario });
+    ultimosPaineis.delete(codigo);
+  }
+  /** O resumo só tem os campos do dicionário (seção 4.13): nada além do que foi combinado vai a público. */
+  function conferirResumo(resumo) {
+    recusarDesconhecidos(resumo ?? {}, "resumoDoPainel");
+    for (const a of resumo.acoes ?? []) recusarDesconhecidos(a, "acaoDoPainel");
+    for (const f of resumo.fases ?? []) recusarDesconhecidos(f, "faseDoPainel");
+    for (const e of resumo.entregas ?? []) recusarDesconhecidos(e, "entregaDoPainel");
+    if (resumo.aprovacao) recusarDesconhecidos(resumo.aprovacao, "aprovacao");
+  }
+
   const store = {
     /** Quem está gravando: o e-mail de quem entrou, ou null. */
     definirUsuario(email) { usuario = email ?? null; },
@@ -453,12 +471,14 @@ export function criarStore(banco, opcoes = {}) {
     /** Conexão com a internet (só importa no banco compartilhado): sem ela, as gravações são recusadas com aviso. */
     definirConexao(sim) { conectado = Boolean(sim); },
     get conectado() { return conectado; },
+    /** Banco compartilhado (com login): o painel público só abre fora do aparelho nele, e não no exemplo (18/11/2026). */
+    get compartilhado() { return Boolean(opcoes.exigirLogin); },
 
     // --- espaços ---
     /** Cria um espaço. Semente e número de simulações ficam fixos daqui em diante. */
     async criarEspaco(dados) {
       recusarDesconhecidos(dados, "espaco");
-      recusarFixos(dados, ["acessos", "administracaoAssumidaPor", "administracaoAssumidaEm"]);
+      recusarFixos(dados, ["acessos", "administracaoAssumidaPor", "administracaoAssumidaEm", "painelPublico"]);
       /* quem cria é o primeiro administrador (passo 2.1); sem login (o exemplo), o espaço fica sem papéis */
       if (usuario) dados = { ...dados, acessos: { [emailNormal(usuario)]: { papel: "administrador", responsavel: null } } };
       /* espaço novo é restrito, até o administrador abri-lo (passo 2.2; decisão do responsável, 24/10/2026) */
@@ -1331,6 +1351,73 @@ export function criarStore(banco, opcoes = {}) {
       await banco.apagarPreferenciaDoMapa(exigirDonoDasPreferencias());
     },
 
+    // --- painel público (18/11/2026; seção 4.13) ---
+    /**
+     * Liga, desliga ou ajusta o painel público do espaço (só o administrador). Ao ligar pela primeira vez, sorteia
+     * o código do endereço. Ao desligar, a cópia pública fica vazia na hora (o endereço passa a dizer que o painel
+     * está desligado). Ao religar, volta o mesmo endereço; a cópia é refeita por `publicarPainelPublico`.
+     * @param {{ligado?: boolean, apresentacao?: string, mostrarNomes?: boolean}} campos
+     * @returns {Promise<object>} a configuração gravada
+     */
+    async configurarPainelPublico(espacoId, campos) {
+      await exigir(espacoId, "configurar");
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!temPainel(espaco)) throw new ErroDeDados("sem-painel", "Só Planos de Ação e Projetos têm painel público.");
+      const { ligado, apresentacao, mostrarNomes, ...resto } = campos ?? {};
+      if (Object.keys(resto).length) throw new ErroDeDados("campo-desconhecido", `O campo "${Object.keys(resto)[0]}" não existe na configuração do painel.`);
+      const atual = configuracaoDoPainel(espaco);
+      const nova = {
+        ligado: ligado ?? atual.ligado,
+        codigo: atual.codigo,
+        apresentacao: String(apresentacao ?? atual.apresentacao ?? "").trim(),
+        mostrarNomes: Boolean(mostrarNomes ?? atual.mostrarNomes),
+        alteradoEm: agora(), alteradoPor: usuario,
+      };
+      const p = problemaDaConfiguracao(nova);
+      if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+      if (nova.ligado && !nova.codigo) nova.codigo = gerarCodigoDoPainel(opcoes.aleatorio);
+      recusarDesconhecidos(nova, "configuracaoDoPainel");
+      if (!nova.ligado && atual.ligado && atual.codigo) await esvaziarPainel(espacoId, atual.codigo);
+      await gravarEspaco(espacoId, { painelPublico: nova });
+      return nova;
+    },
+    /** Troca o endereço do painel (só o administrador): o antigo deixa de funcionar na hora. */
+    async gerarNovoEnderecoDoPainel(espacoId) {
+      await exigir(espacoId, "configurar");
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!temPainel(espaco)) throw new ErroDeDados("sem-painel", "Só Planos de Ação e Projetos têm painel público.");
+      const atual = configuracaoDoPainel(espaco);
+      if (atual.codigo) await esvaziarPainel(espacoId, atual.codigo);
+      const nova = { ...atual, codigo: gerarCodigoDoPainel(opcoes.aleatorio), alteradoEm: agora(), alteradoPor: usuario };
+      await gravarEspaco(espacoId, { painelPublico: nova });
+      return nova;
+    },
+    /**
+     * Grava a cópia pública com o resumo montado pela tela (js/painel-publico.js, montarResumo). Quem tem papel de
+     * Administrador ou Usuário grava; Leitor e quem não participa, não. Só grava quando o resumo mudou desde a
+     * última gravação deste aparelho, para não gravar a cada redesenho.
+     * @returns {Promise<boolean>} true quando gravou
+     */
+    async publicarPainelPublico(espacoId, resumo) {
+      if (!store.podeGravar) return false; // sem login ou sem conexão: fica para quem puder gravar
+      const espaco = await banco.lerEspaco(espacoId);
+      if (!painelLigado(espaco) || encerrado(espaco)) return false;
+      const { codigo } = configuracaoDoPainel(espaco);
+      conferirResumo(resumo);
+      const chave = JSON.stringify(resumo);
+      if (ultimosPaineis.get(codigo) === chave) return false;
+      await exigir(espacoId, "salvarRetrato"); // o mesmo papel que salva retratos: Administrador ou Usuário
+      await banco.gravarPainelPublico(codigo, { espacoId, ligado: true, resumo, atualizadoEm: agora(), atualizadoPor: usuario });
+      ultimosPaineis.set(codigo, chave);
+      return true;
+    },
+    /** Painel público pelo código do endereço, para qualquer pessoa; null se o código não existe. */
+    async lerPainelPublico(codigo) {
+      if (!codigoValido(codigo)) return null;
+      const painel = await banco.lerPainelPublico(codigo);
+      return painel ? { ...painel, espacoId: undefined } : null;
+    },
+
     // --- tempo real ---
     /** Acompanha o espaço; a tela recebe só ações e responsáveis ativos. */
     acompanharEspaco: (espacoId, aoMudar) => banco.acompanharEspaco(espacoId, (foto) => aoMudar({
@@ -1915,7 +2002,8 @@ export function criarStore(banco, opcoes = {}) {
     "assumirAdministracao", "definirPapel", "encerrarEspaco", "reabrirEspaco", "nomearAdministrador",
     "alterarCamadas", "criarInstrumento", "alterarInstrumento", "prorrogarInstrumento", "excluirInstrumento",
     "criarItemEstrategico", "alterarItemEstrategico", "ligarSuperior", "desligarSuperior", "excluirItemEstrategico", "importarCatalogo",
-    "criarEntrega", "alterarEntrega", "mudarSituacaoDaEntrega", "excluirEntrega", "registrarAlcance"];
+    "criarEntrega", "alterarEntrega", "mudarSituacaoDaEntrega", "excluirEntrega", "registrarAlcance",
+    "configurarPainelPublico", "gerarNovoEnderecoDoPainel"];
   for (const nome of GRAVACOES) {
     const operacao = store[nome];
     store[nome] = async (...args) => {

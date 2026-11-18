@@ -122,6 +122,21 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await banco.apagarPreferenciaDoMapa("ana@x.br"); // apagar de novo não dá erro
     });
 
+    it("painel público: lido pelo código; gravar de novo substitui; a cópia não muda por fora (18/11/2026)", async () => {
+      const banco = criarBanco();
+      assert.equal(await banco.lerPainelPublico("Abc"), null);
+      const resumo = { nome: "Plano", acoes: [{ numero: 1, nome: "Ação 1", responsaveis: ["DGDI"] }] };
+      await banco.gravarPainelPublico("Abc", { espacoId: "p1", ligado: true, resumo, atualizadoEm: "2026-11-18T10:00:00.000Z" });
+      resumo.nome = "mudado por fora";
+      const lido = await banco.lerPainelPublico("Abc");
+      assert.equal(lido.codigo, "Abc", "o código fica gravado no próprio painel");
+      assert.equal(lido.resumo.nome, "Plano");
+      await banco.gravarPainelPublico("Abc", { espacoId: "p1", ligado: false, resumo: null, atualizadoEm: "2026-11-18T11:00:00.000Z" });
+      const desligado = await banco.lerPainelPublico("Abc");
+      assert.equal(desligado.ligado, false);
+      assert.equal(desligado.resumo, null);
+    });
+
     it("estratégia: modelo e coleções do catálogo; criar não sobrescreve; mudar lê e grava de uma vez (passo 2.5)", async () => {
       const banco = criarBanco();
       assert.equal(await banco.lerModeloEstrategia(), null);

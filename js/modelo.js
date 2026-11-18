@@ -8,7 +8,7 @@
  */
 export const CAMPOS = Object.freeze({
   espaco: [
-    "id", "nome", "codigo", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "visibilidade", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes", "vinculos", "nomeInicial", "situacoes", "etiquetas", "camposPersonalizados", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos",
+    "id", "nome", "codigo", "tipo", "programa", "aprovacao", "modelo", "acessos", "fechado", "visibilidade", "administracaoAssumidaPor", "administracaoAssumidaEm", "encerradoEm", "encerradoPor", "nomeacoes", "vinculos", "nomeInicial", "situacoes", "etiquetas", "camposPersonalizados", "inicio", "prazoFinal", "datasExcluidas", "datasGeraisDesconsideradas", "documentos", "painelPublico",
     "simulacoes", "semente", "estrutura", "camposOpcionais", "tons", "proximoNumero",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",
   ],
@@ -86,6 +86,15 @@ export const CAMPOS = Object.freeze({
     "folga", "prioridadeExecucao", "prioridadeRevisao",
   ],
   retratoResumo: ["conclusaoPrevista", "dataSegura", "p95", "chancePrazo"],
+  /** Configuração do painel público no espaço (18/11/2026; seção 4.13): só o administrador muda. */
+  configuracaoDoPainel: ["ligado", "codigo", "apresentacao", "mostrarNomes", "alteradoEm", "alteradoPor"],
+  /** Painel público (18/11/2026; seção 4.13): coleção paineis, id = código do endereço; cópia-resumo, lida por qualquer pessoa. */
+  painelPublico: ["codigo", "espacoId", "ligado", "resumo", "atualizadoEm", "atualizadoPor"],
+  /** O resumo dentro do painel: só o que vai a público. */
+  resumoDoPainel: ["nome", "codigo", "tipo", "apresentacao", "programa", "aprovacao", "inicio", "prazoFinal", "conclusaoPrevista", "acoes", "fases", "entregas"],
+  acaoDoPainel: ["numero", "nome", "fase", "situacao", "rotulo", "data", "responsaveis"],
+  faseDoPainel: ["id", "nome", "total", "concluidas", "atrasadas", "emAndamento"],
+  entregaDoPainel: ["titulo", "situacao", "rotulo", "prazo"],
   responsavel: [
     "id", "tipo", "nome", "sigla", "setor", "usuario",
     "criadoEm", "alteradoEm", "alteradoPor", "excluidoEm", "excluidoPor",

@@ -11,6 +11,7 @@ import { criarTelaResponsaveis } from "./responsaveis.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { termos } from "../vocabulario.js";
 import { ICONES } from "../icones.js";
+import { NOME } from "../identidade.js";
 import { abrirCamada } from "./voltar.js";
 import { VERSAO_CALCULO } from "../simulacao.js";
 import { datasEfetivas, criarCalendario } from "../calendario.js";
@@ -32,6 +33,11 @@ import { TIPOS_DE_CAMPO, LIMITE_DE_CAMPOS, TAMANHO_DO_NOME as TAMANHO_DO_CAMPO, 
 import { pendenciasParaEncerrar } from "../entregas.js";
 import { tipoDe, ehDeTarefas } from "../tipos.js";
 import { PAPEIS, nomeDoPapel, semAdministracao, fechado, VISIBILIDADES, visibilidadeDe } from "../papeis.js";
+import { temPainel, configuracaoDoPainel, enderecoDoPainel, montarResumo, TAMANHO_DA_APRESENTACAO } from "../painel-publico.js";
+import { htmlDoPainel } from "./painel-publico.js";
+import { montarLinhas } from "../lista.js";
+import { modeloDe } from "../modelos.js";
+import { programaDoEspaco } from "../estrategia.js";
 
 const CAMPOS_OPCIONAIS = [
   ["fasesEtapas", "Fases e etapas", "Separadores que agrupam as ações na lista."],
@@ -139,6 +145,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     const adm = perm.configurar && store.podeGravar;
     corpo.innerHTML = `
       ${acessoHtml(perm)}
+      ${adm && temPainel(espaco) ? painelHtml() : ""}
       ${adm ? `
       <details class="config" data-secao="dados"${aberta("dados")}>
         <summary><h3>Dados do espaço</h3></summary>
@@ -409,6 +416,71 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
         <ul class="papeis-explicados">${espaco.nomeacoes.map((n) => `<li>${esc(n.email)}, nomeado por ${esc(n.por)} em ${dataBr(n.em.slice(0, 10))}</li>`).join("")}</ul>` : ""}
     </details>`;
   }
+  /* ---------- painel público (18/11/2026; seções 4.13 e 8.8) ---------- */
+  /** prévia aberta ("Ver como o público verá") e confirmação de "Gerar novo endereço" */
+  let previaDoPainel = false;
+  let trocandoEndereco = false;
+  /** Raiz do site (a pasta acima de sextante/), para montar o endereço do painel. */
+  const raizDoSite = () => new URL("../", location.href).href;
+  /** Resumo como ficaria agora, montado como o Sextante monta o da cópia pública (js/telas/espaco.js). */
+  async function resumoAgora() {
+    const hoje = hojeLocal();
+    const cal = criarCalendario({ ...espaco, datasExcluidas: datasEfetivas(espaco, geral) }, hoje);
+    const lista = [...acoes].filter((a) => !a.excluidaEm).sort((a, b) => a.ordem - b.ordem);
+    const caminho = caminhoCritico(lista, cal, { hoje, ...opcoesDoCalculo(espaco) });
+    const linhas = montarLinhas(lista, caminho, null, cal, hoje, { prazos: modeloDe(espaco).prazos, espaco });
+    const catalogo = tipoDe(espaco) === "planoDeAcao" ? await store.lerCatalogo().catch(() => null) : null;
+    return montarResumo({ espaco, linhas, responsaveis, entregas, programa: programaDoEspaco(espaco, catalogo) });
+  }
+  function painelHtml() {
+    const c = configuracaoDoPainel(espaco);
+    const endereco = c.codigo ? enderecoDoPainel(c.codigo, raizDoSite()) : "";
+    const visibilidade = visibilidadeDe(espaco);
+    return `<details class="config" data-secao="painel"${aberta("painel")}>
+      <summary><h3>Painel público</h3>${c.ligado ? '<span class="n">ligado</span>' : ""}</summary>
+      <p class="tec">Um resumo deste ${tipoDe(espaco) === "planoDeAcao" ? "plano" : "projeto"}, somente para leitura, que qualquer pessoa abre pelo endereço, sem entrar no ${esc(NOME)}.
+        Mostra os números do andamento, as fases, as entregas e as ações com a situação de cada uma. Comentários, anotações, histórico e e-mails nunca aparecem.</p>
+      <label class="alternar"><input type="checkbox" class="chave" role="switch" data-painel-ligado${c.ligado ? " checked" : ""}> Painel ligado</label>
+      ${c.ligado && visibilidade !== "publica" ? `<p class="aviso-papel">${ICONES.olho}<span>Este espaço é ${visibilidade === "restrita" ? "restrito" : "institucional"}. Com o painel ligado, o resumo fica visível para qualquer pessoa que tiver o endereço.</span></p>` : ""}
+      ${c.codigo ? `<label class="campo"><span>Endereço do painel</span>
+        <span class="linha-config"><input readonly value="${esc(endereco)}" data-endereco-painel aria-label="Endereço do painel">
+        <button class="botao" type="button" data-copiar-painel>Copiar</button>
+        ${c.ligado && store.compartilhado ? `<a class="botao" href="${esc(endereco)}" target="_blank" rel="noopener">Abrir</a>` : ""}</span></label>
+        ${trocandoEndereco ? `<div class="aviso-confirmar"><p>Gerar um endereço novo? O atual deixa de funcionar na hora, e quem o tiver precisará do novo.</p>
+          <div class="botoes"><button class="botao principal" type="button" data-confirmar-endereco>Gerar novo endereço</button><button class="botao" type="button" data-cancelar-endereco>Cancelar</button></div></div>`
+          : `<button class="botao" type="button" data-novo-endereco>Gerar novo endereço</button>`}` : ""}
+      <label class="campo"><span>Apresentação para o público <small>(opcional)</small></span>
+        <textarea rows="3" maxlength="${TAMANHO_DA_APRESENTACAO}" data-apresentacao-painel placeholder="Para que serve este ${tipoDe(espaco) === "planoDeAcao" ? "plano" : "projeto"}, em poucas linhas e sem termos internos">${esc(c.apresentacao)}</textarea>
+        <small class="tec">Aparece abaixo do nome, no painel. Em branco, o painel mostra só o nome. Até ${TAMANHO_DA_APRESENTACAO} caracteres.</small></label>
+      <h4>Como mostrar os responsáveis</h4>
+      <div class="opcoes-importar" role="radiogroup" aria-label="Como mostrar os responsáveis">
+        <label><input type="radio" name="nomes-painel" value="area"${c.mostrarNomes ? "" : " checked"}> <span><b>Só a área:</b> o setor da pessoa, ou o nome da unidade.</span></label>
+        <label><input type="radio" name="nomes-painel" value="nomes"${c.mostrarNomes ? " checked" : ""}> <span><b>Nome da pessoa e área.</b></span></label>
+      </div>
+      <p class="tec">O painel se atualiza sozinho sempre que um Administrador ou Usuário do espaço abre ou altera o ${tipoDe(espaco) === "planoDeAcao" ? "plano" : "projeto"}.${store.compartilhado ? "" : " No exemplo, o endereço não abre fora deste aparelho: use a prévia."}</p>
+      <div class="botoes"><button class="botao" type="button" data-previa-painel aria-expanded="${previaDoPainel}">${previaDoPainel ? "Fechar a prévia" : "Ver como o público verá"}</button></div>
+      <div data-previa-do-painel></div>
+    </details>`;
+  }
+  async function desenharPrevia() {
+    const alvo = corpo.querySelector("[data-previa-do-painel]");
+    if (!alvo) return;
+    alvo.innerHTML = previaDoPainel ? `<div class="pp-previa" aria-label="Prévia do painel público">${htmlDoPainel({ resumo: await resumoAgora(), atualizadoEm: null }, { abertos: new Set(["fases", "entregas", "acoes"]) })}</div>` : "";
+  }
+  async function gravarPainel(operacao, mensagem) {
+    try {
+      await operacao();
+      await recarregar();
+      desenhar();
+      await desenharPrevia();
+      if (mensagem) avisar(mensagem);
+    } catch (e) {
+      avisar(e.message);
+      await recarregar();
+      desenhar();
+    }
+  }
+
   /** confirmação de "Encerrar este espaço" aberta (passo 2.3) */
   let encerrando = false;
   /** Grava uma mudança de acesso e redesenha; na recusa (como tirar o último administrador), avisa. */
@@ -853,6 +925,20 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     else if (t.dataset.fase != null) rascunho.estrutura[Number(t.dataset.fase)].nome = t.value;
   });
   corpo.addEventListener("change", async (e) => {
+    /* painel público (18/11/2026) */
+    if (e.target.matches("[data-painel-ligado]")) {
+      const ligado = e.target.checked;
+      await gravarPainel(() => store.configurarPainelPublico(espacoId, { ligado }), ligado ? "Painel público ligado." : "Painel público desligado: o endereço mostra que o painel está desligado.");
+      return;
+    }
+    if (e.target.matches("[data-apresentacao-painel]")) {
+      await gravarPainel(() => store.configurarPainelPublico(espacoId, { apresentacao: e.target.value }), "Apresentação do painel gravada.");
+      return;
+    }
+    if (e.target.name === "nomes-painel") {
+      await gravarPainel(() => store.configurarPainelPublico(espacoId, { mostrarNomes: e.target.value === "nomes" }), e.target.value === "nomes" ? "O painel mostra o nome das pessoas." : "O painel mostra só a área.");
+      return;
+    }
     /* situações (passo 2.7): renomear grava ao sair do campo */
     if (e.target.dataset.nomeSituacao) {
       const id = e.target.dataset.nomeSituacao;
@@ -974,6 +1060,26 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   corpo.addEventListener("click", async (e) => {
     const t = e.target.closest("button");
     if (!t || t.disabled) return;
+    /* painel público (18/11/2026) */
+    if (t.dataset.previaPainel != null) {
+      previaDoPainel = !previaDoPainel;
+      t.setAttribute("aria-expanded", String(previaDoPainel));
+      t.textContent = previaDoPainel ? "Fechar a prévia" : "Ver como o público verá";
+      await desenharPrevia();
+      return;
+    }
+    if (t.dataset.copiarPainel != null) {
+      const campo = corpo.querySelector("[data-endereco-painel]");
+      try { await navigator.clipboard.writeText(campo.value); avisar("Endereço copiado."); } catch { campo.select(); avisar("Não foi possível copiar sozinho: o endereço ficou selecionado, para copiar."); }
+      return;
+    }
+    if (t.dataset.novoEndereco != null) { trocandoEndereco = true; desenhar(); corpo.querySelector("[data-confirmar-endereco]")?.focus(); return; }
+    if (t.dataset.cancelarEndereco != null) { trocandoEndereco = false; desenhar(); return; }
+    if (t.dataset.confirmarEndereco != null) {
+      trocandoEndereco = false;
+      await gravarPainel(() => store.gerarNovoEnderecoDoPainel(espacoId), "Endereço novo gerado. O antigo deixou de funcionar.");
+      return;
+    }
     if (t.dataset.comAcoes) { tirarComAcoes(t); return; }
     /* situações (passo 2.7) */
     if (t.dataset.moverSituacao != null) {

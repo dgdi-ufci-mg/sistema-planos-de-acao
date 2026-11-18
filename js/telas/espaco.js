@@ -16,6 +16,8 @@ import { usaPrioridade, compararPrioridade } from "../prioridade.js";
 import { ICONES } from "../icones.js";
 import { esc, dataBr, plural } from "../formato.js";
 import { montarLinhas, contar, filtrar, ordenar, agrupar, resumir, prazoDaTarefa } from "../lista.js";
+import { montarResumo, painelLigado } from "../painel-publico.js";
+import { programaDoEspaco } from "../estrategia.js";
 import { abrirPainel, avisar, fecharPainel } from "./painel.js";
 import { surgir } from "./movimento.js";
 import { donosHtml, ajustarDonos } from "./pessoas.js";
@@ -174,9 +176,24 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     await lendoEntregas;
     lendoEntregas = null;
     janela?.atualizar(dadosDaJanela());
+    atualizarPainelPublico();
     if (!base) return;
     cabeca.innerHTML = cabecaHtml();
     if (ui.modo === "entregas") desenharLista();
+  }
+  /* painel público (18/11/2026; seção 4.13): quem pode (Administrador ou Usuário) regrava a cópia-resumo quando o
+     resumo muda, depois de cada leitura do banco e das entregas. O Store só grava se mudou; falhas não incomodam a pessoa */
+  let catalogoDoPainel;
+  async function atualizarPainelPublico() {
+    try {
+      if (!espaco || !linhas || !painelLigado(espaco) || !store.podeGravar || !perm?.salvarRetrato) return;
+      if (ehPlano() && ui.entregas === null) return; // espera as entregas, para não publicar sem elas
+      if (catalogoDoPainel === undefined) catalogoDoPainel = ehPlano() ? await store.lerCatalogo().catch(() => null) : null;
+      const resumo = montarResumo({ espaco, linhas, responsaveis, entregas: ui.entregas, programa: programaDoEspaco(espaco, catalogoDoPainel) });
+      await store.publicarPainelPublico(espacoId, resumo);
+    } catch (e) {
+      console.warn("Painel público não atualizado:", e?.message ?? e);
+    }
   }
   const telaEntregas = criarTelaDeEntregas({ store, espacoId, hoje, aoMudar: carregarEntregas, aoAbrirAcao: (n) => abrirJanela(n) });
   let comAcoes = null;
@@ -2975,6 +2992,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       derivar(dados, dados.responsaveis, await store.lerCalendarioGeral());
       if (editando || arr) redesenharDepois = true; else desenhar(); // durante um arrastar, a tela só é refeita ao soltar
       if (ui.entregas === null && ehPlano()) carregarEntregas(); // passo 2.6: o aviso "sem entregas" precisa delas
+      atualizarPainelPublico();
       janela?.atualizar(dadosDaJanela());
       novaJanela?.atualizar(dadosDaJanela());
       if (acaoDoLink != null) { const n = acaoDoLink; acaoDoLink = null; abrirDoLink(n); }

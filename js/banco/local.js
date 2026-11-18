@@ -37,6 +37,7 @@ export function criarBancoLocal() {
   /** Estratégia (passo 2.5): o modelo (camadas) e as coleções do catálogo, comuns a todos os espaços. */
   let modeloEstrategia = null;
   const preferenciasDoMapa = new Map(); // e-mail → preferência pessoal do Mapa (lote 6)
+  const paineis = new Map(); // código do endereço → painel público (18/11/2026; seção 4.13)
   const colecoes = { instrumentos: new Map(), itensEstrategicos: new Map() };
   const colecao = (nome) => {
     if (!colecoes[nome]) throw new ErroDeDados("colecao-desconhecida", `Coleção ${nome} desconhecida.`);
@@ -366,6 +367,14 @@ export function criarBancoLocal() {
     },
     async apagarPreferenciaDoMapa(email) {
       preferenciasDoMapa.delete(email);
+    },
+
+    // --- painel público (18/11/2026; seção 4.13): código do endereço → cópia-resumo ---
+    async lerPainelPublico(codigo) {
+      return paineis.has(codigo) ? copia(paineis.get(codigo)) : null;
+    },
+    async gravarPainelPublico(codigo, dados) {
+      paineis.set(codigo, copia({ ...dados, codigo }));
     },
 
     // --- estratégia: catálogo do desdobramento (passo 2.5; seção 4.11) ---
