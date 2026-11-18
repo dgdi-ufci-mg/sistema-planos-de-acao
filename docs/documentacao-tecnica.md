@@ -1,6 +1,6 @@
 # Documentação técnica — Sistema de Gerenciamento de Planos de Ação (Sextante)
 
-**Última atualização deste documento:** 18/11/2026 (versão 329 da página)
+**Última atualização deste documento:** 18/11/2026 (versão 330 da página)
 
 Sistema da DGDI da UFCIMG, em https://dgdi-ufci-mg.github.io/sistema-planos-de-acao/. **Protótipo** (seção 1.2): esta documentação é o modelo conceitual para o sistema definitivo e precisa permitir reconstruir o comportamento sem ler o código.
 
@@ -98,8 +98,8 @@ Módulos JavaScript carregados direto pelo navegador (`<script type="module">`),
 | `js/tipos.js` | Tipos de espaço: nomes, tipo padrão, o que cada tipo exige, agrupamento do menu lateral |
 | `painel/index.html` | Página do painel público (seção 8.8): `painel/?p=<código>`, somente leitura, sem login. Fica fora de `sextante/` e `strata/` para não fazer parte de nenhum dos dois aplicativos instaláveis |
 | `js/painel.js` | Partida da página do painel público: liga o Firebase só para ler; sem configuração, um banco vazio na memória |
-| `js/painel-publico.js` | Regras puras do painel público (seção 4.13): quem tem painel, código do endereço, o resumo que vai a público (`montarResumo`), os responsáveis como o público vê e os números do alto |
-| `js/telas/painel-publico.js` | Desenho da página do painel público (`htmlDoPainel`, puro) e a ligação dela: blocos recolhíveis e filtro das ações. O mesmo desenho serve à prévia em "Configurar este espaço" |
+| `js/painel-publico.js` | Regras puras do painel público (seção 4.13): quem tem painel, código do endereço, o resumo que vai a público (`montarResumo`), os responsáveis como o público vê, os números do alto e as peças das visões só de leitura (`pecasDasVisoes`, parte 2) |
+| `js/telas/painel-publico.js` | Desenho da página do painel público (`htmlDoPainel`, puro) e a ligação dela: blocos recolhíveis, filtro das ações e as duas visões só de leitura ("No tempo" e "Em rede", parte 2), que carregam as telas do Cronograma e da Rede só quando pedidas. O mesmo desenho serve à prévia em "Configurar este espaço" |
 | `js/campos-personalizados.js` | Campos personalizados (passo 3.6): tipos, limite, conferência do catálogo e dos valores, conversão do que a pessoa digita e valor como texto |
 | `js/modelos.js` | Modelos do espaço: estruturado, aberto e personalizado; o que cada espaço usa (estimativas ou data-limite, dependências, simulação) e as opções do cálculo |
 | `js/cronograma.js`, `js/rede.js`, `js/linha-do-tempo.js` | Geometria do cronograma, da rede e da linha do tempo |
@@ -964,6 +964,8 @@ Passo 2.6 (seção 16.7). Duas coleções dentro do espaço, só no **Plano de A
 
 **O que vai a público** (o `Store` recusa qualquer campo fora destas tabelas): nome, código do Plano de Ação, apresentação, Programa e documento de aprovação (só no Plano de Ação), início, prazo final, conclusão prevista, e, por ação, número, nome, fase, situação simplificada, rótulo, data e responsáveis como o público vê; as fases com as contagens; as entregas ativas com a situação e o prazo. **Nunca vão:** comentários, anotações, descrição, checklist, histórico, estimativas, índices técnicos, campos personalizados, etiquetas, e-mails e o id do espaço.
 
+**Dados das duas visões só de leitura** (parte 2, 18/11/2026; tela na seção 8.8): quando o espaço usa estimativas (Cronograma, "No tempo") ou dependências (Rede, "Em rede"), o resumo diz quais visões oferece (`visoes`) e leva também as etapas e, por ação, a etapa, as ações anteriores, o início previsto, a liberação e a conclusão em dias úteis (seção 5.1), se está sem folga, a folga em dias úteis e, na ação contínua, os dois marcos (seção 5.9). São **resultados do cálculo** já mostrados pelo Sextante nessas telas, e não as três estimativas nem os índices de criticidade e de incerteza, que continuam fora. As regras do Firestore não mudam (elas não conferem o conteúdo do resumo).
+
 **Responsáveis como o público vê** (escolha do administrador; padrão **só a área**, pela LGPD; decisão do responsável, 18/11/2026): unidade, pelo nome; pessoa, com "Nome da pessoa e área", como "Nome · setor" (ou só o nome, sem setor); pessoa, com "Só a área", pelo setor, e, sem setor, a pessoa não aparece.
 
 **Situação simplificada da ação:** `concluida`; `atrasada` (carimbo da seção 6.2); `continua` (seção 5.9), só depois que o marco de início chega; `liberada` (pode começar ou já começou, inclusive nas situações personalizadas); `naoLiberada`, inclusive a contínua cujo marco de início ainda não chegou (correção de 18/11/2026: antes, toda contínua contava como em andamento, e o painel mostrava mais ações liberadas do que havia). O **rótulo** é o mesmo texto que o Sextante mostra (inclusive o nome da situação personalizada, como "Em andamento"), para o painel e o sistema falarem igual. A data é a conclusão registrada, na concluída, ou a conclusão prevista, nas demais (a mesma da Lista, seção 8.3).
@@ -1003,6 +1005,8 @@ Passo 2.6 (seção 16.7). Duas coleções dentro do espaço, só no **Plano de A
 | `acoes` | lista de ação do painel | sim | Ações ativas, na ordem do espaço | |
 | `fases` | lista de fase do painel | sim | Fases com ações, na ordem do espaço; vazia com "Fases e etapas" desligado | |
 | `entregas` | lista de entrega do painel | sim | Entregas ativas do Plano de Ação, na ordem; vazia no Projeto | |
+| `visoes` | lista de texto | sim | Visões só de leitura que o painel oferece (parte 2): `tempo` (Cronograma), no espaço com estimativas, e `rede` (Rede), no espaço com dependências, as mesmas regras do seletor do Sextante. Vazia: o painel não mostra "Ver as ações de outro jeito" | `["tempo", "rede"]` |
+| `etapas` | lista de etapa do painel | sim | Etapas do espaço, na ordem, para os grupos do Cronograma e as cercas da Rede; vazia sem visões ou sem fases e etapas | |
 
 <!-- dicionario: acaoDoPainel -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
@@ -1014,6 +1018,15 @@ Passo 2.6 (seção 16.7). Duas coleções dentro do espaço, só no **Plano de A
 | `rotulo` | texto | sim | Nome da situação como o Sextante mostra | `Em andamento` |
 | `data` | data | não | Concluída: a data registrada; demais: a conclusão prevista | |
 | `responsaveis` | lista de texto | sim | Responsáveis como o público vê (acima) | `["Governança"]` |
+| `etapa` | id | não | Etapa da ação; nula sem fases. Este campo e os sete seguintes só existem quando `visoes` não está vazia | `t2` |
+| `dependeDe` | lista de número | não | Números das ações anteriores (4.2), só as ativas; vazia na contínua | `[1]` |
+| `inicio` | data | não | Início previsto (dia da liberação no caminho crítico, seção 5.4), o mesmo da barra do Cronograma | |
+| `liberacao` | número | não | Liberação no caminho crítico (seção 5.4), em dias úteis contados do primeiro dia útil do espaço (índice 0, seção 5.1), com fração | `3` |
+| `conclusao` | número | não | Conclusão prevista no caminho crítico, na mesma contagem; a duração prevista é `conclusao − liberacao` (zero: sem estimativa) | `6,17` |
+| `critica` | sim/não | não | Sem folga (no caminho crítico) | `true` |
+| `folga` | número | não | Folga em dias úteis, inteira; nula quando o cálculo não tem folga (espaço com data-limite) | `0` |
+| `comecaCom` | marco (4.2) | não | Na ação contínua, o marco de início; nula nas demais | |
+| `terminaCom` | marco (4.2) | não | Na ação contínua, o marco de fim; nula nas demais | |
 
 <!-- dicionario: faseDoPainel -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
@@ -1024,6 +1037,13 @@ Passo 2.6 (seção 16.7). Duas coleções dentro do espaço, só no **Plano de A
 | `concluidas` | número | sim | Concluídas | |
 | `atrasadas` | número | sim | Com o carimbo Atrasada | |
 | `emAndamento` | número | sim | Liberadas e contínuas, sem atraso | |
+
+<!-- dicionario: etapaDoPainel -->
+| Campo | Tipo | Obrig. | Significado | Exemplo |
+|---|---|---|---|---|
+| `id` | id | sim | Id da etapa | |
+| `nome` | texto | sim | Nome da etapa | |
+| `fase` | id | sim | Fase da etapa | |
 
 <!-- dicionario: entregaDoPainel -->
 | Campo | Tipo | Obrig. | Significado | Exemplo |
@@ -1950,9 +1970,13 @@ Pedido e decisões do responsável, sobre um esboço visual aprovado por ele (da
 3. Três cartões: **Ações concluídas** e **Entregas alcançadas** no mesmo padrão (porcentagem, barra e "x de y"; o das entregas some sem entregas) e **Conclusão prevista**, com início e prazo. Sem comparação com o planejado no primeiro retrato e sem aviso de atenção no alto (decisão do responsável: o atraso aparece na lista das ações).
 4. Três blocos que **começam recolhidos**, com um resumo no cabeçalho e "Ver …"/"Recolher": **Andamento das ações por fase** (só com duas ou mais fases; com uma, repetiria o primeiro cartão), barras de concluídas, liberadas e atrasadas e a legenda; **Entregas** (só com entregas); **Ações**, agrupadas por fase (com duas ou mais), com nome, responsáveis, data e situação, e filtros Todas, Liberadas (inclui as contínuas), Atrasadas, Concluídas e Não liberadas, só os que têm ações.
 5. Rodapé com "Atualizado em …" e o aviso de que comentários e anotações não aparecem.
+7. **"Ver as ações de outro jeito"** (parte 2, 18/11/2026; pedido do responsável): logo abaixo dos três cartões, um cartão com dois botões de contorno, **No tempo** (o Cronograma) e **Em rede** (a Rede), só os que o resumo oferece (`visoes`, seção 4.13) e só com ações. Cada botão abre a visão no lugar do painel, com endereço próprio (`#no-tempo` e `#em-rede`), para o Voltar do navegador e do celular levar de volta; "Voltar ao painel" faz o mesmo e devolve a página ao ponto em que estava. As visões usam as **mesmas telas do Sextante** (`js/telas/cronograma.js` e `js/telas/rede.js`), sem edição e sem abrir as ações (opção `abreAcoes` falsa, que tira da ajuda o "toque para abrir"). As peças vêm do resumo por `pecasDasVisoes` (`js/painel-publico.js`): como o painel não tem o calendário do espaço, o calendário dali só devolve as datas do resumo (para a liberação de cada ação, o início dela; para a conclusão, a data prevista ou registrada); com a liberação e a conclusão do Sextante, as barras, os grupos, as setas e as cores ficam iguais às dele (teste em `testes/painel-publico.test.js`).
+   - **No tempo:** barras do início à conclusão prevista, setas das ligações, fases e etapas recolhíveis, zoom, "Hoje" e "Ver tudo", o responsável ao lado da barra como o público vê, a legenda completa; sem a coluna do indicador e sem a comparação com retratos. No celular, a mesma consulta do Sextante (pinça para o zoom).
+   - **Em rede:** cartões com a situação, o nome, os responsáveis como o público vê, a data e a folga; cercas das etapas, faixas das fases, círculos de início e término, ações contínuas e o botão para ocultá-las; zoom, "Ajustar à tela" e a ajuda. **Cores pela folga** (sem folga em vermelho, com folga em verde), e não pelo índice de criticidade, porque o painel não leva os índices técnicos (decisão técnica do Claude, 18/11/2026, comunicada ao responsável). **No celular**, a mesma consulta que o Sextante já oferece desde 10/11/2026 (arrastar move, pinça aproxima e afasta), em vez de esconder o botão (decisão técnica do Claude, comunicada ao responsável; fácil de mudar).
+   - Os "o que é?" das legendas abrem uma caixa com a explicação do glossário (`js/glossario.js`), no lugar da Ajuda do Sextante.
 6. Mensagens no lugar do painel: endereço incompleto, painel não encontrado (código que não existe ou foi trocado), painel desligado, painel em preparação (ligado, ainda sem resumo) e falha de conexão.
 
-**Previsto para depois** (combinado com o responsável em 18/11/2026, em partes separadas): (a) no Strata, o plano com painel passa a mostrar o nome no Mapa, mesmo restrito, e o "Abrir" leva ao painel, com "Abrir no Sextante" para os membros; (b) "Ver as ações de outro jeito", com o Cronograma ("No tempo") e a Rede ("Em rede") em modo só de leitura, a partir do painel.
+**Previsto para depois** (combinado com o responsável em 18/11/2026): parte 3, no Strata, o plano com painel passa a mostrar o nome no Mapa, mesmo restrito, e o "Abrir" leva ao painel, com "Abrir no Sextante" para os membros. A parte 2 (as duas visões, item 7) foi feita antes, por decisão do responsável.
 
 ## 9. O que saiu da versão 1
 
@@ -2913,3 +2937,4 @@ As linhas até a 120 são da documentação da versão 1, em que a versão 2 era
 | 327.1 | Painel público (relato do responsável, 18/11/2026; seção 4.13): a ação contínua cujo marco de início ainda não chegou passa a contar como Não liberada, como no Sextante; antes, contava como em andamento, e o "Andamento das ações por fase" mostrava mais ações liberadas do que havia. |
 | 328 | Correção da sigla da instituição: **UFCIMG**, sem hífen (pedido do responsável, 18/11/2026). Trocada em `js/identidade.js` (constante `INSTITUICAO`), no painel público, nos manifestos do Sextante e do Strata, na amostra de dados, em comentários, no teste de navegador, no README, no AGENTS.md e nesta documentação. Não mudaram os endereços do GitHub (`dgdi-ufci-mg`), que são nomes técnicos. O manual do usuário (congelado) e a cópia congelada da versão 1 (`testes/dados/versao1-index.html`) ficaram como estavam. |
 | 329 | Correção (relato do responsável, 18/11/2026; seção 8): na coluna de atributos da janela da ação ou da tarefa, com muitos responsáveis a lista passava por cima de "Etiquetas". A coluna tem altura limitada e rola; os atributos encolhiam até 44 px e o conteúdo vazava. Em `css/estilo.css`, `.janela-lado > .atributo` ganhou `flex-shrink: 0`: o atributo cresce com o conteúdo e a coluna rola. |
+| 330 | Painel público, parte 2 (pedido do responsável, 18/11/2026; seções 4.13 e 8.8): cartão "Ver as ações de outro jeito", com "No tempo" (Cronograma) e "Em rede" (Rede) só de leitura, desenhados pelas telas do Sextante a partir do resumo (`pecasDasVisoes`); endereços `#no-tempo` e `#em-rede`; o resumo passa a levar `visoes`, `etapas` e, por ação, etapa, ações anteriores, início, liberação e conclusão em dias úteis, folga e marcos da contínua (dicionário atualizado; regras do Firestore sem mudança); opção `abreAcoes` nas telas do Cronograma e da Rede; cores da Rede pela folga; consulta no celular. Testes em `testes/painel-publico.test.js` e `testes/navegador/painel-publico.test.mjs`. |

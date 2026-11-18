@@ -21,7 +21,8 @@ import { surgir, DURACAO as MOV_DURACAO, CURVA as MOV_CURVA } from "./movimento.
  *   donos: (acao: object) => string, situacao: (linha: object) => string,
  *   marcos: {id: string, nome: string, titulo?: string}[]|null, escala: string, aoMudarEscala: (escala: string) => void}} dados
  *   linhas: as linhas da lista (lista.js), para as datas e situações já calculadas;
- *   donos e situacao: o mesmo desenho dos cartões do quadro (22/10/2026)
+ *   donos e situacao: o mesmo desenho dos cartões do quadro (22/10/2026);
+ *   abreAcoes: false no painel público (18/11/2026), onde tocar numa ação não abre nada, e a ajuda não promete isso
  */
 /** Ajuste da altura ao redimensionar a janela: um só por vez, trocado a cada desenho. */
 let aoRedimensionar = null;
@@ -326,7 +327,7 @@ const legendaDaBarra = {
 
 export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
   inicio = null, termino = null, prazoFinal = null, continuas = false, ocultarContinuas = false, aoOcultarContinuas = () => {}, edicao = null, nomeDaSituacao = () => "", nomeLiberada = "Liberada", toque = false,
-  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "", legenda = true }) {
+  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "", legenda = true, abreAcoes = true }) {
   /* ações contínuas (seção 5.9; 09/11/2026): caixa como as outras, com ligações tracejadas aos marcos; o filtro as esconde */
   const linhaDaAcao = new Map(linhas.map((l) => [l.acao.numero, l]));
   const temContinuas = continuas && todas.some((a) => linhaDaAcao.get(a.numero)?.continua);
@@ -481,7 +482,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
   const gestos = toque ? [
     ["Arraste", "move a rede"],
     ["Pinça com dois dedos", "aproxima e afasta"],
-    ["Toque numa ação", "abre a ação"],
+    ...(abreAcoes ? [["Toque numa ação", "abre a ação"]] : []),
   ] : [
     ["Role (roda do mouse ou dois dedos)", "move a rede; com Shift, para os lados"],
     ["Ctrl + rolar, ou pinça no touchpad", "aproxima e afasta, em volta do ponteiro"],
@@ -500,7 +501,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
       ["Ctrl+Z", "desfaz a última mudança feita aqui"],
       ["Botão direito", "mostra as opções, com uma caixinha para cada campo"],
       ["Botão Arrumar", "aparece depois de uma mudança; reorganiza a rede inteira"],
-    ] : [["Clique numa ação", "abre a ação"]]),
+    ] : abreAcoes ? [["Clique numa ação", "abre a ação"]] : []),
   ];
   const explicacao = `<p>Da esquerda para a direita, na ordem em que as ações podem acontecer.</p>
     <ul class="rede-gestos">${gestos.map(([g, r]) => `<li><b>${g}</b><span>${r}</span></li>`).join("")}</ul>`;

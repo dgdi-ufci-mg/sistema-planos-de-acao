@@ -189,7 +189,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
       if (!espaco || !linhas || !painelLigado(espaco) || !store.podeGravar || !perm?.salvarRetrato) return;
       if (ehPlano() && ui.entregas === null) return; // espera as entregas, para não publicar sem elas
       if (catalogoDoPainel === undefined) catalogoDoPainel = ehPlano() ? await store.lerCatalogo().catch(() => null) : null;
-      const resumo = montarResumo({ espaco, linhas, responsaveis, entregas: ui.entregas, programa: programaDoEspaco(espaco, catalogoDoPainel) });
+      const resumo = montarResumo({ espaco, linhas, responsaveis, entregas: ui.entregas, programa: programaDoEspaco(espaco, catalogoDoPainel), caminho, cal });
       await store.publicarPainelPublico(espacoId, resumo);
     } catch (e) {
       console.warn("Painel público não atualizado:", e?.message ?? e);

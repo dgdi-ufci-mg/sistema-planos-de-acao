@@ -3990,3 +3990,32 @@ body.painel-publico { padding: 0; }
 .pp-previa { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; padding: 16px; border-radius: 12px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); max-height: 70vh; overflow: auto; }
 .pp-previa .pp-cartoes { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 a.botao { text-decoration: none; display: inline-flex; align-items: center; }
+
+/* ---------- painel público, parte 2 (18/11/2026): "Ver as ações de outro jeito" e as visões só de leitura ---------- */
+.pp-visoes { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 14px 20px; background: var(--surface); border-radius: 12px; box-shadow: var(--relevo); }
+.pp-visoes-botoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-visoes-botoes .botao, .pp-voltar { min-height: 40px; color: var(--ink); }
+.pp-visoes-botoes .icone, .pp-voltar .icone { width: 18px; height: 18px; }
+.pp-voltar .icone { rotate: 90deg; }
+body[data-pp-visao="tempo"] .pp-conteudo, body[data-pp-visao="rede"] .pp-conteudo { max-width: none; gap: 12px; padding-block: 16px 16px; }
+.pp-visao-cabeca { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.pp-visao-titulo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pp-visao-titulo small { font-size: 13px; color: var(--muted); }
+.pp-visao-frase { margin: 0; font-size: 14px; color: var(--muted); }
+/* a Rede ocupa o resto da tela, abaixo do cabeçalho da visão; a página não rola, e a legenda e os botões ficam à vista */
+body[data-pp-visao="rede"] { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+body[data-pp-visao="rede"] .pp-conteudo { flex: 1; min-height: 0; width: 100%; }
+body[data-pp-visao="rede"] .pp-visao-area { flex: 1; min-height: 320px; display: flex; flex-direction: column; }
+.pp-visao-area .rede { position: relative; overflow: hidden; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+body[data-pp-visao="rede"] .rede-rolagem { flex: 1; min-height: 0; height: auto !important; }
+.pp-donos { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--muted); }
+/* sem a barra de baixo do Sextante: legenda, botões e ajuda da Rede ficam junto da borda */
+@media (max-width: 640px) {
+  body.painel-publico .rede-legenda, body.painel-publico .rede-controles { bottom: 10px; }
+  body.painel-publico .rede-ajuda { bottom: 216px; max-height: calc(100% - 290px); }
+}
+.pp-termo { max-width: min(480px, calc(100vw - 32px)); border: 0; border-radius: 12px; padding: 20px; background: var(--surface); color: var(--ink); box-shadow: var(--sombra); }
+.pp-termo::backdrop { background: color-mix(in srgb, #000 35%, transparent); }
+.pp-termo p { line-height: 1.5; }
+@media (prefers-reduced-motion: no-preference) { .pp-visao-area { animation: pp-surgir var(--mov) var(--mov-curva); } }
+@keyframes pp-surgir { from { opacity: 0; translate: 0 6px; } }

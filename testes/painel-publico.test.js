@@ -10,7 +10,10 @@ import {
   montarResumo, numerosDoResumo, responsaveisParaOPublico, gerarCodigoDoPainel, codigoValido, enderecoDoPainel,
   temPainel, painelLigado, problemaDaConfiguracao, TAMANHO_DA_APRESENTACAO, TAMANHO_DO_CODIGO,
 } from "../js/painel-publico.js";
-import { htmlDoPainel } from "../js/telas/painel-publico.js";
+import { pecasDasVisoes } from "../js/painel-publico.js";
+import { htmlDoPainel, visoesDoResumo, visaoDoEndereco } from "../js/telas/painel-publico.js";
+import { montarCronograma } from "../js/cronograma.js";
+import { montarRede } from "../js/rede.js";
 
 const HOJE = "2026-11-18";
 const espacoBase = {
@@ -223,5 +226,65 @@ describe("Painel público: o Store", () => {
     const { ana } = await cenario();
     const q = await ana.criarEspaco({ nome: "Quadro", tipo: "quadro" });
     await assert.rejects(ana.configurarPainelPublico(q, { ligado: true }), { codigo: "sem-painel" });
+  });
+});
+
+describe("Painel público: as visões só de leitura (parte 2)", () => {
+  const comVisoes = (espaco = espacoBase, lista = acoes) => {
+    const cal = criarCalendario(espaco, HOJE);
+    const caminho = caminhoCritico(lista, cal, { hoje: HOJE });
+    const linhas = montarLinhas(lista, caminho, null, cal, HOJE, { espaco });
+    return { cal, caminho, linhas, resumo: montarResumo({ espaco, linhas, responsaveis, entregas: [], caminho, cal }) };
+  };
+
+  it("sem caminho crítico, o resumo não oferece visões nem leva os dados delas", () => {
+    const r = montarResumo({ espaco: espacoBase, linhas: linhasDe(espacoBase), responsaveis });
+    assert.deepEqual(r.visoes, []);
+    assert.deepEqual(r.etapas, []);
+    assert.ok(!("dependeDe" in r.acoes[0]) && !("inicio" in r.acoes[0]));
+    assert.deepEqual(visoesDoResumo(r), []);
+  });
+
+  it("com o caminho crítico, leva as visões, as etapas e, por ação, etapa, ligações, início, duração e folga", () => {
+    const { resumo: r, caminho, cal } = comVisoes();
+    assert.deepEqual(r.visoes, ["tempo", "rede"]);
+    assert.deepEqual(r.etapas, [{ id: "t1", nome: "Comitê", fase: "f1" }, { id: "t2", nome: "Áreas", fase: "f2" }]);
+    const [a1, a2, a3] = r.acoes;
+    assert.equal(a2.etapa, "t2");
+    assert.deepEqual(a3.dependeDe, [2]);
+    assert.equal(a2.inicio, cal.data(caminho.porAcao.get(2).liberacao));
+    assert.equal(a3.critica, true);
+    assert.equal(a3.folga, 0);
+    assert.equal(a1.comecaCom, null);
+    assert.ok(a3.conclusao > a3.liberacao);
+    assert.deepEqual(visoesDoResumo(r), ["tempo", "rede"]);
+    assert.equal(visaoDoEndereco("#em-rede", r), "rede");
+    assert.equal(visaoDoEndereco("#qualquer", r), null);
+  });
+
+  it("o Store publica o resumo com as visões e recusa campo estranho nos marcos", async () => {
+    const ana = criarStore(criarBancoLocal(), { exigirLogin: true, usuario: "ana@x.br", hoje: () => HOJE });
+    const id = await ana.criarEspaco({ nome: "Plano", tipo: "projeto", inicio: "2026-11-02" });
+    await ana.configurarPainelPublico(id, { ligado: true });
+    const { resumo } = comVisoes();
+    assert.equal(await ana.publicarPainelPublico(id, resumo), true);
+    const acoesComMarco = [{ ...resumo.acoes[0], comecaCom: { tipo: "projeto", extra: 1 } }];
+    await assert.rejects(ana.publicarPainelPublico(id, { ...resumo, acoes: acoesComMarco }), { codigo: "campo-desconhecido" });
+  });
+
+  it("refeitas pelo painel, as peças dão ao Cronograma e à Rede as mesmas datas e ligações do Sextante", () => {
+    const { resumo, caminho, cal } = comVisoes();
+    const pecas = pecasDasVisoes(resumo);
+    const original = montarCronograma(acoes, caminho, cal, { estrutura: espacoBase.estrutura, usaFases: true });
+    const publico = montarCronograma(pecas.acoes, pecas.caminho, pecas.cal, { estrutura: pecas.estrutura, usaFases: pecas.usaFases });
+    const barras = (m) => m.linhas.filter((l) => l.tipo === "acao").map(({ barra: b }) => [b.numero, b.inicio, b.fim, b.duracao, b.critica, b.dependeDe.join()]);
+    assert.deepEqual(barras(publico), barras(original));
+    assert.deepEqual(publico.linhas.map((l) => l.tipo === "grupo" ? l.nome : l.barra.numero), original.linhas.map((l) => l.tipo === "grupo" ? l.nome : l.barra.numero));
+    const marcos = pecas.estrutura.flatMap((f) => f.etapas.map((e) => ({ id: e.id, nome: e.nome, fase: f.id })));
+    const rede = montarRede(pecas.acoes, pecas.caminho, { pontas: true, marcos, marcoDe: (a) => a.etapa });
+    const original2 = montarRede(acoes, caminho, { pontas: true, marcos, marcoDe: (a) => a.etapa });
+    const setas = (r) => r.arestas.filter((a) => !a.ligacao).map((a) => `${a.de}>${a.para}${a.critica ? " sem folga" : ""}`).sort();
+    assert.deepEqual(setas(rede), setas(original2));
+    assert.ok(setas(rede).some((t) => t.endsWith("sem folga")), "a seta sem folga continua pintada");
   });
 });
