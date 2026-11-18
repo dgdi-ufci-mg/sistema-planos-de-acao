@@ -391,8 +391,6 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const cabeca = corpo.closest(".painel").querySelector("header h2");
     cabeca.textContent = titulo;
     cabeca.title = titulo;
-    corpo.closest(".painel").style.setProperty("--calor", l.situacao === "concluida" ? "var(--ok)" : l.execucao == null ? "var(--neutral)"
-      : `color-mix(in oklab, var(--crit) ${Math.round(l.execucao * 100)}%, var(--neutral))`);
     restaurarValores(valores);
     ajustarAlturas();
     if (popover) {
