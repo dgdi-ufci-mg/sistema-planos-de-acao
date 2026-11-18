@@ -3507,8 +3507,17 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .carga-cel.n3 { background: color-mix(in srgb, var(--accent) 48%, var(--surface)); }
 .carga-cel.n4 { background: var(--accent); color: var(--surface); }
 .carga-cel.pico { font-weight: 700; }
+/* 17/11/2026: semanas antes de hoje, pelas datas registradas: só o contorno, em cinza, mais escuro quanto maior o
+   número; cheia é a previsão. Com o fundo cheio, o passado se confundia com os níveis baixos do destaque */
+.carga-cel.passada { background: transparent; color: var(--muted); }
+.carga-cel.passada.n1 { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--muted) 30%, var(--surface)); }
+.carga-cel.passada.n2 { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--muted) 55%, var(--surface)); }
+.carga-cel.passada.n3 { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--muted) 80%, var(--surface)); }
+.carga-cel.passada.n4 { box-shadow: inset 0 0 0 2.5px var(--muted); color: var(--ink); font-weight: 700; }
+.carga-sem.passada i { color: var(--faint); }
 .carga-barra { position: absolute; top: 9px; height: 16px; border: 0; border-radius: 4px; padding: 0; cursor: pointer; background: var(--folga); }
 .carga-barra.critica { background: var(--crit); }
+.carga-barra.concluida { background: var(--ok); opacity: .55; }
 .carga-barra.antes { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .carga-barra.sem-estimativa { background: transparent; border: 2px dashed var(--warn); }
 .carga-barra.continua { top: 12px; height: 10px; background: repeating-linear-gradient(135deg, var(--muted) 0 3px, transparent 3px 6px); border: 1px solid var(--muted); }

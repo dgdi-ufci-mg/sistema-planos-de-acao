@@ -32,12 +32,25 @@ describe("Visualização Responsáveis", { skip: pular }, () => {
     assert.equal(alinhado.posicao, "static");
     assert.equal(alinhado.trilhoCab, alinhado.trilho, "as semanas começam onde começam as células");
     assert.equal(await p.locator(".carga-acoes").count(), 0, "as ações começam recolhidas");
+    /* passado (17/11/2026): a tabela abre rolada na semana de hoje; as semanas anteriores ficam à esquerda, em cinza */
+    const passado = await p.evaluate(() => {
+      const r = document.querySelector(".carga-rolagem");
+      const cab = document.querySelector(".carga-linha.carga-cabeca");
+      const passadas = cab.querySelectorAll(".carga-sem.passada").length;
+      const semana = cab.querySelector(".carga-sem").getBoundingClientRect().width;
+      return { passadas, rolagem: r.scrollLeft, esperado: Math.min(passadas * semana, r.scrollWidth - r.clientWidth),
+        celulasPassadas: document.querySelector(".carga-grupo").querySelectorAll(".carga-cel.passada").length };
+    });
+    assert.ok(passado.passadas > 0, "o exemplo tem semanas antes de hoje");
+    assert.equal(passado.celulasPassadas, passado.passadas, "uma célula cinza por semana passada");
+    assert.ok(Math.abs(passado.rolagem - passado.esperado) <= 1, `abre na semana de hoje (${passado.rolagem} × ${passado.esperado})`);
     const botao = p.locator("[data-carga-abrir]").first();
     await botao.click();
     await assentar(p);
     assert.equal(await p.locator("[data-carga-abrir]").first().getAttribute("aria-expanded"), "true");
     const resumo = await p.locator(".carga-grupo").first().locator(".carga-quem small").innerText();
-    assert.equal(await p.locator(".carga-grupo").first().locator(".carga-barra").count(), Number(resumo.match(/^(\d+) em aberto/)[1]), "uma barra por ação em aberto");
+    const contagem = Number(resumo.match(/^(\d+) em aberto/)[1]) + Number(resumo.match(/(\d+) concluídas?/)?.[1] ?? 0);
+    assert.equal(await p.locator(".carga-grupo").first().locator(".carga-barra").count(), contagem, "uma barra por ação em aberto ou concluída");
     await p.locator(".carga-barra").first().click();
     await assentar(p);
     assert.equal(await camadasAbertas(p), 1, "a barra abre a janela da ação");
