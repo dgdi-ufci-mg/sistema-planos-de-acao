@@ -1806,6 +1806,49 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .checklist-itens input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--accent); flex: none; margin: 0; cursor: pointer; }
 .checklist-texto { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: text; padding: 1px 2px; border-radius: 3px; }
 .checklist-itens li.feito .checklist-texto:not([contenteditable]) { color: var(--muted); text-decoration: line-through; }
+/* reordenar e responsáveis do item (passo 3.7); só variáveis de :root, que já existem nos três blocos de tema */
+.checklist-resp { display: inline-flex; align-items: center; flex: none; border: 0; background: none; padding: 2px; margin: 0; font: inherit; color: inherit; border-radius: 12px; cursor: pointer; }
+.checklist-resp:hover { background: var(--sunk); }
+.checklist-resp[aria-expanded="true"] { background: var(--sunk); outline: 1px solid var(--line); }
+.checklist-resp:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.checklist-resp.somente { cursor: default; }
+.checklist-resp.somente:hover { background: none; }
+.checklist-resp .avatar { width: 24px; height: 24px; font-size: .62rem; box-shadow: none; cursor: inherit; }
+.checklist-resp .unidade { height: 22px; cursor: inherit; }
+.checklist-sem-resp { width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 1px dashed var(--line); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; opacity: .55; }
+.checklist-sem-resp .icone { width: 14px; height: 14px; }
+.checklist-resp.vazio:hover .checklist-sem-resp, .checklist-resp.vazio:focus-visible .checklist-sem-resp { opacity: 1; border-color: var(--accent); color: var(--accent); }
+/* a escolha de responsáveis flutua por cima da lista, colada no item, como as outras janelinhas da tarefa: nada se mexe */
+.checklist-escolha { position: absolute; top: calc(100% + 2px); right: 4px; z-index: 10; display: flex; flex-direction: column; gap: 2px; min-width: 200px; max-width: min(320px, 100%); padding: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--sombra-flutuante); }
+.checklist-escolha.acima { top: auto; bottom: calc(100% + 2px); }
+.checklist-escolha-opcao { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 6px; border-radius: 6px; min-height: 32px; cursor: pointer; }
+.checklist-escolha-opcao:hover { background: var(--sunk); }
+.checklist-escolha-opcao .avatar { width: 22px; height: 22px; font-size: .6rem; box-shadow: none; flex: none; }
+.checklist-escolha .tec { margin: 0; padding: 4px 6px; }
+.checklist-mover { display: inline-flex; flex: none; }
+.checklist-mover .mover { border: 0; background: none; padding: 2px; border-radius: 50%; cursor: pointer; color: var(--muted); display: inline-flex; opacity: .5; }
+.checklist-mover .mover .icone { width: 1em; height: 1em; }
+.checklist-mover .mover:hover:not(:disabled) { background: var(--sunk); color: var(--ink); }
+.checklist-mover .mover:disabled { opacity: .18; cursor: default; }
+.checklist-itens li:hover .mover:not(:disabled), .checklist-mover .mover:focus-visible { opacity: 1; }
+@media (pointer: coarse) { .checklist-mover .mover:not(:disabled) { opacity: .8; } .checklist-mover .mover { padding: 5px; } }
+/* alça de arrastar: só em tela com mouse (em toque, valem as setas). O item acompanha o ponteiro e os outros
+   deslizam (transform, sem mudar o desenho); a classe "desliza" liga a transição e "arrastando" a desliga. */
+.checklist-alca { display: none; flex: none; color: var(--muted); cursor: grab; border-radius: 4px; padding: 2px 0; opacity: .45; touch-action: none; }
+.checklist-alca .icone { width: 14px; height: 14px; }
+@media (hover: hover) and (pointer: fine) {
+  .checklist-alca { display: inline-flex; }
+  .checklist-itens li:hover .checklist-alca { opacity: 1; }
+}
+.checklist-itens li { position: relative; }
+.checklist-itens li.desliza { transition: transform var(--mov) var(--mov-curva); }
+.checklist-itens li.arrastando { z-index: 3; background: var(--surface); box-shadow: var(--sombra-flutuante); cursor: grabbing; }
+.checklist-itens li.assenta { z-index: 2; }
+.checklist-itens.em-arrasto li:hover { background: none; }
+.checklist-itens.em-arrasto li.arrastando:hover { background: var(--surface); }
+body.arrastando-item, body.arrastando-item * { cursor: grabbing !important; user-select: none; }
+@media (prefers-reduced-motion: reduce) { .checklist-itens li.desliza { transition: none; } }
 .checklist-itens .tirar { opacity: .5; }
 .checklist-itens li:hover .tirar, .checklist-itens .tirar:focus-visible { opacity: 1; }
 .checklist-novo input { width: 100%; box-sizing: border-box; border: 1px dashed var(--line); border-radius: var(--raio); background: transparent; padding: 6px 8px; font: inherit; color: var(--ink); }
@@ -3366,11 +3409,33 @@ button.atributo:hover .atributo-mais { color: var(--accent-ink); }
   .janela-grade.tarefa .botao-texto.adicionar-conteudo .icone { width: 20px; height: 20px; }
 }
 /* planos e projetos na mesma janela (05/11/2026): o bloco do prazo em destaque no alto do conteúdo */
-.bloco-prazo { display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; border: 1px solid var(--grid); border-radius: 10px; background: var(--surface); }
-.bloco-prazo .janela-resumo { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-.bloco-prazo .janela-resumo > div { background: none; border: 0; padding: 0; }
-.bloco-prazo .botoes { margin: 0; }
-.bloco-prazo .cartao-form { margin: 0; }
+/* 17/11/2026 (decisão do responsável): sem moldura de cartão; no alto do conteúdo, só o aviso de prazo vencido e a data
+   de conclusão; a conclusão prevista e os índices ficam na coluna de atributos */
+.bloco-prazo { display: flex; flex-direction: column; gap: 6px; }
+.bloco-prazo .cartao-form { margin: 4px 0 0; }
+.linha-prazo { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; font-size: .9rem; }
+.dado-prazo { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.dado-rotulo { color: var(--muted); font-size: .8rem; }
+.dado-prazo .mono { color: var(--ink); }
+/* aviso na linha do prazo: atrasada ou prazo vencido sem reestimativa; o Reestimar fica na janelinha */
+.pede-reestimar { display: inline-flex; align-items: center; gap: 4px; font-size: .8rem; font-weight: 700; color: var(--crit-ink); }
+.pede-reestimar .icone { width: 14px; height: 14px; }
+.atributo.sem-nome { padding-top: 2px; }
+.indices-lado { display: flex; flex-direction: column; gap: 3px; font-size: .78rem; color: var(--muted); }
+.indice-prazo { display: inline-flex; align-items: center; gap: 6px; }
+/* símbolo do índice, sempre na cor própria do índice (18/11/2026): diz qual é; o número diz quanto */
+.icone-indice { flex: none; display: inline-flex; color: var(--cor-indice); }
+.icone-indice .icone { width: 13px; height: 13px; stroke-width: 2.2; }
+.nome-indice { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: color-mix(in oklab, currentColor 45%, transparent); }
+.nome-indice:hover { color: var(--ink); }
+.indice-prazo .num { font-family: var(--f-dados); }
+.popover-subtitulo { margin: 0 0 2px; }
+.prazo-tres { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.prazo-tres .mono { font-size: 1.05rem; }
+.prazo-tres small.tec { flex-basis: 100%; }
+[data-popover="prazo"] .botoes { margin: 8px 0 0; }
+[data-popover="prazo"] .cartao-form { margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+.caixa-concluida.caixa-janela.em-uso { border-color: var(--ok); }
 /* ação contínua (seção 5.9): o tipo no alto do bloco do prazo e o aviso "Pode ser encerrada" */
 .continua-tipo { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-weight: 600; }
 .pode-encerrar { display: flex; gap: 8px; align-items: flex-start; color: var(--ink); }
@@ -3464,8 +3529,17 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .carga-cel.n3 { background: color-mix(in srgb, var(--accent) 48%, var(--surface)); }
 .carga-cel.n4 { background: var(--accent); color: var(--surface); }
 .carga-cel.pico { font-weight: 700; }
+/* 17/11/2026: semanas antes de hoje, pelas datas registradas: só o contorno, em cinza, mais escuro quanto maior o
+   número; cheia é a previsão. Com o fundo cheio, o passado se confundia com os níveis baixos do destaque */
+.carga-cel.passada { background: transparent; color: var(--muted); }
+.carga-cel.passada.n1 { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--muted) 30%, var(--surface)); }
+.carga-cel.passada.n2 { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--muted) 55%, var(--surface)); }
+.carga-cel.passada.n3 { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--muted) 80%, var(--surface)); }
+.carga-cel.passada.n4 { box-shadow: inset 0 0 0 2.5px var(--muted); color: var(--ink); font-weight: 700; }
+.carga-sem.passada i { color: var(--faint); }
 .carga-barra { position: absolute; top: 9px; height: 16px; border: 0; border-radius: 4px; padding: 0; cursor: pointer; background: var(--folga); }
 .carga-barra.critica { background: var(--crit); }
+.carga-barra.concluida { background: var(--ok); opacity: .55; }
 .carga-barra.antes { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .carga-barra.sem-estimativa { background: transparent; border: 2px dashed var(--warn); }
 .carga-barra.continua { top: 12px; height: 10px; background: repeating-linear-gradient(135deg, var(--muted) 0 3px, transparent 3px 6px); border: 1px solid var(--muted); }
@@ -3493,20 +3567,21 @@ button.carga-nome:focus-visible, .carga-linha.acao .carga-nome:focus-visible { o
 .rede-no.concluida .rede-rotulo { color: var(--muted); }
 /* "agora": a ação liberada, que pode ser feita neste momento, ganha contorno e uma pílula com o nome da situação */
 .rede-no.agora .rede-cartao { border-top-color: var(--liberada); border-right-color: var(--liberada); border-bottom-color: var(--liberada); }
-.rede-agora { position: absolute; top: -9px; right: 10px; z-index: 1; max-width: 60%; box-sizing: border-box; padding: 1px 8px; border-radius: 999px;
+.rede-agora { position: absolute; top: -9px; left: 10px; z-index: 1; max-width: 60%; box-sizing: border-box; padding: 1px 8px; border-radius: 999px;
   background: var(--liberada); color: var(--liberada-texto); font-size: .66rem; font-weight: 700; letter-spacing: .03em; line-height: 1.5;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
-/* botão de abrir a ação, abaixo do "+", com o mesmo desenho */
-.rede.rede-editavel .rede-no::after { height: 72px; }
-.rede-abrir { position: absolute; z-index: 2; top: 26px; right: -38px; width: 28px; height: 28px; padding: 0; display: grid; place-items: center; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--surface); color: var(--accent-ink); box-shadow: var(--relevo); cursor: pointer;
-  opacity: 0; pointer-events: none; transform: scale(.85); transition: opacity var(--mov-rapido) var(--mov-curva), transform var(--mov-rapido) var(--mov-curva); }
-.rede-abrir svg { width: 15px; height: 15px; }
+/* botão "Abrir" (18/11/2026, pedidos do responsável): pílula na borda de cima do cartão, à direita, ao passar o mouse
+   ou com a ação selecionada; a pílula da situação (Liberada) fica na mesma borda, à esquerda. Assim a pílula não cobre
+   o nome nem toma lugar dele. Só na rede completa: de longe, abre-se com o clique duplo, Enter ou o botão direito */
+.rede-abrir { position: absolute; z-index: 2; top: -10px; right: 10px; height: 20px; padding: 0 8px 0 6px; display: inline-flex; align-items: center; gap: 4px;
+  border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--accent-ink); font: inherit; font-size: .7rem; font-weight: 600;
+  box-shadow: var(--relevo); cursor: pointer; opacity: 0; pointer-events: none; transition: opacity var(--mov-rapido) var(--mov-curva), background-color var(--mov-rapido); }
+.rede-abrir svg { width: 12px; height: 12px; }
 .rede-abrir:hover, .rede-abrir:focus-visible { background: var(--accent); color: var(--surface); border-color: var(--accent); }
-.rede.rede-editavel:not(.ligando) .rede-no:hover .rede-abrir, .rede.rede-editavel .rede-no.selecionada .rede-abrir { opacity: 1; pointer-events: auto; transform: none; }
+.rede.rede-editavel[data-detalhe="completo"]:not(.ligando) .rede-no:hover .rede-abrir, .rede.rede-editavel[data-detalhe="completo"] .rede-no.selecionada .rede-abrir,
+.rede.rede-editavel[data-detalhe="completo"] .rede-abrir:focus-visible { opacity: 1; pointer-events: auto; }
 /* os botões do cartão não encolhem com o zoom (até 1,8 vez no desenho; js/telas/rede.js) */
 .rede-mais { scale: var(--rede-inv, 1); transform-origin: 0 100%; }
-.rede-abrir { scale: var(--rede-inv, 1); transform-origin: 0 0; }
 .rede-alca, .rede-inserir { scale: var(--rede-inv, 1); }
 /* níveis de detalhe conforme o zoom: "nome" (35% a 60%) mostra só o nome, em letra maior; "cor" (abaixo de 35%)
    preenche o cartão com a cor da situação */
@@ -3610,14 +3685,28 @@ body[data-vista-atual="rede"] .rede, .rede { background: var(--rede-fundo); }
 /* caixinhas: campos com fundo branco (não parecem bloqueados), previsão da data e listas de um campo só */
 .rede-estimar-campos input { background: var(--surface); border-color: color-mix(in srgb, var(--ink) 28%, var(--line)); }
 .rede-estimar-campos.um { grid-template-columns: minmax(0, 1fr); }
+.rede-reestimar input[name="motivo"] { font-family: inherit; }
 .rede-estimar-previsao { margin: 0; font-size: .78rem; color: var(--ink); }
 .rede-estimar-previsao[hidden] { display: none; }
 .rede-campo .rede-escolha-opcoes { max-height: min(280px, 46vh); overflow: auto; }
 .rede-campo .rede-escolha-opcoes button[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
 /* na ação selecionada, os responsáveis e a data abrem a caixinha do campo */
-.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data) { cursor: pointer; border-radius: 6px; outline: 1px dashed transparent; outline-offset: 2px; transition: outline-color var(--mov-rapido); }
-.rede.rede-editavel .rede-no.selecionada :is(.donos, .rede-data):hover { outline-color: color-mix(in srgb, var(--accent) 60%, transparent); }
-.rede.rede-editavel .rede-no.selecionada .donos:empty { min-width: 24px; min-height: 22px; }
+/* campos editáveis (17 e 18/11/2026, pedidos do responsável): fundo sombreado ao passar o mouse, em qualquer cartão, só
+   onde o clique de fato edita (atributo data-campo) e só na rede completa; a sombra sem desfoque faz a margem do fundo
+   sem mexer no desenho e não é cortada pelo limite de duas linhas do nome */
+.rede.rede-editavel[data-detalhe="completo"] [data-campo] { border-radius: 4px; cursor: pointer; transition: background-color var(--mov-rapido), box-shadow var(--mov-rapido); }
+.rede.rede-editavel[data-detalhe="completo"] [data-campo="nome"] { cursor: text; }
+.rede.rede-editavel[data-detalhe="completo"]:not(.ligando) [data-campo]:hover:not(:has([data-editando])) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 8%, transparent); }
+.rede.rede-editavel .donos[data-campo]:empty { min-width: 24px; min-height: 22px; }
+/* nome em edição (18/11/2026): o contorno vai na caixa do nome inteira, e não em cada linha do texto (o limite de duas
+   linhas cortava o contorno e deixava um traço solto à direita); o texto longo rola dentro das duas linhas */
+.rede .rede-rotulo:has([data-editando]) { display: block; max-height: 2.6em; overflow-y: auto; scrollbar-width: none; cursor: text;
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; background: var(--surface); }
+.rede .rede-rotulo [data-editando] { outline: none; background: transparent; }
+/* com Alt, o mesmo traço nos três campos; no nome, em volta da caixa inteira, e não de cada linha do texto */
+.alt-edicao .rede.rede-editavel [data-editar="rotulo"] { outline: none; }
+.alt-edicao .rede.rede-editavel[data-detalhe="completo"] [data-campo] { outline: 1px dashed var(--accent); outline-offset: 2px; border-radius: 4px; }
 .rede.rede-editavel .rede-agora[data-rede-situacao] { cursor: pointer; pointer-events: auto; }
 /* acabamento: datas na letra do cartão, com algarismos alinhados */
 .rede-data .mono, .rede-ponto-data.mono { font-family: inherit; font-variant-numeric: tabular-nums; letter-spacing: 0; }

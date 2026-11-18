@@ -195,7 +195,9 @@ describe("Rede: navegação como num mapa", { skip: pular }, () => {
     assert.match(legenda, /Quanto maior a barra, mais pesa no prazo/);
     assert.match(legenda, /Quanto mais forte a seta, mais pesa no prazo/);
     assert.doesNotMatch(legenda, /Sem folga/);
-    assert.match(await p.locator(".rede-no.indice .rede-cartao").first().getAttribute("title"), /Índice de criticidade: \d+%/);
+    /* desde 17/11/2026, o índice fica na dica da barra, e não mais na do cartão inteiro */
+    assert.equal(await p.locator(".rede-no.indice .rede-cartao").first().getAttribute("title"), null, "o cartão não tem dica própria");
+    assert.match(await p.locator(".rede-no.indice .rede-indicador .medidor").first().getAttribute("title"), /Índice de criticidade/);
     assert.match(await p.locator(".rede-no.indice .rede-data small").first().innerText(), /folga/, "a folga em dias continua no cartão");
     assert.deepEqual(p.erros, []);
   });

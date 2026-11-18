@@ -2620,12 +2620,21 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
         return Boolean(l && perm.atualizar(l.acao) && estimativaLivre(l.acao, l.situacao, hoje));
       },
       estimar: (numero, tres) => store.corrigirEstimativa(espacoId, numero, tres).then(() => null, (f) => f.message),
-      /* caixinha de prazos (11/11/2026): quando a ação terminaria com estes três prazos; null se não der para calcular */
-      previsaoCom(numero, tres) {
+      /* reestimativa pela caixinha da data (18/11/2026, pedido do responsável): a mesma da janela da ação (seção 5.3), para
+         a ação liberada e não concluída cuja estimativa já não é livre; os prazos contam a partir de hoje */
+      podeReestimar(numero) {
+        const l = linhas?.find((x) => x.acao.numero === numero);
+        return Boolean(l && l.situacao === "liberada" && !l.continua && perm.atualizar(l.acao) && !estimativaLivre(l.acao, l.situacao, hoje));
+      },
+      reestimar: (numero, dados) => store.reestimar(espacoId, numero, dados).then(() => null, (f) => f.message),
+      /* caixinha de prazos (11/11/2026): quando a ação terminaria com estes três prazos; null se não der para calcular.
+         Na reestimativa (18/11/2026), os prazos contam a partir de hoje, como a reestimativa gravada */
+      previsaoCom(numero, tres, { reestimativa = false } = {}) {
         const { o, m, p } = tres;
         if (![o, m, p].every((v) => Number.isFinite(v) && v >= 0) || o > m || m > p) return null;
         try {
-          const copia = acoes.map((a) => (a.numero === numero ? { ...a, estimativas: [...(a.estimativas ?? []), { o, m, p }] } : a));
+          const nova = reestimativa ? { em: hoje, o, m, p, contaDe: "data" } : { o, m, p };
+          const copia = acoes.map((a) => (a.numero === numero ? { ...a, estimativas: [...(a.estimativas ?? []), nova] } : a));
           const c = caminhoCritico(copia, cal, { hoje, ...opcoesDoCalculo(espaco) });
           return montarLinhas(copia, c, null, cal, hoje, { prazos: modeloDe(espaco).prazos, espaco }).find((l) => l.acao.numero === numero)?.conclusao ?? null;
         } catch { return null; }

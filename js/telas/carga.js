@@ -1,8 +1,9 @@
 /**
  * Modo "Responsáveis" do espaço (documentação técnica, seção 8.4; regras na seção 5.10 e em `js/carga.js`).
  * Responde a duas perguntas: quem cuida do quê, e quem acumula ações ao mesmo tempo.
- * - uma linha por responsável, com uma faixa de semanas, de hoje ao fim previsto; em cada semana, o número de
- *   ações ao mesmo tempo, com a cor mais forte quanto maior;
+ * - uma linha por responsável, com uma faixa de semanas, da primeira liberação ao fim previsto; em cada semana, o
+ *   número de ações ao mesmo tempo, com a cor mais forte quanto maior; antes de hoje, em cinza, pelas datas
+ *   registradas (17/11/2026); a tela abre rolada na semana de hoje;
  * - clicar na linha abre as ações da pessoa, como barras no mesmo eixo; clicar numa ação abre a janela dela.
  * Só leitura: nada é recalculado nem reagendado. Também no celular (a faixa rola para o lado).
  */
@@ -33,10 +34,10 @@ export function desenharCarga(alvo, dados) {
   }
   const carga = montarCarga(acoes, caminho, cal, responsaveis, { hoje });
   if (!carga.linhas.length) {
-    alvo.innerHTML = `<p class="lista-vazia">Nenhuma ação em aberto: todas as ações deste espaço estão concluídas.</p>`;
+    alvo.innerHTML = `<p class="lista-vazia">Nenhuma ação em aberto, e as concluídas não têm data de conclusão registrada.</p>`;
     return;
   }
-  const { semanas, de, ate, maximo } = carga;
+  const { semanas, de, ate, atual, maximo } = carga;
   const largura = semanas.length * SEMANA;
   const x = (iso) => (dias(de, iso) / 7) * SEMANA;
 
@@ -47,11 +48,12 @@ export function desenharCarga(alvo, dados) {
     const novo = mes !== mesAnterior;
     mesAnterior = mes;
     const m = Number(s.slice(5, 7)) - 1;
-    return `<span class="carga-sem${novo && i ? " mes" : ""}">${novo ? `<b>${MESES[m]}${m === 0 || !i ? ` ${s.slice(0, 4)}` : ""}</b>` : ""}<i>${Number(s.slice(8, 10))}</i></span>`;
+    return `<span class="carga-sem${novo && i ? " mes" : ""}${i < atual ? " passada" : ""}">${novo ? `<b>${MESES[m]}${m === 0 || !i ? ` ${s.slice(0, 4)}` : ""}</b>` : ""}<i>${Number(s.slice(8, 10))}</i></span>`;
   }).join("");
 
   const resumo = (l) => [
     `${l.emAberto} em aberto`,
+    l.concluidas ? `${l.concluidas} ${plural(l.concluidas, "concluída", "concluídas")}` : "",
     l.atrasadas ? `<span class="carga-atraso">${l.atrasadas} ${plural(l.atrasadas, "atrasada", "atrasadas")}</span>` : "",
     l.semEstimativa ? `${l.semEstimativa} sem estimativa` : "",
   ].filter(Boolean).join(" · ");
@@ -59,8 +61,9 @@ export function desenharCarga(alvo, dados) {
   const barraHtml = (b) => {
     const x0 = Math.max(0, x(b.inicio));
     const x1 = Math.min(largura, x(somar(b.fim, 1)));
-    const classe = b.continua ? "continua" : b.semEstimativa ? "sem-estimativa" : b.critica ? "critica" : "folga";
-    const nota = b.continua ? "Ação contínua: não entra no número" : b.semEstimativa ? "Falta estimar: não entra no número"
+    const classe = `${b.continua ? "continua" : b.semEstimativa ? "sem-estimativa" : b.concluida ? "concluida" : b.critica ? "critica" : "folga"}${b.concluida && b.continua ? " concluida" : ""}`;
+    const nota = b.concluida ? `Concluída em ${dataBr(b.fim)}${b.continua ? " (contínua: não entra no número)" : ""}`
+      : b.continua ? "Ação contínua: não entra no número" : b.semEstimativa ? "Falta estimar: não entra no número"
       : b.atrasada ? "Atrasada" : b.situacao === "naoLiberada" ? "Não liberada: datas previstas" : "Liberada";
     return `<div class="carga-linha acao" data-numero="${b.numero}">
       <div class="carga-nome" role="button" tabindex="0" data-abrir-acao>
@@ -81,8 +84,9 @@ export function desenharCarga(alvo, dados) {
     const nome = l.responsavel?.nome ?? "Sem responsável";
     const aberto = abertos.has(id);
     const celulas = l.porSemana.map((n, i) => {
-      const dica = `Semana de ${dataCurta(semanas[i])}: ${n ? `${n} ${plural(n, "ação", "ações")} ao mesmo tempo` : "nenhuma ação"}`;
-      return `<span class="carga-cel n${nivelDaCarga(n, maximo)}${n && n === l.pico ? " pico" : ""}" title="${dica}" role="img" aria-label="${dica}">${n || ""}</span>`;
+      const passada = i < atual;
+      const dica = `Semana de ${dataCurta(semanas[i])}: ${n ? `${n} ${plural(n, "ação", "ações")} ao mesmo tempo` : "nenhuma ação"}${passada ? " (pelas datas registradas)" : ""}`;
+      return `<span class="carga-cel n${nivelDaCarga(n, maximo)}${passada ? " passada" : n && n === l.pico ? " pico" : ""}" title="${dica}" role="img" aria-label="${dica}">${n || ""}</span>`;
     }).join("");
     return `<section class="carga-grupo${aberto ? " aberto" : ""}" data-dono="${esc(id)}">
       <div class="carga-linha dono">
@@ -99,15 +103,19 @@ export function desenharCarga(alvo, dados) {
 
   const temContinua = carga.linhas.some((l) => l.continuas);
   const temSemEstimativa = carga.linhas.some((l) => l.semEstimativa);
+  const temConcluida = carga.linhas.some((l) => l.concluidas);
   const anterior = alvo.querySelector("[data-rolagem]");
-  const rolagemAnterior = anterior?.scrollLeft ?? 0;
+  /* na primeira vez, a tabela abre na semana de hoje; nos redesenhos (abrir e fechar uma linha), fica onde estava */
+  const rolagemAnterior = anterior ? anterior.scrollLeft : atual * SEMANA;
   alvo.innerHTML = `
     <div class="carga-ferramentas">
-      <p class="carga-explica">Em cada semana, quantas ações cada responsável tem <b>ao mesmo tempo</b>, pelas datas previstas. O número mostra onde olhar; não mede horas de trabalho. <a href="#" class="oque" data-termo="acoesAoMesmoTempo">o que é?</a></p>
+      <p class="carga-explica">Em cada semana, quantas ações cada responsável tem <b>ao mesmo tempo</b>: de hoje em diante, pelas datas previstas; antes de hoje, pelas datas registradas (role para a esquerda). O número mostra onde olhar; não mede horas de trabalho. <a href="#" class="oque" data-termo="acoesAoMesmoTempo">o que é?</a></p>
       <div class="crono-legendas">
         <span class="crono-legenda carga-escala-cor">Menos<i class="carga-cel n1"></i><i class="carga-cel n2"></i><i class="carga-cel n3"></i><i class="carga-cel n4"></i>Mais</span>
+        ${atual > 0 ? `<span class="crono-legenda carga-escala-cor"><i class="carga-cel n2 passada"></i>Antes de hoje</span>` : ""}
         <span class="crono-legenda"><i class="critica"></i>Sem folga</span>
         <span class="crono-legenda"><i class="folga"></i>Com folga</span>
+        ${temConcluida ? `<span class="crono-legenda"><i class="concluida"></i>Concluída</span>` : ""}
         ${temContinua ? `<span class="crono-legenda"><i class="continua"></i>Contínua (fora do número)</span>` : ""}
         ${temSemEstimativa ? `<span class="crono-legenda"><i class="carga-falta"></i>Falta estimar (fora do número)</span>` : ""}
       </div>
@@ -121,7 +129,7 @@ export function desenharCarga(alvo, dados) {
         </div>
       </div>
     </div>
-    ${carga.livres.length ? `<p class="carga-livres"><b>Sem ações em aberto:</b> ${carga.livres.map((r) => esc(r.nome)).join(", ")}.</p>` : ""}
+    ${carga.livres.length ? `<p class="carga-livres"><b>Sem ações:</b> ${carga.livres.map((r) => esc(r.nome)).join(", ")}.</p>` : ""}
     <p class="tec">Clique num responsável para ver as ações dele; clique numa ação para abri-la. A ação com mais de um responsável conta inteira para cada um. Esta tela só mostra: não muda datas nem responsáveis. Termo técnico: histograma de recursos.</p>`;
 
   const rolagem = alvo.querySelector("[data-rolagem]");
