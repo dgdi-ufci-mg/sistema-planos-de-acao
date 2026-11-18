@@ -1247,7 +1247,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     const ls = visiveis();
     ordemNaTela = ls.map((l) => l.acao.numero);
     let corpo;
-    if (ui.modo === "planilha") { planilha.desenhar(lista, { ...dadosDaJanela(), ocultas: ui.ocultasPlanilha }); return; }
+    if (ui.modo === "planilha") { planilha.desenhar(lista, { ...dadosDaJanela(), ocultas: ui.ocultasPlanilha, abrirAcao: (n) => abrirJanela(n) }); return; }
     if (ui.modo === "cronograma") {
       desenharCronograma(lista, { espaco, acoes, caminho, cal, hoje, usaFases, identificador: idHtml, escala: ui.escalaCrono,
         aoMudarEscala: (escala) => {

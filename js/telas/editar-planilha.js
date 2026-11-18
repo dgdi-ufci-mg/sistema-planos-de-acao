@@ -21,7 +21,8 @@ import {
   lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData,
   agruparPorFaseEEtapa, ordenarColunas, moverColuna, passaNaBusca, criarDesfazer, ocultasAoLado, larguraAoConteudo,
 } from "../planilha.js";
-import { avisar } from "./painel.js";
+import { avisar, perguntar } from "./painel.js";
+import { excluirAcao } from "./exclusao.js";
 import { usaEstimativas, usaDependencias, usaSimulacao } from "../modelos.js";
 import { termos } from "../vocabulario.js";
 import { nomeDoFluxo } from "../situacoes.js";
@@ -467,13 +468,14 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         </table>
       </div>
       <p class="planilha-pe tec so-computador">Cada célula é gravada ao sair dela. Cinza: não se edita aqui (passe o mouse para ver o motivo); títulos em itálico: calculados.
-        Setas e Enter: andar · Esc: desfaz a digitação · Ctrl+Z: desfazer a última alteração · Cole um bloco do Excel ou do Google Planilhas a partir da célula escolhida ·
+        Setas e Enter: andar · Esc: desfaz a digitação · Ctrl+Z: desfazer a última alteração · Arraste ou use Shift+setas para escolher várias células (Ctrl+C copia, Delete limpa) · Ctrl+D repete para baixo · Botão direito: mais opções · Cole um bloco do Excel ou do Google Planilhas a partir da célula escolhida ·
         Em “Depende de”, ${d.usaCodigos ? "números ou códigos" : "números"} separados por “;”; em “Responsáveis”, siglas ou nomes (Alt+↓ abre a lista).</p>
       <p class="so-celular cartao">A edição em planilha está disponível no computador.</p>`;
     const rolagem = alvo.querySelector(".planilha-rolagem");
     if (posicao) [rolagem.scrollLeft, rolagem.scrollTop] = posicao;
     ajustarAltura();
     ajustarTextareas();
+    pintarSelecao();
     restaurarFoco(foco);
     if (buscaComFoco != null) { const b = alvo.querySelector("[data-busca-planilha]"); b.focus(); b.setSelectionRange(buscaComFoco, buscaComFoco); }
     if (trocouAlvo) ligar();
@@ -599,6 +601,86 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       bs[(i + (e.key === "ArrowDown" ? 1 : bs.length - 1)) % bs.length]?.focus();
     });
     caixa.querySelector("button")?.focus();
+  }
+
+  /** Menu do botão direito numa célula (como no Excel). */
+  function abrirMenuCelula(td, x, y) {
+    const el = td.querySelector("[data-linha]");
+    const pos = posicaoDe(el);
+    if (!pos) return;
+    const f = limites();
+    const dentro = faixaMultipla() && pos.l >= f.l0 && pos.l <= f.l1 && pos.c >= f.c0 && pos.c <= f.c1;
+    if (!dentro) limparFaixa();
+    const naFaixa = faixaMultipla();
+    const acao = acaoDaLinha(pos.l);
+    const umaLinha = !naFaixa || limites().l0 === limites().l1;
+    const ancora = { getBoundingClientRect: () => ({ left: x, top: y, bottom: y }), contains: () => false };
+    const item = (a, texto, extra = "") => `<button type="button" role="menuitem" class="opcao-caixa${extra}" data-menu="${a}">${texto}</button>`;
+    const podeEscrever = acao ? !bloqueio(acao, el.dataset.chave) || naFaixa : el.dataset.chave === "rotulo";
+    const caixa = abrirCaixa(ancora, `<div role="menu" aria-label="Célula" class="menu-coluna">
+      ${acao ? item("copiar", "Copiar") : ""}
+      ${podeEscrever ? item("colar", "Colar") : ""}
+      ${acao ? item("limpar", "Limpar conteúdo") : ""}
+      ${acao && umaLinha ? `<hr>${item("abrir", `Abrir ${termos(d.espaco).acao}`)}` : ""}
+      ${acao && umaLinha && d.perm?.excluirAcao ? item("excluir", `Excluir ${termos(d.espaco).acao}…`, " perigo") : ""}
+    </div>`, 250);
+    caixa.dataset.de = "menu";
+    caixa.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-menu]");
+      if (!b) return;
+      const a = b.dataset.menu;
+      fecharCaixa();
+      try {
+        if (a === "copiar") {
+          const ff = faixaMultipla() ? limites() : { l0: pos.l, l1: pos.l, c0: pos.c, c1: pos.c };
+          const antes = faixa; faixa = { ancora: { l: ff.l0, c: ff.c0 }, ponta: { l: ff.l1, c: ff.c1 } };
+          const texto = faixaComoTexto(); faixa = antes;
+          await navigator.clipboard.writeText(texto);
+          avisar("Copiado.");
+        } else if (a === "colar") {
+          const texto = await navigator.clipboard.readText();
+          colarNaFaixa(texto, celulaEl(faixaMultipla() ? limites().l0 : pos.l, faixaMultipla() ? limites().c0 : pos.c));
+        } else if (a === "limpar") {
+          if (!faixaMultipla()) faixa = { ancora: pos, ponta: pos };
+          limparFaixaDeCelulas();
+        } else if (a === "abrir") {
+          d.abrirAcao?.(acao.numero);
+        } else if (a === "excluir") {
+          const ok = await perguntar({
+            titulo: `Excluir “${esc(acao.rotulo)}”?`,
+            corpo: `<p>A ${termos(d.espaco).acao} vai para a lixeira. Logo depois de excluir, o aviso oferece “Desfazer”.</p>`,
+          });
+          if (ok) await excluirAcao({ store, espacoId, acao, acoes: d.acoes });
+        }
+      } catch (err) {
+        avisar(a === "copiar" || a === "colar" ? "O navegador não deixou usar a área de transferência por aqui: use Ctrl+C e Ctrl+V." : err.message);
+      }
+    });
+    caixa.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      e.preventDefault();
+      const bs = [...caixa.querySelectorAll("button")];
+      const i = bs.indexOf(document.activeElement);
+      bs[(i + (e.key === "ArrowDown" ? 1 : bs.length - 1)) % bs.length]?.focus();
+    });
+    caixa.querySelector("button")?.focus();
+  }
+
+  /** Cola um texto: um valor só numa faixa preenche a faixa inteira (como no Excel); um bloco entra a partir da célula de cima à esquerda. */
+  function colarNaFaixa(texto, el) {
+    const blocos = lerColagem(texto);
+    const unico = blocos.length === 1 && blocos[0].length === 1;
+    if (unico && faixaMultipla()) {
+      const f = limites();
+      const cols = colunas();
+      const itens = [];
+      for (let l = f.l0; l <= f.l1; l++) for (let c = f.c0; c <= f.c1; c++) if (cols[c]) itens.push({ linha: l, chave: cols[c].chave, texto: blocos[0][0] });
+      gravarLote(itens, "Colado");
+      return true;
+    }
+    if (el && !unico) return colar(el, texto);
+    if (el && unico && el.dataset.chave) { el.value = blocos[0][0]; el.dispatchEvent(new Event("change", { bubbles: true })); return true; }
+    return false;
   }
 
   /** Desfazer (ou refazer) o último passo: regrava, na ordem, o valor de antes (ou o de depois) de cada célula. */
@@ -756,6 +838,109 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     });
   }
 
+  /* ---------- seleção de várias células (18/11/2026, lote 2) ---------- */
+  /** Faixa escolhida (Shift+clique, arrastar ou Shift+setas): `ancora` fica parada, `ponta` anda. Só vale com mais de uma célula. */
+  let faixa = null; // {ancora: {l, c}, ponta: {l, c}}
+  const celulaEl = (l, c) => alvo.querySelector(`[data-linha="${l}"][data-col="${c}"]`);
+  const ultimaLinha = () => linhasAtuais.length - 1; // a linha em branco no fim não entra na faixa
+  const limites = () => faixa && {
+    l0: Math.min(faixa.ancora.l, faixa.ponta.l), l1: Math.max(faixa.ancora.l, faixa.ponta.l),
+    c0: Math.min(faixa.ancora.c, faixa.ponta.c), c1: Math.max(faixa.ancora.c, faixa.ponta.c),
+  };
+  const faixaMultipla = () => { const f = limites(); return Boolean(f) && (f.l1 > f.l0 || f.c1 > f.c0); };
+  function pintarSelecao() {
+    for (const td of alvo.querySelectorAll("td.sel")) td.classList.remove("sel", "sel-topo", "sel-base", "sel-esq", "sel-dir");
+    if (!faixaMultipla()) return;
+    const f = limites();
+    for (let l = f.l0; l <= f.l1; l++) for (let c = f.c0; c <= f.c1; c++) {
+      const td = celulaEl(l, c)?.closest("td");
+      if (!td) continue;
+      td.classList.add("sel");
+      if (l === f.l0) td.classList.add("sel-topo");
+      if (l === f.l1) td.classList.add("sel-base");
+      if (c === f.c0) td.classList.add("sel-esq");
+      if (c === f.c1) td.classList.add("sel-dir");
+    }
+  }
+  function escolherFaixa(ancora, ponta) {
+    faixa = { ancora, ponta };
+    pintarSelecao();
+  }
+  function limparFaixa() { if (faixa) { faixa = null; pintarSelecao(); } }
+  const posicaoDe = (el) => { const x = el?.closest?.("[data-linha]"); return x ? { l: Number(x.dataset.linha), c: Number(x.dataset.col) } : null; };
+
+  /** O texto de uma célula como a pessoa vê (datas em dd/mm/aaaa, etapa pelo nome), para copiar e repetir. */
+  function textoDaCelula(l, c) {
+    const el = celulaEl(l, c);
+    if (!el) return "";
+    if (el.tagName === "SELECT") return el.selectedOptions[0]?.textContent ?? "";
+    if (el.tagName === "INPUT" && el.type === "date") return el.value ? dataBr(el.value) : "";
+    return el.value ?? el.textContent ?? "";
+  }
+  /** A faixa (ou a célula só) como texto separado por tabulações, o formato do Excel e do Google Planilhas. */
+  function faixaComoTexto() {
+    const f = limites();
+    const celula = (t) => (/[\t\n"]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t);
+    const linhas = [];
+    for (let l = f.l0; l <= f.l1; l++) {
+      const v = [];
+      for (let c = f.c0; c <= f.c1; c++) v.push(celula(textoDaCelula(l, c)));
+      linhas.push(v.join("\t"));
+    }
+    return linhas.join("\n");
+  }
+
+  /** Grava vários valores de uma vez, como um passo só do Desfazer. `itens`: {linha, chave, texto}. */
+  function gravarLote(itens, rotulo) {
+    ocupado = ocupado.then(async () => {
+      const passo = [];
+      let falhas = 0;
+      let feitas = 0;
+      for (const { linha, chave, texto } of itens) {
+        const acao = acaoDaLinha(linha);
+        if (!acao || bloqueio(acao, chave)) continue;
+        try {
+          const atual = (await store.listarAcoes(espacoId)).find((a) => a.numero === acao.numero);
+          const antes = valor(atual, chave);
+          await gravar(atual, chave, texto);
+          passo.push({ numero: acao.numero, chave, antes, depois: texto });
+          feitas++;
+        } catch (e) {
+          falhas++;
+          if (falhas === 1) avisar(`Linha ${linha + 1}: ${e.message}`);
+        }
+      }
+      historico.registrar(passo);
+      atualizarBarra();
+      if (!falhas) avisar(feitas ? `${rotulo}: ${feitas} ${feitas === 1 ? "célula" : "células"}.` : "Nenhuma célula podia ser alterada aqui.");
+      else avisar(`${rotulo}: ${feitas} gravadas e ${falhas} com problema (a primeira mensagem está acima).`);
+    });
+  }
+  /** Colunas que se esvaziam sem apagar a ação: o nome nunca. */
+  const limpavel = (chave) => chave !== "rotulo";
+  function limparFaixaDeCelulas() {
+    const f = limites();
+    const cols = colunas();
+    const itens = [];
+    for (let l = f.l0; l <= f.l1; l++) for (let c = f.c0; c <= f.c1; c++) if (cols[c] && limpavel(cols[c].chave)) itens.push({ linha: l, chave: cols[c].chave, texto: "" });
+    gravarLote(itens, "Células limpas");
+  }
+  /** Ctrl+D: repete para baixo o valor de cima (na faixa, o da primeira linha de cada coluna; numa célula só, o da linha de cima). */
+  function repetirParaBaixo(el) {
+    const cols = colunas();
+    const itens = [];
+    if (faixaMultipla()) {
+      const f = limites();
+      for (let c = f.c0; c <= f.c1; c++) for (let l = f.l0 + 1; l <= f.l1; l++) if (cols[c]) itens.push({ linha: l, chave: cols[c].chave, texto: textoDaCelula(f.l0, c) });
+    } else {
+      const l = Number(el.dataset.linha);
+      const c = Number(el.dataset.col);
+      if (l < 1 || l > ultimaLinha() || !cols[c]) return;
+      itens.push({ linha: l, chave: cols[c].chave, texto: textoDaCelula(l - 1, c) });
+    }
+    gravarLote(itens, "Repetido para baixo");
+  }
+
   /* ---------- colagem de um bloco ---------- */
   function colar(el, texto) {
     const blocos = lerColagem(texto);
@@ -791,6 +976,9 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     });
     return true;
   }
+
+  /** O cursor está na ponta do texto, do lado que a seta vai? (setas só saem da célula de texto na ponta) */
+  const naPontaDe = (el, lado) => el.selectionStart === el.selectionEnd && el.selectionStart === (lado < 0 ? 0 : el.value.length);
 
   /* ---------- eventos ---------- */
   function ligar() {
@@ -831,10 +1019,60 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     /* botão direito (ou a tecla de menu) no título da coluna */
     alvo.addEventListener("contextmenu", (e) => {
       const th = e.target.closest?.("th[scope=col]");
-      if (!th || !th.querySelector("[data-filtro-col]")) return;
+      if (th && th.querySelector("[data-filtro-col]")) {
+        e.preventDefault();
+        const r = th.getBoundingClientRect();
+        return abrirMenuColuna(th, e.clientX || r.left, e.clientY || r.bottom);
+      }
+      const td = e.target.closest?.(".planilha tbody td");
+      if (td && td.querySelector("[data-linha]")) {
+        e.preventDefault();
+        const r = td.getBoundingClientRect();
+        abrirMenuCelula(td, e.clientX || r.left, e.clientY || r.bottom);
+      }
+    });
+    /* escolher várias células: Shift+clique, ou arrastar de uma célula a outra (dentro de uma célula só, o arrasto escolhe texto) */
+    alvo.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || e.target.closest?.("[data-redimensionar], button, .marca-oculta")) return;
+      const td = e.target.closest?.(".planilha tbody td");
+      const origem = td && posicaoDe(td.querySelector("[data-linha]"));
+      if (!origem) { limparFaixa(); return; }
+      const ativa = posicaoDe(document.activeElement);
+      if (e.shiftKey && (faixa?.ancora || ativa)) {
+        e.preventDefault();
+        escolherFaixa(faixa?.ancora ?? ativa, origem);
+        return;
+      }
+      limparFaixa();
+      let arrastou = false;
+      const mover = (ev) => {
+        const sob = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.(".planilha tbody td");
+        const p = sob && posicaoDe(sob.querySelector("[data-linha]"));
+        if (!p || (!arrastou && p.l === origem.l && p.c === origem.c)) return;
+        if (p.l > ultimaLinha() || origem.l > ultimaLinha()) return;
+        if (!arrastou) { arrastou = true; alvo.classList.add("escolhendo"); getSelection()?.removeAllRanges(); }
+        escolherFaixa(origem, p);
+      };
+      const soltar = () => {
+        document.removeEventListener("pointermove", mover);
+        alvo.classList.remove("escolhendo");
+        if (arrastou) celulaEl(origem.l, origem.c)?.focus({ preventScroll: true });
+      };
+      document.addEventListener("pointermove", mover);
+      document.addEventListener("pointerup", soltar, { once: true });
+      document.addEventListener("pointercancel", soltar, { once: true });
+    });
+    /* copiar e recortar a faixa (numa célula só, valem o copiar e o recortar do próprio campo) */
+    alvo.addEventListener("copy", (e) => {
+      if (!faixaMultipla()) return;
       e.preventDefault();
-      const r = th.getBoundingClientRect();
-      abrirMenuColuna(th, e.clientX || r.left, e.clientY || r.bottom);
+      e.clipboardData.setData("text/plain", faixaComoTexto());
+    });
+    alvo.addEventListener("cut", (e) => {
+      if (!faixaMultipla()) return;
+      e.preventDefault();
+      e.clipboardData.setData("text/plain", faixaComoTexto());
+      limparFaixaDeCelulas();
     });
     /* texto cortado: aparece inteiro ao passar o mouse */
     alvo.addEventListener("mouseover", (e) => {
@@ -871,6 +1109,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       if (e.target.matches?.("[data-busca-planilha]")) { busca = e.target.value; desenhar(alvo, d); return; }
       if (e.target.type === "date") e.target.toggleAttribute("data-vazia", !e.target.value);
       if (e.target.tagName === "TEXTAREA") ajustarTextareas(e.target.parentElement);
+      limparFaixa(); // digitar numa célula volta a valer só ela
     });
     addEventListener("resize", () => { if (alvo.isConnected) ajustarAltura(); });
     alvo.addEventListener("keydown", (e) => {
@@ -897,6 +1136,29 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         el.setRangeText("\n", el.selectionStart, el.selectionEnd, "end");
         return ajustarTextareas(el.parentElement);
       }
+      /* faixa: Shift+setas aumentam ou diminuem a escolha; Delete limpa; Ctrl+D repete para baixo; Esc desfaz a escolha */
+      if (ctrl && !e.shiftKey && (e.key === "d" || e.key === "D")) { e.preventDefault(); return repetirParaBaixo(el); }
+      if (faixaMultipla() && (e.key === "Delete" || e.key === "Backspace") && !ctrl) { e.preventDefault(); return limparFaixaDeCelulas(); }
+      if (faixaMultipla() && e.key === "Escape") { e.preventDefault(); return limparFaixa(); }
+      if (e.shiftKey && !ctrl && !e.altKey && e.key.startsWith("Arrow")) {
+        const dl = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : 0;
+        const dc = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        const textoNaCelula = ["INPUT", "TEXTAREA"].includes(el.tagName) && !["date", "number"].includes(el.type) && el.selectionStart !== el.selectionEnd;
+        if (!textoNaCelula || faixa) { // com texto escolhido na célula e sem faixa, Shift+setas continuam escolhendo texto
+          const horizontal = dc !== 0 && !faixa && ["INPUT", "TEXTAREA"].includes(el.tagName) && !["date", "number"].includes(el.type) && !naPontaDe(el, dc);
+          if (!horizontal) {
+            e.preventDefault();
+            const base = faixa ?? { ancora: posicaoDe(el), ponta: posicaoDe(el) };
+            const nova = { l: base.ponta.l + dl, c: base.ponta.c + dc };
+            const cols = colunas();
+            if (nova.l >= 0 && nova.l <= ultimaLinha() && nova.c >= 0 && nova.c < cols.length) {
+              escolherFaixa(base.ancora, nova);
+              celulaEl(nova.l, nova.c)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+            }
+            return;
+          }
+        }
+      }
       const naPonta = (lado) => !texto || (el.selectionStart === el.selectionEnd && el.selectionStart === (lado < 0 ? 0 : el.value.length));
       let andou = null;
       if (e.altKey && e.key === "ArrowDown" && ["responsaveis", "dependeDe"].includes(el.dataset.chave)) { e.preventDefault(); return abrirEscolha(el); }
@@ -906,6 +1168,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
       else if (e.key === "ArrowLeft" && naPonta(-1)) andou = ir(0, -1);
       else if (e.key === "ArrowRight" && naPonta(1)) andou = ir(0, 1);
       if (andou !== null) {
+        limparFaixa();
         if (andou || e.key === "Enter" || !texto) e.preventDefault();
       } else if (e.key === "Escape" && "value" in el && el.value !== el.dataset.original) {
         e.preventDefault();
@@ -915,7 +1178,13 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
     alvo.addEventListener("paste", (e) => {
       const el = e.target;
       if (!el.dataset?.chave) return;
-      if (colar(el, e.clipboardData.getData("text/plain"))) e.preventDefault();
+      const texto = e.clipboardData.getData("text/plain");
+      if (faixaMultipla()) {
+        const f = limites();
+        if (colarNaFaixa(texto, celulaEl(f.l0, f.c0))) e.preventDefault();
+        return;
+      }
+      if (colar(el, texto)) e.preventDefault();
     });
   }
 

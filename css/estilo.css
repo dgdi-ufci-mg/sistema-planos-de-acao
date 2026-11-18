@@ -3281,6 +3281,21 @@ select.grade-editor { margin: -4px -6px; }
 .planilha .planilha-grupo.nivel-etapa th { background: color-mix(in srgb, var(--bg) 50%, var(--surface)); }
 .planilha .planilha-grupo .grade-grupo-botao { position: sticky; left: 0; }
 .planilha .planilha-grupo.nivel-etapa .grade-grupo-botao { padding-left: 30px; font: 600 .84rem var(--f-texto); }
+/* planilha: faixa de células escolhidas (lote 2, 18/11/2026) */
+.planilha td.sel { background: var(--accent-soft); }
+.planilha td.sel > input, .planilha td.sel > select, .planilha td.sel > textarea { background: transparent; }
+.planilha td.sel-topo { box-shadow: inset 0 2px 0 var(--accent); }
+.planilha td.sel-base { box-shadow: inset 0 -2px 0 var(--accent); }
+.planilha td.sel-esq { box-shadow: inset 2px 0 0 var(--accent); }
+.planilha td.sel-dir { box-shadow: inset -2px 0 0 var(--accent); }
+.planilha td.sel-topo.sel-esq { box-shadow: inset 2px 2px 0 var(--accent); }
+.planilha td.sel-topo.sel-dir { box-shadow: inset -2px 2px 0 var(--accent); }
+.planilha td.sel-base.sel-esq { box-shadow: inset 2px -2px 0 var(--accent); }
+.planilha td.sel-base.sel-dir { box-shadow: inset -2px -2px 0 var(--accent); }
+.planilha td.sel-topo.sel-base { box-shadow: inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent); }
+.planilha td.sel-esq.sel-dir { box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent); }
+.escolhendo, .escolhendo * { user-select: none; cursor: cell; }
+.menu-coluna .opcao-caixa.perigo { color: var(--crit); }
 /* planilha: quebra de texto, menu do título e marca de coluna escondida (18/11/2026) */
 .planilha td textarea { display: block; width: 100%; border: 0; background: transparent; font: inherit; color: inherit; padding: 7px 10px; min-height: 34px; resize: none; overflow: hidden; line-height: 1.35; box-sizing: border-box; }
 .planilha td textarea:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--surface); }
