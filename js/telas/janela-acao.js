@@ -12,7 +12,7 @@ import { markdownParaHtml, htmlParaMarkdown, linkSeguro } from "../notas.js";
 import { abrirPainel, fecharPainel, avisar } from "./painel.js";
 import { excluirAcao } from "./exclusao.js";
 import { surgir, trocarSuave, abrirSuave, fecharSuave, reduzirMovimento } from "./movimento.js";
-import { seloHtml } from "./pessoas.js";
+import { seloHtml, donosHtml } from "./pessoas.js";
 import { seletorHtml, ligarSeletores } from "./seletor.js";
 import { descreverRegistro } from "../historico.js";
 import { editarTexto } from "./edicao-no-lugar.js";
@@ -71,6 +71,34 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   /** checklist aberto sem itens ainda ("Adicionar checklist"), e foco a devolver ao campo de novo item */
   let checklistAberto = false;
   let focoNoChecklist = false;
+  /** botão de subir/descer a devolver ao foco depois que o item muda de lugar (passo 3.7): { id, direcao } */
+  let focoNoMover = null;
+  /** item do checklist sendo arrastado pela alça (só com mouse; passo 3.7); null quando não há arrasto */
+  let arrasto = null;
+  /** item do checklist com a escolha de responsáveis aberta (passo 3.7), ou null */
+  let itemEscolhendo = null;
+  /**
+   * Abre (id) ou fecha (null) a janelinha de responsáveis de um item do checklist. Enquanto aberta, o Esc é dela
+   * (escuta na janela do navegador, antes da escuta que fecha a janela da tarefa); a escuta se desfaz sozinha
+   * quando a janelinha não está mais na tela.
+   */
+  function trocarEscolha(id) {
+    itemEscolhendo = id;
+    window.removeEventListener("keydown", aoTeclarNaEscolha, true);
+    if (id) window.addEventListener("keydown", aoTeclarNaEscolha, true);
+  }
+  function aoTeclarNaEscolha(e) {
+    if (!corpo.querySelector(".checklist-escolha")) return trocarEscolha(null);
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = itemEscolhendo;
+    trocarEscolha(null);
+    focoPendente = `[data-escolher-resp-item="${CSS.escape(id)}"]`;
+    desenhar();
+  }
+  /** seletor do elemento a devolver ao foco depois de redesenhar a janela, ou null */
+  let focoPendente = null;
 
   const inicial = acaoAtual();
   const corpo = abrirPainel(d.usaCodigos && inicial?.codigo ? `${termos(d.espaco).Acao} ${inicial.codigo}` : termos(d.espaco).Acao, "", {
@@ -203,7 +231,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
     buscando = null; editandoDoc = null; mostrados.clear(); status = null;
     alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
-    popover = null; focoPopover = null; historicoVisivel = false;
+    popover = null; focoPopover = null; historicoVisivel = false; trocarEscolha(null); focoPendente = null;
     abrirMenu(false);
     pararComentarios?.();
     comentarios = null;
@@ -401,6 +429,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       if (focoPopover) { corpo.querySelector(`[data-popover] [${focoPopover}]`)?.focus({ preventScroll: true }); focoPopover = null; }
     }
     if (focoNoChecklist) { focoNoChecklist = false; corpo.querySelector('[name="novoItemChecklist"]')?.focus(); }
+    ajustarEscolha();
+    if (focoPendente) { corpo.querySelector(focoPendente)?.focus({ preventScroll: true }); focoPendente = null; }
+    if (focoNoMover) {
+      /* no primeiro ou no último lugar o botão fica desligado: o foco vai para o outro, e não se perde */
+      const { id, direcao } = focoNoMover;
+      focoNoMover = null;
+      const mesmo = corpo.querySelector(`[data-mover-item="${CSS.escape(id)}"][data-direcao="${direcao}"]:not(:disabled)`)
+        ?? corpo.querySelector(`[data-mover-item="${CSS.escape(id)}"]:not(:disabled)`);
+      mesmo?.focus({ preventScroll: true });
+    }
     seletores.desenhar();
     encolherFormularioGravado();
   }
@@ -986,6 +1024,53 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   /** Notas: mostradas já formatadas; ao clicar, editor visual com negrito, itálico, link e lista (seção 8.5). */
   /**
+   * A janelinha de responsáveis abre embaixo do item; se não couber na parte visível da janela da tarefa e couber
+   * em cima, abre em cima. Se não couber em nenhum dos dois, fica embaixo e a janela rola.
+   */
+  function ajustarEscolha() {
+    const caixa = corpo.querySelector(".checklist-escolha");
+    if (!caixa) return;
+    caixa.classList.remove("acima");
+    let rolavel = caixa.parentElement;
+    while (rolavel && rolavel !== document.body && !/(auto|scroll)/.test(getComputedStyle(rolavel).overflowY)) rolavel = rolavel.parentElement;
+    const limite = rolavel?.getBoundingClientRect() ?? { top: 0, bottom: innerHeight };
+    const c = caixa.getBoundingClientRect();
+    const item = caixa.parentElement.getBoundingClientRect();
+    if (c.bottom > limite.bottom - 4 && item.top - c.height - 2 > limite.top) caixa.classList.add("acima");
+  }
+
+  /**
+   * Responsáveis de um item do checklist (passo 3.7): os círculos das pessoas (e os quadrados das unidades) no
+   * mesmo desenho dos cartões, ou um círculo tracejado quando não há ninguém. Tocar abre a escolha logo abaixo do
+   * item. Quem só consulta vê os círculos, sem poder mudar; item sem responsável, nada.
+   */
+  function responsavelDoItemHtml(acao, item, pode) {
+    const contexto = { tons: d.espaco.tons, meus: d.meus };
+    const donos = (item.responsaveis ?? []).map((id) => d.pessoas.get(id)).filter(Boolean);
+    const selos = donos.length ? donosHtml(donos, contexto) : `<span class="checklist-sem-resp" aria-hidden="true">${ICONES.pessoa}</span>`;
+    if (!pode) return donos.length ? `<span class="checklist-resp somente">${selos}</span>` : "";
+    const nomes = donos.map((r) => r.nome).join(", ");
+    return `<button type="button" class="checklist-resp${donos.length ? "" : " vazio"}" data-escolher-resp-item="${esc(item.id)}"
+      aria-expanded="${itemEscolhendo === item.id}" aria-label="Responsáveis por ${esc(item.texto)}: ${esc(nomes) || "ninguém"}" title="${esc(nomes) || "Atribuir a alguém"}">${selos}</button>`;
+  }
+
+  /**
+   * A escolha de responsáveis de um item: caixas de marcar com quem é responsável pela tarefa, e só eles (quem cuida
+   * de um passo faz parte da tarefa). Gravam na hora, uma marca por vez. Sem responsáveis na tarefa, um aviso.
+   */
+  function escolhaDoItemHtml(acao, item) {
+    if (itemEscolhendo !== item.id) return "";
+    const contexto = { tons: d.espaco.tons, meus: d.meus };
+    const daTarefa = d.responsaveis.filter((r) => acao.responsaveis.includes(r.id));
+    const marcados = item.responsaveis ?? [];
+    const miolo = daTarefa.length
+      ? daTarefa.map((r) => `<label class="checklist-escolha-opcao"><input type="checkbox" data-resp-item="${esc(item.id)}" value="${esc(r.id)}"${marcados.includes(r.id) ? " checked" : ""}>
+          ${seloHtml(r, contexto)}<span>${esc(r.nome)}</span></label>`).join("")
+      : `<p class="tec">Primeiro, indique os responsáveis pela tarefa.</p>`;
+    return `<div class="checklist-escolha" role="group" aria-label="Responsáveis por ${esc(item.texto)}" data-popover-item>${miolo}</div>`;
+  }
+
+  /**
    * Checklist (passo 2.8; seção 16.5): não ocupa espaço até "Adicionar checklist". Cada item muda
    * sozinho, na hora, sem Salvar: marcar, mudar o texto (clique nele) ou retirar (×).
    */
@@ -1001,10 +1086,16 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     return `<div class="campo-acao checklist">
       <span class="campo-nome">Checklist${itens.length ? ` <span class="checklist-progresso">${feitos}/${itens.length}</span>` : ""}</span>
       ${itens.length ? `<span class="checklist-barra" aria-hidden="true"><i style="width:${Math.round((100 * feitos) / itens.length)}%"></i></span>` : ""}
-      <ul class="checklist-itens">${itens.map((i) => `<li class="${i.feito ? "feito" : ""}">
+      <ul class="checklist-itens">${itens.map((i, n) => `<li class="${i.feito ? "feito" : ""}" data-item="${esc(i.id)}">
+        ${pode && itens.length > 1 ? `<span class="checklist-alca" data-alca-item="${esc(i.id)}" title="Arrastar para mudar de lugar" aria-hidden="true">${ICONES.alca}</span>` : ""}
         <input type="checkbox" data-marcar-item="${esc(i.id)}"${i.feito ? " checked" : ""}${pode ? "" : " disabled"} aria-label="${esc(i.texto)}">
         <span class="checklist-texto"${pode ? ` data-texto-item="${esc(i.id)}" tabindex="0" title="Clique para mudar o texto"` : ""}>${esc(i.texto)}</span>
-        ${pode ? `<button type="button" class="tirar" data-tirar-item="${esc(i.id)}" aria-label="Retirar ${esc(i.texto)}">${ICONES.fechar}</button>` : ""}</li>`).join("")}</ul>
+        ${responsavelDoItemHtml(acao, i, pode)}
+        ${pode && itens.length > 1 ? `<span class="checklist-mover">
+          <button type="button" class="mover" data-mover-item="${esc(i.id)}" data-direcao="-1"${n === 0 ? " disabled" : ""} aria-label="Subir ${esc(i.texto)}" title="Subir">${ICONES.acima}</button>
+          <button type="button" class="mover" data-mover-item="${esc(i.id)}" data-direcao="1"${n === itens.length - 1 ? " disabled" : ""} aria-label="Descer ${esc(i.texto)}" title="Descer">${ICONES.abaixo}</button></span>` : ""}
+        ${pode ? `<button type="button" class="tirar" data-tirar-item="${esc(i.id)}" aria-label="Retirar ${esc(i.texto)}">${ICONES.fechar}</button>` : ""}
+        ${pode ? escolhaDoItemHtml(acao, i) : ""}</li>`).join("")}</ul>
       ${pode ? `<form class="checklist-novo" data-checklist-form><input name="novoItemChecklist" maxlength="200" autocomplete="off"
         placeholder="Novo item: escreva e tecle Enter" aria-label="Novo item do checklist"></form>` : ""}
     </div>`;
@@ -1469,6 +1560,91 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     });
   }
 
+  /**
+   * Arrastar um item do checklist pela alça (passo 3.7), só com mouse: o item acompanha o ponteiro e os outros
+   * deslizam para abrir o lugar onde ele cairá, como no Trello e no Todoist. Soltar grava a nova ordem, com a mesma
+   * operação das setas; Esc cancela. Em tela de toque a alça não aparece: valem as setas. As posições dos itens
+   * são medidas uma vez, ao começar, e tudo é feito com `transform`, sem mexer na ordem do desenho até gravar.
+   */
+  const desfazerArrasto = () => {
+    const a = arrasto;
+    if (!a) return;
+    arrasto = null;
+    window.removeEventListener("keydown", aoTeclarNoArrasto, true);
+    document.body.classList.remove("arrastando-item");
+    a.itens.forEach((x) => { x.style.transform = ""; x.classList.remove("arrastando"); });
+    /* a classe da transição sai depois, para os itens deslizarem de volta */
+    setTimeout(() => a.itens.forEach((x) => x.classList.remove("desliza", "assenta")), 300);
+    a.ul.classList.remove("em-arrasto");
+  };
+  function aoTeclarNoArrasto(e) {
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation(); /* o Esc é só do arrasto: não fecha a janela */
+    desfazerArrasto();
+  }
+  corpo.addEventListener("pointerdown", (e) => {
+    const alca = e.target.closest?.("[data-alca-item]");
+    if (arrasto && !arrasto.li.isConnected) { arrasto.assentando = false; desfazerArrasto(); } /* sobra de um arrasto já gravado */
+    if (!alca || arrasto || e.button !== 0 || e.pointerType === "touch") return;
+    const li = alca.closest("li[data-item]");
+    const ul = li.parentElement;
+    const itens = [...ul.children].filter((x) => x.matches("li[data-item]"));
+    const caixas = itens.map((x) => x.getBoundingClientRect());
+    const de = itens.indexOf(li);
+    arrasto = {
+      li, ul, itens, caixas, de, para: de, y0: e.clientY, id: li.dataset.item, assentando: false,
+      vao: itens.length > 1 ? caixas[1].top - caixas[0].bottom : 0,
+    };
+    alca.setPointerCapture(e.pointerId);
+    document.body.classList.add("arrastando-item"); /* cursor de mão fechada e sem selecionar texto */
+    ul.classList.add("em-arrasto");
+    li.classList.add("arrastando");
+    itens.forEach((x) => { if (x !== li) x.classList.add("desliza"); });
+    window.addEventListener("keydown", aoTeclarNoArrasto, true);
+    e.preventDefault();
+  });
+  corpo.addEventListener("pointermove", (e) => {
+    const a = arrasto;
+    if (!a || a.assentando) return;
+    if (!a.li.isConnected) return desfazerArrasto(); /* a janela foi redesenhada por baixo (outra pessoa gravou) */
+    const { caixas, de, vao, itens } = a;
+    const alto = caixas[de].height;
+    /* o item acompanha o ponteiro, mas não sai da lista */
+    const dy = Math.max(caixas[0].top - caixas[de].top, Math.min(caixas.at(-1).bottom - caixas[de].bottom, e.clientY - a.y0));
+    a.li.style.transform = `translateY(${dy}px)`;
+    /* o lugar de destino é o número de itens que ficam acima do centro do arrastado */
+    const centro = caixas[de].top + alto / 2 + dy;
+    a.para = caixas.filter((c, j) => j !== de && c.top + c.height / 2 < centro).length;
+    itens.forEach((x, j) => {
+      if (j === de) return;
+      const passo = alto + vao;
+      const desloca = de < j && j <= a.para ? -passo : a.para <= j && j < de ? passo : 0;
+      x.style.transform = desloca ? `translateY(${desloca}px)` : "";
+    });
+  });
+  const soltarArrasto = (e) => {
+    const a = arrasto;
+    if (!a || a.assentando) return;
+    if (e.type === "pointercancel" || !a.li.isConnected || a.para === a.de) return desfazerArrasto();
+    /* o item desliza até o lugar final, e o desenho novo, já com a ordem gravada, o substitui sem salto */
+    a.assentando = true;
+    window.removeEventListener("keydown", aoTeclarNoArrasto, true);
+    document.body.classList.remove("arrastando-item");
+    const acima = a.itens.map((_, j) => j).filter((j) => j !== a.de).slice(0, a.para);
+    const topoFinal = a.caixas[0].top + acima.reduce((soma, j) => soma + a.caixas[j].height + a.vao, 0);
+    a.li.classList.remove("arrastando");
+    a.li.classList.add("desliza", "assenta");
+    a.li.style.transform = `translateY(${topoFinal - a.caixas[a.de].top}px)`;
+    executar(() => store.moverItemDoChecklist(espacoId, numero, a.id, a.para)).then((ok) => {
+      if (!ok) return a.li.isConnected && ((a.assentando = false), desfazerArrasto());
+      /* gravou e a janela não foi redesenhada logo: limpa, para não ficar com a ordem antiga e as posições novas */
+      setTimeout(() => { if (arrasto === a) { a.assentando = false; desfazerArrasto(); } }, 600);
+    });
+  };
+  corpo.addEventListener("pointerup", soltarArrasto);
+  corpo.addEventListener("pointercancel", soltarArrasto);
+
   /* ---------- eventos ---------- */
   corpo.addEventListener("click", async (e) => {
     const t = e.target;
@@ -1524,6 +1700,28 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       checklistAberto = true;
       focoNoChecklist = true;
       return desenhar();
+    }
+    const escolherResp = t.closest("[data-escolher-resp-item]");
+    if (escolherResp) {
+      const id = escolherResp.dataset.escolherRespItem;
+      trocarEscolha(itemEscolhendo === id ? null : id);
+      focoPendente = itemEscolhendo ? `[data-resp-item="${CSS.escape(id)}"]` : `[data-escolher-resp-item="${CSS.escape(id)}"]`;
+      return desenhar();
+    }
+    if (itemEscolhendo && !t.closest(".checklist-escolha")) {
+      /* clique fora fecha a escolha, sem redesenhar: o clique continua valendo para o que foi tocado */
+      trocarEscolha(null);
+      corpo.querySelectorAll(".checklist-escolha").forEach((x) => x.remove());
+      corpo.querySelectorAll("[data-escolher-resp-item]").forEach((x) => x.setAttribute("aria-expanded", "false"));
+    }
+    const moverItem = t.closest("[data-mover-item]");
+    if (moverItem) {
+      const lista = acaoAtual()?.checklist ?? [];
+      const de = lista.findIndex((i) => i.id === moverItem.dataset.moverItem);
+      const direcao = Number(moverItem.dataset.direcao);
+      if (de < 0) return;
+      focoNoMover = { id: moverItem.dataset.moverItem, direcao };
+      return executar(() => store.moverItemDoChecklist(espacoId, numero, moverItem.dataset.moverItem, de + direcao));
     }
     const tirarItem = t.closest("[data-tirar-item]");
     if (tirarItem) return executar(() => store.retirarItemDoChecklist(espacoId, numero, tirarItem.dataset.tirarItem));
@@ -1614,6 +1812,13 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   corpo.addEventListener("change", (e) => {
     const marca = e.target.closest("[data-marcar-item]");
     if (marca) return executar(() => store.marcarItemDoChecklist(espacoId, numero, marca.dataset.marcarItem, marca.checked));
+    const marcaResp = e.target.closest("[data-resp-item]");
+    if (marcaResp) {
+      const id = marcaResp.dataset.respItem;
+      const lista = [...corpo.querySelectorAll(`[data-resp-item="${CSS.escape(id)}"]:checked`)].map((c) => c.value);
+      focoPendente = `[data-resp-item="${CSS.escape(id)}"][value="${CSS.escape(marcaResp.value)}"]`;
+      return executar(() => store.atribuirItemDoChecklist(espacoId, numero, id, lista));
+    }
     if (e.target.matches("[data-mudar-situacao]")) {
       const nome = e.target.selectedOptions[0]?.textContent.trim();
       return executar(() => store.mudarSituacao(espacoId, numero, e.target.value || null), `Situação: ${nome}.`);
