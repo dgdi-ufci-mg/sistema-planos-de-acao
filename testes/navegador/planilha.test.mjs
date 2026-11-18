@@ -232,3 +232,140 @@ describe("Planilha: menu do título, colunas escondidas e quebra de texto (18/11
     assert.equal((await larg())[j], antes[j]);
   });
 });
+
+describe("Planilha: várias células, menu da célula e Ctrl+D (lote 2, 18/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  async function abrirPlanilha() {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irParaVisualizacao(p, "planilha");
+    await p.waitForSelector(".planilha");
+    await p.click("[data-agrupar-planilha]"); // sem grupos: linhas contínuas
+    return p;
+  }
+  const cel = (p, l, chave) => p.locator(`.planilha [data-linha="${l}"][data-chave="${chave}"]`);
+  const valorDe = (p, l, chave) => cel(p, l, chave).evaluate((e) => e.value ?? e.textContent);
+
+  test("Shift+setas e Shift+clique escolhem uma faixa; Esc desfaz a escolha", async () => {
+    const p = await abrirPlanilha();
+    await cel(p, 0, "rotulo").focus();
+    await p.keyboard.press("Shift+ArrowDown");
+    await p.keyboard.press("Shift+ArrowDown");
+    assert.equal(await p.locator(".planilha td.sel").count(), 3);
+    await p.keyboard.press("Escape");
+    assert.equal(await p.locator(".planilha td.sel").count(), 0);
+    await cel(p, 0, "rotulo").click();
+    await cel(p, 1, "descricao").click({ modifiers: ["Shift"] });
+    assert.ok(await p.locator(".planilha td.sel").count() >= 4);
+  });
+
+  test("arrastar de uma célula a outra escolhe a faixa", async () => {
+    const p = await abrirPlanilha();
+    const a = await cel(p, 0, "rotulo").boundingBox();
+    const b = await cel(p, 2, "rotulo").boundingBox();
+    await p.mouse.move(a.x + 8, a.y + a.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(b.x + 8, b.y + b.height / 2, { steps: 6 });
+    await p.mouse.up();
+    assert.equal(await p.locator(".planilha td.sel").count(), 3);
+  });
+
+  test("Ctrl+C na faixa copia texto separado por tabulações e quebras de linha", async () => {
+    const p = await abrirPlanilha();
+    await p.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await cel(p, 0, "rotulo").focus();
+    await p.keyboard.press("Shift+ArrowDown");
+    await p.keyboard.press("Control+c");
+    const copiado = await p.evaluate(() => navigator.clipboard.readText());
+    assert.equal(copiado, `${await valorDe(p, 0, "rotulo")}\n${await valorDe(p, 1, "rotulo")}`);
+  });
+
+  test("Ctrl+D repete para baixo o valor da célula de cima", async () => {
+    const p = await abrirPlanilha();
+    const topo = await valorDe(p, 0, "descricao");
+    await cel(p, 1, "descricao").focus();
+    await p.keyboard.press("Control+d");
+    await p.waitForFunction(([sel, v]) => document.querySelector(sel)?.value === v, [`.planilha [data-linha="1"][data-chave="descricao"]`, topo]);
+    assert.equal(await valorDe(p, 1, "descricao"), topo);
+  });
+
+  test("Delete na faixa limpa as células editáveis, menos o nome", async () => {
+    const p = await abrirPlanilha();
+    await cel(p, 0, "descricao").fill("um texto");
+    await cel(p, 1, "descricao").fill("outro texto");
+    await cel(p, 1, "descricao").press("Tab");
+    await cel(p, 0, "descricao").focus();
+    await p.keyboard.press("Shift+ArrowDown");
+    await p.keyboard.press("Delete");
+    await p.waitForFunction(() => document.querySelector('.planilha [data-linha="1"][data-chave="descricao"]')?.value === "");
+    assert.equal(await valorDe(p, 0, "descricao"), "");
+    assert.ok((await valorDe(p, 0, "rotulo")).length > 0);
+  });
+
+  test("botão direito na célula: Copiar, Colar, Limpar, Abrir e Excluir (com confirmação)", async () => {
+    const p = await abrirPlanilha();
+    await cel(p, 0, "rotulo").click({ button: "right" });
+    await p.waitForSelector(".menu-coluna");
+    for (const a of ["copiar", "colar", "limpar", "abrir", "excluir"]) {
+      assert.equal(await p.locator(`.menu-coluna [data-menu="${a}"]`).count(), 1, a);
+    }
+    await p.locator('.menu-coluna [data-menu="excluir"]').click();
+    await p.waitForSelector(".dialogo");
+    await p.locator(".dialogo [data-cancelar]").last().click(); // cancelar não exclui
+    await assentar(p, 300);
+    assert.ok((await valorDe(p, 0, "rotulo")).length > 0);
+  });
+});
+
+describe("Planilha: limpar a faixa com as linhas agrupadas por etapa (18/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  test("Delete numa faixa com a Etapa limpa só as ações escolhidas, mesmo com as linhas mudando de lugar", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irParaVisualizacao(p, "planilha"); // agrupada por etapa, como abre
+    await p.waitForSelector(".planilha");
+    const lerDescricoes = () => p.evaluate(() => Object.fromEntries([...document.querySelectorAll(".planilha tbody tr[data-numero]")]
+      .map((tr) => [tr.dataset.numero, tr.querySelector('[data-chave="descricao"]').value ?? ""])));
+    const antes = await lerDescricoes();
+    const escolhidas = await p.evaluate(() => [...document.querySelectorAll(".planilha tbody tr[data-numero]")].slice(1, 3).map((tr) => tr.dataset.numero));
+    await p.locator('.planilha [data-linha="1"][data-chave="descricao"]').focus();
+    await p.keyboard.press("Shift+ArrowDown");
+    await p.keyboard.press("Shift+ArrowLeft"); // a coluna da Etapa, que tira a ação do grupo
+    await p.keyboard.press("Delete");
+    await assentar(p, 1200);
+    const depois = await lerDescricoes();
+    for (const [n, texto] of Object.entries(antes)) {
+      if (escolhidas.includes(n)) assert.equal(depois[n], "", `a ação ${n} devia ficar sem descrição`);
+      else assert.equal(depois[n], texto, `a ação ${n} não foi escolhida e não devia mudar`);
+    }
+  });
+});
+
+describe("Planilha: lista de etapas agrupada por fase (18/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  test("a lista de etapas vem agrupada por fase, a fase da linha acompanha a etapa e o cabeçalho explica", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irParaVisualizacao(p, "planilha");
+    await p.waitForSelector(".planilha");
+    await p.click("[data-agrupar-planilha]");
+    const grupos = await p.locator('.planilha [data-linha="0"][data-chave="etapa"] optgroup').evaluateAll((gs) => gs.map((g) => g.label));
+    assert.ok(grupos.length >= 2, "uma lista por fase");
+    assert.match(await p.locator(".planilha th[scope=col]").filter({ hasText: "Fase" }).first().getAttribute("title"), /Vem da etapa/);
+    const seletor = p.locator('.planilha [data-linha="0"][data-chave="etapa"]');
+    const outraFase = await seletor.evaluate((s, atual) => {
+      const o = [...s.querySelectorAll("optgroup")].find((g) => g.label !== atual)?.querySelector("option");
+      return { valor: o.value, fase: o.parentElement.label };
+    }, await p.locator('.planilha [data-linha="0"][data-chave="fase"]').evaluate((e) => e.textContent));
+    await seletor.selectOption(outraFase.valor);
+    await p.waitForFunction((f) => document.querySelector('.planilha tr[data-numero] [data-chave="fase"]'), null);
+    const fases = await p.locator('.planilha tbody tr[data-numero] [data-chave="fase"]').evaluateAll((es) => es.map((e) => e.textContent));
+    assert.ok(fases.includes(outraFase.fase));
+  });
+});
