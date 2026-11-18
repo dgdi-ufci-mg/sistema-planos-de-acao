@@ -1807,7 +1807,6 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .checklist-texto { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: text; padding: 1px 2px; border-radius: 3px; }
 .checklist-itens li.feito .checklist-texto:not([contenteditable]) { color: var(--muted); text-decoration: line-through; }
 /* reordenar e responsáveis do item (passo 3.7); só variáveis de :root, que já existem nos três blocos de tema */
-.checklist-itens li { flex-wrap: wrap; }
 .checklist-resp { display: inline-flex; align-items: center; flex: none; border: 0; background: none; padding: 2px; margin: 0; font: inherit; color: inherit; border-radius: 12px; cursor: pointer; }
 .checklist-resp:hover { background: var(--sunk); }
 .checklist-resp[aria-expanded="true"] { background: var(--sunk); outline: 1px solid var(--line); }
@@ -1819,11 +1818,14 @@ body.sem-conexao [data-nova], body.sem-conexao .linha-rapida, body.sem-conexao .
 .checklist-sem-resp { width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 1px dashed var(--line); color: var(--muted); display: inline-flex; align-items: center; justify-content: center; opacity: .55; }
 .checklist-sem-resp .icone { width: 14px; height: 14px; }
 .checklist-resp.vazio:hover .checklist-sem-resp, .checklist-resp.vazio:focus-visible .checklist-sem-resp { opacity: 1; border-color: var(--accent); color: var(--accent); }
-/* a escolha abre embaixo do item, na largura toda: caixas de marcar com o círculo e o nome */
-.checklist-escolha { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 6px 4px 4px 25px; }
-.checklist-escolha-opcao { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; min-height: 28px; }
-.checklist-escolha-opcao .avatar { width: 22px; height: 22px; font-size: .6rem; box-shadow: none; }
-.checklist-escolha .tec { margin: 0; }
+/* a escolha de responsáveis flutua por cima da lista, colada no item, como as outras janelinhas da tarefa: nada se mexe */
+.checklist-escolha { position: absolute; top: calc(100% + 2px); right: 4px; z-index: 10; display: flex; flex-direction: column; gap: 2px; min-width: 200px; max-width: min(320px, 100%); padding: 6px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--sombra-flutuante); }
+.checklist-escolha.acima { top: auto; bottom: calc(100% + 2px); }
+.checklist-escolha-opcao { display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 6px; border-radius: 6px; min-height: 32px; cursor: pointer; }
+.checklist-escolha-opcao:hover { background: var(--sunk); }
+.checklist-escolha-opcao .avatar { width: 22px; height: 22px; font-size: .6rem; box-shadow: none; flex: none; }
+.checklist-escolha .tec { margin: 0; padding: 4px 6px; }
 .checklist-mover { display: inline-flex; flex: none; }
 .checklist-mover .mover { border: 0; background: none; padding: 2px; border-radius: 50%; cursor: pointer; color: var(--muted); display: inline-flex; opacity: .5; }
 .checklist-mover .mover .icone { width: 1em; height: 1em; }

@@ -77,6 +77,26 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
   let arrasto = null;
   /** item do checklist com a escolha de responsáveis aberta (passo 3.7), ou null */
   let itemEscolhendo = null;
+  /**
+   * Abre (id) ou fecha (null) a janelinha de responsáveis de um item do checklist. Enquanto aberta, o Esc é dela
+   * (escuta na janela do navegador, antes da escuta que fecha a janela da tarefa); a escuta se desfaz sozinha
+   * quando a janelinha não está mais na tela.
+   */
+  function trocarEscolha(id) {
+    itemEscolhendo = id;
+    window.removeEventListener("keydown", aoTeclarNaEscolha, true);
+    if (id) window.addEventListener("keydown", aoTeclarNaEscolha, true);
+  }
+  function aoTeclarNaEscolha(e) {
+    if (!corpo.querySelector(".checklist-escolha")) return trocarEscolha(null);
+    if (e.key !== "Escape") return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = itemEscolhendo;
+    trocarEscolha(null);
+    focoPendente = `[data-escolher-resp-item="${CSS.escape(id)}"]`;
+    desenhar();
+  }
   /** seletor do elemento a devolver ao foco depois de redesenhar a janela, ou null */
   let focoPendente = null;
 
@@ -211,7 +231,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
     buscando = null; editandoDoc = null; mostrados.clear(); status = null;
     alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
-    popover = null; focoPopover = null; historicoVisivel = false; itemEscolhendo = null; focoPendente = null;
+    popover = null; focoPopover = null; historicoVisivel = false; trocarEscolha(null); focoPendente = null;
     abrirMenu(false);
     pararComentarios?.();
     comentarios = null;
@@ -409,6 +429,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       if (focoPopover) { corpo.querySelector(`[data-popover] [${focoPopover}]`)?.focus({ preventScroll: true }); focoPopover = null; }
     }
     if (focoNoChecklist) { focoNoChecklist = false; corpo.querySelector('[name="novoItemChecklist"]')?.focus(); }
+    ajustarEscolha();
     if (focoPendente) { corpo.querySelector(focoPendente)?.focus({ preventScroll: true }); focoPendente = null; }
     if (focoNoMover) {
       /* no primeiro ou no último lugar o botão fica desligado: o foco vai para o outro, e não se perde */
@@ -1003,6 +1024,22 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
 
   /** Notas: mostradas já formatadas; ao clicar, editor visual com negrito, itálico, link e lista (seção 8.5). */
   /**
+   * A janelinha de responsáveis abre embaixo do item; se não couber na parte visível da janela da tarefa e couber
+   * em cima, abre em cima. Se não couber em nenhum dos dois, fica embaixo e a janela rola.
+   */
+  function ajustarEscolha() {
+    const caixa = corpo.querySelector(".checklist-escolha");
+    if (!caixa) return;
+    caixa.classList.remove("acima");
+    let rolavel = caixa.parentElement;
+    while (rolavel && rolavel !== document.body && !/(auto|scroll)/.test(getComputedStyle(rolavel).overflowY)) rolavel = rolavel.parentElement;
+    const limite = rolavel?.getBoundingClientRect() ?? { top: 0, bottom: innerHeight };
+    const c = caixa.getBoundingClientRect();
+    const item = caixa.parentElement.getBoundingClientRect();
+    if (c.bottom > limite.bottom - 4 && item.top - c.height - 2 > limite.top) caixa.classList.add("acima");
+  }
+
+  /**
    * Responsáveis de um item do checklist (passo 3.7): os círculos das pessoas (e os quadrados das unidades) no
    * mesmo desenho dos cartões, ou um círculo tracejado quando não há ninguém. Tocar abre a escolha logo abaixo do
    * item. Quem só consulta vê os círculos, sem poder mudar; item sem responsável, nada.
@@ -1030,7 +1067,7 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
       ? daTarefa.map((r) => `<label class="checklist-escolha-opcao"><input type="checkbox" data-resp-item="${esc(item.id)}" value="${esc(r.id)}"${marcados.includes(r.id) ? " checked" : ""}>
           ${seloHtml(r, contexto)}<span>${esc(r.nome)}</span></label>`).join("")
       : `<p class="tec">Primeiro, indique os responsáveis pela tarefa.</p>`;
-    return `<div class="checklist-escolha" role="group" aria-label="Responsáveis por ${esc(item.texto)}">${miolo}</div>`;
+    return `<div class="checklist-escolha" role="group" aria-label="Responsáveis por ${esc(item.texto)}" data-popover-item>${miolo}</div>`;
   }
 
   /**
@@ -1667,13 +1704,13 @@ export function abrirAcao({ store, espacoId, numero, hoje, dados, aoFechar, abri
     const escolherResp = t.closest("[data-escolher-resp-item]");
     if (escolherResp) {
       const id = escolherResp.dataset.escolherRespItem;
-      itemEscolhendo = itemEscolhendo === id ? null : id;
+      trocarEscolha(itemEscolhendo === id ? null : id);
       focoPendente = itemEscolhendo ? `[data-resp-item="${CSS.escape(id)}"]` : `[data-escolher-resp-item="${CSS.escape(id)}"]`;
       return desenhar();
     }
     if (itemEscolhendo && !t.closest(".checklist-escolha")) {
       /* clique fora fecha a escolha, sem redesenhar: o clique continua valendo para o que foi tocado */
-      itemEscolhendo = null;
+      trocarEscolha(null);
       corpo.querySelectorAll(".checklist-escolha").forEach((x) => x.remove());
       corpo.querySelectorAll("[data-escolher-resp-item]").forEach((x) => x.setAttribute("aria-expanded", "false"));
     }
