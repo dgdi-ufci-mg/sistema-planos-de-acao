@@ -8,11 +8,10 @@
  *
  * Só regras, sem tela e sem banco, para ser testado com o Node.
  */
-import { nomeDoFluxo } from "./situacoes.js";
 import { entregasAtivas, SITUACOES_DA_ENTREGA } from "./entregas.js";
 import { tipoDe, ehDeTarefas } from "./tipos.js";
-import { usaEstimativas, usaDependencias } from "./modelos.js";
-import { ehContinua } from "./calculo.js";
+import { usaEstimativas, usaDependencias, opcoesDoCalculo, modeloDe } from "./modelos.js";
+import { ehContinua, caminhoCritico, estimativaVigente } from "./calculo.js";
 
 /** Limite da apresentação para o público, em caracteres (decisão do responsável, 18/11/2026). */
 export const TAMANHO_DA_APRESENTACAO = 400;
@@ -51,18 +50,26 @@ export function problemaDaConfiguracao({ apresentacao = "" } = {}) {
 }
 
 /**
- * Situação de cada ação no painel, em cinco valores simples (o público não precisa do fluxo inteiro):
- * concluida, atrasada (carimbo da seção 6.2), continua (seção 5.9), liberada (pode começar ou já começou)
- * e naoLiberada (espera ações anteriores ou uma data mínima). O rótulo é o mesmo que o Sextante mostra
- * (inclusive o nome das situações personalizadas), para o painel e o sistema falarem igual.
+ * Situação de cada ação no painel, em dois valores (19/11/2026, decisão do responsável): `concluida` e `naoConcluida`.
+ * O painel é uma cópia que só muda quando alguém da equipe abre o plano; por isso leva só o que a equipe grava e não
+ * depende da passagem do dia. Atrasada (seção 6.2) e Não liberada (que muda sozinha quando chega a data mínima,
+ * seção 5.1) ficariam velhas na cópia; Concluída só muda quando alguém registra a conclusão.
  */
-function situacaoDaLinha(l) {
-  if (l.situacao === "concluida") return "concluida";
-  if (l.atrasada) return "atrasada";
-  /* a contínua que ainda não começou (o marco de início não chegou) é Não liberada, como no Sextante (seção 5.9);
-     até 18/11/2026 ela contava como em andamento, e o painel mostrava mais ações liberadas do que havia */
-  if (l.situacao === "naoLiberada") return "naoLiberada";
-  return l.continua ? "continua" : "liberada";
+const situacaoDaLinha = (l) => (l.situacao === "concluida" ? "concluida" : "naoConcluida");
+
+/**
+ * Caminho crítico **planejado** (19/11/2026, decisão do responsável): o mesmo cálculo da tela, sem `hoje`, isto é, sem a
+ * regra "nada termina no passado" (seção 5.5). As datas saem só das estimativas, das dependências e das conclusões
+ * registradas, e mudam só quando a equipe mexe no plano; a previsão de hoje avançaria a cada dia e ficaria velha na
+ * cópia. Plano com dependências em círculo (o cálculo recusa): null, e o painel fica sem datas.
+ */
+function caminhoPlanejado(espaco, linhas, cal) {
+  if (!cal) return null;
+  try {
+    return caminhoCritico(linhas.map((l) => l.acao), cal, opcoesDoCalculo(espaco));
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -100,17 +107,19 @@ export function responsaveisParaOPublico(ids, pessoas, mostrarNomes) {
  */
 export function montarResumo({ espaco, linhas, responsaveis, entregas = null, programa = "", caminho = null, cal = null }) {
   const config = configuracaoDoPainel(espaco);
+  const prazos = modeloDe(espaco).prazos;
+  const plano = caminhoPlanejado(espaco, linhas, cal);
   const pessoas = new Map(responsaveis.map((r) => [r.id, r]));
   const faseDaEtapa = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, f.id])));
   const usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
   const ehPlano = tipoDe(espaco) === "planoDeAcao";
   /* visões só de leitura (parte 2): as mesmas regras do seletor do Sextante (js/telas/espaco.js, modos) */
-  const visoes = caminho && cal ? [usaEstimativas(espaco) ? "tempo" : null, usaDependencias(espaco) ? "rede" : null].filter(Boolean) : [];
+  const visoes = caminho && cal && plano ? [usaEstimativas(espaco) ? "tempo" : null, usaDependencias(espaco) ? "rede" : null].filter(Boolean) : [];
   const numeros = new Set(linhas.map((l) => l.acao.numero));
   /** Dados de cada ação para as visões; só com alguma visão. */
   const paraAsVisoes = (l) => {
     if (!visoes.length) return {};
-    const c = caminho.porAcao.get(l.acao.numero);
+    const c = plano.porAcao.get(l.acao.numero);
     const continua = ehContinua(l.acao);
     const marco = (m) => (m ? { tipo: m.tipo, ...(m.id != null ? { id: m.id } : {}), ...(m.numero != null ? { numero: m.numero } : {}) } : null);
     return {
@@ -128,15 +137,25 @@ export function montarResumo({ espaco, linhas, responsaveis, entregas = null, pr
     };
   };
 
+  /** Data da ação no painel: a conclusão registrada; a data-limite, no espaço com data-limite; senão a data
+      planejada (sem a regra da seção 5.5). Sem estimativa, sem data (a duração zero daria uma data sem sentido). */
+  const dataDe = (l) => {
+    if (l.situacao === "concluida") return l.acao.concluidaEm ?? null;
+    if (prazos === "dataLimite") return l.acao.dataLimite ?? null;
+    if (!plano) return null;
+    if (!ehContinua(l.acao) && !estimativaVigente(l.acao)) return null;
+    const c = plano.porAcao.get(l.acao.numero);
+    return c ? cal.dataDeConclusao(c.conclusao, c.liberacao) : null;
+  };
+
   const acoes = linhas.map((l) => {
-    const situacao = situacaoDaLinha(l);
     return {
       numero: l.acao.numero,
       nome: l.acao.rotulo,
       fase: usaFases ? faseDaEtapa.get(l.acao.etapa) ?? null : null,
-      situacao,
-      rotulo: situacao === "atrasada" ? "Atrasada" : situacao === "continua" ? "Contínua" : nomeDoFluxo(espaco, l.fluxo),
-      data: l.conclusao ?? null,
+      situacao: situacaoDaLinha(l),
+      continua: ehContinua(l.acao) && usaEstimativas(espaco) && usaDependencias(espaco),
+      data: dataDe(l),
       responsaveis: responsaveisParaOPublico(l.acao.responsaveis ?? [], pessoas, config.mostrarNomes),
       ...paraAsVisoes(l),
     };
@@ -146,8 +165,7 @@ export function montarResumo({ espaco, linhas, responsaveis, entregas = null, pr
   const fases = usaFases ? (espaco.estrutura ?? []).map((f) => {
     const daFase = acoes.filter((a) => a.fase === f.id);
     const conta = (s) => daFase.filter((a) => a.situacao === s).length;
-    return { id: f.id, nome: f.nome, total: daFase.length, concluidas: conta("concluida"), atrasadas: conta("atrasada"),
-      emAndamento: conta("liberada") + conta("continua") };
+    return { id: f.id, nome: f.nome, total: daFase.length, concluidas: conta("concluida") };
   }).filter((f) => f.total) : [];
 
   const lista = ehPlano && entregas ? entregasAtivas(entregas).map((e) => ({
@@ -157,7 +175,8 @@ export function montarResumo({ espaco, linhas, responsaveis, entregas = null, pr
     prazo: e.prazo ?? null,
   })) : [];
 
-  const fimPrevisto = linhas.reduce((max, l) => (l.conclusao && l.conclusao > max ? l.conclusao : max), "");
+  /* conclusão planejada: só com estimativas (no cronograma aberto não há cálculo de datas; seção 16.1) */
+  const fimPlanejado = usaEstimativas(espaco) ? acoes.reduce((max, a) => (a.data && a.data > max ? a.data : max), "") : "";
   const aprovacao = ehPlano && (espaco.aprovacao?.identificacao || espaco.aprovacao?.link)
     ? { identificacao: espaco.aprovacao.identificacao ?? "", link: /^https?:\/\//i.test(espaco.aprovacao.link ?? "") ? espaco.aprovacao.link : "" }
     : null;
@@ -171,7 +190,8 @@ export function montarResumo({ espaco, linhas, responsaveis, entregas = null, pr
     aprovacao,
     inicio: espaco.inicio ?? null,
     prazoFinal: espaco.prazoFinal ?? null,
-    conclusaoPrevista: fimPrevisto || null,
+    prazos,
+    conclusaoPlanejada: fimPlanejado || null,
     acoes,
     fases,
     entregas: lista,
@@ -192,6 +212,8 @@ export function montarResumo({ espaco, linhas, responsaveis, entregas = null, pr
  * @returns {{acoes: object[], caminho: {porAcao: Map}, cal: {data: Function, dataDeConclusao: Function}, linhas: object[],
  *   estrutura: object[], usaFases: boolean}}
  */
+const concluida = (a) => a.situacao === "concluida";
+
 export function pecasDasVisoes(resumo) {
   const lista = resumo.acoes ?? [];
   const etapas = resumo.etapas ?? [];
@@ -209,17 +231,18 @@ export function pecasDasVisoes(resumo) {
     const conclusao = a.conclusao ?? liberacao;
     inicioDe.set(liberacao, a.inicio ?? null);
     if (!concluida) fimDe.set(`${conclusao}|${liberacao}`, fim); // a concluída usa a data registrada (concluidaEm)
-    /* atrasada e contínua são carimbos sobre uma ação liberada (seção 6.2 e 5.9); o painel guarda só a situação simplificada */
-    const situacao = concluida ? "concluida" : a.situacao === "naoLiberada" ? "naoLiberada" : "liberada";
+    /* só concluída ou não (19/11/2026): as telas recebem "liberada" para as demais, e o painel desliga nelas as marcas
+       de andamento e de atraso (opção `andamento` falsa); resumos antigos, com outras situações, caem no mesmo caso */
+    const situacao = concluida ? "concluida" : "liberada";
     porAcao.set(a.numero, { liberacao, conclusao, critica: Boolean(a.critica), folga: a.folga ?? null, situacao,
-      atrasada: a.situacao === "atrasada", continua: a.situacao === "continua" || Boolean(a.comecaCom && a.terminaCom) });
+      atrasada: false, continua: Boolean(a.continua) || a.situacao === "continua" || Boolean(a.comecaCom && a.terminaCom) });
     return { numero: a.numero, rotulo: a.nome, etapa: a.etapa ?? null, dependeDe: a.dependeDe ?? [], responsaveis: a.responsaveis ?? [],
       concluidaEm: concluida ? a.data : null, ...(a.comecaCom && a.terminaCom ? { comecaCom: a.comecaCom, terminaCom: a.terminaCom } : {}) };
   });
   const cal = { data: (i) => inicioDe.get(i) ?? null, dataDeConclusao: (c, i) => fimDe.get(`${c}|${i}`) ?? null };
   const linhas = lista.map((a, i) => {
     const c = porAcao.get(a.numero);
-    return { acao: acoes[i], situacao: c.situacao, publica: a.situacao, fluxo: null, rotulo: a.rotulo, atrasada: c.atrasada, conclusao: fins[i], continua: c.continua,
+    return { acao: acoes[i], situacao: c.situacao, publica: a.situacao, fluxo: null, rotulo: concluida(a) ? "Concluída" : "Não concluída", atrasada: false, conclusao: fins[i], continua: c.continua,
       semEstimativa: !c.continua && c.situacao !== "concluida" && !(c.conclusao > c.liberacao), execucao: null, podeEncerrar: false };
   });
   return { acoes, caminho: { porAcao }, cal, linhas, estrutura, usaFases: estrutura.length > 0 };
@@ -236,9 +259,37 @@ export function numerosDoResumo(resumo) {
     acoes: acoes.length,
     concluidas,
     pctConcluidas: pct(concluidas, acoes.length),
-    atrasadas: acoes.filter((a) => a.situacao === "atrasada").length,
     entregas: entregas.length,
     alcancadas,
     pctAlcancadas: pct(alcancadas, entregas.length),
   };
+}
+
+/** Dias corridos entre duas datas AAAA-MM-DD (b − a), sem efeito de fuso nem de horário de verão. */
+const emUtc = (iso) => { const [a, m, d] = iso.split("-").map(Number); return Date.UTC(a, m - 1, d); };
+const diasEntre = (a, b) => Math.round((emUtc(b) - emUtc(a)) / 86400000);
+
+/**
+ * Tempo decorrido do plano, para o cartão do alto do painel (19/11/2026, pedido do responsável). É contado na hora,
+ * no aparelho de quem abre o painel, com a data de hoje dele: não fica velho na cópia, como ficariam as situações que
+ * dependem do dia. Em dias corridos, do início do espaço até a referência:
+ * - o prazo final, quando existe (o compromisso público);
+ * - sem prazo, a conclusão planejada (só no espaço com estimativas, que tem cálculo de datas);
+ * - sem nenhum dos dois, não há referência: o cartão diz só desde quando o plano está em andamento.
+ * @param {{inicio?: string|null, prazoFinal?: string|null, conclusaoPlanejada?: string|null}} resumo
+ * @param {string} hoje AAAA-MM-DD
+ * @returns {null | {referencia: "prazo"|"planejada"|null, inicio: string, fim: string|null, decorridos: number,
+ *   total: number|null, pct: number|null, antesDoInicio: boolean}} null sem início
+ */
+export function tempoDecorrido(resumo, hoje) {
+  const inicio = resumo?.inicio;
+  if (!inicio) return null;
+  const referencia = resumo.prazoFinal ? "prazo" : resumo.conclusaoPlanejada ? "planejada" : null;
+  const fim = referencia === "prazo" ? resumo.prazoFinal : referencia === "planejada" ? resumo.conclusaoPlanejada : null;
+  const antesDoInicio = hoje < inicio;
+  const decorridos = Math.max(0, diasEntre(inicio, hoje));
+  if (!fim || fim <= inicio) return { referencia: null, inicio, fim: null, decorridos, total: null, pct: null, antesDoInicio };
+  const total = diasEntre(inicio, fim);
+  const ate = Math.min(decorridos, total);
+  return { referencia, inicio, fim, decorridos: ate, total, pct: Math.round((ate / total) * 100), antesDoInicio };
 }

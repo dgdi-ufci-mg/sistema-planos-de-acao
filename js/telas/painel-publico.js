@@ -3,7 +3,7 @@
  *
  * Somente leitura, sem login e sem a barra do Sextante. Lê a cópia-resumo pelo Store (js/dados.js) e a desenha:
  * título e código, apresentação, Programa e aprovação, os três números (ações concluídas, entregas alcançadas,
- * conclusão prevista com início e prazo) e três blocos que começam recolhidos: andamento por fase (só com duas ou
+ * tempo decorrido, contado no aparelho de quem abre, desde 19/11/2026) e três blocos que começam recolhidos: andamento por fase (só com duas ou
  * mais fases), entregas (só com entregas) e ações, com filtro por situação.
  *
  * Parte 2 (18/11/2026): o cartão "Ver as ações de outro jeito", no fim da página (como no esboço), leva às duas visões só de leitura, "No tempo" (o
@@ -14,28 +14,31 @@
  * `htmlDoPainel` é puro (texto entra, HTML sai), para ser testado com o Node; `mostrarPainelPublico` liga a página.
  */
 import { esc, dataBr, plural } from "../formato.js";
-import { numerosDoResumo, pecasDasVisoes } from "../painel-publico.js";
+import { numerosDoResumo, pecasDasVisoes, tempoDecorrido } from "../painel-publico.js";
 import { ICONES } from "../icones.js";
-import { NOME, INSTITUICAO, INSTITUICAO_POR_EXTENSO } from "../identidade.js";
 
-/** Filtros da lista de ações, na ordem dos botões; aparecem só os que têm ações (além de "Todas"). */
-const FILTROS = [
-  ["todas", "Todas"], ["liberada", "Liberadas"], ["atrasada", "Atrasadas"], ["concluida", "Concluídas"], ["naoLiberada", "Não liberadas"],
-];
-/** "Liberadas" inclui as contínuas, que estão em andamento durante o trecho que acompanham. */
-const passaNoFiltro = (a, filtro) => filtro === "todas" || a.situacao === filtro || (filtro === "liberada" && a.situacao === "continua");
+/** Filtros da lista de ações, na ordem dos botões; aparecem só os que têm ações (além de "Todas"). Só concluída ou não
+    (19/11/2026, decisão do responsável; seção 4.13): um resumo antigo, com outras situações, conta como não concluída. */
+const FILTROS = [["todas", "Todas"], ["concluida", "Concluídas"], ["naoConcluida", "Não concluídas"]];
+const concluida = (a) => a.situacao === "concluida";
+const passaNoFiltro = (a, filtro) => filtro === "todas" || (filtro === "concluida") === concluida(a);
 
-/** Texto da data de cada ação, conforme a situação. */
-function textoDaData(a) {
-  if (a.situacao === "continua") return "Durante o trecho que acompanha";
+/** Texto da data de cada ação: a conclusão registrada; a data-limite ("Até"), no espaço com data-limite; senão a data
+    planejada, sem a regra "nada termina no passado" (seção 5.5). */
+function textoDaData(a, resumo) {
+  if (!concluida(a) && (a.continua || a.situacao === "continua")) return "Durante o trecho que acompanha";
   if (!a.data) return "";
-  return a.situacao === "concluida" ? `Concluída em ${dataBr(a.data)}` : `Prevista para ${dataBr(a.data)}`;
+  if (concluida(a)) return `Concluída em ${dataBr(a.data)}`;
+  return resumo.prazos === "dataLimite" ? `Até ${dataBr(a.data)}` : `Planejada para ${dataBr(a.data)}`;
 }
+
+/** Hoje no aparelho de quem abre o painel, AAAA-MM-DD. */
+const hojeNoAparelho = () => new Date().toLocaleDateString("sv-SE");
 
 /** As duas visões só de leitura (parte 2): endereço (#…), nome do botão, ícone e frase de apoio. */
 export const VISOES = {
   tempo: { hash: "#no-tempo", nome: "No tempo", icone: "modoCronograma", titulo: "As ações no tempo",
-    frase: "Cada ação como uma barra, do início à conclusão prevista, com as ligações entre elas." },
+    frase: "Cada ação como uma barra, do início à conclusão planejada, com as ligações entre elas." },
   rede: { hash: "#em-rede", nome: "Em rede", icone: "modoRede", titulo: "As ações em rede",
     frase: "Da esquerda para a direita, na ordem em que as ações podem acontecer: o que depende do quê." },
 };
@@ -60,7 +63,7 @@ const resumoDoBloco = (titulo, resumo, ver) => `<summary class="pp-bloco-titulo"
  * @param {{abertos?: Set<string>, filtro?: string, previa?: boolean}} estado  blocos abertos ("fases", "entregas", "acoes") e o
  *   filtro das ações; previa: a prévia de "Configurar este espaço", em que os botões das visões aparecem, mas não abrem
  */
-export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Set(), filtro = "todas", previa = false } = {}) {
+export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Set(), filtro = "todas", previa = false, hoje = hojeNoAparelho() } = {}) {
   const n = numerosDoResumo(resumo);
   const aberto = (id) => (abertos.has(id) ? " open" : "");
   const fases = resumo.fases ?? [];
@@ -89,7 +92,23 @@ export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Se
     : [{ nome: null, acoes: visiveis }];
   const linhaDaAcao = (a) => `<li class="pp-linha">
     <span class="pp-linha-nome"><span>${esc(a.nome)}</span>${a.responsaveis?.length ? `<small>${esc(a.responsaveis.join(", "))}</small>` : ""}</span>
-    <span class="pp-linha-data">${esc(textoDaData(a))}</span>${etiqueta(a.situacao, a.rotulo)}</li>`;
+    <span class="pp-linha-data">${esc(textoDaData(a, resumo))}</span>${concluida(a) ? etiqueta("concluida", "Concluída") : etiqueta("nao-concluida", "Não concluída")}</li>`;
+
+  /* tempo decorrido (19/11/2026): contado aqui, com o dia de hoje do aparelho, e não gravado na cópia */
+  const t = tempoDecorrido(resumo, hoje);
+  const cartaoDoTempo = () => {
+    if (!t) return "";
+    if (t.antesDoInicio) return cartao("Início do plano", dataBr(t.inicio), null, "O plano ainda não começou");
+    const planejada = resumo.conclusaoPlanejada && t.referencia === "prazo"
+      ? `<span class="pp-cartao-nota">Conclusão planejada: <b>${dataBr(resumo.conclusaoPlanejada)}</b></span>` : "";
+    if (!t.referencia) return cartao("Em andamento desde", dataBr(t.inicio), null, `${t.decorridos} ${plural(t.decorridos, "dia", "dias")}`);
+    return `<div class="pp-cartao">
+      <span class="pp-cartao-titulo">${t.referencia === "prazo" ? "Tempo decorrido até o prazo" : "Tempo decorrido até a conclusão planejada"}</span>
+      <span class="pp-cartao-valor">${t.pct}%</span>
+      <span class="pp-barra pp-barra-tempo" role="img" aria-label="${t.pct}% do tempo"><span style="width:${t.pct}%"></span></span>
+      <span class="pp-cartao-texto">${t.decorridos} de ${t.total} ${plural(t.total, "dia", "dias")} · de ${dataBr(t.inicio)} a ${dataBr(t.fim)}</span>
+      ${planejada}</div>`;
+  };
 
   return `
   <section class="pp-cabeca">
@@ -102,8 +121,7 @@ export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Se
   <section class="pp-cartoes">
     ${cartao("Ações concluídas", `${n.pctConcluidas}%`, n.pctConcluidas, `${n.concluidas} de ${n.acoes} ${plural(n.acoes, "ação concluída", "ações concluídas")}`)}
     ${n.entregas ? cartao("Entregas alcançadas", `${n.pctAlcancadas}%`, n.pctAlcancadas, `${n.alcancadas} de ${n.entregas} ${plural(n.entregas, "entrega alcançada", "entregas alcançadas")}`) : ""}
-    ${cartao("Conclusão prevista", resumo.conclusaoPrevista ? dataBr(resumo.conclusaoPrevista) : "—", null,
-      [resumo.inicio ? `<b>Início:</b> ${dataBr(resumo.inicio)}` : "", resumo.prazoFinal ? `<b>Prazo:</b> ${dataBr(resumo.prazoFinal)}` : ""].filter(Boolean).join("<br>") || "&nbsp;")}
+    ${cartaoDoTempo()}
   </section>
 
   ${comFases ? `<details class="pp-bloco" data-bloco="fases"${aberto("fases")}>
@@ -111,11 +129,11 @@ export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Se
     <div class="pp-bloco-corpo">
       ${fases.map((f) => {
         const pct = (x) => (f.total ? (x / f.total) * 100 : 0);
-        const partes = [`${f.concluidas} de ${f.total} ${plural(f.concluidas, "concluída", "concluídas")}`, f.emAndamento ? `${f.emAndamento} ${plural(f.emAndamento, "liberada", "liberadas")}` : "", f.atrasadas ? `${f.atrasadas} ${plural(f.atrasadas, "atrasada", "atrasadas")}` : ""].filter(Boolean);
-        return `<div class="pp-fase"><div class="pp-fase-linha"><b>${esc(f.nome)}</b><span>${partes.join(" · ")}</span></div>
-          <span class="pp-barra pp-barra-fase" role="img" aria-label="${esc(partes.join(", "))}"><span class="pp-ok" style="width:${pct(f.concluidas)}%"></span><span class="pp-and" style="width:${pct(f.emAndamento)}%"></span><span class="pp-atr" style="width:${pct(f.atrasadas)}%"></span></span></div>`;
+        const texto = `${f.concluidas} de ${f.total} ${plural(f.concluidas, "concluída", "concluídas")}`;
+        return `<div class="pp-fase"><div class="pp-fase-linha"><b>${esc(f.nome)}</b><span>${texto}</span></div>
+          <span class="pp-barra pp-barra-fase" role="img" aria-label="${esc(texto)}"><span class="pp-ok" style="width:${pct(f.concluidas)}%"></span></span></div>`;
       }).join("")}
-      <p class="pp-legenda"><span><i class="pp-ok"></i>Concluídas</span><span><i class="pp-and"></i>Liberadas</span><span><i class="pp-atr"></i>Atrasadas</span><span><i></i>Não liberadas</span></p>
+      <p class="pp-legenda"><span><i class="pp-ok"></i>Concluídas</span><span><i></i>Não concluídas</span></p>
     </div>
   </details>` : ""}
 
@@ -127,7 +145,7 @@ export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Se
   </details>` : ""}
 
   <details class="pp-bloco" data-bloco="acoes"${aberto("acoes")}>
-    ${resumoDoBloco("Ações", `${n.acoes} ${plural(n.acoes, "ação", "ações")}${n.atrasadas ? ` · ${n.atrasadas} ${plural(n.atrasadas, "atrasada", "atrasadas")}` : ""}`, "Ver ações")}
+    ${resumoDoBloco("Ações", `${n.acoes} ${plural(n.acoes, "ação", "ações")}`, "Ver ações")}
     <div class="pp-bloco-corpo">
       ${acoes.length ? `<div class="pp-filtros" role="group" aria-label="Mostrar ações">${FILTROS.filter(([f]) => f === "todas" || contagem[f]).map(([f, nome]) =>
         `<button type="button" class="pp-filtro" data-filtro="${f}" aria-pressed="${f === filtroValido}">${nome}</button>`).join("")}</div>` : ""}
@@ -137,7 +155,7 @@ export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Se
   </details>
 
   ${visoesDoResumo(resumo).length ? `<section class="pp-visoes" aria-labelledby="pp-visoes-titulo">
-    <svg class="pp-visoes-desenho" width="56" height="40" viewBox="0 0 56 40" aria-hidden="true"><rect class="ok" x="1" y="14" width="14" height="12" rx="3"/><rect class="and" x="21" y="2" width="14" height="12" rx="3"/><rect class="atr" x="21" y="26" width="14" height="12" rx="3"/><rect class="nao" x="41" y="14" width="14" height="12" rx="3"/><path d="M15 20 L21 8 M15 20 L21 32 M35 8 L41 20 M35 32 L41 20"/></svg>
+    <svg class="pp-visoes-desenho" width="56" height="40" viewBox="0 0 56 40" aria-hidden="true"><rect class="ok" x="1" y="14" width="14" height="12" rx="3"/><rect class="and" x="21" y="2" width="14" height="12" rx="3"/><rect class="and" x="21" y="26" width="14" height="12" rx="3"/><rect class="nao" x="41" y="14" width="14" height="12" rx="3"/><path d="M15 20 L21 8 M15 20 L21 32 M35 8 L41 20 M35 32 L41 20"/></svg>
     <span class="pp-visoes-texto"><span class="pp-h2" id="pp-visoes-titulo">Ver as ações de outro jeito</span>
       <span class="pp-bloco-resumo">No tempo, com as barras de cada ação ao longo dos meses, ou em rede, com o que precisa terminar antes de cada uma começar. Somente leitura.</span></span>
     <span class="pp-visoes-botoes">${visoesDoResumo(resumo).map((v) => (previa
@@ -175,8 +193,6 @@ export const htmlDaMensagem = (chave) => `<section class="pp-mensagem"><h1 class
  * @param {{store: {lerPainelPublico: (codigo: string) => Promise<object|null>}, codigo: string|null, ligarSecoes?: (raiz: HTMLElement) => void}} opcoes
  */
 export async function mostrarPainelPublico(alvo, { store, codigo, ligarSecoes = () => {} }) {
-  document.querySelectorAll("[data-nome-sistema]").forEach((el) => { el.textContent = NOME; });
-  document.querySelectorAll("[data-instituicao]").forEach((el) => { el.textContent = `${INSTITUICAO} · ${INSTITUICAO_POR_EXTENSO}`; });
   if (!codigo) { alvo.innerHTML = htmlDaMensagem("semCodigo"); return; }
   let painel;
   try {
@@ -258,12 +274,12 @@ async function desenharVisao(area, resumo, visao, escalas) {
     const { desenharCronograma } = await import("./cronograma.js");
     desenharCronograma(area, { espaco, acoes, caminho, cal, hoje, usaFases, identificador: () => "", escala: escalas.tempo,
       aoMudarEscala: (escala) => { escalas.tempo = escala; redesenhar(); },
-      exibir: { responsavel: true }, nomesDe: (a) => a.responsaveis, abreAcoes: false });
+      exibir: { responsavel: true }, nomesDe: (a) => a.responsaveis, abreAcoes: false, andamento: false });
     return;
   }
   const { desenharRede } = await import("./rede.js");
   const etapaDe = new Map(estrutura.flatMap((f) => f.etapas.map((e) => [e.id, e.nome])));
-  const SIT = { concluida: ["concluida", "Concluída"], naoLiberada: ["naoLiberada", "Espera outra ação"] };
+  const SIT = { concluida: ["concluida", "Concluída"] };
   desenharRede(area, { acoes, caminho, linhas, etapaDe, identificador: () => "", escala: escalas.rede,
     donos: (a) => (a.responsaveis.length ? `<span class="pp-donos" title="${esc(a.responsaveis.join(", "))}">${esc(a.responsaveis.join(", "))}</span>` : ""),
     situacao: (l) => (SIT[l.situacao] ? `<span class="${SIT[l.situacao][0]}" title="${SIT[l.situacao][1]}">${ICONES[SIT[l.situacao][0]]}</span>` : ""),
@@ -271,10 +287,7 @@ async function desenharVisao(area, resumo, visao, escalas) {
     inicio: resumo.inicio ?? null, termino: linhas.filter((l) => !l.continua).map((l) => l.conclusao).filter(Boolean).sort().at(-1) ?? null,
     prazoFinal: resumo.prazoFinal ?? null, continuas: true,
     aoMudarEscala: (escala) => { escalas.rede = escala; redesenhar(); },
-    /* a etiqueta "agora" leva o nome da situação, como no Sextante; na atrasada e na contínua o resumo guarda o carimbo,
-       e não a situação de baixo, que é liberada */
-    nomeDaSituacao: (l) => (["atrasada", "continua"].includes(l.publica) ? "Liberada" : l.rotulo ?? "Liberada"), nomeLiberada: "Liberada",
-    toque: matchMedia("(max-width: 899px)").matches, abreAcoes: false });
+    toque: matchMedia("(max-width: 899px)").matches, abreAcoes: false, andamento: false });
 }
 
 /** Caixa com a explicação de um termo do glossário ("o que é?" das legendas), fechada por botão, Esc ou toque fora. */

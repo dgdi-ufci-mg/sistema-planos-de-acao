@@ -7,6 +7,7 @@
 
 /* ---------- variáveis: tema claro ---------- */
 :root {
+  --marca-marinho: #142C46; --marca-verde: #68C0B5; --marca-texto: #FFFFFF; /* cores da marca UFCIMG, no cabeçalho e no rodapé do painel público (19/11/2026): iguais nos dois modos, porque a marca não muda */
   --bg: #F5F3EF; --surface: #FFFFFF; --sunk: #FAF8F5;
   --rede-fundo: #FFFFFF; --rede-grade: #DAD5CC; /* fundo da Rede: branco, com grade de pontos (11/11/2026) */
   --ink: #163F3A; --muted: #5A6864; /* 24/10/2026: um pouco mais escuro, para contraste de 4,5:1 (WCAG 1.4.3) também sobre o verde-claro e o cinza das células travadas */ --faint: #8E9895; --line: #DDD6CC; --grid: #ECE6DD;
@@ -47,6 +48,7 @@
 /* ---------- variáveis: tema escuro do sistema ---------- */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    --marca-marinho: #142C46; --marca-verde: #68C0B5; --marca-texto: #FFFFFF;
     --bg: #0F1A19; --surface: #172624; --sunk: #132120;
     --rede-fundo: #0F1A19; --rede-grade: #24403C;
     --ink: #ECF2F0; --muted: #9FB3AE; --faint: #86978F; --line: #2A3F3C; --grid: #1E302D;
@@ -78,6 +80,7 @@
 
 /* ---------- variáveis: tema escuro escolhido ---------- */
 :root[data-theme="dark"] {
+  --marca-marinho: #142C46; --marca-verde: #68C0B5; --marca-texto: #FFFFFF;
   --bg: #0F1A19; --surface: #172624; --sunk: #132120;
   --rede-fundo: #0F1A19; --rede-grade: #24403C;
   --ink: #ECF2F0; --muted: #9FB3AE; --faint: #86978F; --line: #2A3F3C; --grid: #1E302D;
@@ -3925,13 +3928,27 @@ body[data-tipo-espaco="lista"] .titulo-conteudo[data-renomear]:hover { backgroun
 
 /* ---------- painel público (18/11/2026; documentação técnica, seção 8.9): painel/?p=<código> ----------
    Página só de leitura, fora do Sextante. Só variáveis do tema: vale nos temas claro e escuro e nas paletas. */
-body.painel-publico { padding: 0; }
-.pp-topo { background: var(--accent-ink); color: var(--texto-sobre-destaque); }
-.pp-topo-linha, .pp-conteudo { max-width: 1040px; margin: 0 auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)); box-sizing: border-box; }
-.pp-topo-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-block: 12px; }
-.pp-marca { display: flex; flex-direction: column; }
-.pp-marca b { font: 700 16px/1.2 var(--f-titulo); }
-.pp-marca small { font-size: 12px; opacity: .88; }
+/* identidade da UFCIMG no painel (19/11/2026, pedido do responsável; seção 8.8): Metropolis, a tipografia auxiliar da
+   marca, nos títulos e no texto; cabeçalho e rodapé no marinho da marca, com a faixa verde-água da apresentação da marca.
+   A fonte vem do próprio site (painel/fontes, licença OFL), e só esta página a carrega */
+@font-face { font-family: "Metropolis"; font-weight: 400; font-style: normal; font-display: swap; src: url("../painel/fontes/metropolis-400.woff2") format("woff2"); }
+@font-face { font-family: "Metropolis"; font-weight: 600; font-style: normal; font-display: swap; src: url("../painel/fontes/metropolis-600.woff2") format("woff2"); }
+@font-face { font-family: "Metropolis"; font-weight: 700; font-style: normal; font-display: swap; src: url("../painel/fontes/metropolis-700.woff2") format("woff2"); }
+body.painel-publico { padding: 0; display: flex; flex-direction: column; min-height: 100vh;
+  --f-titulo: "Metropolis", system-ui, -apple-system, "Segoe UI", sans-serif; --f-texto: "Metropolis", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--f-texto); }
+body.painel-publico .pp-conteudo { flex: 1 0 auto; width: 100%; }
+.pp-topo, .pp-fim { background: var(--marca-marinho); color: var(--marca-texto); }
+.pp-topo { border-bottom: 5px solid var(--marca-verde); }
+.pp-fim { border-top: 5px solid var(--marca-verde); }
+.pp-topo-linha, .pp-conteudo, .pp-fim-linha { max-width: 1040px; margin: 0 auto; padding-inline: max(16px, env(safe-area-inset-left, 0px)); box-sizing: border-box; }
+.pp-topo-linha { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-block: 14px; }
+.pp-marca { display: block; height: 34px; width: auto; }
+.pp-fim-linha { padding-block: 24px; }
+.pp-fim-linha img { display: block; height: 64px; width: auto; }
+.pp-cartao-nota { margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--grid); font-size: 12px; color: var(--muted); }
+.pp-cartao-nota b { color: var(--ink); font-weight: 600; }
+.pp-barra.pp-barra-tempo > span { background: var(--warn); }
 .pp-selo { font-size: 12px; font-weight: 600; padding: 5px 10px; border: 1px solid color-mix(in srgb, currentColor 50%, transparent); border-radius: 999px; }
 .pp-conteudo { display: flex; flex-direction: column; gap: 20px; padding-block: 28px 48px; }
 .pp-cabeca { display: flex; flex-direction: column; gap: 8px; }
@@ -3952,8 +3969,6 @@ body.painel-publico { padding: 0; }
 .pp-barra { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--grid); }
 .pp-barra > span { display: block; height: 100%; background: var(--ok); }
 .pp-barra-fase { height: 12px; border-radius: 6px; }
-.pp-barra > .pp-and, .pp-legenda .pp-and { background: var(--liberada); }
-.pp-barra > .pp-atr, .pp-legenda .pp-atr { background: var(--crit); }
 .pp-bloco { padding: 4px 20px; }
 .pp-bloco-titulo { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; list-style: none; cursor: pointer; }
 .pp-bloco-titulo::-webkit-details-marker { display: none; }
@@ -3971,7 +3986,6 @@ body.painel-publico { padding: 0; }
 .pp-legenda span { display: flex; align-items: center; gap: 6px; }
 .pp-legenda i { width: 12px; height: 12px; border-radius: 3px; background: var(--grid); box-shadow: inset 0 0 0 1px var(--line); }
 .pp-legenda .pp-ok { background: var(--ok); box-shadow: none; }
-.pp-legenda .pp-and, .pp-legenda .pp-atr { box-shadow: none; }
 .pp-lista { list-style: none; padding: 0; margin: 0; }
 .pp-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 11px 0; border-top: 1px solid var(--grid); }
 .pp-linha-nome { display: flex; flex-direction: column; gap: 2px; flex: 1 1 300px; min-width: 0; }
@@ -3979,8 +3993,7 @@ body.painel-publico { padding: 0; }
 .pp-linha-data { flex: 0 0 170px; }
 .pp-etiqueta { flex: none; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--sunk); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line); }
 .pp-etiqueta.pp-concluida { background: var(--ok-soft); color: var(--ok-ink); box-shadow: none; }
-.pp-etiqueta.pp-liberada, .pp-etiqueta.pp-continua { background: var(--accent-soft); color: var(--accent-ink); box-shadow: none; }
-.pp-etiqueta.pp-atrasada { background: var(--crit-soft); color: var(--crit-ink); box-shadow: none; }
+.pp-etiqueta.pp-liberada { background: var(--accent-soft); color: var(--accent-ink); box-shadow: none; }
 .pp-filtros { display: flex; flex-wrap: wrap; gap: 6px; }
 .pp-filtro { min-height: 36px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer; }
 .pp-filtro[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
@@ -4002,7 +4015,6 @@ a.botao { text-decoration: none; display: inline-flex; align-items: center; }
 .pp-visoes-desenho rect { stroke-width: 1.5; fill: var(--sunk); stroke: var(--muted); }
 .pp-visoes-desenho rect.ok { fill: var(--ok-soft); stroke: var(--ok); }
 .pp-visoes-desenho rect.and { fill: var(--accent-soft); stroke: var(--liberada); }
-.pp-visoes-desenho rect.atr { fill: var(--crit-soft); stroke: var(--crit); }
 .pp-visoes-desenho path { fill: none; stroke: var(--muted); stroke-width: 1.5; }
 .pp-visoes-texto { display: flex; flex-direction: column; gap: 4px; flex: 1 1 320px; min-width: 0; }
 .pp-visoes-texto .pp-bloco-resumo { line-height: 1.45; }

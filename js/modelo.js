@@ -91,11 +91,11 @@ export const CAMPOS = Object.freeze({
   /** Painel público (18/11/2026; seção 4.13): coleção paineis, id = código do endereço; cópia-resumo, lida por qualquer pessoa. */
   painelPublico: ["codigo", "espacoId", "ligado", "resumo", "atualizadoEm", "atualizadoPor"],
   /** O resumo dentro do painel: só o que vai a público. */
-  resumoDoPainel: ["nome", "codigo", "tipo", "apresentacao", "programa", "aprovacao", "inicio", "prazoFinal", "conclusaoPrevista", "acoes", "fases", "entregas", "visoes", "etapas"],
-  acaoDoPainel: ["numero", "nome", "fase", "situacao", "rotulo", "data", "responsaveis",
+  resumoDoPainel: ["nome", "codigo", "tipo", "apresentacao", "programa", "aprovacao", "inicio", "prazoFinal", "prazos", "conclusaoPlanejada", "acoes", "fases", "entregas", "visoes", "etapas"],
+  acaoDoPainel: ["numero", "nome", "fase", "situacao", "continua", "data", "responsaveis",
     /* parte 2 (18/11/2026): para as visões só de leitura, No tempo e Em rede */
     "etapa", "dependeDe", "inicio", "liberacao", "conclusao", "critica", "folga", "comecaCom", "terminaCom"],
-  faseDoPainel: ["id", "nome", "total", "concluidas", "atrasadas", "emAndamento"],
+  faseDoPainel: ["id", "nome", "total", "concluidas"],
   etapaDoPainel: ["id", "nome", "fase"],
   entregaDoPainel: ["titulo", "situacao", "rotulo", "prazo"],
   responsavel: [
