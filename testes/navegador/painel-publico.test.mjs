@@ -98,6 +98,12 @@ describe("Painel público", { skip: pular }, () => {
       const p = await sessao.abrir({ largura, exemplo: false, caminho: `painel/?p=${"A".repeat(20)}`, aguardar: ".pp-visoes", rotas: comResumo });
       const botoes = p.locator(".pp-visoes-botoes a");
       assert.deepEqual(await botoes.allTextContents(), ["No tempo", "Em rede"]);
+      /* identidade da UFCIMG, sem o nome do sistema (19/11/2026) */
+      assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "ufcimg");
+      assert.equal(await p.locator(".pp-topo img.pp-marca").getAttribute("alt"), "UFCIMG");
+      assert.equal(await p.locator(".pp-fim img").count(), 1);
+      assert.ok(!(await p.locator("body").innerText()).includes("Sextante"), "o nome do sistema não aparece");
+      assert.equal(await p.evaluate(() => document.fonts.check('16px "Metropolis"')), true, "Metropolis carregada");
       /* No tempo: o Cronograma do Sextante, sem edição, com as quatro ações e as ligações */
       await botoes.first().click();
       await p.waitForSelector(".crono");
@@ -107,6 +113,10 @@ describe("Painel público", { skip: pular }, () => {
       assert.equal(await p.locator(".crono .crono-seta").count(), 4);
       assert.equal(await p.locator(".crono.editavel, .crono-borda, .crono-alca").count(), 0, "sem edição");
       assert.equal(await p.locator(".crono-quem").first().textContent(), "Ana Ribeiro · Governança");
+      /* só concluída ou não (19/11/2026): sem barra de não liberada nem de atrasada, e sem isso na legenda */
+      assert.equal(await p.locator(".crono-barra-acao.aguardando, .crono-barra-acao.atrasada").count(), 0);
+      assert.ok(!(await p.locator(".crono-legendas, .crono").first().innerText()).includes("Ainda não liberada"));
+      assert.ok(!(await p.locator("body").innerText()).includes("Sextante"), "nem nas visões");
       /* Voltar do navegador: o painel de novo */
       await p.goBack();
       await p.waitForSelector(".pp-visoes");
@@ -118,6 +128,7 @@ describe("Painel público", { skip: pular }, () => {
       assert.equal(await p.locator(".rede-editavel, .rede-mais, .rede-alca, .rede-inserir").count(), 0, "sem edição");
       assert.equal(await p.locator(".rede-cerca").count(), 2);
       assert.ok(await p.locator(".rede-no.critica").count() > 0, "cores pela folga");
+      assert.equal(await p.locator(".rede-agora, .rede-no.agora").count(), 0, "sem a etiqueta \"agora\"");
       if (largura <= 640) {
         const larguraDaPagina = await p.evaluate(() => document.documentElement.scrollWidth);
         assert.ok(larguraDaPagina <= largura + 1, "sem rolagem lateral no celular");
@@ -134,5 +145,12 @@ describe("Painel público", { skip: pular }, () => {
       assert.deepEqual(p.erros, []);
     });
   }
-});
 
+  test("a paleta escolhida no Sextante não muda o painel (19/11/2026)", async () => {
+    const p = await sessao.abrir({ largura: 390, exemplo: false, caminho: "painel/?p=AAAAAAAAAAAAAAAAAAAA", aguardar: ".pp-mensagem",
+      rotas: async (contexto) => { await contexto.addInitScript(() => { localStorage.setItem("sextante.paleta", "original"); localStorage.setItem("sextante.tema", "escuro"); }); } });
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "ufcimg");
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.theme ?? null), null, "o modo segue o aparelho");
+    assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector(".pp-topo")).backgroundColor), "rgb(20, 44, 70)");
+  });
+});

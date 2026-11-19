@@ -110,12 +110,14 @@ const IMPRESSAO = { nomes: 220, largura: 820, linhas: 18 };
  *   base: datas de cada ação no retrato escolhido; edicao: operações de edição (null: só leitura);
  *   exibir: o que o menu "Exibir" liga e desliga; nomesDe: nomes dos responsáveis da ação;
  *   aoMostrarTodas: desfaz os dois "esconder"; impressao: desenha as páginas para imprimir, sem interação;
- *   abreAcoes: false no painel público (18/11/2026), onde tocar numa ação não abre nada, e a ajuda não promete isso
+ *   abreAcoes: false no painel público (18/11/2026), onde tocar numa ação não abre nada, e a ajuda não promete isso;
+ *   andamento: false no painel público (19/11/2026), que leva só concluída ou não: sem a barra mais clara da ainda não
+ *   liberada, sem a listra e o ícone da atrasada, nas barras, na dica e na legenda
  */
 export function desenharCronograma(alvo, dados) {
   const { espaco, acoes, caminho, cal, hoje, usaFases, identificador, escala, aoMudarEscala,
     retratos = null, comparar = null, base = null, aoComparar = () => {}, edicao = null,
-    exibir = {}, nomesDe = () => [], aoMostrarTodas = () => {}, impressao = false, indicador = null, abreAcoes = true } = dados;
+    exibir = {}, nomesDe = () => [], aoMostrarTodas = () => {}, impressao = false, indicador = null, abreAcoes = true, andamento = true } = dados;
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. O cronograma aparece quando houver ações.</p>`;
     return;
@@ -203,7 +205,7 @@ export function desenharCronograma(alvo, dados) {
     /* ação contínua (seção 5.9): barra fina e listrada, que acompanha os marcos; concluída, como as demais */
     const classe = b.situacao === "concluida" ? "concluida" : b.continua ? "continua" : semEstimativa ? "sem-estimativa" : b.critica ? "critica" : "folga";
     /* andamento e atraso na barra (10/11/2026): a que ainda espera as anteriores fica mais clara; a atrasada, listrada */
-    const estado = `${b.situacao === "naoLiberada" && !b.continua ? " aguardando" : ""}${b.atrasada ? " atrasada" : ""}`;
+    const estado = !andamento ? "" : `${b.situacao === "naoLiberada" && !b.continua ? " aguardando" : ""}${b.atrasada ? " atrasada" : ""}`;
     const estima = Boolean(edicao?.usaEstimativas && edicao.podeEstimar(a.numero));
     const alcas = !edicao ? "" : `
       ${estima && !semEstimativa ? `<i class="crono-borda" data-borda="${a.numero}" style="left:calc(var(--nomes) + ${x0 + largo - 5}px)" title="Arraste para encurtar ou alongar o prazo"></i>` : ""}
@@ -256,8 +258,8 @@ export function desenharCronograma(alvo, dados) {
   const legenda = [
     item("critica", `Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a>`),
     item("folga", "Com folga"),
-    item("folga aguardando", "Ainda não liberada"),
-    item("folga atrasada", "Atrasada"),
+    andamento ? item("folga aguardando", "Ainda não liberada") : "",
+    andamento ? item("folga atrasada", "Atrasada") : "",
     item("concluida", "Concluída"),
     barrasDaTela.some((b) => b.duracao === 0 && b.situacao !== "concluida" && !b.continua) ? item("sem-estimativa", "Falta estimar") : "",
     barrasDaTela.some((b) => b.continua) ? item("continua", `Contínua <a href="#" class="oque" data-termo="continua">o que é?</a>`) : "",
@@ -419,7 +421,7 @@ export function desenharCronograma(alvo, dados) {
       : b.duracao === 0 ? "Falta estimar"
       : b.critica ? "Sem folga: atrasar esta ação atrasa o fim do espaço"
       : `Folga de ${b.folga} ${plural(b.folga, "dia útil", "dias úteis")}`;
-    const andamento = b.atrasada ? "<br>Atrasada: o prazo previsto já passou"
+    const textoDoAndamento = !andamento ? "" : b.atrasada ? "<br>Atrasada: o prazo previsto já passou"
       : b.situacao === "naoLiberada" && !b.continua ? "<br>Ainda não liberada: espera as anteriores ou a data mínima" : "";
     const naBase = base?.get(numero);
     const diferenca = naBase ? cal.diasUteisAte(b.fim) - cal.diasUteisAte(naBase.fim) : 0;
@@ -428,7 +430,7 @@ export function desenharCronograma(alvo, dados) {
       : "<br>Ação criada depois do retrato.";
     const quem = nomesDe(b.acao);
     const responsaveis = quem.length ? `<br>${plural(quem.length, "Responsável", "Responsáveis")}: ${esc(quem.join(", "))}` : "";
-    mostrarDica(alvoBarra, `<b>${esc(b.acao.rotulo)}</b><br><span class="mono">${dataBr(b.inicio)} → ${dataBr(b.fim)}</span><br>${situacao}${andamento}${responsaveis}${noRetrato}`);
+    mostrarDica(alvoBarra, `<b>${esc(b.acao.rotulo)}</b><br><span class="mono">${dataBr(b.inicio)} → ${dataBr(b.fim)}</span><br>${situacao}${textoDoAndamento}${responsaveis}${noRetrato}`);
   };
   caixa.addEventListener("pointerover", (e) => {
     if (arrastando) return;

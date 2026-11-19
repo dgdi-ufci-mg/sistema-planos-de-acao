@@ -7,7 +7,7 @@ import { criarCalendario } from "../js/calendario.js";
 import { caminhoCritico } from "../js/calculo.js";
 import { montarLinhas } from "../js/lista.js";
 import {
-  montarResumo, numerosDoResumo, responsaveisParaOPublico, gerarCodigoDoPainel, codigoValido, enderecoDoPainel,
+  montarResumo, numerosDoResumo, tempoDecorrido, responsaveisParaOPublico, gerarCodigoDoPainel, codigoValido, enderecoDoPainel,
   temPainel, painelLigado, problemaDaConfiguracao, TAMANHO_DA_APRESENTACAO, TAMANHO_DO_CODIGO,
 } from "../js/painel-publico.js";
 import { pecasDasVisoes } from "../js/painel-publico.js";
@@ -40,10 +40,17 @@ const acoes = [
     estimativas: [{ em: "2026-11-02", o: 5, m: 10, p: 20, contaDe: "liberacao" }] },
 ];
 
-function linhasDe(espaco, lista = acoes) {
-  const cal = criarCalendario(espaco, HOJE);
-  const caminho = caminhoCritico(lista, cal, { hoje: HOJE });
-  return montarLinhas(lista, caminho, null, cal, HOJE, { espaco });
+function linhasDe(espaco, lista = acoes, hoje = HOJE) {
+  const cal = criarCalendario(espaco, hoje);
+  const caminho = caminhoCritico(lista, cal, { hoje });
+  return montarLinhas(lista, caminho, null, cal, hoje, { espaco });
+}
+/** Resumo como o Sextante monta: com o caminho crítico de hoje e o calendário (js/telas/espaco.js). */
+function resumoDe(espaco = espacoBase, lista = acoes, hoje = HOJE, extras = {}) {
+  const cal = criarCalendario(espaco, hoje);
+  const caminho = caminhoCritico(lista, cal, { hoje });
+  const linhas = montarLinhas(lista, caminho, null, cal, hoje, { espaco });
+  return montarResumo({ espaco, linhas, responsaveis, entregas: [], caminho, cal, ...extras });
 }
 
 describe("Painel público: o resumo", () => {
@@ -58,29 +65,65 @@ describe("Painel público: o resumo", () => {
     assert.equal(r.acoes.length, 3);
   });
 
-  it("situações simples: concluída, atrasada, liberada e não liberada, com o rótulo do Sextante", () => {
-    const r = montarResumo({ espaco: espacoBase, linhas: linhasDe(espacoBase), responsaveis });
+  it("só concluída ou não concluída: a atrasada e a não liberada não vão a público (19/11/2026)", () => {
+    const r = resumoDe();
     const [a1, a2, a3] = r.acoes;
     assert.equal(a1.situacao, "concluida");
-    assert.equal(a1.rotulo, "Concluída");
     assert.equal(a1.data, "2026-11-10");
-    assert.equal(a2.situacao, "atrasada", "liberada em 10/11, um dia de duração: venceu");
-    assert.equal(a3.situacao, "naoLiberada");
-    assert.equal(a3.rotulo, "Não liberada");
+    assert.equal(a2.situacao, "naoConcluida", "no Sextante, atrasada: liberada em 10/11, um dia de duração");
+    assert.equal(a3.situacao, "naoConcluida", "no Sextante, não liberada");
+    assert.ok(!("rotulo" in a1));
     assert.equal(a1.fase, "f1");
     assert.equal(a2.fase, "f2");
+    assert.equal(r.prazos, "estimativa");
   });
 
-  it("ação contínua: antes do marco de início, Não liberada; depois, Contínua, em andamento (correção de 18/11/2026)", () => {
-    const linha = (numero, situacao) => ({ acao: { numero, rotulo: `Contínua ${numero}`, etapa: "t2", responsaveis: [] }, situacao, fluxo: situacao === "naoLiberada" ? "naoLiberada" : "inicial", atrasada: false, continua: true, conclusao: "2027-01-10" });
-    const r = montarResumo({ espaco: espacoBase, linhas: [linha(1, "naoLiberada"), linha(2, "liberada")], responsaveis });
-    assert.deepEqual(r.acoes.map((a) => [a.situacao, a.rotulo]), [["naoLiberada", "Não liberada"], ["continua", "Contínua"]]);
-    assert.deepEqual(r.fases.map((f) => [f.id, f.total, f.emAndamento]), [["f2", 2, 1]], "só a que já começou conta como em andamento");
+  it("datas planejadas: sem a regra \"nada termina no passado\", e iguais em qualquer dia (19/11/2026)", () => {
+    const r = resumoDe();
+    const a2 = r.acoes[1];
+    assert.ok(a2.data < HOJE, `a data planejada fica no passado (${a2.data}); no Sextante, a previsão vai a hoje`);
+    const depois = resumoDe(espacoBase, acoes, "2027-02-01");
+    assert.deepEqual(depois.acoes.map((a) => a.data), r.acoes.map((a) => a.data), "a data não anda com o dia");
+    assert.equal(depois.conclusaoPlanejada, r.conclusaoPlanejada);
+    assert.equal(r.conclusaoPlanejada, r.acoes.map((a) => a.data).sort().at(-1));
+    assert.ok(!("conclusaoPrevista" in r));
+  });
+
+  it("sem estimativa, sem data; sem o calendário, sem datas planejadas", () => {
+    const semEstimativa = acoes.map((a) => (a.numero === 3 ? { ...a, estimativas: [] } : a));
+    assert.equal(resumoDe(espacoBase, semEstimativa).acoes[2].data, null);
+    const r = montarResumo({ espaco: espacoBase, linhas: linhasDe(espacoBase), responsaveis });
+    assert.deepEqual(r.acoes.map((a) => a.data), ["2026-11-10", null, null], "a concluída mantém a data registrada");
+  });
+
+  it("espaço com data-limite (cronograma aberto): a data é a data-limite, sem conclusão planejada", () => {
+    const aberto = { ...espacoBase, modelo: { prazos: "dataLimite", dependencias: false, simulacao: false } };
+    const lista = [
+      { numero: 1, rotulo: "Uma", ordem: 1, etapa: "t1", responsaveis: [], dataLimite: "2026-11-05" },
+      { numero: 2, rotulo: "Duas", ordem: 2, etapa: "t2", responsaveis: [] },
+    ];
+    const r = resumoDe(aberto, lista);
+    assert.equal(r.prazos, "dataLimite");
+    assert.deepEqual(r.acoes.map((a) => [a.situacao, a.data]), [["naoConcluida", "2026-11-05"], ["naoConcluida", null]]);
+    assert.equal(r.conclusaoPlanejada, null);
+    assert.ok(!r.visoes.includes("tempo"));
+    const html = htmlDoPainel({ resumo: r }, { abertos: new Set(["acoes"]), hoje: HOJE });
+    assert.ok(html.includes("Até 05/11/2026"));
+    assert.ok(!html.includes("Atrasada"));
+  });
+
+  it("ação contínua: não concluída, marcada como contínua", () => {
+    const lista = [...acoes, { numero: 4, rotulo: "Apoio técnico", ordem: 4, etapa: "t2", responsaveis: [], comecaCom: { tipo: "projeto" }, terminaCom: { tipo: "projeto" } }];
+    const r = resumoDe(espacoBase, lista);
+    assert.deepEqual([r.acoes[3].situacao, r.acoes[3].continua], ["naoConcluida", true]);
+    assert.equal(r.acoes[0].continua, false);
+    const html = htmlDoPainel({ resumo: r }, { abertos: new Set(["acoes"]), hoje: HOJE });
+    assert.ok(html.includes("Durante o trecho que acompanha"));
   });
 
   it("fases: contagem por fase, na ordem do espaço; sem fases ligadas, nenhuma", () => {
     const r = montarResumo({ espaco: espacoBase, linhas: linhasDe(espacoBase), responsaveis });
-    assert.deepEqual(r.fases.map((f) => [f.id, f.total, f.concluidas, f.atrasadas]), [["f1", 1, 1, 0], ["f2", 2, 0, 1]]);
+    assert.deepEqual(r.fases, [{ id: "f1", nome: "Preparação", total: 1, concluidas: 1 }, { id: "f2", nome: "Mapeamento", total: 2, concluidas: 0 }]);
     const sem = { ...espacoBase, camposOpcionais: { fasesEtapas: false } };
     const r2 = montarResumo({ espaco: sem, linhas: linhasDe(sem), responsaveis });
     assert.deepEqual(r2.fases, []);
@@ -110,7 +153,7 @@ describe("Painel público: o resumo", () => {
     ];
     const r = montarResumo({ espaco: espacoBase, linhas: linhasDe(espacoBase), responsaveis, entregas });
     assert.deepEqual(r.entregas.map((e) => [e.titulo, e.rotulo]), [["Política aprovada", "Alcançada"], ["Matriz", "Em andamento"]]);
-    assert.deepEqual(numerosDoResumo(r), { acoes: 3, concluidas: 1, pctConcluidas: 33, atrasadas: 1, entregas: 2, alcancadas: 1, pctAlcancadas: 50 });
+    assert.deepEqual(numerosDoResumo(r), { acoes: 3, concluidas: 1, pctConcluidas: 33, entregas: 2, alcancadas: 1, pctAlcancadas: 50 });
   });
 
   it("código: 20 letras e algarismos sem os que se confundem; endereço na pasta painel", () => {
@@ -135,12 +178,24 @@ describe("Painel público: o resumo", () => {
 describe("Painel público: a página", () => {
   const resumo = montarResumo({ espaco: espacoBase, linhas: linhasDe(espacoBase), responsaveis, entregas: [{ id: "a", titulo: "Política <b>", situacao: "alcancada" }] });
   it("mostra título, código, apresentação, aprovação e os blocos recolhidos", () => {
-    const html = htmlDoPainel({ resumo, atualizadoEm: "2026-11-18T13:42:00.000Z" }, {});
-    for (const t of ["Plano de Ação da Gestão de Riscos", "PA-GR", "Para que serve.", "Resolução CGOV 1/2026", "Ações concluídas", "Entregas alcançadas", "Conclusão prevista", "Andamento das ações por fase"]) {
+    const html = htmlDoPainel({ resumo, atualizadoEm: "2026-11-18T13:42:00.000Z" }, { hoje: HOJE });
+    for (const t of ["Plano de Ação da Gestão de Riscos", "PA-GR", "Para que serve.", "Resolução CGOV 1/2026", "Ações concluídas", "Entregas alcançadas", "Tempo decorrido até o prazo", "Andamento das ações por fase"]) {
       assert.ok(html.includes(t), t);
     }
     assert.ok(html.includes("Política &lt;b&gt;"), "o texto vem escapado");
     assert.ok(!/data-bloco="\w+" open/.test(html), "os blocos começam recolhidos");
+    for (const t of ["Sextante", "Atrasad", "Liberad", "Conclusão prevista"]) assert.ok(!html.includes(t), t);
+  });
+  it("legenda das fases e filtros: só concluídas e não concluídas", () => {
+    const html = htmlDoPainel({ resumo }, { abertos: new Set(["fases", "acoes"]), hoje: HOJE });
+    assert.ok(html.includes("Não concluídas"));
+    assert.deepEqual([...html.matchAll(/data-filtro="(\w+)"/g)].map((m) => m[1]), ["todas", "concluida", "naoConcluida"]);
+  });
+  it("resumo antigo, com as situações de antes: tudo o que não é concluída conta como não concluída", () => {
+    const antigo = { ...resumo, acoes: resumo.acoes.map((a, i) => ({ ...a, situacao: ["concluida", "atrasada", "naoLiberada"][i], rotulo: "Atrasada" })) };
+    const html = htmlDoPainel({ resumo: antigo }, { abertos: new Set(["acoes"]), filtro: "naoConcluida", hoje: HOJE });
+    assert.ok(html.includes("Mapear os riscos de TI") && html.includes("Consolidar a matriz"));
+    assert.ok(!html.includes("Atrasada"));
   });
   it("uma fase só ou nenhuma entrega: os blocos somem", () => {
     const html = htmlDoPainel({ resumo: { ...resumo, fases: resumo.fases.slice(0, 1), entregas: [] }, atualizadoEm: null }, {});
@@ -148,9 +203,9 @@ describe("Painel público: a página", () => {
     assert.ok(!html.includes("Entregas alcançadas"));
   });
   it("aberto, mostra as ações agrupadas por fase e o filtro escolhido", () => {
-    const html = htmlDoPainel({ resumo, atualizadoEm: null }, { abertos: new Set(["acoes"]), filtro: "atrasada" });
+    const html = htmlDoPainel({ resumo, atualizadoEm: null }, { abertos: new Set(["acoes"]), filtro: "naoConcluida", hoje: HOJE });
     assert.ok(html.includes("Mapear os riscos de TI"));
-    assert.ok(!html.includes("Instituir o comitê"), "o filtro esconde as que não estão atrasadas");
+    assert.ok(!html.includes("Instituir o comitê"), "o filtro esconde as concluídas");
   });
 });
 
@@ -169,7 +224,7 @@ describe("Painel público: o Store", () => {
     const loja = (u) => criarStore(banco, { exigirLogin: true, usuario: u, hoje: () => HOJE });
     return { banco, id, ana, bia: loja("bia@x.br"), caio: loja("caio@x.br"), anonimo: criarStore(banco, { exigirLogin: true }) };
   }
-  const resumo = { nome: "Plano", codigo: null, tipo: "projeto", apresentacao: "", programa: null, aprovacao: null, inicio: null, prazoFinal: null, conclusaoPrevista: null, acoes: [], fases: [], entregas: [] };
+  const resumo = { nome: "Plano", codigo: null, tipo: "projeto", apresentacao: "", programa: null, aprovacao: null, inicio: null, prazoFinal: null, prazos: "estimativa", conclusaoPlanejada: null, acoes: [], fases: [], entregas: [] };
 
   it("só o administrador liga; o código é sorteado uma vez e o endereço muda só quando pedido", async () => {
     const { id, ana, bia } = await cenario();
@@ -246,13 +301,13 @@ describe("Painel público: as visões só de leitura (parte 2)", () => {
   });
 
   it("com o caminho crítico, leva as visões, as etapas e, por ação, etapa, ligações, início, duração e folga", () => {
-    const { resumo: r, caminho, cal } = comVisoes();
+    const { resumo: r, cal } = comVisoes();
     assert.deepEqual(r.visoes, ["tempo", "rede"]);
     assert.deepEqual(r.etapas, [{ id: "t1", nome: "Comitê", fase: "f1" }, { id: "t2", nome: "Áreas", fase: "f2" }]);
     const [a1, a2, a3] = r.acoes;
     assert.equal(a2.etapa, "t2");
     assert.deepEqual(a3.dependeDe, [2]);
-    assert.equal(a2.inicio, cal.data(caminho.porAcao.get(2).liberacao));
+    assert.equal(a2.inicio, cal.data(caminhoCritico(acoes, cal).porAcao.get(2).liberacao));
     assert.equal(a3.critica, true);
     assert.equal(a3.folga, 0);
     assert.equal(a1.comecaCom, null);
@@ -272,8 +327,9 @@ describe("Painel público: as visões só de leitura (parte 2)", () => {
     await assert.rejects(ana.publicarPainelPublico(id, { ...resumo, acoes: acoesComMarco }), { codigo: "campo-desconhecido" });
   });
 
-  it("refeitas pelo painel, as peças dão ao Cronograma e à Rede as mesmas datas e ligações do Sextante", () => {
-    const { resumo, caminho, cal } = comVisoes();
+  it("refeitas pelo painel, as peças dão ao Cronograma e à Rede as datas planejadas e as ligações do Sextante", () => {
+    const { resumo, cal } = comVisoes();
+    const caminho = caminhoCritico(acoes, cal); // planejado: sem a data de hoje (19/11/2026)
     const pecas = pecasDasVisoes(resumo);
     const original = montarCronograma(acoes, caminho, cal, { estrutura: espacoBase.estrutura, usaFases: true });
     const publico = montarCronograma(pecas.acoes, pecas.caminho, pecas.cal, { estrutura: pecas.estrutura, usaFases: pecas.usaFases });
@@ -286,5 +342,30 @@ describe("Painel público: as visões só de leitura (parte 2)", () => {
     const setas = (r) => r.arestas.filter((a) => !a.ligacao).map((a) => `${a.de}>${a.para}${a.critica ? " sem folga" : ""}`).sort();
     assert.deepEqual(setas(rede), setas(original2));
     assert.ok(setas(rede).some((t) => t.endsWith("sem folga")), "a seta sem folga continua pintada");
+  });
+});
+
+describe("Painel público: tempo decorrido (19/11/2026)", () => {
+  it("até o prazo, quando existe; sem prazo, até a conclusão planejada; sem os dois, só desde quando", () => {
+    assert.deepEqual(tempoDecorrido({ inicio: "2026-11-06", prazoFinal: "2027-12-31", conclusaoPlanejada: "2028-07-17" }, "2026-11-19"),
+      { referencia: "prazo", inicio: "2026-11-06", fim: "2027-12-31", decorridos: 13, total: 420, pct: 3, antesDoInicio: false });
+    assert.equal(tempoDecorrido({ inicio: "2026-11-06", conclusaoPlanejada: "2026-12-06" }, "2026-11-21").referencia, "planejada");
+    assert.equal(tempoDecorrido({ inicio: "2026-11-06", conclusaoPlanejada: "2026-12-06" }, "2026-11-21").pct, 50);
+    const sem = tempoDecorrido({ inicio: "2026-11-06" }, "2026-11-19");
+    assert.deepEqual([sem.referencia, sem.pct, sem.decorridos], [null, null, 13]);
+    assert.equal(tempoDecorrido({}, "2026-11-19"), null);
+  });
+  it("depois da referência, a barra fica cheia; antes do início, nada decorreu", () => {
+    const t = tempoDecorrido({ inicio: "2026-11-06", prazoFinal: "2026-11-16" }, "2027-01-01");
+    assert.deepEqual([t.pct, t.decorridos, t.total], [100, 10, 10]);
+    const antes = tempoDecorrido({ inicio: "2026-12-01", prazoFinal: "2027-01-01" }, "2026-11-19");
+    assert.deepEqual([antes.antesDoInicio, antes.pct], [true, 0]);
+  });
+  it("na página: o cartão com a conclusão planejada embaixo; sem referência, Em andamento desde", () => {
+    const r = { nome: "P", acoes: [], fases: [], entregas: [], inicio: "2026-11-06", prazoFinal: "2027-12-31", conclusaoPlanejada: "2028-07-17" };
+    const html = htmlDoPainel({ resumo: r }, { hoje: "2026-11-19" });
+    assert.ok(html.includes("Tempo decorrido até o prazo") && html.includes("13 de 420 dias") && html.includes("Conclusão planejada: <b>17/07/2028</b>"));
+    const semPrazo = htmlDoPainel({ resumo: { ...r, prazoFinal: null, conclusaoPlanejada: null } }, { hoje: "2026-11-19" });
+    assert.ok(semPrazo.includes("Em andamento desde") && semPrazo.includes("06/11/2026"));
   });
 });

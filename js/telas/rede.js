@@ -327,7 +327,9 @@ const legendaDaBarra = {
 
 export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, identificador, donos, situacao, marcos: etapas = null, escala, aoMudarEscala,
   inicio = null, termino = null, prazoFinal = null, continuas = false, ocultarContinuas = false, aoOcultarContinuas = () => {}, edicao = null, nomeDaSituacao = () => "", nomeLiberada = "Liberada", toque = false,
-  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "", legenda = true, abreAcoes = true }) {
+  porCriticidade = false, aoArrumar = () => {}, indicador = "tempo", barra = () => "", legenda = true, abreAcoes = true, andamento = true }) {
+  /* andamento falso (painel público, 19/11/2026): só concluída ou não; sem a etiqueta "agora", sem a marca da atrasada
+     e sem os itens da legenda que falam disso */
   /* ações contínuas (seção 5.9; 09/11/2026): caixa como as outras, com ligações tracejadas aos marcos; o filtro as esconde */
   const linhaDaAcao = new Map(linhas.map((l) => [l.acao.numero, l]));
   const temContinuas = continuas && todas.some((a) => linhaDaAcao.get(a.numero)?.continua);
@@ -392,7 +394,7 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
       : l.situacao === "concluida" || l.semEstimativa || c.folga == null ? ""
       : c.critica ? "sem folga" : `folga ${Math.round(c.folga)} ${plural(Math.round(c.folga), "dia", "dias")}`;
     /* "agora" (10/11/2026): a ação liberada e ainda não concluída é a que pode ser feita neste momento */
-    const agora = l.situacao === "liberada";
+    const agora = andamento && l.situacao === "liberada";
     const pilula = agora ? nomeDaSituacao(l) : "";
     /* nome para o leitor de tela: a etapa e o nome inteiro. Desde 17/11/2026 (pedido do responsável) não é mais a dica
        do cartão inteiro, que aparecia sobre os campos editáveis; o nome inteiro aparece na dica do próprio nome, só
@@ -537,8 +539,8 @@ export function desenharRede(alvo, { acoes: todas, caminho, linhas, etapaDe, ide
         ${setasPeloIndice ? `<span class="crono-legenda"><i class="rede-leg-indice"></i>Quanto mais forte a seta, mais pesa no prazo <a href="#" class="oque" data-termo="exec">o que é?</a></span>`
     : porCriticidade ? "" : `<span class="crono-legenda"><i class="rede-leg-seta-critica"></i>Sem folga <a href="#" class="oque" data-termo="folga">o que é?</a></span>`}
         <span class="crono-legenda rede-leg-icone">${ICONES.concluida}Concluída</span>
-        <span class="crono-legenda"><i class="rede-leg-agora"></i>${esc(nomeLiberada)}: pode ser feita agora</span>
-        <span class="crono-legenda rede-leg-icone">${ICONES.naoLiberada}Espera outra ação</span>
+        ${andamento ? `<span class="crono-legenda"><i class="rede-leg-agora"></i>${esc(nomeLiberada)}: pode ser feita agora</span>
+        <span class="crono-legenda rede-leg-icone">${ICONES.naoLiberada}Espera outra ação</span>` : ""}
         ${cercas.length ? `<span class="crono-legenda"><i class="rede-leg-etapa"></i>Etapa</span>` : ""}
         ${fases.length ? `<span class="crono-legenda"><i class="rede-leg-fase"></i>Fim da fase</span>` : ""}
         ${temContinuas && !ocultarContinuas ? `<span class="crono-legenda"><i class="continua"></i>Contínua <a href="#" class="oque" data-termo="continua">o que é?</a></span>` : ""}` : "" /* legenda desligada em Exibir (12/11/2026): fica só o botão das contínuas */}
