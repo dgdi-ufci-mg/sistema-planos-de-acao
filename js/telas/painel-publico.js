@@ -192,7 +192,12 @@ export const htmlDaMensagem = (chave) => `<section class="pp-mensagem"><h1 class
  * @param {HTMLElement} alvo
  * @param {{store: {lerPainelPublico: (codigo: string) => Promise<object|null>}, codigo: string|null, ligarSecoes?: (raiz: HTMLElement) => void}} opcoes
  */
-export async function mostrarPainelPublico(alvo, { store, codigo, ligarSecoes = () => {} }) {
+/**
+ * @param {{store: object, codigo: string, ligarSecoes?: (el: HTMLElement) => void, semHistorico?: boolean}} o
+ *   `semHistorico`: o painel aberto dentro do Strata (19/11/2026), num quadro da janela: as visões trocam o endereço
+ *   sem criar passos no histórico, para o Voltar e o fechar da janela do Strata não se confundirem com eles
+ */
+export async function mostrarPainelPublico(alvo, { store, codigo, ligarSecoes = () => {}, semHistorico = false }) {
   if (!codigo) { alvo.innerHTML = htmlDaMensagem("semCodigo"); return; }
   let painel;
   try {
@@ -227,6 +232,14 @@ export async function mostrarPainelPublico(alvo, { store, codigo, ligarSecoes = 
   alvo.addEventListener("click", (e) => {
     const ir = e.target.closest("a[href^='#']");
     if (!ir) return;
+    if (semHistorico) {
+      e.preventDefault();
+      const voltar = ir.matches("[data-voltar-painel]");
+      if (!voltar && !visaoDoEndereco(location.hash, resumo)) rolagemDoPainel = scrollY;
+      history.replaceState(null, "", location.pathname + location.search + (voltar ? "" : ir.hash));
+      desenhar();
+      return;
+    }
     if (ir.matches("[data-voltar-painel]")) {
       e.preventDefault();
       if (veioDoPainel) history.back();

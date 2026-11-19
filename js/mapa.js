@@ -78,7 +78,7 @@ export function faixasDoMapa(camadas, itens, { semPlanos = false } = {}) {
  * @param {object} p
  * @param {object[]} p.camadas  camadas do catálogo, de cima para baixo
  * @param {object[]} p.itens  itens a mostrar (a tela já tirou os que não valem hoje, se for o caso)
- * @param {{id: string, nome: string, superiores: string[], restrito?: boolean}[]} [p.planos]  Planos de Ação, com os itens a que se ligam
+ * @param {{id: string, nome: string, superiores: string[], restrito?: boolean, painel?: string, noSextante?: boolean}[]} [p.planos]  Planos de Ação, com os itens a que se ligam; `painel` é o código do painel público ligado (o nome aparece mesmo restrito); `noSextante`, se a pessoa pode abrir o espaço
  * @param {(texto: string) => number} [p.medir]  largura do texto na tela; sem a tela, 7 unidades por letra
  * @param {{w: number, h: number}} [p.vista]  tamanho da área do mapa: a largura do mapa acompanha a da área
  * @param {number} [p.margem]  espaço nas pontas de cada faixa
@@ -118,7 +118,7 @@ export function calcularMapa({
     const ligados = (e.superiores ?? []).filter((s) => idsDosItens.has(s));
     if (!e.manter && (e.superiores ?? []).length && !ligados.length) continue; // só liga a itens que não aparecem: não aparece (o filtro manda manter)
     nos.push({
-      chave: `plano:${e.id}`, id: e.id, tipo: "plano", faixa: faixas.length - 1, codigo: e.restrito ? "" : String(e.codigo ?? ""), nome: e.nome, restrito: Boolean(e.restrito), superiores: ligados,
+      chave: `plano:${e.id}`, id: e.id, tipo: "plano", faixa: faixas.length - 1, codigo: e.restrito ? "" : String(e.codigo ?? ""), nome: e.nome, restrito: Boolean(e.restrito), painel: e.painel ?? null, noSextante: e.noSextante ?? !e.restrito, superiores: ligados,
       via: e.via ?? {}, esmaecido: Boolean(e.esmaecido), alerta: e.alerta ?? null,
     });
   }

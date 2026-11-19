@@ -73,6 +73,31 @@ function caminhoPlanejado(espaco, linhas, cal) {
 }
 
 /**
+ * O Plano de Ação como o Mapa do Strata o recebe (19/11/2026, parte 3). Quem não pode consultar o espaço vê "Plano de
+ * Ação restrito", sem nome nem código, **salvo se o painel público está ligado**: o painel é o resumo que o responsável
+ * decidiu abrir, então o nome e o código aparecem. `painel` é o código do endereço; `noSextante`, se a pessoa pode abrir o espaço.
+ */
+export function planoParaOMapa(espaco, visivel) {
+  const painel = painelLigado(espaco) ? configuracaoDoPainel(espaco).codigo : null;
+  const aberto = visivel || Boolean(painel);
+  return { id: espaco.id, codigo: aberto ? espaco.codigo ?? "" : "", nome: aberto ? espaco.nome : "Plano de Ação restrito", restrito: !aberto, noSextante: visivel, painel, superiores: espaco.vinculos, encerradoEm: espaco.encerradoEm ?? null };
+}
+
+/**
+ * Para onde o "Abrir" do cartão do Mapa leva num Plano de Ação. Com painel ligado, ao painel, **dentro do Strata**
+ * (19/11/2026, pedido do responsável: a pessoa folheia o catálogo sem ser lançada para fora): `{ janela: endereço }`,
+ * o painel com `em=strata`, que o Strata abre numa janela por cima do Mapa. Sem painel, o espaço no Sextante:
+ * `{ ir: endereço }`. Com `onde` = "sextante" ("Abrir no Sextante"), sempre o espaço, e só para quem pode consultá-lo.
+ * O restrito sem painel não abre (null). `raiz`: o caminho até a raiz do site, a partir da página que abre ("../", no Strata).
+ */
+export function destinoDoPlanoNoMapa(no, onde = "", raiz = "../") {
+  const espaco = { ir: `${raiz}#/espaco/${encodeURIComponent(no.id)}` };
+  if (onde === "sextante") return no.noSextante ? espaco : null;
+  if (no.painel) return { janela: `${enderecoDoPainel(no.painel, raiz)}&em=strata` };
+  return no.restrito ? null : espaco;
+}
+
+/**
  * Responsáveis como o público vê (escolha do administrador; padrão "só a área", pela LGPD):
  * - unidade: o nome da unidade;
  * - pessoa, com `mostrarNomes`: "Nome · setor" (ou só o nome);

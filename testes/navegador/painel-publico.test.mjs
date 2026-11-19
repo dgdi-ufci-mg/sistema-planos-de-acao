@@ -88,7 +88,7 @@ describe("Painel público", { skip: pular }, () => {
     const linhas = montarLinhas(acoes, caminho, null, cal, hoje, { espaco });
     const resumo = montarResumo({ espaco, linhas, responsaveis: [{ id: "r1", tipo: "pessoa", nome: "Ana Ribeiro", setor: "Governança" }], caminho, cal });
     const store = { lerPainelPublico: async () => ({ ligado: true, resumo, atualizadoEm: new Date().toISOString() }) };
-    mostrarPainelPublico(document.getElementById("painel"), { store, codigo: "A".repeat(20) });`;
+    mostrarPainelPublico(document.getElementById("painel"), { store, codigo: "A".repeat(20), semHistorico: new URLSearchParams(location.search).get("em") === "strata" });`;
   const comResumo = async (contexto) => {
     await contexto.route("**/js/painel.js", (r) => r.fulfill({ contentType: "text/javascript", body: PARTIDA }));
   };
@@ -152,5 +152,34 @@ describe("Painel público", { skip: pular }, () => {
     assert.equal(await p.evaluate(() => document.documentElement.dataset.paleta), "ufcimg");
     assert.equal(await p.evaluate(() => document.documentElement.dataset.theme ?? null), null, "o modo segue o aparelho");
     assert.equal(await p.evaluate(() => getComputedStyle(document.querySelector(".pp-topo")).backgroundColor), "rgb(20, 44, 70)");
+  });
+
+  /* dentro do Strata (19/11/2026): painel/?p=<código>&em=strata, aberto pelo Strata numa janela por cima do Mapa */
+  for (const largura of [1280, 390]) {
+    test(`dentro do Strata: sem cabeçalho e rodapé, com a cara e o tema do Strata, e as visões sem passos no histórico (${largura} px)`, async () => {
+      const p = await sessao.abrir({ largura, exemplo: false, temaGuardado: null, caminho: `painel/?p=${"A".repeat(20)}&em=strata`, aguardar: ".pp-visoes", rotas: comResumo });
+      const raiz = await p.evaluate(() => ({ strata: document.documentElement.classList.contains("strata"), paleta: document.documentElement.dataset.paleta ?? null, tema: document.documentElement.dataset.theme ?? null }));
+      assert.deepEqual(raiz, { strata: true, paleta: null, tema: "dark" }, "cores do Strata, que abre no escuro");
+      assert.equal(await p.locator(".pp-topo").isVisible(), false);
+      assert.equal(await p.locator(".pp-fim").isVisible(), false);
+      assert.match(await p.evaluate(() => getComputedStyle(document.body).fontFamily), /Source Sans 3/, "a fonte do Strata, e não a Metropolis");
+      const passos = await p.evaluate(() => history.length);
+      await p.locator(".pp-visoes-botoes a").first().click();
+      await p.waitForSelector(".crono");
+      assert.match(p.url(), /#no-tempo$/);
+      assert.equal(await p.evaluate(() => history.length), passos, "trocar de visão não cria passo no histórico");
+      await p.locator("[data-voltar-painel]").click();
+      await p.waitForSelector(".pp-visoes");
+      assert.doesNotMatch(p.url(), /#/);
+      assert.equal(await p.evaluate(() => history.length), passos);
+      assert.deepEqual(p.erros, []);
+    });
+  }
+
+  test("dentro do Strata, o tema claro escolhido no Strata vale também no painel", async () => {
+    const p = await sessao.abrir({ largura: 390, exemplo: false, caminho: "painel/?p=AAAAAAAAAAAAAAAAAAAA&em=strata", aguardar: ".pp-mensagem",
+      rotas: async (contexto) => { await contexto.addInitScript(() => { localStorage.setItem("strata.tema", "claro"); }); } });
+    assert.equal(await p.evaluate(() => document.documentElement.dataset.theme), "light");
+    assert.equal(await p.locator(".pp-topo").isVisible(), false);
   });
 });

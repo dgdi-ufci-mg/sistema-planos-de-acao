@@ -28,6 +28,7 @@ import { alcanceAtual, textoDoValor } from "../entregas.js";
 import { seloDaSituacao } from "../telas/entregas.js";
 import { esqueletoHtml } from "../telas/esqueleto.js";
 import { criarVistaMapa } from "./mapa.js";
+import { planoParaOMapa, destinoDoPlanoNoMapa } from "../painel-publico.js";
 import { FAIXA_PLANOS } from "../mapa.js";
 import { FILTRO_PADRAO, VIGENCIAS, filtrarParaOMapa, mudancasDoFiltro, normalizarFiltro } from "../filtro-do-mapa.js";
 import { abrirPlanilha } from "./planilha.js";
@@ -320,17 +321,26 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
   }
 
   /* ---------- mapa ---------- */
-  /** Planos de Ação do mapa: os ligados a itens; o que a pessoa não pode consultar entra como "restrito", sem o nome nem o código. */
-  function planosDoMapa() {
-    return planos.map((e) => {
-      const visivel = store.podeVerEspaco(e);
-      return { id: e.id, codigo: visivel ? e.codigo ?? "" : "", nome: visivel ? e.nome : "Plano de Ação restrito", restrito: !visivel, superiores: e.vinculos, encerradoEm: e.encerradoEm ?? null };
-    });
+  /** Planos de Ação do mapa: os ligados a itens; o restrito sem painel público entra sem o nome nem o código (`planoParaOMapa`). */
+  const planosDoMapa = () => planos.map((e) => planoParaOMapa(e, store.podeVerEspaco(e)));
+  /**
+   * "Abrir" do cartão do Mapa: o painel do item; do Plano de Ação, o painel público numa janela por cima do Mapa
+   * (o Mapa fica como estava, e a pessoa não sai do Strata) ou o espaço no Sextante (`destinoDoPlanoNoMapa`).
+   */
+  function abrirDoMapa(no, onde = "") {
+    if (no.tipo === "item") return abrirItem(no.id);
+    const destino = destinoDoPlanoNoMapa(no, onde);
+    if (destino?.janela) abrirPainelDoPlano(no, destino.janela);
+    else if (destino?.ir) location.assign(destino.ir);
   }
-  /** "Abrir" do cartão do Mapa: o painel do item, ou o espaço do Plano de Ação (que o restrito nunca oferece). */
-  function abrirDoMapa(no) {
-    if (no.tipo === "item") abrirItem(no.id);
-    else if (!no.restrito) location.assign(`../#/espaco/${encodeURIComponent(no.id)}`);
+  /** O painel público do Plano de Ação numa janela centralizada, num quadro (o painel no modo do Strata). */
+  function abrirPainelDoPlano(no, endereco) {
+    const corpo = abrirPainel(esc(no.completo ?? no.nome), "", { janela: true, classe: "strata-janela-painel" });
+    const quadro = document.createElement("iframe");
+    quadro.className = "strata-quadro-painel";
+    quadro.title = `Painel do ${no.nome}`;
+    quadro.src = endereco;
+    corpo.append(quadro);
   }
   const temOrdemPessoal = () => Object.values(ui.ordemDoMapa ?? {}).some((l) => l.length);
   /**

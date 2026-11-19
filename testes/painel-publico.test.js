@@ -10,7 +10,7 @@ import {
   montarResumo, numerosDoResumo, tempoDecorrido, responsaveisParaOPublico, gerarCodigoDoPainel, codigoValido, enderecoDoPainel,
   temPainel, painelLigado, problemaDaConfiguracao, TAMANHO_DA_APRESENTACAO, TAMANHO_DO_CODIGO,
 } from "../js/painel-publico.js";
-import { pecasDasVisoes } from "../js/painel-publico.js";
+import { pecasDasVisoes, planoParaOMapa, destinoDoPlanoNoMapa } from "../js/painel-publico.js";
 import { htmlDoPainel, visoesDoResumo, visaoDoEndereco } from "../js/telas/painel-publico.js";
 import { montarCronograma } from "../js/cronograma.js";
 import { montarRede } from "../js/rede.js";
@@ -367,5 +367,41 @@ describe("Painel público: tempo decorrido (19/11/2026)", () => {
     assert.ok(html.includes("Tempo decorrido até o prazo") && html.includes("13 de 420 dias") && html.includes("Conclusão planejada: <b>17/07/2028</b>"));
     const semPrazo = htmlDoPainel({ resumo: { ...r, prazoFinal: null, conclusaoPlanejada: null } }, { hoje: "2026-11-19" });
     assert.ok(semPrazo.includes("Em andamento desde") && semPrazo.includes("06/11/2026"));
+  });
+});
+
+describe("Painel público: o Plano de Ação no Mapa do Strata (parte 3, 19/11/2026)", () => {
+  const COD = "A".repeat(TAMANHO_DO_CODIGO);
+  const plano = (extra = {}) => ({ id: "e1", nome: "Plano de Ação da Gestão de Riscos", tipo: "planoDeAcao", codigo: "PA-GR", vinculos: ["prg1"], ...extra });
+  const comPainel = { painelPublico: { ligado: true, codigo: COD, apresentacao: "", mostrarNomes: false } };
+
+  it("plano restrito com painel ligado mostra o nome e o código, sem abrir o espaço", () => {
+    const no = planoParaOMapa(plano(comPainel), false);
+    assert.equal(no.restrito, false);
+    assert.equal(no.nome, "Plano de Ação da Gestão de Riscos");
+    assert.equal(no.codigo, "PA-GR");
+    assert.equal(no.painel, COD);
+    assert.equal(no.noSextante, false);
+  });
+  it("plano restrito sem painel, ou com o painel desligado, continua sem nome nem código", () => {
+    for (const e of [plano(), plano({ painelPublico: { ...comPainel.painelPublico, ligado: false } })]) {
+      const no = planoParaOMapa(e, false);
+      assert.deepEqual([no.restrito, no.nome, no.codigo, no.painel], [true, "Plano de Ação restrito", "", null]);
+    }
+  });
+  it("quem participa vê o plano de sempre; com painel, também leva o código dele", () => {
+    assert.deepEqual([planoParaOMapa(plano(), true).restrito, planoParaOMapa(plano(), true).painel, planoParaOMapa(plano(), true).noSextante], [false, null, true]);
+    assert.equal(planoParaOMapa(plano(comPainel), true).painel, COD);
+  });
+  it('"Abrir" abre o painel numa janela do Strata quando há painel, e leva ao espaço quando não há; o restrito sem painel não abre', () => {
+    const painel = planoParaOMapa(plano(comPainel), true);
+    assert.deepEqual(destinoDoPlanoNoMapa(painel), { janela: `${enderecoDoPainel(COD, "../")}&em=strata` }, "o painel, numa janela do Strata");
+    assert.match(destinoDoPlanoNoMapa(painel).janela, /^\.\.\/painel\/\?p=A+&em=strata$/);
+    assert.deepEqual(destinoDoPlanoNoMapa(planoParaOMapa(plano(), true)), { ir: "../#/espaco/e1" });
+    assert.equal(destinoDoPlanoNoMapa(planoParaOMapa(plano(), false)), null);
+  });
+  it('"Abrir no Sextante" só existe para quem pode consultar o espaço', () => {
+    assert.deepEqual(destinoDoPlanoNoMapa(planoParaOMapa(plano(comPainel), true), "sextante"), { ir: "../#/espaco/e1" });
+    assert.equal(destinoDoPlanoNoMapa(planoParaOMapa(plano(comPainel), false), "sextante"), null, "restrito com painel: só o painel");
   });
 });
