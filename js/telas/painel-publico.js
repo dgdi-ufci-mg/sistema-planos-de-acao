@@ -138,7 +138,7 @@ export function htmlDoPainel({ resumo, atualizadoEm = null }, { abertos = new Se
   </details>` : ""}
 
   ${entregas.length ? `<details class="pp-bloco" data-bloco="entregas"${aberto("entregas")}>
-    ${resumoDoBloco("Entregas", `${entregas.length} ${plural(entregas.length, "entrega", "entregas")} · ${n.alcancadas} ${plural(n.alcancadas, "alcançada", "alcançadas")}`, "Ver entregas")}
+    ${resumoDoBloco("Principais entregas", `${entregas.length} ${plural(entregas.length, "entrega", "entregas")} · ${n.alcancadas} ${plural(n.alcancadas, "alcançada", "alcançadas")}`, "Ver entregas")}
     <ul class="pp-bloco-corpo pp-lista">${entregas.map((e) => `<li class="pp-linha">
       <span class="pp-linha-nome"><span>${esc(e.titulo)}</span>${e.prazo ? `<small>Prazo: ${dataBr(e.prazo)}</small>` : ""}</span>
       ${etiqueta(e.situacao === "alcancada" ? "concluida" : e.situacao === "emAndamento" ? "liberada" : "naoLiberada", e.rotulo)}</li>`).join("")}</ul>
