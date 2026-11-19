@@ -1,7 +1,7 @@
 /** Testes das regras do modo "Editar em planilha" (js/planilha.js). */
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData, ocultasAoLado, larguraAoConteudo } from "../js/planilha.js";
+import { lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData, ocultasAoLado, larguraAoConteudo, moverColunaPara } from "../js/planilha.js";
 
 const acoes = [{ numero: 1, codigo: "LEV" }, { numero: 2 }, { numero: 5, codigo: "ARQ" }];
 const responsaveis = [{ id: "a", nome: "Ana Souza", sigla: "ANA" }, { id: "p", nome: "Pró-Reitoria de Graduação", sigla: "PROGRAD" }, { id: "s", nome: "Sem Sigla" }];
@@ -69,5 +69,21 @@ describe("Planilha: colunas escondidas e largura ao conteúdo", () => {
     assert.equal(larguraAoConteudo(0, 10), 3);
     assert.equal(larguraAoConteudo(5000, 10), 60);
     assert.equal(larguraAoConteudo(10, 10, 3, 60), 3);
+  });
+});
+
+describe("Planilha: mover coluna arrastando o título", () => {
+  const cols = [{ chave: "num", fixa: true }, { chave: "a" }, { chave: "b" }, { chave: "c" }, { chave: "d" }];
+  it("leva a coluna para antes de outra, para a frente e para trás", () => {
+    assert.deepEqual(moverColunaPara(cols, [], "d", "b"), ["a", "d", "b", "c"]);
+    assert.deepEqual(moverColunaPara(cols, [], "a", "d"), ["b", "c", "a", "d"]);
+  });
+  it("sem destino vai para o fim; destino fixo ou desconhecido vai para o começo das não fixas", () => {
+    assert.deepEqual(moverColunaPara(cols, [], "a", null), ["b", "c", "d", "a"]);
+    assert.deepEqual(moverColunaPara(cols, [], "c", "num"), ["c", "a", "b", "d"]);
+  });
+  it("coluna fixa não se move, e soltar sobre si mesma não muda nada", () => {
+    assert.deepEqual(moverColunaPara(cols, [], "num", "b"), ["a", "b", "c", "d"]);
+    assert.deepEqual(moverColunaPara(cols, ["c", "a"], "a", "a"), ["c", "a", "b", "d"]);
   });
 });

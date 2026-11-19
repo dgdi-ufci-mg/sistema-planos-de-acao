@@ -3286,6 +3286,11 @@ select.grade-editor { margin: -4px -6px; }
 .planilha .planilha-grupo.nivel-etapa th { background: color-mix(in srgb, var(--bg) 50%, var(--surface)); }
 .planilha .planilha-grupo .grade-grupo-botao { position: sticky; left: 0; }
 .planilha .planilha-grupo.nivel-etapa .grade-grupo-botao { padding-left: 30px; font: 600 .84rem var(--f-texto); }
+/* planilha: mover coluna arrastando o título (lote 3) */
+.coluna-soltar { position: fixed; z-index: 70; width: 3px; background: var(--accent); pointer-events: none; border-radius: 2px; }
+.movendo-coluna, .movendo-coluna * { cursor: grabbing; user-select: none; }
+/* durante o arrasto, a alça de largura da coluna sob o ponteiro não aparece (aparecia como uma linha solta no título) */
+body.movendo-coluna .planilha th .redimensionar::after { background: transparent; }
 /* planilha: faixa de células escolhidas (lote 2, 18/11/2026) */
 .planilha td.sel { background: var(--accent-soft); }
 .planilha td.sel > input, .planilha td.sel > select, .planilha td.sel > textarea { background: transparent; }

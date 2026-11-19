@@ -19,7 +19,7 @@ import { esc, dataBr } from "../formato.js";
 import { estimativaLivre, normalizarCodigo } from "../acao.js";
 import {
   lerReferencias, escreverReferencias, lerResponsaveis, escreverResponsaveis, diferenca, lerColagem, lerData,
-  agruparPorFaseEEtapa, ordenarColunas, moverColuna, passaNaBusca, criarDesfazer, ocultasAoLado, larguraAoConteudo,
+  agruparPorFaseEEtapa, ordenarColunas, moverColuna, moverColunaPara, passaNaBusca, criarDesfazer, ocultasAoLado, larguraAoConteudo,
 } from "../planilha.js";
 import { avisar, perguntar } from "./painel.js";
 import { excluirAcao } from "./exclusao.js";
@@ -472,7 +472,7 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         </table>
       </div>
       <p class="planilha-pe tec so-computador">Cada célula é gravada ao sair dela. Cinza: não se edita aqui (passe o mouse para ver o motivo); títulos em itálico: calculados.
-        Setas e Enter: andar · Esc: desfaz a digitação · Ctrl+Z: desfazer a última alteração · Arraste ou use Shift+setas para escolher várias células (Ctrl+C copia, Delete limpa) · Ctrl+D repete para baixo · Botão direito: mais opções · Cole um bloco do Excel ou do Google Planilhas a partir da célula escolhida ·
+        Setas e Enter: andar · Esc: desfaz a digitação · Ctrl+Z: desfazer a última alteração · Arraste ou use Shift+setas para escolher várias células (Ctrl+C copia, Delete limpa) · Ctrl+D repete para baixo · Botão direito: mais opções · Arraste o título para mover a coluna · Cole um bloco do Excel ou do Google Planilhas a partir da célula escolhida ·
         Em “Depende de”, ${d.usaCodigos ? "números ou códigos" : "números"} separados por “;”; em “Responsáveis”, siglas ou nomes (Alt+↓ abre a lista).</p>
       <p class="so-celular cartao">A edição em planilha está disponível no computador.</p>`;
     const rolagem = alvo.querySelector(".planilha-rolagem");
@@ -1036,6 +1036,46 @@ export function criarPlanilha({ store, espacoId, hoje, usuario = null }) {
         const r = td.getBoundingClientRect();
         abrirMenuCelula(td, e.clientX || r.left, e.clientY || r.bottom);
       }
+    });
+    /* mover a coluna arrastando o título (18/11/2026, lote 3): uma linha mostra onde ela vai cair; as fixas não se movem */
+    alvo.addEventListener("pointerdown", (e) => {
+      const th = e.target.closest?.("th[scope=col]");
+      if (e.button !== 0 || !th || th.classList.contains("fixa") || e.target.closest("button, [data-redimensionar]")) return;
+      const cols = colunas();
+      const de = [...th.parentElement.children].indexOf(th);
+      const x0 = e.clientX;
+      let arrastando = false;
+      let alvoTh = null;
+      let depois = false;
+      const rolagem = alvo.querySelector(".planilha-rolagem");
+      const linha = document.createElement("div");
+      linha.className = "coluna-soltar";
+      const mover = (ev) => {
+        if (!arrastando && Math.abs(ev.clientX - x0) < 8) return;
+        if (!arrastando) { arrastando = true; document.body.classList.add("movendo-coluna"); document.body.append(linha); getSelection()?.removeAllRanges(); }
+        const sob = document.elementFromPoint(ev.clientX, ev.clientY)?.closest?.("th[scope=col]");
+        if (!sob) return;
+        const r = sob.getBoundingClientRect();
+        alvoTh = sob;
+        depois = ev.clientX > r.left + r.width / 2;
+        const t = rolagem.getBoundingClientRect();
+        linha.style.cssText = `left:${(depois ? r.right : r.left) - 1}px;top:${t.top}px;height:${t.height}px`;
+      };
+      const soltar = () => {
+        document.removeEventListener("pointermove", mover);
+        document.body.classList.remove("movendo-coluna");
+        linha.remove();
+        if (!arrastando || !alvoTh) return;
+        const para = [...alvoTh.parentElement.children].indexOf(alvoTh);
+        const antesDe = depois ? cols[para + 1]?.chave ?? null : cols[para]?.chave;
+        if (antesDe === cols[de].chave) return;
+        ordemColunas = moverColunaPara(colunasDaPlanilha(d), ordemColunas, cols[de].chave, antesDe);
+        lembrarOrdem();
+        desenhar(alvo, d);
+      };
+      document.addEventListener("pointermove", mover);
+      document.addEventListener("pointerup", soltar, { once: true });
+      document.addEventListener("pointercancel", soltar, { once: true });
     });
     /* escolher várias células: Shift+clique, ou arrastar de uma célula a outra (dentro de uma célula só, o arrasto escolhe texto) */
     alvo.addEventListener("pointerdown", (e) => {

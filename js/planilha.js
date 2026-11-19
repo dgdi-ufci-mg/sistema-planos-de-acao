@@ -142,6 +142,20 @@ export function moverColuna(colunas, ordem, chave, sentido) {
 }
 
 /**
+ * Leva a coluna `chave` para logo antes da coluna `antesDe` (ou para o fim, se `antesDe` for nulo), como ao arrastar o
+ * título. Só as colunas não fixas se movem; soltar sobre uma fixa vale como soltar no começo das não fixas.
+ * Devolve a nova ordem (chaves das colunas não fixas).
+ */
+export function moverColunaPara(colunas, ordem, chave, antesDe) {
+  const lista = ordenarColunas(colunas, ordem).filter((c) => !c.fixa).map((c) => c.chave);
+  if (!lista.includes(chave) || chave === antesDe) return lista;
+  lista.splice(lista.indexOf(chave), 1);
+  const destino = antesDe == null ? lista.length : lista.indexOf(antesDe);
+  lista.splice(destino < 0 ? 0 : destino, 0, chave);
+  return lista;
+}
+
+/**
  * Colunas escondidas, agrupadas pela coluna visível que vem logo depois delas (como o traço duplo do Excel entre as
  * letras das colunas). `ordenadas`: todas as colunas na ordem da grade; `ocultas`: conjunto de chaves escondidas.
  * Devolve {antes: Map(chave visível → chaves escondidas logo antes dela), fim: chaves escondidas depois da última visível}.

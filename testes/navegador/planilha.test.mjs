@@ -369,3 +369,56 @@ describe("Planilha: lista de etapas agrupada por fase (18/11/2026)", { skip: pul
     assert.ok(fases.includes(outraFase.fase));
   });
 });
+
+describe("Planilha: mover a coluna arrastando o título (lote 3, 18/11/2026)", { skip: pular }, () => {
+  let sessao;
+  before(async () => { sessao = await iniciar(); });
+  after(async () => { await sessao?.fechar(); });
+
+  const titulos = (p) => p.locator(".planilha th[scope=col] .titulo-coluna-planilha").evaluateAll((es) => es.map((e) => e.textContent.trim()));
+  async function arrastar(p, de, para, depois = false) {
+    const a = await p.locator(".planilha th[scope=col]").filter({ hasText: de }).first().boundingBox();
+    const b = await p.locator(".planilha th[scope=col]").filter({ hasText: para }).first().boundingBox();
+    await p.mouse.move(a.x + a.width / 3, a.y + a.height / 2);
+    await p.mouse.down();
+    await p.mouse.move(b.x + b.width * (depois ? 0.8 : 0.2), b.y + b.height / 2, { steps: 12 });
+    return b;
+  }
+
+  test("arrastar o título leva a coluna para o lugar da linha de soltar, e a ordem fica lembrada", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irParaVisualizacao(p, "planilha");
+    await p.waitForSelector(".planilha");
+    const antes = await titulos(p);
+    await arrastar(p, "Descrição", "Etapa");
+    assert.equal(await p.locator(".coluna-soltar").count(), 1, "a linha de soltar aparece no arrasto");
+    const alca = await p.locator(".planilha th[scope=col]").filter({ hasText: "Etapa" }).first().locator(".redimensionar").evaluate((e) => getComputedStyle(e, "::after").backgroundColor);
+    assert.match(alca, /rgba\(0, 0, 0, 0\)|transparent/, "a alça de largura não aparece durante o arrasto");
+    await p.mouse.up();
+    await assentar(p, 300);
+    const depois = await titulos(p);
+    assert.equal(depois.indexOf("Descrição"), antes.indexOf("Etapa"));
+    assert.equal(await p.locator(".coluna-soltar").count(), 0);
+    // lembrada ao reabrir a planilha
+    await irParaVisualizacao(p, "lista");
+    await irParaVisualizacao(p, "planilha");
+    await p.waitForSelector(".planilha");
+    assert.deepEqual(await titulos(p), depois);
+  });
+
+  test("as colunas fixas não se arrastam, e soltar sobre uma fixa leva para o começo das outras", async () => {
+    const p = await sessao.abrir({ largura: 1366, altura: 760 });
+    await irParaVisualizacao(p, "planilha");
+    await p.waitForSelector(".planilha");
+    const antes = await titulos(p);
+    await arrastar(p, "Ação", "Fase", true); // a coluna da ação é fixa
+    await p.mouse.up();
+    await assentar(p, 300);
+    assert.deepEqual(await titulos(p), antes);
+    await arrastar(p, "Descrição", "Ação");
+    await p.mouse.up();
+    await assentar(p, 300);
+    const depois = await titulos(p);
+    assert.equal(depois[depois.indexOf("Ação") + 1], "Descrição");
+  });
+});
