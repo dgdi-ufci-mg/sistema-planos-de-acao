@@ -435,6 +435,49 @@ describe("Mapa do Strata", { skip: pular }, () => {
     });
   });
 
+  describe("Plano de Ação com painel público (parte 3, 19/11/2026)", () => {
+    const cartaoDoPlano = async (sessao, plano) => {
+      const p = await sessao.abrir({ largura: 1280, altura: 800, ...ABRIR });
+      return p.evaluate(async (plano) => {
+        const { criarVistaMapa } = await import("../js/superior/mapa.js");
+        const area = document.createElement("div");
+        area.className = "mapa-area";
+        document.body.append(area);
+        const abertos = [];
+        const camadas = [{ id: "a", nome: "Objetivo", plural: "Objetivos" }];
+        const itens = [{ id: "i1", camada: "a", nome: "Item", codigo: "I1", superiores: [] }];
+        criarVistaMapa(area, { camadas, itens, planos: [{ id: "x", superiores: ["i1"], ...plano }], estado: { selecionado: "plano:x" }, aoAbrir: (no, onde) => abertos.push([no.id, onde ?? ""]) });
+        const cartao = area.querySelector("[data-mapa-cartao]");
+        const antes = { texto: cartao.innerText, abrir: area.querySelectorAll("[data-mapa-abrir]").length, sextante: area.querySelectorAll("[data-mapa-abrir-sextante]").length };
+        area.querySelector("[data-mapa-abrir]")?.click();
+        area.querySelector("[data-mapa-abrir-sextante]")?.click();
+        return { ...antes, abertos };
+      }, plano);
+    };
+
+    test("restrito com painel: mostra o nome e o código, só \"Abrir\" (o painel) e nenhum \"Abrir no Sextante\"", async () => {
+      const r = await cartaoDoPlano(sessao, { nome: "Plano da Gestão de Riscos", codigo: "PA-GR", restrito: false, painel: "COD", noSextante: false });
+      assert.match(r.texto, /Plano da Gestão de Riscos/);
+      assert.match(r.texto, /com painel público/);
+      assert.doesNotMatch(r.texto, /Só quem participa/);
+      assert.deepEqual([r.abrir, r.sextante], [1, 0]);
+      assert.deepEqual(r.abertos, [["x", ""]]);
+    });
+
+    test("quem participa: \"Abrir\" (o painel) e \"Abrir no Sextante\" lado a lado, cada um com o seu destino", async () => {
+      const r = await cartaoDoPlano(sessao, { nome: "Plano da Gestão de Riscos", restrito: false, painel: "COD", noSextante: true });
+      assert.deepEqual([r.abrir, r.sextante], [1, 1]);
+      assert.match(r.texto, /Abrir no Sextante/);
+      assert.deepEqual(r.abertos, [["x", ""], ["x", "sextante"]]);
+    });
+
+    test("sem painel: só \"Abrir\", como antes", async () => {
+      const r = await cartaoDoPlano(sessao, { nome: "Plano comum", restrito: false });
+      assert.deepEqual([r.abrir, r.sextante], [1, 0]);
+      assert.doesNotMatch(r.texto, /painel público/);
+    });
+  });
+
   describe("acabamento (lote 4)", () => {
     test("códigos no mapa, nunca os nomes (03/11/2026): só os que cabem livres; mais perto, mais códigos; sempre do mesmo tamanho na tela", async () => {
       /* uma tela baixa de celular abre de longe; aproximando, aparecem mais códigos */

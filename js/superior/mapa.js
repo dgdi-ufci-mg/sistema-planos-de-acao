@@ -41,10 +41,10 @@ const criar = (nome, atributos = {}) => {
 
 /**
  * @param {HTMLElement} area  contêiner do mapa (com altura definida pelo CSS)
- * @param {{camadas: object[], itens: object[], planos: object[], estado: {t?: {k: number, x: number, y: number}, selecionado?: string}, aoAbrir?: (no: object) => void,
+ * @param {{camadas: object[], itens: object[], planos: object[], estado: {t?: {k: number, x: number, y: number}, selecionado?: string}, aoAbrir?: (no: object, onde?: string) => void,
  *   ordemPessoal?: Record<string, string[]>, podeOrdenar?: boolean, aoReordenar?: (camada: string, chaves: string[]) => Promise<void>}} contexto
  *   `ordemPessoal`: a ordem da pessoa, camada → chaves; `podeOrdenar`: ela pode arrastar pontos (só com o mouse, no computador); `aoReordenar` recebe a nova ordem de uma camada
- *   `estado` guarda a vista e o ponto selecionado entre um desenho e outro da tela; `aoAbrir` recebe o ponto do cartão
+ *   `estado` guarda a vista e o ponto selecionado entre um desenho e outro da tela; `aoAbrir` recebe o ponto do cartão (e "sextante" no botão "Abrir no Sextante" do plano com painel público)
  *   `folga`: pixels reservados no alto e no pé da área, que ficam sob o título e o menu da tela cheia (o conteúdo não vai para baixo deles)
  *   `semPlanos`: sem a faixa dos Planos de Ação (filtro). Itens e planos podem vir de `filtrarParaOMapa` (js/filtro-do-mapa.js),
  *   com `via`, `esmaecido` e `alerta`: a linha que passa por itens escondidos é tracejada; o ponto fora da vigência com
@@ -437,7 +437,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     nome.textContent = n.completo;
     const tipo = document.createElement("small");
     tipo.className = "tec";
-    tipo.textContent = n.restrito ? "Só quem participa dele vê o nome." : `${faixa.nome}${n.esmaecido ? " · fora da vigência" : ""}`;
+    tipo.textContent = n.restrito ? "Só quem participa dele vê o nome." : `${faixa.nome}${n.painel ? " · com painel público" : ""}${n.esmaecido ? " · fora da vigência" : ""}`;
     cartao.replaceChildren(nome, tipo);
     if (n.alerta) { // por que o ponto está apagado ou tem o sinal
       const alerta = document.createElement("p");
@@ -459,6 +459,14 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
       abrir.dataset.mapaAbrir = "";
       abrir.textContent = "Abrir";
       cartao.append(abrir);
+      if (n.painel && n.noSextante) { // plano com painel público: "Abrir" leva ao painel; quem participa também abre o espaço
+        const sextante = document.createElement("button");
+        sextante.type = "button";
+        sextante.className = "botao";
+        sextante.dataset.mapaAbrirSextante = "";
+        sextante.textContent = "Abrir no Sextante";
+        cartao.append(sextante);
+      }
     }
   }
   /** O cartão fica junto ao ponto (abaixo dele, ou acima se faltar lugar) e nunca sai da área. */
@@ -750,6 +758,7 @@ export function criarVistaMapa(area, { camadas, itens, planos, estado, aoAbrir =
     const botao = e.target.closest("button");
     if (!botao) return;
     if (botao.matches("[data-mapa-abrir]")) { const n = noDe(estado.selecionado); if (n) aoAbrir(n); }
+    else if (botao.matches("[data-mapa-abrir-sextante]")) { const n = noDe(estado.selecionado); if (n) aoAbrir(n, "sextante"); }
     else if (botao.matches("[data-mapa-mais]")) animarPara(zoomEm(meioDaVista(), 1.3));
     else if (botao.matches("[data-mapa-menos]")) animarPara(zoomEm(meioDaVista(), 1 / 1.3));
     else if (botao.matches("[data-mapa-centralizar]")) animarPara(transformacaoInicial(limites()));

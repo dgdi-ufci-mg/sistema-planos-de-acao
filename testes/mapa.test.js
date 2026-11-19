@@ -65,6 +65,19 @@ describe("Mapa: pontos e ligações", () => {
     assert.equal(nosPlanos.find((n) => n.id === "p2").restrito, true);
   });
 
+  it("o Plano de Ação leva ao ponto o código do painel público e se a pessoa pode abrir o espaço (19/11/2026)", () => {
+    const planos = [
+      { id: "p1", nome: "Plano A", superiores: ["prg1"], painel: "COD", noSextante: false },
+      { id: "p2", nome: "Plano B", superiores: ["prg1"] },
+      { id: "p3", nome: "Plano de Ação restrito", superiores: ["prg1"], restrito: true },
+    ];
+    const m = calcularMapa({ camadas: CAMADAS_PADRAO, itens: catalogo(), planos });
+    const no = (id) => m.nos.find((n) => n.id === id);
+    assert.deepEqual([no("p1").painel, no("p1").noSextante, no("p1").restrito], ["COD", false, false]);
+    assert.deepEqual([no("p2").painel, no("p2").noSextante], [null, true], "sem painel: como antes");
+    assert.deepEqual([no("p3").painel, no("p3").noSextante], [null, false]);
+  });
+
   it("o nome comprido ganha reticências no ponto e o nome inteiro continua no ponto", () => {
     assert.equal(rotuloDoPonto("PRG1", "Repositório"), "PRG1 · Repositório");
     assert.equal(rotuloDoPonto("", "Nome"), "Nome");
