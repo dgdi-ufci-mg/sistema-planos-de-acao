@@ -2988,8 +2988,8 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
 .mapa-no { cursor: pointer; }
 .mapa-no:focus, .mapa-no:focus-visible { outline: none; } /* o foco aparece na bolinha, abaixo */
 .mapa-no:focus-visible .mapa-bolinha { stroke-width: 4; }
-/* destaque do caminho aceso (03/11/2026): branco brilhante de noite, anil forte de dia (o âmbar saiu: conflitava com o
-   laranja de Sociedade); o ponto em foco fica maior (raio 8, em js/superior/mapa.js), com a borda da cor oposta */
+/* destaque do caminho aceso: âmbar (--warn), de dia e de noite (19/11/2026, pedido do responsável: o branco e o anil de
+   03/11/2026 tiraram a estética do Mapa); o ponto em foco fica maior (raio 8, em js/superior/mapa.js), com a borda da cor oposta */
 .mapa-no.no-caminho .mapa-bolinha { stroke: var(--mapa-destaque); stroke-width: 2.6; }
 .mapa-no.foco .mapa-bolinha { fill: var(--mapa-destaque); stroke: var(--mapa-borda-da-linha); stroke-width: 2.5; }
 /* o código em seminegrito; o nome do ponto em foco, maior (no tamanho, pela tela) e em negrito, na tinta de maior
@@ -3031,7 +3031,7 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
   --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
   --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
   --mapa-terra-cima: #8CBDE8; --mapa-terra-baixo: #1E3F73; --mapa-solo: #FFFFFF;
-  --mapa-destaque: #24317A;
+  --mapa-destaque: var(--warn);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -3040,7 +3040,7 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
     --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
     --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
     --mapa-terra-cima: #2A6FB3; --mapa-terra-baixo: #03060D; --mapa-solo: #BFE6FF;
-    --mapa-destaque: #FFFFFF;
+    --mapa-destaque: var(--warn);
   }
   :root:not([data-theme="light"]) .mapa-estrela { display: inline; }
 }
@@ -3050,7 +3050,7 @@ td[data-com-escolha]:hover .abrir-escolha, td[data-com-escolha]:focus-within .ab
   --mapa-tinta-clara: #FFFFFF; --mapa-tinta-escura: #0A0F1E;
   --mapa-sobre-ceu: #F4F7FF; --mapa-sombra-do-texto: rgba(3, 5, 11, .7);
   --mapa-terra-cima: #2A6FB3; --mapa-terra-baixo: #03060D; --mapa-solo: #BFE6FF;
-  --mapa-destaque: #FFFFFF;
+  --mapa-destaque: var(--warn);
 }
 :root[data-theme="dark"] .mapa-estrela { display: inline; }
 .mapa-estrela { display: none; fill: #FFFFFF; }

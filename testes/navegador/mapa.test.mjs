@@ -585,7 +585,7 @@ describe("Mapa do Strata", { skip: pular }, () => {
       assert.equal(r.peso, "700");
       assert.ok(r.tamanho > r.tamanhoOutro, "o do ponto em foco é maior");
       assert.equal(r.raio, "8", "o ponto em foco fica maior");
-      assert.equal(r.bolinha, "rgb(36, 49, 122)", `de dia, o destaque é anil (${r.destaque}), e não mais o âmbar`);
+      assert.equal(r.bolinha, "rgb(242, 176, 74)", `o destaque é o âmbar (${r.destaque}), de volta desde 19/11/2026`);
       await p.mouse.move(640, 790);
       await p.waitForSelector(".mapa-svg:not(.com-selecao)");
       assert.ok(await p.evaluate(() => [...document.querySelectorAll(".mapa-no .mapa-nome")].some((e) => e.textContent)), "os códigos voltam");
