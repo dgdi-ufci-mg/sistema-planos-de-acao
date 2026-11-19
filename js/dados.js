@@ -456,7 +456,11 @@ export function criarStore(banco, opcoes = {}) {
   /** O resumo só tem os campos do dicionário (seção 4.13): nada além do que foi combinado vai a público. */
   function conferirResumo(resumo) {
     recusarDesconhecidos(resumo ?? {}, "resumoDoPainel");
-    for (const a of resumo.acoes ?? []) recusarDesconhecidos(a, "acaoDoPainel");
+    for (const a of resumo.acoes ?? []) {
+      recusarDesconhecidos(a, "acaoDoPainel");
+      for (const m of [a.comecaCom, a.terminaCom]) if (m) recusarDesconhecidos(m, "marco");
+    }
+    for (const e of resumo.etapas ?? []) recusarDesconhecidos(e, "etapaDoPainel");
     for (const f of resumo.fases ?? []) recusarDesconhecidos(f, "faseDoPainel");
     for (const e of resumo.entregas ?? []) recusarDesconhecidos(e, "entregaDoPainel");
     if (resumo.aprovacao) recusarDesconhecidos(resumo.aprovacao, "aprovacao");

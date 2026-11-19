@@ -109,12 +109,13 @@ const IMPRESSAO = { nomes: 220, largura: 820, linhas: 18 };
  *   retratos: cabeçalhos dos retratos do espaço (null: ainda carregando); comparar: id do retrato escolhido;
  *   base: datas de cada ação no retrato escolhido; edicao: operações de edição (null: só leitura);
  *   exibir: o que o menu "Exibir" liga e desliga; nomesDe: nomes dos responsáveis da ação;
- *   aoMostrarTodas: desfaz os dois "esconder"; impressao: desenha as páginas para imprimir, sem interação
+ *   aoMostrarTodas: desfaz os dois "esconder"; impressao: desenha as páginas para imprimir, sem interação;
+ *   abreAcoes: false no painel público (18/11/2026), onde tocar numa ação não abre nada, e a ajuda não promete isso
  */
 export function desenharCronograma(alvo, dados) {
   const { espaco, acoes, caminho, cal, hoje, usaFases, identificador, escala, aoMudarEscala,
     retratos = null, comparar = null, base = null, aoComparar = () => {}, edicao = null,
-    exibir = {}, nomesDe = () => [], aoMostrarTodas = () => {}, impressao = false, indicador = null } = dados;
+    exibir = {}, nomesDe = () => [], aoMostrarTodas = () => {}, impressao = false, indicador = null, abreAcoes = true } = dados;
   if (!acoes.length) {
     alvo.innerHTML = `<p class="lista-vazia">Este espaço ainda não tem ações. O cronograma aparece quando houver ações.</p>`;
     return;
@@ -301,7 +302,7 @@ export function desenharCronograma(alvo, dados) {
       </select></label>` : "";
   const ajuda = edicao
     ? `Clique na barra para ajustar o prazo ou arraste a borda direita dela. Arraste a bolinha da ponta até outra ${esc(t)} para ligar as duas. Arraste o nome para mudar a ordem ou a etapa. Duplo clique no nome renomeia; o botão direito abre mais opções.`
-    : "Toque ou clique numa ação para abri-la. No computador, passe o mouse numa barra para ver as datas e as ligações.";
+    : `${abreAcoes ? "Toque ou clique numa ação para abri-la. " : ""}No computador, passe o mouse numa barra para ver as datas e as ligações.`;
   const partes = [ocultas.concluidas ? `${ocultas.concluidas} ${plural(ocultas.concluidas, "concluída", "concluídas")}` : "", ocultas.continuas ? `${ocultas.continuas} ${plural(ocultas.continuas, "contínua", "contínuas")}` : ""].filter(Boolean);
   const avisoOcultas = partes.length ? `<span class="crono-oculto-aviso" data-ocultas>Escondidas: ${partes.join(" e ")}. <button type="button" class="crono-abrir-acao" data-mostrar-todas>Mostrar</button></span>` : "";
 

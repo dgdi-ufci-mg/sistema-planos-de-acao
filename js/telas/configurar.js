@@ -430,7 +430,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
     const caminho = caminhoCritico(lista, cal, { hoje, ...opcoesDoCalculo(espaco) });
     const linhas = montarLinhas(lista, caminho, null, cal, hoje, { prazos: modeloDe(espaco).prazos, espaco });
     const catalogo = tipoDe(espaco) === "planoDeAcao" ? await store.lerCatalogo().catch(() => null) : null;
-    return montarResumo({ espaco, linhas, responsaveis, entregas, programa: programaDoEspaco(espaco, catalogo) });
+    return montarResumo({ espaco, linhas, responsaveis, entregas, programa: programaDoEspaco(espaco, catalogo), caminho, cal });
   }
   function painelHtml() {
     const c = configuracaoDoPainel(espaco);
@@ -465,7 +465,7 @@ export async function abrirConfiguracao({ store, espacoId, aoExcluirEspaco = () 
   async function desenharPrevia() {
     const alvo = corpo.querySelector("[data-previa-do-painel]");
     if (!alvo) return;
-    alvo.innerHTML = previaDoPainel ? `<div class="pp-previa" aria-label="Prévia do painel público">${htmlDoPainel({ resumo: await resumoAgora(), atualizadoEm: null }, { abertos: new Set(["fases", "entregas", "acoes"]) })}</div>` : "";
+    alvo.innerHTML = previaDoPainel ? `<div class="pp-previa" aria-label="Prévia do painel público">${htmlDoPainel({ resumo: await resumoAgora(), atualizadoEm: null }, { abertos: new Set(["fases", "entregas", "acoes"]), previa: true })}</div>` : "";
   }
   async function gravarPainel(operacao, mensagem) {
     try {

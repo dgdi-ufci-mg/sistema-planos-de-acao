@@ -60,4 +60,79 @@ describe("Painel público", { skip: pular }, () => {
     assert.equal(await p.locator(".pp-selo").textContent(), "Painel público · somente leitura");
     assert.deepEqual(p.erros, []);
   });
+
+  /*
+   * Parte 2 (18/11/2026): as visões "No tempo" e "Em rede". Sem banco, a página não tem painel; por isso o teste troca a
+   * partida da página (js/painel.js) por uma que monta um resumo de verdade, com as mesmas regras do Sextante, e o
+   * entrega por um Store falso.
+   */
+  const PARTIDA = `
+    import { criarCalendario } from "./calendario.js";
+    import { caminhoCritico } from "./calculo.js";
+    import { montarLinhas } from "./lista.js";
+    import { montarResumo } from "./painel-publico.js";
+    import { mostrarPainelPublico } from "./telas/painel-publico.js";
+    const hoje = new Date().toLocaleDateString("sv-SE");
+    const espaco = { id: "e1", nome: "Plano de teste", tipo: "projeto", inicio: hoje, prazoFinal: null,
+      estrutura: [{ id: "f1", nome: "Preparação", etapas: [{ id: "t1", nome: "Comitê" }] }, { id: "f2", nome: "Execução", etapas: [{ id: "t2", nome: "Áreas" }] }],
+      painelPublico: { ligado: true, codigo: "A".repeat(20), apresentacao: "", mostrarNomes: true } };
+    const est = (o, m, p) => [{ em: hoje, o, m, p, contaDe: "liberacao" }];
+    const acoes = [
+      { numero: 1, rotulo: "Instituir o comitê", ordem: 1, etapa: "t1", dependeDe: [], responsaveis: ["r1"], estimativas: est(2, 3, 5) },
+      { numero: 2, rotulo: "Mapear os riscos", ordem: 2, etapa: "t2", dependeDe: [1], responsaveis: ["r1"], estimativas: est(3, 5, 8) },
+      { numero: 3, rotulo: "Ouvir as áreas", ordem: 3, etapa: "t2", dependeDe: [1], responsaveis: [], estimativas: est(1, 2, 3) },
+      { numero: 4, rotulo: "Consolidar a matriz", ordem: 4, etapa: "t2", dependeDe: [2, 3], responsaveis: [], estimativas: est(2, 2, 2) },
+    ];
+    const cal = criarCalendario(espaco, hoje);
+    const caminho = caminhoCritico(acoes, cal, { hoje });
+    const linhas = montarLinhas(acoes, caminho, null, cal, hoje, { espaco });
+    const resumo = montarResumo({ espaco, linhas, responsaveis: [{ id: "r1", tipo: "pessoa", nome: "Ana Ribeiro", setor: "Governança" }], caminho, cal });
+    const store = { lerPainelPublico: async () => ({ ligado: true, resumo, atualizadoEm: new Date().toISOString() }) };
+    mostrarPainelPublico(document.getElementById("painel"), { store, codigo: "A".repeat(20) });`;
+  const comResumo = async (contexto) => {
+    await contexto.route("**/js/painel.js", (r) => r.fulfill({ contentType: "text/javascript", body: PARTIDA }));
+  };
+
+  for (const largura of [1280, 390]) {
+    test(`"Ver as ações de outro jeito" abre No tempo e Em rede, e Voltar leva ao painel (${largura} px)`, async () => {
+      const p = await sessao.abrir({ largura, exemplo: false, caminho: `painel/?p=${"A".repeat(20)}`, aguardar: ".pp-visoes", rotas: comResumo });
+      const botoes = p.locator(".pp-visoes-botoes a");
+      assert.deepEqual(await botoes.allTextContents(), ["No tempo", "Em rede"]);
+      /* No tempo: o Cronograma do Sextante, sem edição, com as quatro ações e as ligações */
+      await botoes.first().click();
+      await p.waitForSelector(".crono");
+      await assentar(p, 500);
+      assert.match(p.url(), /#no-tempo$/);
+      assert.equal(await p.locator(".crono .crono-barra-acao").count(), 4);
+      assert.equal(await p.locator(".crono .crono-seta").count(), 4);
+      assert.equal(await p.locator(".crono.editavel, .crono-borda, .crono-alca").count(), 0, "sem edição");
+      assert.equal(await p.locator(".crono-quem").first().textContent(), "Ana Ribeiro · Governança");
+      /* Voltar do navegador: o painel de novo */
+      await p.goBack();
+      await p.waitForSelector(".pp-visoes");
+      /* Em rede: a Rede do Sextante, sem edição, com as cercas das etapas */
+      await p.locator('.pp-visoes-botoes a:has-text("Em rede")').click();
+      await p.waitForSelector(".rede .rede-no");
+      await assentar(p, 600);
+      assert.equal(await p.locator(".rede .rede-no").count(), 4);
+      assert.equal(await p.locator(".rede-editavel, .rede-mais, .rede-alca, .rede-inserir").count(), 0, "sem edição");
+      assert.equal(await p.locator(".rede-cerca").count(), 2);
+      assert.ok(await p.locator(".rede-no.critica").count() > 0, "cores pela folga");
+      if (largura <= 640) {
+        const larguraDaPagina = await p.evaluate(() => document.documentElement.scrollWidth);
+        assert.ok(larguraDaPagina <= largura + 1, "sem rolagem lateral no celular");
+      }
+      /* o "o que é?" da legenda abre a explicação, e não a Ajuda do Sextante */
+      if (largura > 640) {
+        await p.locator('.rede-legenda [data-termo="folga"]').click();
+        await p.waitForSelector("dialog.pp-termo[open]");
+        await p.locator("dialog.pp-termo button").click();
+      }
+      await p.locator("[data-voltar-painel]").click();
+      await p.waitForSelector(".pp-visoes");
+      assert.doesNotMatch(p.url(), /#em-rede/);
+      assert.deepEqual(p.erros, []);
+    });
+  }
 });
+

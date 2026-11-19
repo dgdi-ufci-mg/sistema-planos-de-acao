@@ -11,6 +11,8 @@
 import { nomeDoFluxo } from "./situacoes.js";
 import { entregasAtivas, SITUACOES_DA_ENTREGA } from "./entregas.js";
 import { tipoDe, ehDeTarefas } from "./tipos.js";
+import { usaEstimativas, usaDependencias } from "./modelos.js";
+import { ehContinua } from "./calculo.js";
 
 /** Limite da apresentação para o público, em caracteres (decisão do responsável, 18/11/2026). */
 export const TAMANHO_DA_APRESENTACAO = 400;
@@ -84,17 +86,47 @@ export function responsaveisParaOPublico(ids, pessoas, mostrarNomes) {
  * Monta o resumo público a partir do que o Sextante já calculou na tela (linhas da lista, js/lista.js).
  * O resultado tem só textos, números e datas, e nada que permita voltar ao espaço.
  *
- * @param {{espaco: object, linhas: object[], responsaveis: object[], entregas?: object[]|null, programa?: string}} dados
+ * Parte 2 (18/11/2026): com o caminho crítico e o calendário, o resumo leva também o que as duas visões só de leitura
+ * precisam ("No tempo", o Cronograma, e "Em rede", a Rede): as visões que o espaço usa (`visoes`), as etapas e, por
+ * ação, a etapa, as ligações, o início previsto, a liberação e a conclusão em dias úteis, a folga e os marcos da contínua. Sem eles
+ * (ou num espaço sem estimativas nem dependências), as visões não aparecem no painel.
+ *
+ * @param {{espaco: object, linhas: object[], responsaveis: object[], entregas?: object[]|null, programa?: string,
+ *   caminho?: {porAcao: Map}|null, cal?: object|null}} dados
  *   linhas: as de montarLinhas, já na ordem do espaço; entregas: as do Plano de Ação (null: não lidas ainda);
- *   programa: o texto do Programa do PEI/PDI (js/estrategia.js, programaDoEspaco)
+ *   programa: o texto do Programa do PEI/PDI (js/estrategia.js, programaDoEspaco);
+ *   caminho e cal: o caminho crítico (js/calculo.js) e o calendário do espaço, os mesmos da tela
  * @returns {object} resumoDoPainel (dicionário de dados, seção 4.13)
  */
-export function montarResumo({ espaco, linhas, responsaveis, entregas = null, programa = "" }) {
+export function montarResumo({ espaco, linhas, responsaveis, entregas = null, programa = "", caminho = null, cal = null }) {
   const config = configuracaoDoPainel(espaco);
   const pessoas = new Map(responsaveis.map((r) => [r.id, r]));
   const faseDaEtapa = new Map((espaco.estrutura ?? []).flatMap((f) => f.etapas.map((e) => [e.id, f.id])));
   const usaFases = espaco.camposOpcionais?.fasesEtapas !== false && Boolean(espaco.estrutura?.length);
   const ehPlano = tipoDe(espaco) === "planoDeAcao";
+  /* visões só de leitura (parte 2): as mesmas regras do seletor do Sextante (js/telas/espaco.js, modos) */
+  const visoes = caminho && cal ? [usaEstimativas(espaco) ? "tempo" : null, usaDependencias(espaco) ? "rede" : null].filter(Boolean) : [];
+  const numeros = new Set(linhas.map((l) => l.acao.numero));
+  /** Dados de cada ação para as visões; só com alguma visão. */
+  const paraAsVisoes = (l) => {
+    if (!visoes.length) return {};
+    const c = caminho.porAcao.get(l.acao.numero);
+    const continua = ehContinua(l.acao);
+    const marco = (m) => (m ? { tipo: m.tipo, ...(m.id != null ? { id: m.id } : {}), ...(m.numero != null ? { numero: m.numero } : {}) } : null);
+    return {
+      etapa: usaFases ? l.acao.etapa ?? null : null,
+      dependeDe: continua ? [] : [...new Set(l.acao.dependeDe ?? [])].filter((n) => numeros.has(n) && n !== l.acao.numero),
+      inicio: cal.data(c.liberacao),
+      /* dias úteis contados do primeiro dia útil do espaço (seção 5.1), com fração: a Rede compara a conclusão de uma ação
+         com a liberação da seguinte para pintar a seta sem folga */
+      liberacao: c.liberacao,
+      conclusao: c.conclusao,
+      critica: Boolean(c.critica),
+      folga: c.folga == null ? null : Math.max(0, Math.round(c.folga)),
+      comecaCom: continua ? marco(l.acao.comecaCom) : null,
+      terminaCom: continua ? marco(l.acao.terminaCom) : null,
+    };
+  };
 
   const acoes = linhas.map((l) => {
     const situacao = situacaoDaLinha(l);
@@ -106,6 +138,7 @@ export function montarResumo({ espaco, linhas, responsaveis, entregas = null, pr
       rotulo: situacao === "atrasada" ? "Atrasada" : situacao === "continua" ? "Contínua" : nomeDoFluxo(espaco, l.fluxo),
       data: l.conclusao ?? null,
       responsaveis: responsaveisParaOPublico(l.acao.responsaveis ?? [], pessoas, config.mostrarNomes),
+      ...paraAsVisoes(l),
     };
   });
 
@@ -142,7 +175,54 @@ export function montarResumo({ espaco, linhas, responsaveis, entregas = null, pr
     acoes,
     fases,
     entregas: lista,
+    visoes,
+    /* etapas, na ordem do espaço, para as cercas da Rede e os grupos do Cronograma (só com visões e fases) */
+    etapas: visoes.length && usaFases ? (espaco.estrutura ?? []).flatMap((f) => (f.etapas ?? []).map((e) => ({ id: e.id, nome: e.nome, fase: f.id }))) : [],
   };
+}
+
+/**
+ * Peças que as telas do Cronograma e da Rede (js/telas/cronograma.js e js/telas/rede.js) recebem no Sextante, refeitas
+ * a partir do resumo público, para as duas visões só de leitura do painel (parte 2, 18/11/2026). O painel não tem o
+ * calendário do espaço: as datas já vêm calculadas no resumo. O calendário daqui só devolve essas datas: para a
+ * liberação de uma ação, o início dela; para a conclusão e a liberação, a data prevista (ou registrada) de conclusão.
+ * Como liberação e conclusão são as do Sextante, a mesma conta dá a mesma data, e as barras, as setas e as cores ficam
+ * iguais às da equipe ao gravar.
+ * @param {object} resumo resumoDoPainel
+ * @returns {{acoes: object[], caminho: {porAcao: Map}, cal: {data: Function, dataDeConclusao: Function}, linhas: object[],
+ *   estrutura: object[], usaFases: boolean}}
+ */
+export function pecasDasVisoes(resumo) {
+  const lista = resumo.acoes ?? [];
+  const etapas = resumo.etapas ?? [];
+  const estrutura = (resumo.fases ?? []).map((f) => ({ id: f.id, nome: f.nome, etapas: etapas.filter((e) => e.fase === f.id).map((e) => ({ id: e.id, nome: e.nome })) }))
+    .filter((f) => f.etapas.length);
+  const inicioDe = new Map();
+  const fimDe = new Map();
+  const porAcao = new Map();
+  const fins = [];
+  const acoes = lista.map((a, i) => {
+    const concluida = a.situacao === "concluida";
+    const fim = a.data ?? null;
+    fins[i] = fim;
+    const liberacao = a.liberacao ?? 0;
+    const conclusao = a.conclusao ?? liberacao;
+    inicioDe.set(liberacao, a.inicio ?? null);
+    if (!concluida) fimDe.set(`${conclusao}|${liberacao}`, fim); // a concluída usa a data registrada (concluidaEm)
+    /* atrasada e contínua são carimbos sobre uma ação liberada (seção 6.2 e 5.9); o painel guarda só a situação simplificada */
+    const situacao = concluida ? "concluida" : a.situacao === "naoLiberada" ? "naoLiberada" : "liberada";
+    porAcao.set(a.numero, { liberacao, conclusao, critica: Boolean(a.critica), folga: a.folga ?? null, situacao,
+      atrasada: a.situacao === "atrasada", continua: a.situacao === "continua" || Boolean(a.comecaCom && a.terminaCom) });
+    return { numero: a.numero, rotulo: a.nome, etapa: a.etapa ?? null, dependeDe: a.dependeDe ?? [], responsaveis: a.responsaveis ?? [],
+      concluidaEm: concluida ? a.data : null, ...(a.comecaCom && a.terminaCom ? { comecaCom: a.comecaCom, terminaCom: a.terminaCom } : {}) };
+  });
+  const cal = { data: (i) => inicioDe.get(i) ?? null, dataDeConclusao: (c, i) => fimDe.get(`${c}|${i}`) ?? null };
+  const linhas = lista.map((a, i) => {
+    const c = porAcao.get(a.numero);
+    return { acao: acoes[i], situacao: c.situacao, publica: a.situacao, fluxo: null, rotulo: a.rotulo, atrasada: c.atrasada, conclusao: fins[i], continua: c.continua,
+      semEstimativa: !c.continua && c.situacao !== "concluida" && !(c.conclusao > c.liberacao), execucao: null, podeEncerrar: false };
+  });
+  return { acoes, caminho: { porAcao }, cal, linhas, estrutura, usaFases: estrutura.length > 0 };
 }
 
 /** Números do alto do painel, a partir do resumo (a página e os testes usam a mesma conta). */
