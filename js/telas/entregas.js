@@ -1,5 +1,5 @@
 /**
- * Visualização "Entregas" do Plano de Ação (passo 2.6, parte 2; documentação técnica, seções 4.12, 8 e 16.7):
+ * Visualização "Principais entregas" do Plano de Ação (passo 2.6, parte 2; documentação técnica, seções 4.12, 8 e 16.7):
  * a lista das entregas, cada uma com a situação e o alcance em barra, e o painel de cada entrega, com o
  * registro do alcance (com evidências), a mudança de situação, a edição e o histórico.
  * Só o administrador do espaço altera; os demais consultam.
@@ -70,12 +70,13 @@ export function criarTelaDeEntregas({ store, espacoId, hoje, aoMudar, aoAbrirAca
     const conta = Object.keys(SITUACOES_DA_ENTREGA).map((s) => [s, lista.filter((e) => (e.situacao ?? SITUACAO_INICIAL) === s).length]).filter(([, n]) => n);
     alvo.innerHTML = `<section class="entregas">
       <div class="entregas-cabeca">
-        <p class="tec">Os resultados do Plano de Ação que importam para o PEI/PDI. ${pode() ? "Abra uma entrega para registrar o alcance, com evidência, ou mudar a situação." : "Só o administrador do espaço registra o alcance e muda a situação."}</p>
+        <p class="tec">Os principais resultados do Plano de Ação, os que importam para o PEI/PDI. Para saber se algo é uma entrega principal, pergunte: isso continua gerando valor depois que o plano termina? Se não, é um passo intermediário e fica na ação. ${pode() ? "Abra uma entrega para registrar o alcance, com evidência, ou mudar a situação." : "Só o administrador do espaço registra o alcance e muda a situação."}</p>
       </div>
       ${conta.length ? `<p class="entregas-resumo">${conta.map(([s, n]) => `<span class="entregas-conta">${seloDaSituacao(s)} <b>${n}</b></span>`).join("")}</p>` : ""}
       ${lista.length ? `<div class="lista-entregas">${lista.map(cartaoHtml).join("")}</div>`
         : `<div class="entregas-vazio"><p><b>Este Plano de Ação ainda não tem entregas.</b> Ele fica como rascunho até ter pelo menos uma.</p>
-            <p class="tec">Uma entrega é um resultado do plano como um todo, com meta: percentual (como “95% dos pedidos atendidos em 24 horas”), quantitativa (“10 Procedimentos-Padrão publicados”) ou entrega padrão, feita ou não (“Relatório homologado”).</p></div>`}
+            <p class="tec">Uma entrega principal é um resultado do plano como um todo, que continua gerando valor depois que ele termina. Exemplo: “Política de Gestão de Riscos aprovada” é uma entrega principal; “Minuta enviada para revisão” é um passo para chegar a ela e fica na ação.</p>
+            <p class="tec">Toda entrega tem meta: percentual (como “95% dos pedidos atendidos em 24 horas”), quantitativa (“10 Procedimentos-Padrão publicados”) ou entrega padrão, feita ou não (“Relatório homologado”).</p></div>`}
     </section>`;
     redesenharPainel?.();
   }

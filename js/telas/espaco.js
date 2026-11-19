@@ -377,7 +377,7 @@ export function mostrarEspaco(alvo, { store, espacoId, hoje, usuario = null, bar
     ["planilha", "Planilha", "modoPlanilha", "so-computador"],
     ["linha", "Linha do tempo", "modoLinha", ""], /* também no celular desde 25/10/2026 (item 2 da avaliação de celular) */
     ["responsaveis", "Responsáveis", "modoResponsaveis", ""], /* quem tem quantas ações ao mesmo tempo (seção 5.10) */
-    ["entregas", "Entregas", "modoEntregas", ""]];
+    ["entregas", "Principais entregas", "modoEntregas", ""]] /* só as que geram valor depois do plano (19/11/2026) */;
   /**
    * Visualizações que o modelo do espaço permite (passo 2.4b): a rede pede dependências; o
    * cronograma, estimativas; a linha do tempo, simulação. Lista, quadro e planilha valem sempre.
