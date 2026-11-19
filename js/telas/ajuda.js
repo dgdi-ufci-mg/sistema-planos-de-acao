@@ -9,7 +9,7 @@ import { NOME, INSTITUICAO } from "../identidade.js";
 import { logotipoSvg } from "../marca.js";
 import { mostrarAtalhos } from "./atalhos.js";
 
-const CLASSE_DO_ICONE = { concluida: "icone-concluida", liberada: "icone-liberada", naoLiberada: "icone-nao-liberada", atrasada: "icone-atrasada" };
+const CLASSE_DO_ICONE = { concluida: "icone-concluida", liberada: "icone-liberada", naoLiberada: "icone-nao-liberada", atrasada: "icone-atrasada", prazoVencido: "icone-atrasada", emRisco: "icone-risco" };
 
 /** @param {{foco?: string, aoVerExemplo: () => void}} opcoes */
 export function mostrarAjuda({ foco, aoVerExemplo }) {

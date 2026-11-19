@@ -37,6 +37,7 @@ export function criarBancoLocal() {
   /** Estratégia (passo 2.5): o modelo (camadas) e as coleções do catálogo, comuns a todos os espaços. */
   let modeloEstrategia = null;
   const preferenciasDoMapa = new Map(); // e-mail → preferência pessoal do Mapa (lote 6)
+  const preferenciasDoMeuTrabalho = new Map(); // e-mail → ordem pessoal de "Meu trabalho" (19/11/2026)
   const paineis = new Map(); // código do endereço → painel público (18/11/2026; seção 4.13)
   const colecoes = { instrumentos: new Map(), itensEstrategicos: new Map() };
   const colecao = (nome) => {
@@ -367,6 +368,14 @@ export function criarBancoLocal() {
     },
     async apagarPreferenciaDoMapa(email) {
       preferenciasDoMapa.delete(email);
+    },
+
+    // --- ordem pessoal de "Meu trabalho" (19/11/2026; seção 4.11.6) ---
+    async lerPreferenciaDoMeuTrabalho(email) {
+      return preferenciasDoMeuTrabalho.has(email) ? copia(preferenciasDoMeuTrabalho.get(email)) : null;
+    },
+    async gravarPreferenciaDoMeuTrabalho(email, dados) {
+      preferenciasDoMeuTrabalho.set(email, copia(dados));
     },
 
     // --- painel público (18/11/2026; seção 4.13): código do endereço → cópia-resumo ---

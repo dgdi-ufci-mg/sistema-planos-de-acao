@@ -29,6 +29,8 @@ export const CAMPOS = Object.freeze({
   usuario: ["email", "nome", "cadastradoEm", "cadastradoPor"],
   /** Preferência pessoal do Mapa do Strata (lote 6, 29/10/2026): usuarios/{e-mail}/preferencias/mapa; ordem de cada camada, da esquerda para a direita. */
   preferenciaMapa: ["ordem", "alteradoEm"],
+  /** Ordem pessoal de "Meu trabalho" (19/11/2026): usuarios/{e-mail}/preferencias/meuTrabalho; chaves "espaço:número", de cima para baixo. */
+  preferenciaMeuTrabalho: ["ordem", "alteradoEm"],
   /** Estratégia (passo 2.5): modelo do catálogo, documento sistema/estrategia. */
   modeloEstrategia: ["camadas", "alteradoEm", "alteradoPor"],
   camada: ["id", "nome", "plural", "opcional"],

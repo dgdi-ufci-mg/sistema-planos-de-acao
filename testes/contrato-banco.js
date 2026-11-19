@@ -122,6 +122,17 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await banco.apagarPreferenciaDoMapa("ana@x.br"); // apagar de novo não dá erro
     });
 
+    it("ordem pessoal de Meu trabalho: por e-mail, uma não enxerga a outra (19/11/2026)", async () => {
+      const banco = criarBanco();
+      assert.equal(await banco.lerPreferenciaDoMeuTrabalho("ana@x.br"), null);
+      await banco.gravarPreferenciaDoMeuTrabalho("ana@x.br", { ordem: ["e1:2", "e1:1"], alteradoEm: "2026-11-19T10:00:00.000Z" });
+      await banco.gravarPreferenciaDoMeuTrabalho("beto@x.br", { ordem: ["e2:1"], alteradoEm: "2026-11-19T10:01:00.000Z" });
+      assert.deepEqual((await banco.lerPreferenciaDoMeuTrabalho("ana@x.br")).ordem, ["e1:2", "e1:1"]);
+      assert.deepEqual((await banco.lerPreferenciaDoMeuTrabalho("beto@x.br")).ordem, ["e2:1"]);
+      await banco.gravarPreferenciaDoMeuTrabalho("ana@x.br", { ordem: ["e1:1"], alteradoEm: "2026-11-19T10:02:00.000Z" });
+      assert.deepEqual((await banco.lerPreferenciaDoMeuTrabalho("ana@x.br")).ordem, ["e1:1"], "gravar de novo substitui");
+    });
+
     it("painel público: lido pelo código; gravar de novo substitui; a cópia não muda por fora (18/11/2026)", async () => {
       const banco = criarBanco();
       assert.equal(await banco.lerPainelPublico("Abc"), null);

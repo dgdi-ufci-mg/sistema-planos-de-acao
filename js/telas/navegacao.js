@@ -4,7 +4,7 @@
  * - No computador, com a barra recolhida: o botão de painel no canto esquerdo da barra do topo abre a barra
  *   (revisto em 26/10/2026, decisão do responsável: o puxador na borda esquerda, de 23/10, saiu), e Ctrl+B (⌘B)
  *   abre e recolhe.
- * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar", "Buscar", "Novo espaço" e "Minhas tarefas" (só com
+ * - Menu lateral: no alto, quem entrou (trocar senha, sair) ou "Entrar", "Buscar", "Novo espaço" e "Meu trabalho" (só com
  *   login, 05/11/2026)
  *   (29/10/2026, decisão do responsável: sempre à vista, sem depender do tamanho da lista); no meio, os espaços,
  *   cada um com a engrenagem de "Configurar este espaço"; no pé (24/10/2026, avaliação de
@@ -209,15 +209,15 @@ function ligar() {
 }
 
 /**
- * "Minhas tarefas" (05/11/2026, pedido do responsável): entre "Novo espaço" e a lista de espaços, só para quem entrou
+ * "Meu trabalho" (antes "Minhas tarefas"; 05/11/2026, pedido do responsável; nome de 19/11/2026): entre "Novo espaço" e a lista de espaços, só para quem entrou
  * ("Novo espaço" continua logo abaixo de "Buscar", decisão de 29/10/2026). O número ao lado
  * conta as atrasadas e as de hoje (vazio enquanto não foi contado, e sem número quando é zero). Na tela de Minhas
  * tarefas, o item fica marcado como a página atual, como o espaço aberto.
  * @param {{minhasAtual?: boolean, nMinhas?: number|null}} opcoes
  */
 function minhasHtml({ minhasAtual = false, nMinhas = null }) {
-  const n = nMinhas ? `<span class="n" title="Atrasadas e de hoje">${nMinhas}</span>` : "";
-  return `<button type="button" class="lateral-acao lateral-minhas${minhasAtual ? " atual" : ""}" data-item="minhasTarefas"${minhasAtual ? ' aria-current="page"' : ""}>${ICONES.concluida}Minhas tarefas${n}</button>`;
+  const n = nMinhas ? `<span class="n" title="Com aviso e de hoje">${nMinhas}</span>` : "";
+  return `<button type="button" class="lateral-acao lateral-minhas${minhasAtual ? " atual" : ""}" data-item="minhasTarefas"${minhasAtual ? ' aria-current="page"' : ""}>${ICONES.concluida}Meu trabalho${n}</button>`;
 }
 
 /**
