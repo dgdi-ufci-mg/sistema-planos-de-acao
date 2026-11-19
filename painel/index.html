@@ -12,6 +12,26 @@
 <link rel="icon" type="image/svg+xml" href="marca/ufcimg-simbolo.svg">
 <!-- a barra do navegador no celular acompanha o cabeçalho, marinho da marca nos dois modos -->
 <meta name="theme-color" content="#142C46">
+<!-- Dentro do Strata (painel/?p=<código>&em=strata, 19/11/2026, pedido do responsável): o painel abre numa janela do
+     Strata, sem o cabeçalho e o rodapé da UFCIMG, com as cores, a fonte e o tema claro ou escuro escolhidos no Strata
+     (a mesma chave e o mesmo padrão de js/tema-inicial.js). Antes do primeiro desenho, para não piscar. -->
+<script>
+(function () {
+  if (new URLSearchParams(location.search).get("em") !== "strata") return;
+  var raiz = document.documentElement;
+  raiz.classList.add("strata", "pp-no-strata");
+  raiz.removeAttribute("data-paleta");
+  var fontes = document.createElement("link"); // as fontes do Strata (o mesmo endereço de strata/index.html, já guardado pelo navegador)
+  fontes.rel = "stylesheet";
+  fontes.href = "https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600;700&display=swap";
+  document.head.append(fontes);
+  var tema = null;
+  try { tema = localStorage.getItem("strata.tema"); } catch (e) { /* sem armazenamento: fica o padrão */ }
+  if (tema !== "automatico" && tema !== "claro" && tema !== "escuro") tema = "escuro";
+  if (tema === "claro") raiz.dataset.theme = "light";
+  else if (tema === "escuro") raiz.dataset.theme = "dark";
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">

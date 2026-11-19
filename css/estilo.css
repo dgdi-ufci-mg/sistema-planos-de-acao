@@ -987,6 +987,13 @@ body.sem-criar-acao [data-nova] { display: none !important; } /* só o administr
 @media (max-width: 640px) {
   .camada.janela .painel { max-height: 94%; }
 }
+/* painel público do Plano de Ação dentro do Strata (19/11/2026): janela grande, com o painel num quadro que a preenche */
+.camada.janela.strata-janela-painel .painel { height: 94%; overflow: hidden; }
+@media (min-width: 641px) {
+  .camada.janela.strata-janela-painel .painel { width: min(1040px, calc(100% - 48px)); height: min(90vh, 960px); }
+}
+.camada.janela.strata-janela-painel .painel-corpo { padding: 0; overflow: hidden; flex: 1; min-height: 0; display: flex; }
+.strata-quadro-painel { flex: 1; width: 100%; min-height: 0; border: 0; background: var(--bg); }
 .camada.janela .painel header h2 { font-family: var(--f-texto); font-size: .9rem; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 /* fora do espaço (Minhas tarefas, 18/11/2026): o nome do espaço no cabeçalho é um link que abre o espaço */
 .janela-espaco { font: inherit; color: var(--accent-ink); background: none; border: 0; padding: 0; cursor: pointer; max-width: 100%;
@@ -3938,6 +3945,9 @@ body.painel-publico { padding: 0; display: flex; flex-direction: column; min-hei
   --f-titulo: "Metropolis", system-ui, -apple-system, "Segoe UI", sans-serif; --f-texto: "Metropolis", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-family: var(--f-texto); }
 body.painel-publico .pp-conteudo { flex: 1 0 auto; width: 100%; }
+/* painel dentro da janela do Strata (19/11/2026): sem cabeçalho e rodapé da marca, com a fonte e as cores do Strata */
+.pp-no-strata .pp-topo, .pp-no-strata .pp-fim { display: none; }
+.pp-no-strata body.painel-publico { --f-titulo: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif; --f-texto: "Source Sans 3", system-ui, -apple-system, "Segoe UI", sans-serif; min-height: 0; }
 .pp-topo, .pp-fim { background: var(--marca-marinho); color: var(--marca-texto); }
 .pp-topo { border-bottom: 5px solid var(--marca-verde); }
 .pp-fim { border-top: 5px solid var(--marca-verde); }

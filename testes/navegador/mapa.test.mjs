@@ -478,6 +478,47 @@ describe("Mapa do Strata", { skip: pular }, () => {
     });
   });
 
+  describe("Plano de Ação com painel público: a janela dentro do Strata (19/11/2026)", () => {
+    /* o catálogo de exemplo ganha um Plano de Ação ligado a um Programa, com o painel ligado */
+    const comPlano = async (contexto) => {
+      await contexto.route("**/js/superior/exemplo.js", async (r) => {
+        const original = await (await r.fetch()).text();
+        const corpo = original.replace('await item("programa", "PRG3", "Programa Vitrine Tecnológica", null, [pol2]); // sem Portfólio',
+          `const prg3 = await item("programa", "PRG3", "Programa Vitrine Tecnológica", null, [pol2]);
+          const plano = await store.criarEspaco({ nome: "Plano da Vitrine", tipo: "planoDeAcao", vinculos: [prg3], codigo: "PA-VT", aprovacao: { identificacao: "Resolução 1/2026" } });
+          await store.configurarPainelPublico(plano, { ligado: true });`);
+        await r.fulfill({ contentType: "text/javascript", body: corpo });
+      });
+    };
+    for (const [nome, o] of [["computador", { largura: 1280, altura: 800 }], ["celular (390 px)", { largura: 390, altura: 800 }]]) {
+      test(`"Abrir" abre o painel numa janela por cima do Mapa, sem sair do Strata; fechar volta ao Mapa (${nome})`, async () => {
+        const p = await sessao.abrir({ ...o, ...ABRIR, rotas: comPlano });
+        const endereco = p.url();
+        await p.evaluate(() => document.querySelector('[data-no^="plano:"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+        await p.waitForSelector("[data-mapa-abrir]");
+        assert.match(await p.locator("[data-mapa-cartao]").innerText(), /com painel público/);
+        await p.click("[data-mapa-abrir]");
+        await p.waitForSelector(".camada.aberta.strata-janela-painel iframe");
+        const quadro = p.locator(".strata-janela-painel iframe");
+        assert.match(await quadro.getAttribute("src"), /^\.\.\/painel\/\?p=[A-Za-z0-9]{20}&em=strata$/);
+        assert.equal(p.url(), endereco, "a página continua no Strata");
+        assert.match(await p.locator(".strata-janela-painel header h2").textContent(), /PA-VT · Plano da Vitrine/);
+        const caixa = await p.locator(".strata-janela-painel .painel").boundingBox();
+        const dentro = await quadro.boundingBox();
+        assert.ok(dentro.height > caixa.height * 0.8, "o quadro preenche a janela");
+        if (o.largura > 640) assert.ok(Math.abs(caixa.x + caixa.width / 2 - o.largura / 2) < 2, "janela centralizada");
+        /* no exemplo, sem banco, o painel avisa que não foi encontrado, já no modo do Strata */
+        const f = p.frameLocator(".strata-janela-painel iframe");
+        await f.locator(".pp-mensagem").waitFor();
+        assert.equal(await f.locator(".pp-topo").isVisible(), false);
+        await p.click(".strata-janela-painel [data-fechar].botao");
+        await p.waitForSelector(".strata-janela-painel", { state: "detached" });
+        assert.equal(await p.locator('[data-no^="plano:"].selecionado, [data-no^="plano:"][aria-pressed="true"]').count() + await p.locator("[data-mapa-abrir]").count() > 0, true, "o Mapa continua com o plano selecionado");
+        assert.deepEqual(p.erros, []);
+      });
+    }
+  });
+
   describe("acabamento (lote 4)", () => {
     test("códigos no mapa, nunca os nomes (03/11/2026): só os que cabem livres; mais perto, mais códigos; sempre do mesmo tamanho na tela", async () => {
       /* uma tela baixa de celular abre de longe; aproximando, aparecem mais códigos */

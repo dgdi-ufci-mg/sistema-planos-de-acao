@@ -323,11 +323,24 @@ export function mostrarSuperior(alvo, { store, hoje, conta = null, comandos = nu
   /* ---------- mapa ---------- */
   /** Planos de Ação do mapa: os ligados a itens; o restrito sem painel público entra sem o nome nem o código (`planoParaOMapa`). */
   const planosDoMapa = () => planos.map((e) => planoParaOMapa(e, store.podeVerEspaco(e)));
-  /** "Abrir" do cartão do Mapa: o painel do item; do Plano de Ação, o painel público ou o espaço (`destinoDoPlanoNoMapa`). */
+  /**
+   * "Abrir" do cartão do Mapa: o painel do item; do Plano de Ação, o painel público numa janela por cima do Mapa
+   * (o Mapa fica como estava, e a pessoa não sai do Strata) ou o espaço no Sextante (`destinoDoPlanoNoMapa`).
+   */
   function abrirDoMapa(no, onde = "") {
     if (no.tipo === "item") return abrirItem(no.id);
     const destino = destinoDoPlanoNoMapa(no, onde);
-    if (destino) location.assign(destino);
+    if (destino?.janela) abrirPainelDoPlano(no, destino.janela);
+    else if (destino?.ir) location.assign(destino.ir);
+  }
+  /** O painel público do Plano de Ação numa janela centralizada, num quadro (o painel no modo do Strata). */
+  function abrirPainelDoPlano(no, endereco) {
+    const corpo = abrirPainel(esc(no.completo ?? no.nome), "", { janela: true, classe: "strata-janela-painel" });
+    const quadro = document.createElement("iframe");
+    quadro.className = "strata-quadro-painel";
+    quadro.title = `Painel do ${no.nome}`;
+    quadro.src = endereco;
+    corpo.append(quadro);
   }
   const temOrdemPessoal = () => Object.values(ui.ordemDoMapa ?? {}).some((l) => l.length);
   /**

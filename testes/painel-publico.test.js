@@ -367,6 +367,9 @@ describe("Painel público: tempo decorrido (19/11/2026)", () => {
     assert.ok(html.includes("Tempo decorrido até o prazo") && html.includes("13 de 420 dias") && html.includes("Conclusão planejada: <b>17/07/2028</b>"));
     const semPrazo = htmlDoPainel({ resumo: { ...r, prazoFinal: null, conclusaoPlanejada: null } }, { hoje: "2026-11-19" });
     assert.ok(semPrazo.includes("Em andamento desde") && semPrazo.includes("06/11/2026"));
+  });
+});
+
 describe("Painel público: o Plano de Ação no Mapa do Strata (parte 3, 19/11/2026)", () => {
   const COD = "A".repeat(TAMANHO_DO_CODIGO);
   const plano = (extra = {}) => ({ id: "e1", nome: "Plano de Ação da Gestão de Riscos", tipo: "planoDeAcao", codigo: "PA-GR", vinculos: ["prg1"], ...extra });
@@ -390,15 +393,15 @@ describe("Painel público: o Plano de Ação no Mapa do Strata (parte 3, 19/11/2
     assert.deepEqual([planoParaOMapa(plano(), true).restrito, planoParaOMapa(plano(), true).painel, planoParaOMapa(plano(), true).noSextante], [false, null, true]);
     assert.equal(planoParaOMapa(plano(comPainel), true).painel, COD);
   });
-  it('"Abrir" leva ao painel quando há painel, e ao espaço quando não há; o restrito sem painel não abre', () => {
+  it('"Abrir" abre o painel numa janela do Strata quando há painel, e leva ao espaço quando não há; o restrito sem painel não abre', () => {
     const painel = planoParaOMapa(plano(comPainel), true);
-    assert.equal(destinoDoPlanoNoMapa(painel), enderecoDoPainel(COD, "../"));
-    assert.match(destinoDoPlanoNoMapa(painel), /^\.\.\/painel\/\?p=A+$/);
-    assert.equal(destinoDoPlanoNoMapa(planoParaOMapa(plano(), true)), "../#/espaco/e1");
+    assert.deepEqual(destinoDoPlanoNoMapa(painel), { janela: `${enderecoDoPainel(COD, "../")}&em=strata` }, "o painel, numa janela do Strata");
+    assert.match(destinoDoPlanoNoMapa(painel).janela, /^\.\.\/painel\/\?p=A+&em=strata$/);
+    assert.deepEqual(destinoDoPlanoNoMapa(planoParaOMapa(plano(), true)), { ir: "../#/espaco/e1" });
     assert.equal(destinoDoPlanoNoMapa(planoParaOMapa(plano(), false)), null);
   });
   it('"Abrir no Sextante" só existe para quem pode consultar o espaço', () => {
-    assert.equal(destinoDoPlanoNoMapa(planoParaOMapa(plano(comPainel), true), "sextante"), "../#/espaco/e1");
+    assert.deepEqual(destinoDoPlanoNoMapa(planoParaOMapa(plano(comPainel), true), "sextante"), { ir: "../#/espaco/e1" });
     assert.equal(destinoDoPlanoNoMapa(planoParaOMapa(plano(comPainel), false), "sextante"), null, "restrito com painel: só o painel");
   });
 });

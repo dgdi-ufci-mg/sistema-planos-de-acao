@@ -10,7 +10,10 @@ import { mostrarPainelPublico } from "./telas/painel-publico.js";
 import { ligarSecoesSuaves } from "./telas/movimento.js";
 
 const alvo = document.getElementById("painel");
-const codigo = new URLSearchParams(location.search).get("p");
+const parametros = new URLSearchParams(location.search);
+const codigo = parametros.get("p");
+/* aberto dentro do Strata (painel/?p=<código>&em=strata, 19/11/2026): a aparência já foi trocada no <head> */
+const noStrata = parametros.get("em") === "strata";
 
 async function bancoDaPagina() {
   if (!FIREBASE_CONFIG) return criarBancoLocal();
@@ -19,5 +22,5 @@ async function bancoDaPagina() {
 }
 
 bancoDaPagina()
-  .then((banco) => mostrarPainelPublico(alvo, { store: criarStore(banco), codigo, ligarSecoes: ligarSecoesSuaves }))
+  .then((banco) => mostrarPainelPublico(alvo, { store: criarStore(banco), codigo, ligarSecoes: ligarSecoesSuaves, semHistorico: noStrata }))
   .catch(() => mostrarPainelPublico(alvo, { store: { lerPainelPublico: () => Promise.reject(new Error("sem banco")) }, codigo }));
