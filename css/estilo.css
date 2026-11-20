@@ -2370,25 +2370,39 @@ body[data-tipo-espaco="lista"] .conteudo { max-width: 800px; }
 .mt-chip.prazoVencido { background: var(--crit-soft); color: var(--crit-ink); font-weight: 600; }
 .mt-chip.atrasada { background: var(--warn-soft); color: var(--warn-ink); font-weight: 600; }
 .mt-chip.emRisco { background: transparent; box-shadow: inset 0 0 0 1px var(--warn); color: var(--warn-ink); font-weight: 600; }
-.mt-fora-item { border: 1px solid var(--line); border-radius: var(--raio); background: var(--sunk); padding: 2px 8px; color: var(--ink); }
+.mt-fora-item { border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); padding: 2px 8px; color: var(--ink); }
+.mt-fora button.botao-texto[data-limpar] { font-size: .82rem; font-weight: 600; color: var(--accent-ink); }
 .mt-grupos { display: flex; flex-direction: column; gap: 22px; margin-top: 14px; }
-.minhas-grupo.mt-sem-titulo { border-top: 1px solid var(--line); }
-#principal .minhas-grupo h2 { margin: 0; font-size: 1rem; }
-.mt-grupo-botao { display: flex; align-items: center; gap: 8px; width: 100%; padding: 4px 2px 8px; border: 0; border-bottom: 1px solid var(--line);
+/* a lista num cartão: fundo claro, borda fina e cantos arredondados, sobre o fundo da página */
+.mt-itens { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--relevo, none); }
+.mt-itens > .mt-linha:first-child { border-top-left-radius: 11px; border-top-right-radius: 11px; }
+.mt-itens > .mt-linha:last-child { border-bottom: 0; border-bottom-left-radius: 11px; border-bottom-right-radius: 11px; }
+#principal .minhas-grupo h2 { margin: 0; font-size: .95rem; }
+.mt-grupo-botao { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 4px 4px 6px; border: 0;
   background: none; color: var(--ink); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
 .mt-grupo-botao .icone { width: 15px; height: 15px; flex: none; color: var(--muted); transition: transform var(--mov-rapido) var(--mov-curva); }
 .mt-grupo-botao[aria-expanded="false"] .icone { transform: rotate(-90deg); }
 .mt-grupo-botao .n { font-family: var(--f-dados); font-size: .8rem; font-weight: 500; color: var(--muted); }
 .minhas-vencidas .mt-grupo-nome { color: var(--crit-ink); }
 .mt-itens { list-style: none; margin: 0; padding: 0; }
-.mt-linha { display: flex; align-items: flex-start; gap: 6px; padding: 6px 2px; border-bottom: 1px solid var(--grid); background: var(--surface); }
-.compacta .mt-linha { padding: 2px 2px; }
-.mt-puxador { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 34px; margin-right: -2px; padding: 0; border: 0;
-  background: none; color: var(--faint); border-radius: var(--raio); cursor: grab; touch-action: none; }
+/* linha: puxador, círculo e nome alinhados pela primeira linha do nome (o nome começa 7 px abaixo do topo do botão) */
+.mt-linha { display: flex; align-items: flex-start; gap: 4px; padding: 6px 10px 6px 4px; border-bottom: 1px solid var(--grid); background: var(--surface);
+  transition: background var(--mov-rapido) var(--mov-curva); }
+.mt-linha:hover { background: var(--sunk); }
+.compacta .mt-linha { padding-top: 2px; padding-bottom: 2px; }
+.mt-puxador { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 34px; padding: 0; border: 0;
+  background: none; color: var(--faint); border-radius: var(--raio); cursor: grab; touch-action: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
+.compacta .mt-puxador { height: 28px; }
+/* com mouse, o puxador só aparece ao passar sobre a linha ou com o foco, como no Todoist; no toque, fica sempre à vista */
+@media (hover: hover) and (pointer: fine) {
+  .mt-puxador { opacity: 0; }
+  .mt-linha:hover .mt-puxador, .mt-puxador:focus-visible, .mt-linha.arrastando .mt-puxador { opacity: 1; }
+}
 .mt-puxador .icone { width: 16px; height: 16px; }
 .mt-puxador:hover, .mt-puxador:focus-visible { color: var(--ink); background: var(--sunk); }
-.mt-concluir { margin: 11px 2px 0 2px; }
-.compacta .mt-concluir { margin-top: 8px; }
+.mt-linha .mt-concluir { position: relative; margin: 7px 2px 0 4px; }
+.compacta .mt-linha .mt-concluir { margin-top: 4px; }
+.mt-linha .mt-concluir::before { content: ""; position: absolute; inset: -12px; } /* área de toque de 44 px */
 .mt-concluir.crit { border-color: var(--crit); }
 .mt-concluir.warn { border-color: var(--warn); }
 .mt-concluir.hoje { border-color: var(--accent); }
@@ -2397,11 +2411,15 @@ body[data-tipo-espaco="lista"] .conteudo { max-width: 800px; }
 .minhas-item { display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 44px; padding: 7px 6px; border: 0; border-radius: var(--raio);
   background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
   transition: background var(--mov-rapido) var(--mov-curva); }
-.compacta .minhas-item { min-height: 36px; padding: 4px 6px; }
-.minhas-item:hover, .minhas-item:focus-visible { background: var(--accent-soft); }
+.compacta .minhas-item { min-height: 36px; padding: 4px 6px; flex-flow: row wrap; align-items: baseline; column-gap: 12px; }
+.compacta .mt-descricao { flex-basis: 100%; }
+.minhas-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.mt-linha .minhas-item:hover .minhas-nome { color: var(--accent-ink); }
 .minhas-nome { overflow-wrap: anywhere; line-height: 1.35; }
 .nao-liberada .minhas-nome { color: var(--muted); }
 .minhas-detalhe { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; font-size: .82rem; color: var(--muted); }
+/* o ponto separador fica no fim da parte anterior: ao quebrar a linha, ele não sobra sozinho no começo da seguinte */
+.minhas-detalhe > :not(:last-child)::after { content: "·"; margin-left: 6px; color: var(--faint); }
 .minhas-detalhe .icone { width: 13px; height: 13px; margin-right: 3px; vertical-align: -2px; }
 .minhas-espaco { overflow-wrap: anywhere; }
 .mt-checklist, .mt-nao-liberada { display: inline-flex; align-items: center; }
@@ -2426,7 +2444,7 @@ body[data-tipo-espaco="lista"] .conteudo { max-width: 800px; }
 .mt-aviso-caixa:hover .mt-dica, .mt-aviso-caixa:focus-within .mt-dica { display: flex; }
 .mt-dica a { font-weight: 600; }
 /* arrastar (minha ordem) */
-.mt-linha.arrastando { position: relative; z-index: 5; box-shadow: var(--sombra-flutuante, var(--sombra)); border-radius: var(--raio); }
+.mt-linha.arrastando { position: relative; z-index: 5; box-shadow: var(--sombra-flutuante, var(--sombra)); border-radius: 10px; background: var(--surface); }
 body.arrastando-mt, body.arrastando-mt * { cursor: grabbing !important; user-select: none; }
 /* concluir pelo círculo: preenche com um pulo, risca o nome e a linha se recolhe (app.js, concluirDasMinhas) */
 .mt-linha.concluindo .mt-concluir { background: var(--ok); border-color: var(--ok); border-style: solid; color: var(--texto-sobre-destaque); animation: pulo-caixa .3s var(--mov-curva, ease); }
@@ -2435,13 +2453,17 @@ body.arrastando-mt, body.arrastando-mt * { cursor: grabbing !important; user-sel
 @media (prefers-reduced-motion: reduce) { .mt-linha.concluindo .mt-concluir { animation: none; } .mt-grupo-botao .icone { transition: none; } }
 /* em colunas: os grupos lado a lado, cada um num fundo; rola para o lado quando não cabem */
 .em-colunas .mt-grupos { flex-direction: row; align-items: flex-start; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
-.em-colunas .minhas-grupo { flex: 0 0 300px; background: var(--sunk); border-radius: 12px; padding: 8px; }
+.em-colunas .minhas-grupo { flex: 1 0 260px; max-width: 380px; background: var(--sunk); border-radius: 12px; padding: 8px; }
 .em-colunas .mt-grupo-botao { border-bottom: 0; cursor: default; }
 .em-colunas .mt-grupo-botao .icone { display: none; }
-.em-colunas .mt-itens { display: flex; flex-direction: column; gap: 8px; }
-.em-colunas .mt-linha { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 4px; border: 1px solid var(--line); border-radius: 10px; padding: 2px 6px 4px 2px; }
-.em-colunas .mt-linha:not(:has(.mt-puxador)) { grid-template-columns: auto minmax(0, 1fr); padding-left: 6px; }
-.em-colunas .mt-quando { grid-column: -2; flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: center; max-width: none; padding: 0 6px 4px; text-align: left; }
+.em-colunas .mt-itens { display: flex; flex-direction: column; gap: 8px; background: none; border: 0; box-shadow: none; }
+.em-colunas .mt-itens > .mt-linha, .em-colunas .mt-itens > .mt-linha:last-child { border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo, none); }
+/* em colunas (e na lista do celular): o aviso e a data descem para baixo do nome, e o nome ganha a largura toda */
+.em-colunas .mt-linha { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 2px; padding: 2px 6px 4px 4px; }
+.em-colunas .mt-puxador { position: absolute; top: 4px; right: 4px; z-index: 1; }
+.em-colunas .mt-linha:has(.mt-puxador) .minhas-item { padding-right: 24px; }
+.em-colunas .mt-linha .minhas-item:has(+ .mt-quando) { min-height: 0; padding-bottom: 3px; }
+.em-colunas .mt-quando { grid-column: 2; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 4px 10px; max-width: none; padding: 0 6px 6px; text-align: left; }
 .em-colunas .mt-dica { right: auto; left: 0; }
 /* botão "Filtros e exibição" na barra do topo: no celular, só o ícone */
 .mt-barra { position: relative; }
@@ -2449,9 +2471,19 @@ body.arrastando-mt, body.arrastando-mt * { cursor: grabbing !important; user-sel
 @media (max-width: 640px) {
   .mt-barra .menu-topo-nome, .mt-barra .menu-topo-seta { display: none; }
   .mt-barra .menu-topo { width: 44px; height: 44px; justify-content: center; padding: 0; }
-  .mt-puxador { width: 28px; height: 44px; }
-  .mt-quando { max-width: 40%; }
-  .em-colunas .minhas-grupo { flex-basis: 82vw; }
+  .mt-puxador { width: 26px; height: 44px; margin-top: -5px; }
+  .compacta .mt-puxador { height: 44px; margin-top: -8px; }
+  .minhas-tarefas:not(.em-colunas) .mt-linha { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 2px; padding-right: 6px; }
+  .minhas-tarefas:not(.em-colunas) .mt-linha:not(:has(.mt-puxador)) { grid-template-columns: auto minmax(0, 1fr); }
+  .minhas-tarefas:not(.em-colunas) .mt-quando { grid-column: -2; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center;
+    gap: 4px 10px; max-width: none; padding: 0 6px 6px; text-align: left; }
+  .minhas-tarefas:not(.em-colunas) .mt-dica, .em-colunas .mt-dica { right: auto; left: 0; }
+  .minhas-tarefas:not(.em-colunas) .mt-linha .minhas-item:has(+ .mt-quando) { min-height: 0; padding-bottom: 3px; }
+  .em-colunas .minhas-grupo { flex: 0 0 82vw; max-width: none; }
+}
+/* painel estreito (celular): as três colunas, uma embaixo da outra, separadas por uma linha */
+@container painel (max-width: 520px) {
+  .mt-painel .painel-coluna + .painel-coluna { flex-basis: 100%; border-left: 0; margin-left: 0; padding-left: 0; padding-top: 14px; border-top: 1px solid var(--grid); }
 }
 .minhas-vazio { margin-top: 12px; }
 .minhas-vazio p { margin: 0 0 6px; }

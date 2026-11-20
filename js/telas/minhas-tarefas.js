@@ -96,10 +96,11 @@ function avisoHtml(item, hoje) {
 function linhaHtml(item, hoje, ver, podeOrdenar) {
   const m = ver.mostrar;
   const detalhe = [
-    m.espaco ? `<span class="minhas-espaco">${esc(item.espacoNome)}</span>` : "",
+    /* agrupado por espaço, o nome do espaço já está no título do grupo */
+    m.espaco && ver.agrupar !== "espaco" ? `<span class="minhas-espaco">${esc(item.espacoNome)}</span>` : "",
     m.checklist && item.checklist ? `<span class="mt-checklist" title="Itens do checklist feitos">${ICONES.checklist}${item.checklist.feitos}/${item.checklist.total}</span>` : "",
     item.naoLiberada ? `<span class="mt-nao-liberada">${ICONES.naoLiberada}não liberada${item.aPartirDe ? `, a partir de ${dataCurtaDe(item.aPartirDe, hoje)}` : ""}</span>` : "",
-  ].filter(Boolean).join('<span class="minhas-sep" aria-hidden="true">·</span>');
+  ].filter(Boolean).join("");
   const data = m.data ? dataTexto(item, hoje) : "";
   const deTarefas = ["quadro", "lista"].includes(item.tipo);
   const marca = item.aviso === "prazoVencido" ? " crit" : item.aviso ? " warn" : item.prazo === hoje ? " hoje" : "";

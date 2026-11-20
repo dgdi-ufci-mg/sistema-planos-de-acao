@@ -285,6 +285,28 @@ describe("Meu trabalho", { skip: pular }, () => {
     assert.deepEqual(p.erros, []);
   });
 
+  for (const largura of [390, 1280]) {
+    test(`${largura} px: o círculo e o puxador ficam alinhados com a primeira linha do nome, nas duas densidades`, async () => {
+      const p = await sessao.abrir({ largura, exemplo: false, rotas: comLogin });
+      if (largura <= 640) { await p.click('[data-inferior="espacos"]'); await assentar(p); }
+      await p.locator(".lateral [data-item=minhasTarefas]").click();
+      await p.waitForSelector(".minhas-item");
+      const desvios = () => p.locator(".mt-linha").evaluateAll((ls) => ls.map((li) => {
+        const meio = (e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2; };
+        const nome = li.querySelector(".minhas-nome");
+        const linha1 = nome.getBoundingClientRect().top + parseFloat(getComputedStyle(nome).lineHeight) / 2;
+        return [meio(li.querySelector(".mt-concluir")) - linha1, meio(li.querySelector(".mt-puxador")) - linha1];
+      }).flat().map((d) => Math.abs(d)));
+      assert.ok(Math.max(...await desvios()) <= 2, `confortável: ${await desvios()}`);
+      await p.click("[data-painel-mt]");
+      await p.click('[data-densidade="compacta"]');
+      await p.keyboard.press("Escape");
+      await assentar(p);
+      assert.ok(Math.max(...await desvios()) <= 2, `compacta: ${await desvios()}`);
+      assert.deepEqual(p.erros, []);
+    });
+  }
+
   test("o aviso mostra a explicação, com o link do glossário", async () => {
     const p = await sessao.abrir({ largura: 390, exemplo: false, rotas: comLogin });
     await p.click('[data-inferior="espacos"]');
