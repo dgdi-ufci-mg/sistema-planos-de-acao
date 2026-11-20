@@ -16,6 +16,7 @@
  *   sistema/calendario              calendário geral
  *   sistema/administradores         e-mails dos Administradores do Sistema (passo 2.3), editado só no console
  *   usuarios/{email}/preferencias/mapa  ordem pessoal do Mapa do Strata (lote 6)
+ *   usuarios/{email}/preferencias/meuTrabalho  ordem pessoal de "Meu trabalho" (19/11/2026)
  *   paineis/{codigo}                painel público (18/11/2026): cópia-resumo de um espaço, lida por qualquer pessoa
  *   usuarios/{email}                usuários cadastrados pela tela do Administrador do Sistema (27/10/2026)
  *   sistema/estrategia              camadas do catálogo da estratégia (passo 2.5)
@@ -357,6 +358,14 @@ export function criarBancoFirestore(db) {
     },
     async apagarPreferenciaDoMapa(email) {
       await db.collection("usuarios").doc(email).collection("preferencias").doc("mapa").delete();
+    },
+    // --- ordem pessoal de "Meu trabalho" (19/11/2026; seção 4.11.6): usuarios/{e-mail}/preferencias/meuTrabalho ---
+    async lerPreferenciaDoMeuTrabalho(email) {
+      const s = await db.collection("usuarios").doc(email).collection("preferencias").doc("meuTrabalho").get();
+      return s.exists ? s.data() : null;
+    },
+    async gravarPreferenciaDoMeuTrabalho(email, dados) {
+      await db.collection("usuarios").doc(email).collection("preferencias").doc("meuTrabalho").set(copia(dados));
     },
     // --- painel público (18/11/2026; seção 4.13): paineis/{código do endereço} ---
     async lerPainelPublico(codigo) {

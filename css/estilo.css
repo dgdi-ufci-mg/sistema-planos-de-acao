@@ -509,6 +509,7 @@ a { color: var(--accent-ink); font-weight: 600; }
 .icone-liberada { color: var(--liberada-ink); }
 .icone-nao-liberada { color: var(--muted); }
 .icone-atrasada { color: var(--crit); }
+.icone-risco { color: var(--warn-ink); } /* "Em risco", aviso de Meu trabalho (19/11/2026) */
 
 /* ---------- barra do topo (documentação técnica, seção 8.1) ---------- */
 /* faixa da área de status do celular, acima da barra, com a mesma aparência */
@@ -2356,27 +2357,134 @@ body[data-tipo-espaco="lista"] .conteudo { max-width: 800px; }
 .sem-acesso p { margin: 8px 0 14px; }
 .lateral-acao .n { margin-left: auto; font-family: var(--f-dados); font-size: .75rem; color: var(--muted); }
 .lateral-acao.atual { background: var(--accent-soft); color: var(--accent-ink); }
-/* "Minhas tarefas" (05/11/2026): número das atrasadas e de hoje em destaque discreto, como no Todoist */
+/* "Meu trabalho" (05/11/2026): número das com aviso e de hoje em destaque discreto, como no Todoist */
 .lateral-minhas .n { color: var(--crit-ink); font-weight: 600; }
 
-/* tela "Minhas tarefas" (05/11/2026; seção 8, "Minhas tarefas"): grupos por prazo, uma linha por tarefa */
-.minhas-tarefas { max-width: 760px; margin: 0 auto; padding: 8px 0 32px; }
-.minhas-explica { margin: 0 0 4px; }
-.minhas-grupo { margin-top: 18px; }
-#principal .minhas-grupo h2 { display: flex; align-items: baseline; gap: 8px; font-size: 1rem; margin: 0 0 4px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
-.minhas-grupo h2 .n { font-family: var(--f-dados); font-size: .8rem; font-weight: 500; color: var(--muted); }
-.minhas-atrasadas h2 { color: var(--crit-ink); }
-.minhas-grupo ul { list-style: none; margin: 0; padding: 0; }
-.minhas-grupo li { border-bottom: 1px solid var(--grid); }
-.minhas-item { display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 44px; padding: 8px 6px; border: 0; border-radius: var(--raio);
+/* tela "Meu trabalho", antes "Minhas tarefas" (05/11/2026; nova tela de 19/11/2026; seção 8, "Meu trabalho"): coluna de
+   leitura no centro; cada linha com puxador, círculo de concluir, nome e espaço e, à direita, o aviso e a data */
+.minhas-tarefas { max-width: 780px; width: 100%; min-width: 0; box-sizing: border-box; margin: 0 auto; padding: 8px 0 32px; }
+.minhas-tarefas.em-colunas { max-width: none; }
+.minhas-explica { margin: 0 0 8px; }
+.mt-resumo, .mt-fora { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 4px 0 6px; font-size: .82rem; }
+.mt-chip { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 10px; background: var(--sunk); color: var(--muted); }
+.mt-chip.prazoVencido { background: var(--crit-soft); color: var(--crit-ink); font-weight: 600; }
+.mt-chip.atrasada { background: var(--warn-soft); color: var(--warn-ink); font-weight: 600; }
+.mt-chip.emRisco { background: transparent; box-shadow: inset 0 0 0 1px var(--warn); color: var(--warn-ink); font-weight: 600; }
+.mt-fora-item { border: 1px solid var(--line); border-radius: var(--raio); background: var(--surface); padding: 2px 8px; color: var(--ink); }
+.mt-fora button.botao-texto[data-limpar] { font-size: .82rem; font-weight: 600; color: var(--accent-ink); }
+.mt-grupos { display: flex; flex-direction: column; gap: 22px; margin-top: 14px; }
+/* a lista num cartão: fundo claro, borda fina e cantos arredondados, sobre o fundo da página */
+.mt-itens { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--relevo, none); }
+.mt-itens > .mt-linha:first-child { border-top-left-radius: 11px; border-top-right-radius: 11px; }
+.mt-itens > .mt-linha:last-child { border-bottom: 0; border-bottom-left-radius: 11px; border-bottom-right-radius: 11px; }
+#principal .minhas-grupo h2 { margin: 0; font-size: .95rem; }
+.mt-grupo-botao { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 4px 4px 6px; border: 0;
+  background: none; color: var(--ink); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.mt-grupo-botao .icone { width: 15px; height: 15px; flex: none; color: var(--muted); transition: transform var(--mov-rapido) var(--mov-curva); }
+.mt-grupo-botao[aria-expanded="false"] .icone { transform: rotate(-90deg); }
+.mt-grupo-botao .n { font-family: var(--f-dados); font-size: .8rem; font-weight: 500; color: var(--muted); }
+.minhas-vencidas .mt-grupo-nome { color: var(--crit-ink); }
+.mt-itens { list-style: none; margin: 0; padding: 0; }
+/* linha: puxador, círculo e nome alinhados pela primeira linha do nome (o nome começa 7 px abaixo do topo do botão) */
+.mt-linha { display: flex; align-items: flex-start; gap: 4px; padding: 6px 10px 6px 4px; border-bottom: 1px solid var(--grid); background: var(--surface);
+  transition: background var(--mov-rapido) var(--mov-curva); }
+.mt-linha:hover { background: var(--sunk); }
+.compacta .mt-linha { padding-top: 2px; padding-bottom: 2px; }
+.mt-puxador { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 34px; padding: 0; border: 0;
+  background: none; color: var(--faint); border-radius: var(--raio); cursor: grab; touch-action: none; transition: opacity var(--mov-rapido) var(--mov-curva); }
+.compacta .mt-puxador { height: 28px; }
+/* com mouse, o puxador só aparece ao passar sobre a linha ou com o foco, como no Todoist; no toque, fica sempre à vista */
+@media (hover: hover) and (pointer: fine) {
+  .mt-puxador { opacity: 0; }
+  .mt-linha:hover .mt-puxador, .mt-puxador:focus-visible, .mt-linha.arrastando .mt-puxador { opacity: 1; }
+}
+.mt-puxador .icone { width: 16px; height: 16px; }
+.mt-puxador:hover, .mt-puxador:focus-visible { color: var(--ink); background: var(--sunk); }
+.mt-linha .mt-concluir { position: relative; margin: 7px 2px 0 4px; }
+.compacta .mt-linha .mt-concluir { margin-top: 4px; }
+.mt-linha .mt-concluir::before { content: ""; position: absolute; inset: -12px; } /* área de toque de 44 px */
+.mt-concluir.crit { border-color: var(--crit); }
+.mt-concluir.warn { border-color: var(--warn); }
+.mt-concluir.hoje { border-color: var(--accent); }
+.nao-liberada .mt-concluir { border-style: dashed; }
+.mt-linha .minhas-item { flex: 1 1 auto; min-width: 0; }
+.minhas-item { display: flex; flex-direction: column; gap: 2px; width: 100%; min-height: 44px; padding: 7px 6px; border: 0; border-radius: var(--raio);
   background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
   transition: background var(--mov-rapido) var(--mov-curva); }
-.minhas-item:hover, .minhas-item:focus-visible { background: var(--accent-soft); }
-.minhas-nome { overflow-wrap: anywhere; }
-.minhas-detalhe { display: flex; flex-wrap: wrap; gap: 0 6px; font-size: .82rem; color: var(--muted); }
+.compacta .minhas-item { min-height: 36px; padding: 4px 6px; flex-flow: row wrap; align-items: baseline; column-gap: 12px; }
+.compacta .mt-descricao { flex-basis: 100%; }
+.minhas-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.mt-linha .minhas-item:hover .minhas-nome { color: var(--accent-ink); }
+.minhas-nome { overflow-wrap: anywhere; line-height: 1.35; }
+.nao-liberada .minhas-nome { color: var(--muted); }
+.minhas-detalhe { display: flex; flex-wrap: wrap; align-items: center; gap: 0 6px; font-size: .82rem; color: var(--muted); }
+/* o ponto separador fica no fim da parte anterior: ao quebrar a linha, ele não sobra sozinho no começo da seguinte */
+.minhas-detalhe > :not(:last-child)::after { content: "·"; margin-left: 6px; color: var(--faint); }
+.minhas-detalhe .icone { width: 13px; height: 13px; margin-right: 3px; vertical-align: -2px; }
 .minhas-espaco { overflow-wrap: anywhere; }
-.minhas-prazo { font-family: var(--f-dados); }
-.minhas-prazo.atrasada { color: var(--crit-ink); font-weight: 600; }
+.mt-checklist, .mt-nao-liberada { display: inline-flex; align-items: center; }
+.mt-descricao { font-size: .82rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mt-quando { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; padding: 8px 4px 0 0; max-width: 46%; text-align: right; }
+.compacta .mt-quando { flex-direction: row; align-items: center; gap: 8px; padding-top: 6px; }
+.minhas-prazo { font-size: .82rem; color: var(--muted); }
+.minhas-prazo.hoje { color: var(--accent-ink); font-weight: 600; }
+/* aviso com a explicação ao passar o mouse ou ao tocar (foco), e o link do glossário */
+.mt-aviso-caixa { position: relative; display: inline-flex; }
+.mt-aviso { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border: 1px solid transparent; border-radius: var(--raio);
+  font: 600 .8rem var(--f-texto); cursor: help; white-space: nowrap; }
+.mt-aviso .icone { width: 13px; height: 13px; }
+.mt-aviso.prazoVencido { background: var(--crit-soft); color: var(--crit-ink); }
+.mt-aviso.atrasada { background: var(--warn-soft); color: var(--warn-ink); }
+.mt-aviso.emRisco { background: var(--surface); border-color: var(--warn); color: var(--warn-ink); }
+.mt-aviso:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mt-dica { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; width: 270px; max-width: 78vw; display: none; flex-direction: column; gap: 6px;
+  padding: 10px 12px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--sombra);
+  color: var(--ink); font-size: .84rem; line-height: 1.45; text-align: left; white-space: normal; }
+.mt-dica::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; } /* ponte: o mouse passa do aviso para a caixa sem fechá-la */
+.mt-aviso-caixa:hover .mt-dica, .mt-aviso-caixa:focus-within .mt-dica { display: flex; }
+.mt-dica a { font-weight: 600; }
+/* arrastar (minha ordem) */
+.mt-linha.arrastando { position: relative; z-index: 5; box-shadow: var(--sombra-flutuante, var(--sombra)); border-radius: 10px; background: var(--surface); }
+body.arrastando-mt, body.arrastando-mt * { cursor: grabbing !important; user-select: none; }
+/* concluir pelo círculo: preenche com um pulo, risca o nome e a linha se recolhe (app.js, concluirDasMinhas) */
+.mt-linha.concluindo .mt-concluir { background: var(--ok); border-color: var(--ok); border-style: solid; color: var(--texto-sobre-destaque); animation: pulo-caixa .3s var(--mov-curva, ease); }
+.mt-linha.concluindo .minhas-nome { text-decoration: line-through; color: var(--muted); }
+.mt-linha.concluindo { pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .mt-linha.concluindo .mt-concluir { animation: none; } .mt-grupo-botao .icone { transition: none; } }
+/* em colunas: os grupos lado a lado, cada um num fundo; rola para o lado quando não cabem */
+.em-colunas .mt-grupos { flex-direction: row; align-items: flex-start; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.em-colunas .minhas-grupo { flex: 1 0 260px; max-width: 380px; background: var(--sunk); border-radius: 12px; padding: 8px; }
+.em-colunas .mt-grupo-botao { border-bottom: 0; cursor: default; }
+.em-colunas .mt-grupo-botao .icone { display: none; }
+.em-colunas .mt-itens { display: flex; flex-direction: column; gap: 8px; background: none; border: 0; box-shadow: none; }
+.em-colunas .mt-itens > .mt-linha, .em-colunas .mt-itens > .mt-linha:last-child { border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--relevo, none); }
+/* em colunas (e na lista do celular): o aviso e a data descem para baixo do nome, e o nome ganha a largura toda */
+.em-colunas .mt-linha { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 2px; padding: 2px 6px 4px 4px; }
+.em-colunas .mt-puxador { position: absolute; top: 4px; right: 4px; z-index: 1; }
+.em-colunas .mt-linha:has(.mt-puxador) .minhas-item { padding-right: 24px; }
+.em-colunas .mt-linha .minhas-item:has(+ .mt-quando) { min-height: 0; padding-bottom: 3px; }
+.em-colunas .mt-quando { grid-column: 2; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 4px 10px; max-width: none; padding: 0 6px 6px; text-align: left; }
+.em-colunas .mt-dica { right: auto; left: 0; }
+/* botão "Filtros e exibição" na barra do topo: no celular, só o ícone */
+.mt-barra { position: relative; }
+.mt-painel .tec { margin: 0 2px; font-style: normal; }
+@media (max-width: 640px) {
+  .mt-barra .menu-topo-nome, .mt-barra .menu-topo-seta { display: none; }
+  .mt-barra .menu-topo { width: 44px; height: 44px; justify-content: center; padding: 0; }
+  .mt-puxador { width: 26px; height: 44px; margin-top: -5px; }
+  .compacta .mt-puxador { height: 44px; margin-top: -8px; }
+  .minhas-tarefas:not(.em-colunas) .mt-linha { display: grid; grid-template-columns: auto auto minmax(0, 1fr); column-gap: 2px; padding-right: 6px; }
+  .minhas-tarefas:not(.em-colunas) .mt-linha:not(:has(.mt-puxador)) { grid-template-columns: auto minmax(0, 1fr); }
+  .minhas-tarefas:not(.em-colunas) .mt-quando { grid-column: -2; flex-direction: row; flex-wrap: wrap; justify-content: flex-start; align-items: center;
+    gap: 4px 10px; max-width: none; padding: 0 6px 6px; text-align: left; }
+  .minhas-tarefas:not(.em-colunas) .mt-dica, .em-colunas .mt-dica { right: auto; left: 0; }
+  .minhas-tarefas:not(.em-colunas) .mt-linha .minhas-item:has(+ .mt-quando) { min-height: 0; padding-bottom: 3px; }
+  .em-colunas .minhas-grupo { flex: 0 0 82vw; max-width: none; }
+}
+/* painel estreito (celular): as três colunas, uma embaixo da outra, separadas por uma linha */
+@container painel (max-width: 520px) {
+  .mt-painel .painel-coluna + .painel-coluna { flex-basis: 100%; border-left: 0; margin-left: 0; padding-left: 0; padding-top: 14px; border-top: 1px solid var(--grid); }
+}
 .minhas-vazio { margin-top: 12px; }
 .minhas-vazio p { margin: 0 0 6px; }
 

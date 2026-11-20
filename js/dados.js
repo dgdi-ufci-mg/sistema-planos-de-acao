@@ -1355,6 +1355,23 @@ export function criarStore(banco, opcoes = {}) {
       await banco.apagarPreferenciaDoMapa(exigirDonoDasPreferencias());
     },
 
+    // --- ordem pessoal de "Meu trabalho" (19/11/2026; seção 4.11.6) ---
+    /** Ordem pessoal de quem está logado (chaves "espaço:número", de cima para baixo), ou null: ainda não ordenou. */
+    async lerOrdemDoMeuTrabalho() {
+      const dono = donoDasPreferencias();
+      if (!dono) return null;
+      return (await banco.lerPreferenciaDoMeuTrabalho(dono))?.ordem ?? null;
+    },
+    /** Guarda a ordem pessoal de quem está logado (só dela). Recusa listas que não sejam de chaves "espaço:número". */
+    async gravarOrdemDoMeuTrabalho(ordem) {
+      const dono = exigirDonoDasPreferencias();
+      const valida = Array.isArray(ordem) && ordem.length <= 5000 && ordem.every((k) => typeof k === "string" && /^[^:]{1,200}:\d{1,6}$/.test(k));
+      if (!valida) throw new ErroDeDados("ordem-invalida", "A ordem precisa listar as tarefas em sequência.");
+      const dados = { ordem: [...new Set(ordem)], alteradoEm: agora() };
+      recusarDesconhecidos(dados, "preferenciaMeuTrabalho");
+      await banco.gravarPreferenciaDoMeuTrabalho(dono, dados);
+    },
+
     // --- painel público (18/11/2026; seção 4.13) ---
     /**
      * Liga, desliga ou ajusta o painel público do espaço (só o administrador). Ao ligar pela primeira vez, sorteia

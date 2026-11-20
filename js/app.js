@@ -16,12 +16,13 @@ import { criarStore, hojeLocal } from "./dados.js";
 import { carregarExemplo, carregarExemploDeQuadro, carregarExemploDeLista } from "./exemplo.js";
 import { mostrarBoasVindas } from "./telas/abertura.js";
 import { mostrarEspaco } from "./telas/espaco.js";
-import { mostrarMinhasTarefas, mostrarCarregandoMinhas } from "./telas/minhas-tarefas.js";
-import { montarMinhasTarefas } from "./minhas-tarefas.js";
+import { mostrarMinhasTarefas, mostrarCarregandoMinhas, lerVer, gravarVer } from "./telas/minhas-tarefas.js";
+import { montarMinhasTarefas, moverNaOrdem } from "./minhas-tarefas.js";
 import { abrirAcaoForaDoEspaco } from "./telas/janela-fora-do-espaco.js";
 import { mostrarNavegacao } from "./telas/navegacao.js";
 import { mostrarAjuda } from "./telas/ajuda.js";
 import { avisar, fecharPainel } from "./telas/painel.js";
+import { reduzirMovimento, fecharSuave } from "./telas/movimento.js";
 import { abrirConfiguracao } from "./telas/configurar.js";
 import { abrirConfiguracaoDoSistema } from "./telas/configurar-sistema.js";
 import { abrirEntrar, abrirTrocarSenha } from "./telas/acesso.js";
@@ -80,7 +81,9 @@ const exemplos = new Set();
 let abertoId = null;
 /** Tela "Minhas tarefas" aberta (05/11/2026); nela, nenhum espaço está aberto. */
 let naMinhas = false;
-const ENDERECO_MINHAS = "#/minhas-tarefas";
+const ENDERECO_MINHAS = "#/meu-trabalho";
+/** Endereço antigo (até 19/11/2026, quando a tela se chamava "Minhas tarefas"): continua abrindo a tela. */
+const ehEnderecoMinhas = (h) => h === ENDERECO_MINHAS || h === "#/minhas-tarefas";
 
 const storeDe = (id) => (id && exemplos.has(id) ? exemplo : store);
 const tentar = async (f, padrao) => { try { return await f(); } catch (e) { avisar(e.message); return padrao; } };
@@ -100,7 +103,7 @@ async function espacosDoBanco() {
 async function atualizarTopo() {
   const { meus, consulta } = await espacosDoBanco();
   const espacos = [...meus, ...(exemplo ? await exemplo.listarEspacos() : [])];
-  const titulo = abertoId ? (await tentar(() => storeDe(abertoId).lerEspaco(abertoId), null))?.nome ?? "" : naMinhas ? "Minhas tarefas" : "";
+  const titulo = abertoId ? (await tentar(() => storeDe(abertoId).lerEspaco(abertoId), null))?.nome ?? "" : naMinhas ? "Meu trabalho" : "";
   /* nome de quem entrou: o do responsável ligado ao e-mail no espaço aberto (os responsáveis são de cada espaço) */
   const ligado = usuario && abertoId ? (await tentar(() => storeDe(abertoId).listarResponsaveis(abertoId), [])).find((r) => r.usuario === usuario) : null;
   mostrarNavegacao({
@@ -154,10 +157,20 @@ const VALIDADE_DA_CONTAGEM = 60_000;
 let contagemMinhas = null;
 let contadoEm = 0;
 let contando = null;
-/** Lê os espaços e monta Minhas tarefas de quem entrou; guarda o número da barra lateral. */
+/**
+ * Dados lidos de "Meu trabalho" (19/11/2026): os espaços e a ordem pessoal. Mudar a forma de ver só refaz a conta,
+ * sem ler de novo.
+ * @type {{fontes: object[], ordemPessoal: string[]|null, email: string}|null}
+ */
+let dadosMinhas = null;
+/** Monta Meu trabalho com os dados lidos e as escolhas deste aparelho. */
+const montarMinhas = () => montarMinhasTarefas(dadosMinhas.fontes, dadosMinhas.email, hoje, { ...lerVer(), ordemPessoal: dadosMinhas.ordemPessoal });
+/** Lê os espaços e a ordem pessoal e monta Meu trabalho de quem entrou; guarda o número da barra lateral. */
 async function lerMinhasTarefas() {
   const doUsuario = usuario;
-  const resultado = montarMinhasTarefas(await store.dadosParaMinhasTarefas(), doUsuario, hoje);
+  const [fontes, ordemPessoal] = await Promise.all([store.dadosParaMinhasTarefas(), store.lerOrdemDoMeuTrabalho().catch(() => null)]);
+  dadosMinhas = { fontes, ordemPessoal, email: doUsuario };
+  const resultado = montarMinhas();
   if (doUsuario === usuario) { contagemMinhas = resultado.urgentes; contadoEm = Date.now(); }
   return resultado;
 }
@@ -174,9 +187,72 @@ const esquecerContagem = () => { contagemMinhas = null; contadoEm = 0; };
 
 /** Janela da ação aberta por cima de "Minhas tarefas" (18/11/2026), ou null. */
 let janelaDasMinhas = null;
-/** Mostra a lista de Minhas tarefas; tocar numa tarefa abre a janela dela por cima da lista. */
-function desenharMinhas(resultado) {
-  mostrarMinhasTarefas(principal, { resultado, hoje, aoAbrir: (id, numero) => abrirDasMinhas(resultado, id, numero) });
+/** Desliga a tela de Meu trabalho desenhada (ouvintes e botão da barra do topo). */
+let pararMinhas = () => {};
+/**
+ * Mostra Meu trabalho (19/11/2026): tocar numa tarefa abre a janela dela por cima da lista; "Filtros e exibição" muda
+ * a forma de ver na hora; arrastar muda a ordem pessoal, que vale na hora e é gravada em segundo plano.
+ */
+function desenharMinhas(resultado, { painelAberto = false } = {}) {
+  pararMinhas();
+  const ver = lerVer();
+  pararMinhas = mostrarMinhasTarefas(principal, {
+    resultado, hoje, ver, painelAberto,
+    barra: document.querySelector("[data-acoes-topo]"),
+    podeOrdenar: store.podeGravar !== false,
+    aoAbrir: (id, numero) => abrirDasMinhas(resultado, id, numero),
+    aoMudarVer: (novo, { painelAberto: aberto } = {}) => {
+      gravarVer(novo);
+      if (dadosMinhas) desenharMinhas(montarMinhas(), { painelAberto: aberto });
+    },
+    aoMover: (chave, vizinhas) => moverNasMinhas(resultado, chave, vizinhas),
+    aoConcluir: (item, linha) => concluirDasMinhas(resultado, item, linha),
+  });
+}
+/** Grava a ordem pessoal depois de arrastar; se a gravação falhar, a ordem anterior volta. */
+async function moverNasMinhas(resultado, chave, vizinhas) {
+  if (!dadosMinhas) return;
+  const antes = dadosMinhas.ordemPessoal;
+  const nova = moverNaOrdem(resultado.ordem, chave, vizinhas);
+  dadosMinhas.ordemPessoal = nova;
+  const foco = document.activeElement?.matches?.("[data-puxar]");
+  desenharMinhas(montarMinhas());
+  if (foco) principal.querySelector(`.mt-linha[data-chave="${CSS.escape(chave)}"] [data-puxar]`)?.focus({ preventScroll: true });
+  try {
+    await store.gravarOrdemDoMeuTrabalho(nova);
+  } catch (falha) {
+    avisar(falha.message);
+    if (dadosMinhas?.ordemPessoal === nova) { dadosMinhas.ordemPessoal = antes; if (naMinhas && !janelaDasMinhas) desenharMinhas(montarMinhas()); }
+  }
+}
+/**
+ * Círculo de concluir (19/11/2026): no Quadro e na Lista de tarefas, marca a conclusão, como a caixinha da Lista, com
+ * "Desfazer"; nos Planos de Ação e Projetos, a conclusão pede a data, e o círculo abre a janela da ação.
+ */
+async function concluirDasMinhas(resultado, item, linha) {
+  if (!["quadro", "lista"].includes(item.tipo)) { abrirDasMinhas(resultado, item.espacoId, item.numero); return; }
+  if (linha.classList.contains("concluindo")) return;
+  linha.classList.add("concluindo");
+  linha.querySelector("[data-concluir]")?.setAttribute("aria-checked", "true");
+  try {
+    await store.marcarConclusao(item.espacoId, item.numero, true);
+  } catch (falha) {
+    linha.classList.remove("concluindo");
+    linha.querySelector("[data-concluir]")?.setAttribute("aria-checked", "false");
+    avisar(falha.message);
+    return;
+  }
+  navigator.vibrate?.([12, 60, 18]);
+  const refazer = async () => {
+    const novo = await tentar(lerMinhasTarefas, null);
+    if (novo && naMinhas && !janelaDasMinhas) { desenharMinhas(novo); atualizarTopo(); }
+  };
+  avisar(`${item.termo === "tarefa" ? "Tarefa concluída" : "Ação concluída"}.`, { acao: { texto: "Desfazer", fazer: async () => {
+    try { await store.marcarConclusao(item.espacoId, item.numero, false); } catch (falha) { avisar(falha.message); return; }
+    await refazer();
+  } } });
+  if (!reduzirMovimento()) { await new Promise((r) => setTimeout(r, 420)); await fecharSuave(linha); }
+  await refazer();
 }
 /**
  * Abre a janela da ação por cima de "Minhas tarefas" (pedido do responsável, 18/11/2026), sem ir ao espaço de origem.
@@ -212,7 +288,7 @@ async function abrirMinhasTarefas() {
   await historicoPronto();
   const vindoDeEspaco = Boolean(abertoId);
   pararEspaco();
-  pararEspaco = () => {};
+  pararEspaco = () => { pararMinhas(); pararMinhas = () => {}; };
   abertoId = null;
   naMinhas = true;
   document.body.classList.remove("so-leitura", "sem-criar-acao");
@@ -461,7 +537,7 @@ document.addEventListener("click", (e) => {
 
 /** Abre o espaço do link, o último aberto ou as boas-vindas. */
 async function abrirInicio() {
-  if (location.hash === ENDERECO_MINHAS && usuario) return abrirMinhasTarefas();
+  if (ehEnderecoMinhas(location.hash) && usuario) return abrirMinhasTarefas();
   const { id: doLink, acao } = rota();
   if (doLink && await abrirEspaco(doLink, { acao })) return;
   for (const id of [ultimo()]) if (id && await abrirEspaco(id)) return;
@@ -470,7 +546,7 @@ async function abrirInicio() {
 
 /* link para outro espaço dentro do sistema (passo 2.6: "Continua a entrega X, do Plano de Ação Y") */
 window.addEventListener("hashchange", () => {
-  if (location.hash === ENDERECO_MINHAS && !naMinhas && store && usuario) { abrirMinhasTarefas(); return; } // Voltar a partir de um espaço
+  if (ehEnderecoMinhas(location.hash) && !naMinhas && store && usuario) { abrirMinhasTarefas(); return; } // Voltar a partir de um espaço
   const { id, acao } = rota();
   if (!id || !store) return;
   if (id !== abertoId) { abrirEspaco(id, { acao }); return; }
