@@ -21,7 +21,7 @@ import { chaveValida, planejarMovimento } from "./prioridade.js";
 import { camadasDe, problemaDasCamadas, problemaDoInstrumento, problemaDoItem, problemaDosVinculos, subordinadosDe } from "./estrategia.js";
 import { encerrado, podeVer, participa, problemaDaVisibilidade, permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
 import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
-import { problemaDaLigacao, ligacaoLimpa } from "./ligacoes.js";
+import { problemaDaLigacao, ligacaoLimpa, completarLigacao } from "./ligacoes.js";
 import { problemaDosCampos, problemaDosValores, camposDe, campoPorId, valorDoCampo } from "./campos-personalizados.js";
 
 export { ErroDeDados };
@@ -1047,8 +1047,9 @@ export function criarStore(banco, opcoes = {}) {
      */
     async ligarItemExterno(espacoId, numero, dados) {
       await exigir(espacoId, "atualizar", numero);
-      const { id: _id, ligadaEm: _em, ligadaPor: _por, ...campos } = dados ?? {};
-      recusarDesconhecidos(campos, "ligacaoExterna");
+      const { id: _id, ligadaEm: _em, ligadaPor: _por, ...brutos } = dados ?? {};
+      recusarDesconhecidos(brutos, "ligacaoExterna");
+      const campos = completarLigacao(brutos); // no SIPAC, o link vem do NUP
       const p = problemaDaLigacao(campos);
       if (p) throw new ErroDeDados(p.codigo, p.mensagem);
       await exigirAcao(espacoId, numero);

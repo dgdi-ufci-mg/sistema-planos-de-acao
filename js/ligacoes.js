@@ -24,6 +24,24 @@ export const SISTEMAS = Object.freeze({
 /** Ordem dos sistemas na tela. */
 export const ORDEM_DOS_SISTEMAS = Object.freeze(["glpi", "sipac", "horde"]);
 
+/**
+ * Endereço do SIPAC da instituição (23/11/2026). O SIPAC não tem link permanente para um processo: o endereço da
+ * tela do processo (`.../mesa_virtual/processo.jsf`) mostra o que estiver aberto na sessão. Por isso o link de uma
+ * ligação do SIPAC é sempre montado aqui, com o NUP depois de `#sextante-nup=`; o SIPAC ignora o que vem depois de
+ * `#`, e a extensão (passo 3.8, parte 3) lê essa marca e abre o processo pela consulta, na sessão da pessoa.
+ */
+export const ENDERECO_DO_SIPAC = "https://sig.cefetmg.br/sipac/";
+
+/** Link de um processo ou documento do SIPAC pelo NUP (ver `ENDERECO_DO_SIPAC`). */
+export const linkDoSipac = (nup) => `${ENDERECO_DO_SIPAC}#sextante-nup=${encodeURIComponent(String(nup).trim())}`;
+
+/** Lê o NUP da marca de um link do SIPAC montado por `linkDoSipac`, ou null. */
+export function nupDoLink(link) {
+  const m = /#sextante-nup=([^&]+)/.exec(String(link ?? ""));
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch { return null; }
+}
+
 export const LIMITE_DO_TITULO = 200;
 export const LIMITE_DO_IDENTIFICADOR = 300;
 
@@ -95,6 +113,15 @@ export function ligacaoLimpa({ sistema, identificador, titulo, link }) {
   const t = String(titulo ?? "").trim();
   const id = String(identificador ?? "").trim();
   return { sistema, ...(id ? { identificador: id } : {}), ...(t ? { titulo: t } : {}), link: String(link).trim() };
+}
+
+/**
+ * Completa os dados antes de conferir e gravar: no SIPAC, o link é sempre o montado pelo NUP (`linkDoSipac`),
+ * mesmo que a pessoa tenha colado outro, porque os endereços do SIPAC só valem na sessão em que foram abertos.
+ */
+export function completarLigacao(dados) {
+  if (dados?.sistema !== "sipac" || !String(dados.identificador ?? "").trim()) return dados;
+  return { ...dados, link: linkDoSipac(dados.identificador) };
 }
 
 /**

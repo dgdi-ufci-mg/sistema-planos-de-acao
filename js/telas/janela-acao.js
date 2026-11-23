@@ -1230,7 +1230,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     const pode = !somenteLeitura();
     const opcoes = ORDEM_DOS_SISTEMAS.map((s) => `<option value="${s}">${esc(SISTEMAS[s].nome)}</option>`).join("");
     const formulario = `<form class="form-documento" data-form-ligacao>
-      <input type="url" name="link" placeholder="Cole o link do chamado, do processo ou do e-mail" aria-label="Link" required>
+      <input type="url" name="link" placeholder="Cole o link do chamado ou do e-mail (no SIPAC, basta o NUP)" aria-label="Link">
       <div class="campos-lado-a-lado">
         <select name="sistema" aria-label="Sistema"><option value="">Sistema…</option>${opcoes}</select>
         <input name="identificador" placeholder="Número" aria-label="Número">

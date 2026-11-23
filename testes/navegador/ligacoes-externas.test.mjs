@@ -61,6 +61,19 @@ describe("Ligações externas no navegador", { skip: pular }, () => {
       await itens.nth(1).locator("[data-desligar]").click();
       await p.waitForTimeout(600);
 
+      /* processo do SIPAC: basta escolher o sistema e digitar o NUP; o link é montado pelo Sextante */
+      await j.locator("[data-nova-ligacao]").click();
+      await assentar(p);
+      await form.locator('[name="sistema"]').selectOption("sipac");
+      await form.locator('[name="identificador"]').fill("23062.054143/2026-50");
+      await form.locator('button[type="submit"]').click();
+      await p.waitForTimeout(600);
+      assert.equal(await itens.count(), 2);
+      assert.match(await itens.nth(1).innerText(), /NUP 23062\.054143\/2026-50[\s\S]*SIPAC\/Protocolo/);
+      assert.match(await itens.nth(1).locator("a").getAttribute("href"), /#sextante-nup=23062\.054143%2F2026-50$/);
+      await itens.nth(1).locator("[data-desligar]").click();
+      await p.waitForTimeout(600);
+
       /* o mesmo chamado de novo é recusado, com aviso */
       await j.locator("[data-nova-ligacao]").click();
       await assentar(p);

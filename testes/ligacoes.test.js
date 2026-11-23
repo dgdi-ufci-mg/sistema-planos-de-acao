@@ -7,7 +7,7 @@ import { criarFirestoreFalso } from "./firebase-falso.js";
 import { criarStore } from "../js/dados.js";
 import { descreverRegistro } from "../js/historico.js";
 import { planilhaDoEspaco } from "../js/exportar.js";
-import { reconhecerLink, chaveDoIdentificador, mesmoItem, problemaDaLigacao, ligacaoLimpa, textoDaLigacao } from "../js/ligacoes.js";
+import { reconhecerLink, chaveDoIdentificador, mesmoItem, problemaDaLigacao, ligacaoLimpa, textoDaLigacao, linkDoSipac, nupDoLink, completarLigacao, ENDERECO_DO_SIPAC } from "../js/ligacoes.js";
 
 const GLPI = "https://glpi.ufcimg.edu.br/front/ticket.form.php?id=1234";
 const SIPAC = "https://sipac.ufcimg.edu.br/sipac/protocolo/processo/detalhes.jsf?id=98765";
@@ -47,6 +47,17 @@ describe("Ligações externas: regras", () => {
     assert.equal(problemaDaLigacao(ok, [{ sistema: "glpi", identificador: " 1234 " }]).codigo, "ligacao-repetida");
   });
 
+  it("no SIPAC, o link é montado pelo NUP, e o NUP volta da marca", () => {
+    const link = linkDoSipac(" 23062.054143/2026-50 ");
+    assert.equal(link, `${ENDERECO_DO_SIPAC}#sextante-nup=23062.054143%2F2026-50`);
+    assert.equal(nupDoLink(link), "23062.054143/2026-50");
+    assert.equal(nupDoLink(GLPI), null);
+    assert.equal(completarLigacao({ sistema: "sipac", identificador: "23062.054143/2026-50", link: "https://sig.cefetmg.br/sipac/protocolo/mesa_virtual/processo.jsf" }).link, link, "troca o link de sessão colado");
+    assert.equal(completarLigacao({ sistema: "sipac", identificador: "", link: "" }).link, "", "sem NUP, nada a montar");
+    assert.equal(completarLigacao({ sistema: "glpi", identificador: "1", link: GLPI }).link, GLPI);
+    assert.equal(reconhecerLink(link).sistema, "sipac");
+  });
+
   it("limpa os dados e escreve o texto curto", () => {
     assert.deepEqual(ligacaoLimpa({ sistema: "glpi", identificador: " 1234 ", titulo: "  ", link: ` ${GLPI} ` }), { sistema: "glpi", identificador: "1234", link: GLPI });
     assert.deepEqual(ligacaoLimpa({ sistema: "horde", identificador: " ", titulo: "Convite", link: HORDE }), { sistema: "horde", titulo: "Convite", link: HORDE });
@@ -76,11 +87,11 @@ for (const [nome, criarBanco] of [
     it("liga e desliga, com data e autor, guardando só o que foi preenchido", async () => {
       const { store, id, a } = await novo();
       const l1 = await store.ligarItemExterno(id, a, { sistema: "glpi", identificador: " 1234 ", titulo: " Impressora ", link: GLPI });
-      const l2 = await store.ligarItemExterno(id, a, { sistema: "sipac", identificador: "23062.004512/2026-10", titulo: "", link: SIPAC });
+      const l2 = await store.ligarItemExterno(id, a, { sistema: "sipac", identificador: "23062.004512/2026-10", titulo: "", link: "" });
       const lidas = (await store.lerAcao(id, a)).ligacoesExternas;
       assert.deepEqual(lidas.map(({ ligadaEm, ...x }) => x), [
         { id: l1, sistema: "glpi", identificador: "1234", titulo: "Impressora", link: GLPI, ligadaPor: "ana@ufci.edu.br" },
-        { id: l2, sistema: "sipac", identificador: "23062.004512/2026-10", link: SIPAC, ligadaPor: "ana@ufci.edu.br" },
+        { id: l2, sistema: "sipac", identificador: "23062.004512/2026-10", link: linkDoSipac("23062.004512/2026-10"), ligadaPor: "ana@ufci.edu.br" },
       ]);
       assert.ok(lidas.every((l) => l.ligadaEm.startsWith("2026-11-23")));
       await store.desligarItemExterno(id, a, l1);
