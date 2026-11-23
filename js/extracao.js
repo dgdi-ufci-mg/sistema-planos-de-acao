@@ -14,6 +14,7 @@ import { nomeDoFluxo, fluxoDe, personalizadasDe } from "./situacoes.js";
 import { etiquetasDe } from "./etiquetas.js";
 import { valoresDaAcao, campoPorId, textoDoValor } from "./campos-personalizados.js";
 import { estimativaVigente } from "./calculo.js";
+import { textoDaLigacao } from "./ligacoes.js";
 import { nomeDoMarco } from "./continuas.js";
 import { alcanceAtual, registrosDa, SITUACOES_DA_ENTREGA, TIPOS_DE_META } from "./entregas.js";
 
@@ -59,6 +60,8 @@ export const CAMPOS_DA_ACAO = [
   ["valoresPersonalizados", "Campos personalizados", (a, c) => juntar(valoresDaAcao(c.espaco, a).map((v) => `${v.campo.nome}: ${v.texto}`)), false],
   ["checklist", "Checklist (feitos de total)", (a) => (a.checklist?.length ? `${a.checklist.filter((i) => i.feito).length} de ${a.checklist.length}` : null), false],
   ["documentos", "Documentos e links", (a) => juntar((a.documentos ?? []).map((d) => `${d.nome} (${d.link || d.identificacao})`)), false],
+  /* 23/11/2026: "GLPI 1234 – Título (link)", separadas por ";" */
+  ["ligacoesExternas", "Ligações externas", (a) => juntar((a.ligacoesExternas ?? []).map((l) => `${textoDaLigacao(l)} (${l.link})`)), false],
   ["notas", "Anotações", (a) => a.notas ?? null, false],
   ["criadaEm", "Criada em", (a) => momento(a.criadaEm), false],
   ["alteradaEm", "Alterada em", (a) => momento(a.alteradaEm), false],

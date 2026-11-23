@@ -5,6 +5,7 @@
  * O banco grava os registros junto com a alteração, de uma vez: um não existe sem o outro.
  */
 import { CAMPOS } from "./modelo.js";
+import { textoDaLigacao } from "./ligacoes.js";
 
 /** Carimbos da própria gravação: já estão no registro (em, por), não são mudanças do conteúdo. */
 const SEM_HISTORICO = new Set(["alteradaEm", "alteradaPor", "excluidaPor", "criadaEm"]);
@@ -135,6 +136,16 @@ export function descreverRegistro(r, nomes) {
       }
       for (const [id, x] of a) if (!d.has(id)) partes.push(`retirou “${x.nome}”`);
       return partes.length ? `Documentos: ${partes.join("; ")}.` : "Reordenou os documentos.";
+    }
+    case "ligacoesExternas": {
+      /* 23/11/2026: compara ligação a ligação, pelo id; uma ligação não se altera, só entra e sai */
+      const a = new Set(lista(antes).map((x) => x.id));
+      const d = new Set(lista(depois).map((x) => x.id));
+      const partes = [
+        ...lista(depois).filter((x) => !a.has(x.id)).map((x) => `ligou ${textoDaLigacao(x)}`),
+        ...lista(antes).filter((x) => !d.has(x.id)).map((x) => `desligou ${textoDaLigacao(x)}`),
+      ];
+      return partes.length ? `Ligações externas: ${partes.join("; ")}.` : "Reordenou as ligações externas.";
     }
     case "estimativas": {
       const a = lista(antes);

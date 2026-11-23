@@ -202,6 +202,10 @@ export function criarBancoLocal() {
     async mudarDocumentos(espacoId, numero, mudanca, extra = {}, historico) {
       mudarAcao(espacoId, numero, (a) => ({ ...extra, documentos: mudanca(a.documentos ?? []) }), historico);
     },
+    /** Muda as ligações externas da ação (23/11/2026), como os documentos: lê e grava de uma vez. */
+    async mudarLigacoes(espacoId, numero, mudanca, extra = {}, historico) {
+      mudarAcao(espacoId, numero, (a) => ({ ...extra, ligacoesExternas: mudanca(a.ligacoesExternas ?? []) }), historico);
+    },
     /**
      * Muda os valores personalizados da ação (passo 3.6): `mudanca` recebe o mapa atual e devolve o novo.
      * Lê e grava de uma vez, como o checklist: duas pessoas preenchendo campos diferentes ao mesmo tempo não

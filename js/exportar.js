@@ -15,6 +15,7 @@ import { dataBr } from "./formato.js";
 import { opcoesDoCalculo, usaDataLimite, usaDependencias, usaContinuas } from "./modelos.js";
 import { ehContinua, marcoNaPlanilha } from "./continuas.js";
 import { fluxoDe, nomeDoFluxo } from "./situacoes.js";
+import { textoDaLigacao } from "./ligacoes.js";
 
 
 const SITUACAO = { concluida: "Concluída", liberada: "Liberada", naoLiberada: "Não liberada" };
@@ -55,6 +56,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
   const posicao = opcionais.prioridade !== false ? posicoesDaPrioridade(acoes) : null; // passo 2.10a: 1, 2, 3…
   const comLocal = opcionais.local === true;
   const comDocumentos = opcionais.documentos === true; // passo 2.10a: "nome (link ou identificação)", separados por ";"
+  const comLigacoes = acoes.some((a) => a.ligacoesExternas?.length); // 23/11/2026: só quando há alguma; "GLPI 1234 – Título (link)", separadas por ";"
   const comEntrega = entregas.length > 0 || acoes.some((a) => a.entregaDoPlano); // passo 2.6: o título da entrega
   const tituloDaEntrega = (id) => (id ? entregas.find((e) => e.id === id)?.titulo ?? "(entrega excluída)" : "");
   const porNumero = new Map(acoes.map((a) => [a.numero, a]));
@@ -72,7 +74,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
     ...(usaDescricao ? ["Descrição"] : []), ...(comJustificativa ? ["Justificativa"] : []), ...(comLocal ? ["Local"] : []), ...(comDependencias ? ["Depende de"] : []),
     ...(comMarcos ? ["Começa com", "Termina com"] : []),
     ...(comEstimativas ? ["Otimista", "Mais provável", "Pessimista", "Prazo previsto (dias úteis)"] : ["Data-limite"]),
-    "Responsáveis", ...(posicao ? ["Prioridade da equipe"] : []), ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), ...personalizados.map((x) => x.nome), ...(comEntrega ? ["Entrega do Plano de Ação"] : []), "Situação", "Atrasada",
+    "Responsáveis", ...(posicao ? ["Prioridade da equipe"] : []), ...(comEtiquetas ? ["Etiquetas"] : []), ...(comDocumentos ? ["Documentos"] : []), ...(comLigacoes ? ["Ligações externas"] : []), ...personalizados.map((x) => x.nome), ...(comEntrega ? ["Entrega do Plano de Ação"] : []), "Situação", "Atrasada",
     ...(comEstimativas ? ["Início previsto", "Conclusão prevista", "Folga (dias úteis)", "Sem folga"] : [])];
   const linhas = [...acoes].sort((a, b) => a.ordem - b.ordem).map((a) => {
     const { c, concluida, inicio, fim } = datas(a);
@@ -88,6 +90,7 @@ export function planilhaDoEspaco({ espaco, acoes, responsaveis, geral, hoje, ent
       ...(posicao ? [posicao.get(a.numero) ?? ""] : []),
       ...(comEtiquetas ? [etiquetasDaAcao(espaco, a).map((x) => x.nome).join("; ")] : []),
       ...(comDocumentos ? [(a.documentos ?? []).map((d) => `${d.nome} (${d.link || d.identificacao})`).join("; ")] : []),
+      ...(comLigacoes ? [(a.ligacoesExternas ?? []).map((l) => `${textoDaLigacao(l)} (${l.link})`).join("; ")] : []),
       ...personalizados.map((x) => textoDoValor(x, a.valoresPersonalizados?.[x.id])),
       ...(comEntrega ? [tituloDaEntrega(a.entregaDoPlano)] : []),
       /* situação personalizada, quando houver (passo 2.7) */

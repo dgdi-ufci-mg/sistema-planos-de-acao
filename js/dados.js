@@ -21,6 +21,7 @@ import { chaveValida, planejarMovimento } from "./prioridade.js";
 import { camadasDe, problemaDasCamadas, problemaDoInstrumento, problemaDoItem, problemaDosVinculos, subordinadosDe } from "./estrategia.js";
 import { encerrado, podeVer, participa, problemaDaVisibilidade, permissoes, problemaDosAcessos, semAdministracao, acessosAoAssumir, administradores, papelValido, emailNormal, nomeDoPapel } from "./papeis.js";
 import { problemaDasEtiquetas, etiquetasDe, proximaCor, etiquetaPorNome, TAMANHO_DO_NOME } from "./etiquetas.js";
+import { problemaDaLigacao, ligacaoLimpa } from "./ligacoes.js";
 import { problemaDosCampos, problemaDosValores, camposDe, campoPorId, valorDoCampo } from "./campos-personalizados.js";
 
 export { ErroDeDados };
@@ -247,6 +248,22 @@ export function criarStore(banco, opcoes = {}) {
       documentoValido(d);
       if (!d.id || ids.has(d.id)) throw new ErroDeDados("id-repetido", "Documento da ação com identificador repetido.");
       ids.add(d.id);
+    }
+  };
+
+  /**
+   * Ligações externas gravadas com a ação inteira (restauração, cópias; 23/11/2026): cada uma válida, sem
+   * campo desconhecido, com id único e sem repetir o mesmo item.
+   */
+  const conferirLigacoes = (campos) => {
+    if (!("ligacoesExternas" in campos)) return;
+    const vistas = [];
+    for (const l of campos.ligacoesExternas ?? []) {
+      recusarDesconhecidos(l, "ligacaoExterna");
+      if (!l.id || vistas.some((v) => v.id === l.id)) throw new ErroDeDados("id-repetido", "Ligação externa com identificador repetido.");
+      const p = problemaDaLigacao(l, vistas);
+      if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+      vistas.push(l);
     }
   };
 
@@ -793,6 +810,7 @@ export function criarStore(banco, opcoes = {}) {
       await conferirValores(espacoId, outros);
       await conferirEntregaDaAcao(espacoId, outros);
       conferirDocumentos(outros);
+      conferirLigacoes(outros);
       conferirPosicao(outros);
       for (const e of outros.estimativas ?? []) validarEstimativa(e);
       const acoes = await banco.listarAcoes(espacoId);
@@ -833,6 +851,7 @@ export function criarStore(banco, opcoes = {}) {
       await conferirEtiquetas(espacoId, campos);
       await conferirEntregaDaAcao(espacoId, campos);
       conferirDocumentos(campos);
+      conferirLigacoes(campos);
       conferirPosicao(campos);
       if (campos.codigo) validarCodigo(campos.codigo, (await banco.listarAcoes(espacoId)).filter((a) => a.numero !== numero));
       await banco.alterarAcao(espacoId, numero, { ...campos, alteradaEm: agora(), alteradaPor: usuario }, hist);
@@ -1020,6 +1039,32 @@ export function criarStore(banco, opcoes = {}) {
     async retirarDocumentoDaAcao(espacoId, numero, id) {
       await exigir(espacoId, "atualizar", numero);
       await banco.mudarDocumentos(espacoId, numero, (lista) => lista.filter((d) => d.id !== id), carimbo(), hist);
+    },
+    // --- ligações externas da ação (23/11/2026; seção 4.2.6): item a item, como os documentos ---
+    /**
+     * Liga a ação a um item de outro sistema (chamado do GLPI, processo do SIPAC, e-mail do Horde) e devolve
+     * o id da ligação. Recusa o mesmo item duas vezes na mesma ação (conferido dentro da gravação).
+     */
+    async ligarItemExterno(espacoId, numero, dados) {
+      await exigir(espacoId, "atualizar", numero);
+      const { id: _id, ligadaEm: _em, ligadaPor: _por, ...campos } = dados ?? {};
+      recusarDesconhecidos(campos, "ligacaoExterna");
+      const p = problemaDaLigacao(campos);
+      if (p) throw new ErroDeDados(p.codigo, p.mensagem);
+      await exigirAcao(espacoId, numero);
+      const id = novoId();
+      const nova = { id, ...ligacaoLimpa(campos), ligadaEm: agora(), ...(usuario ? { ligadaPor: usuario } : {}) };
+      await banco.mudarLigacoes(espacoId, numero, (lista) => {
+        const repetida = problemaDaLigacao(nova, lista);
+        if (repetida) throw new ErroDeDados(repetida.codigo, repetida.mensagem);
+        return [...lista, nova];
+      }, carimbo(), hist);
+      return id;
+    },
+    /** Desfaz uma ligação externa da ação. */
+    async desligarItemExterno(espacoId, numero, id) {
+      await exigir(espacoId, "atualizar", numero);
+      await banco.mudarLigacoes(espacoId, numero, (lista) => lista.filter((l) => l.id !== id), carimbo(), hist);
     },
     // --- checklist da ação (passo 2.8; seção 16.5): item a item, sem regravar os demais ---
     async acrescentarItemNoChecklist(espacoId, numero, texto) {
@@ -2016,7 +2061,7 @@ export function criarStore(banco, opcoes = {}) {
     "acrescentarItemNoChecklist", "marcarItemDoChecklist", "alterarItemDoChecklist", "retirarItemDoChecklist",
     "moverItemDoChecklist", "atribuirItemDoChecklist",
     "criarEtiqueta", "alterarEtiqueta", "retirarEtiqueta", "acrescentarEtiquetaNaAcao", "retirarEtiquetaDaAcao", "etiquetarAcao",
-    "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao", "priorizar",
+    "acrescentarDocumentoNaAcao", "alterarDocumentoDaAcao", "retirarDocumentoDaAcao", "ligarItemExterno", "desligarItemExterno", "priorizar",
     "criarCampoPersonalizado", "alterarCampoPersonalizado", "definirValorPersonalizado",
     /* faltavam (24/10/2026): sem eles, mudar a situação ou comentar sem conexão não dava o aviso de "sem conexão" */
     "mudarSituacao", "retirarSituacao", "comentar", "editarComentario", "apagarComentario",

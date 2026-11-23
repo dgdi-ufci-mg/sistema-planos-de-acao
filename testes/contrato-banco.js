@@ -197,6 +197,20 @@ export function testarContratoDoBanco(nome, criarBanco) {
       await assert.rejects(banco.mudarDocumentos("p1", 9, (l) => l), { codigo: "nao-encontrado" });
     });
 
+    it("ligações externas (23/11/2026): duas ligações ao mesmo tempo ficam as duas", async () => {
+      const banco = criarBanco();
+      await banco.criarEspaco("p1", { nome: "Espaço 1" });
+      await banco.criarAcao("p1", acao(1));
+      await Promise.all([
+        banco.mudarLigacoes("p1", 1, (l) => [...l, { id: "a", sistema: "glpi" }]),
+        banco.mudarLigacoes("p1", 1, (l) => [...l, { id: "b", sistema: "sipac" }]),
+      ]);
+      assert.deepEqual((await banco.lerAcao("p1", 1)).ligacoesExternas.map((l) => l.id).sort(), ["a", "b"]);
+      await banco.mudarLigacoes("p1", 1, (l) => l.filter((x) => x.id !== "a"));
+      assert.deepEqual((await banco.lerAcao("p1", 1)).ligacoesExternas.map((l) => l.id), ["b"]);
+      await assert.rejects(banco.mudarLigacoes("p1", 9, (l) => l), { codigo: "nao-encontrado" });
+    });
+
     it("valores personalizados (passo 3.6): duas mudanças de campos diferentes ao mesmo tempo ficam as duas", async () => {
       const banco = criarBanco();
       await banco.criarEspaco("p1", { nome: "Espaço 1" });
