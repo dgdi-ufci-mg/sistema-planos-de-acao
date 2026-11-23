@@ -37,6 +37,10 @@ describe("Ligações externas: regras", () => {
     assert.equal(problemaDaLigacao({ ...ok, identificador: " " }).codigo, "identificador-vazio");
     assert.equal(problemaDaLigacao({ ...ok, identificador: "abc" }).codigo, "identificador-invalido");
     assert.equal(problemaDaLigacao({ ...ok, sistema: "horde", identificador: "<abc@x>" }), null);
+    assert.equal(problemaDaLigacao({ ...ok, sistema: "horde", identificador: "", titulo: "Convite" }), null, "e-mail sem identificador, com assunto");
+    assert.equal(problemaDaLigacao({ ...ok, sistema: "horde", identificador: "" }).codigo, "titulo-vazio");
+    assert.equal(problemaDaLigacao({ ...ok, sistema: "sipac", identificador: "" }).mensagem, "Informe o NUP.");
+    assert.equal(problemaDaLigacao({ ...ok, sistema: "horde", identificador: "", titulo: "A" }, [{ sistema: "horde", titulo: "A" }]), null, "sem número, não confere repetição");
     assert.equal(problemaDaLigacao({ ...ok, link: "" }).codigo, "link-vazio");
     assert.equal(problemaDaLigacao({ ...ok, link: "ftp://x" }).codigo, "link-invalido");
     assert.equal(problemaDaLigacao({ ...ok, titulo: "x".repeat(201) }).codigo, "titulo-longo");
@@ -45,8 +49,10 @@ describe("Ligações externas: regras", () => {
 
   it("limpa os dados e escreve o texto curto", () => {
     assert.deepEqual(ligacaoLimpa({ sistema: "glpi", identificador: " 1234 ", titulo: "  ", link: ` ${GLPI} ` }), { sistema: "glpi", identificador: "1234", link: GLPI });
-    assert.equal(textoDaLigacao({ sistema: "glpi", identificador: "1234", titulo: "Impressora" }), "GLPI 1234 – Impressora");
-    assert.equal(textoDaLigacao({ sistema: "sipac", identificador: "23062.1/2026-1" }), "SIPAC/Protocolo 23062.1/2026-1");
+    assert.deepEqual(ligacaoLimpa({ sistema: "horde", identificador: " ", titulo: "Convite", link: HORDE }), { sistema: "horde", titulo: "Convite", link: HORDE });
+    assert.equal(textoDaLigacao({ sistema: "glpi", identificador: "1234", titulo: "Impressora" }), "GLPI, Chamado 1234 – Impressora");
+    assert.equal(textoDaLigacao({ sistema: "sipac", identificador: "23062.1/2026-1" }), "SIPAC/Protocolo, NUP 23062.1/2026-1");
+    assert.equal(textoDaLigacao({ sistema: "horde", identificador: "<a@b>", titulo: "Convite" }), "Horde – Convite");
   });
 });
 
@@ -98,8 +104,8 @@ for (const [nome, criarBanco] of [
       await store.desligarItemExterno(id, a, l1);
       const rs = (await store.listarHistorico(id, a)).filter((r) => r.campo === "ligacoesExternas");
       assert.deepEqual(rs.map((r) => descreverRegistro(r, {})), [
-        "Ligações externas: ligou GLPI 1234 – Impressora.",
-        "Ligações externas: desligou GLPI 1234 – Impressora.",
+        "Ligações externas: ligou GLPI, Chamado 1234 – Impressora.",
+        "Ligações externas: desligou GLPI, Chamado 1234 – Impressora.",
       ]);
     });
 
@@ -114,7 +120,7 @@ for (const [nome, criarBanco] of [
       const [titulos, linha] = await colunas();
       const i = titulos.split("\t").indexOf("Ligações externas");
       assert.ok(i >= 0);
-      assert.equal(linha.split("\t")[i], `GLPI 1234 – Impressora (${GLPI})`);
+      assert.equal(linha.split("\t")[i], `GLPI, Chamado 1234 – Impressora (${GLPI})`);
     });
   });
 }

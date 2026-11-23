@@ -26,7 +26,7 @@ import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { camposAtivos, campoPorId, textoDoValor, valorDoCampo } from "../campos-personalizados.js";
 import { atalhosDoVencimento, rotuloDaData } from "../lista.js";
-import { SISTEMAS, ORDEM_DOS_SISTEMAS, reconhecerLink, LIMITE_DO_TITULO } from "../ligacoes.js";
+import { SISTEMAS, ORDEM_DOS_SISTEMAS, reconhecerLink, LIMITE_DO_TITULO, numeroNaTela } from "../ligacoes.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -1233,7 +1233,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
       <input type="url" name="link" placeholder="Cole o link do chamado, do processo ou do e-mail" aria-label="Link" required>
       <div class="campos-lado-a-lado">
         <select name="sistema" aria-label="Sistema"><option value="">Sistema…</option>${opcoes}</select>
-        <input name="identificador" placeholder="Número" aria-label="Número" required>
+        <input name="identificador" placeholder="Número" aria-label="Número">
       </div>
       <input name="titulo" maxlength="${LIMITE_DO_TITULO}" placeholder="Título (opcional), como o assunto" aria-label="Título">
       <div class="botoes"><button class="botao principal" type="submit">Ligar</button><button class="botao" type="button" data-cancelar-ligacao>Cancelar</button></div>
@@ -1241,11 +1241,11 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     return `<div class="campo-acao" data-campo="ligacoesExternas">${rotuloHtml("ligacoesExternas", "Ligações externas")}
       <ul class="documentos-acao">${ligacoes.map((l) => {
         const sis = SISTEMAS[l.sistema];
-        const item = `${sis?.item ?? "Item"} ${l.identificador}`;
-        const texto = l.titulo || item;
+        const numeroVisto = numeroNaTela(l);
+        const texto = l.titulo || numeroVisto || sis?.item || "Item";
         return `<li><span class="documento-nome">${linkSeguro(l.link) ? `<a href="${esc(l.link)}" target="_blank" rel="noopener noreferrer">${esc(texto)}</a>` : esc(texto)}
-          <small class="tec">${esc([sis?.nome ?? l.sistema, l.titulo ? item : ""].filter(Boolean).join(" · "))}</small></span>
-          ${pode && !ligando ? `<span class="documento-botoes"><button type="button" class="tirar" data-desligar="${esc(l.id)}" aria-label="Desfazer a ligação com ${esc(item)}">${ICONES.fechar}</button></span>` : ""}
+          <small class="tec">${esc([sis?.nome ?? l.sistema, l.titulo ? numeroVisto : ""].filter(Boolean).join(" · "))}</small></span>
+          ${pode && !ligando ? `<span class="documento-botoes"><button type="button" class="tirar" data-desligar="${esc(l.id)}" aria-label="Desfazer a ligação com ${esc(texto)}">${ICONES.fechar}</button></span>` : ""}
         </li>`;
       }).join("")}</ul>
       ${ligando ? formulario : pode ? `<button type="button" class="chip-campo" data-nova-ligacao>${ICONES.mais}Ligação</button>` : ""}
@@ -2004,6 +2004,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     }
     if (e.target.dataset.auto) e.target.classList.remove("com-erro");
     if (e.target.name === "link" && e.target.closest("[data-form-ligacao]")) reconhecerNoFormulario(e.target.form);
+    if (e.target.name === "sistema" && e.target.closest("[data-form-ligacao]")) e.target.form.elements.identificador.placeholder = SISTEMAS[e.target.value]?.numero ?? "Número";
     if (e.target.matches("textarea.cresce, textarea.janela-nome")) ajustarAlturas(e.target.parentElement);
   });
   corpo.addEventListener("keydown", (e) => {

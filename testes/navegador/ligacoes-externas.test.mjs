@@ -47,6 +47,20 @@ describe("Ligações externas no navegador", { skip: pular }, () => {
       assert.match(await itens.first().innerText(), /Troca da impressora[\s\S]*GLPI · Chamado 1234/);
       assert.equal(await itens.first().locator("a").getAttribute("href"), GLPI);
 
+      /* e-mail do Horde: sem identificador, basta o assunto */
+      await j.locator("[data-nova-ligacao]").click();
+      await assentar(p);
+      await form.locator('[name="link"]').fill("https://webmail.ufcimg.edu.br/horde/imp/dynamic.php?page=message&uid=42");
+      assert.equal(await form.locator('[name="sistema"]').inputValue(), "horde");
+      assert.match(await form.locator('[name="identificador"]').getAttribute("placeholder"), /opcional/);
+      await form.locator('[name="titulo"]').fill("Convite para a reunião");
+      await form.locator('button[type="submit"]').click();
+      await p.waitForTimeout(600);
+      assert.equal(await itens.count(), 2);
+      assert.match(await itens.nth(1).innerText(), /Convite para a reunião\s*Horde/);
+      await itens.nth(1).locator("[data-desligar]").click();
+      await p.waitForTimeout(600);
+
       /* o mesmo chamado de novo é recusado, com aviso */
       await j.locator("[data-nova-ligacao]").click();
       await assentar(p);
