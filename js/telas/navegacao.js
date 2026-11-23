@@ -217,7 +217,7 @@ function ligar() {
  */
 function minhasHtml({ minhasAtual = false, nMinhas = null }) {
   const n = nMinhas ? `<span class="n" title="Com aviso e de hoje">${nMinhas}</span>` : "";
-  return `<button type="button" class="lateral-acao lateral-minhas${minhasAtual ? " atual" : ""}" data-item="minhasTarefas"${minhasAtual ? ' aria-current="page"' : ""}>${ICONES.concluida}Meu trabalho${n}</button>`;
+  return `<button type="button" class="lateral-acao lateral-minhas${minhasAtual ? " atual" : ""}" data-item="minhasTarefas"${minhasAtual ? ' aria-current="page"' : ""}>${ICONES.casa}Meu trabalho${n}</button>`;
 }
 
 /**

@@ -54,6 +54,8 @@ export const ICONES = Object.freeze({
   naoLiberada: svg('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
   /** Atrasada: relógio. */
   atrasada: svg('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M5 3 2 6M19 3l3 3"/>'),
+  /** Meu trabalho, na barra lateral (23/11/2026, pedido do responsável): uma casinha. */
+  casa: svg('<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/>'),
   /** Prazo vencido (Meu trabalho, 19/11/2026): círculo com exclamação. */
   prazoVencido: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5v.01"/>'),
   /** Em risco (Meu trabalho, 19/11/2026): triângulo de alerta. */

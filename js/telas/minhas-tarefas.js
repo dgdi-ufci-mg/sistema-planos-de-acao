@@ -12,6 +12,7 @@
  *   escrito ("até" a data-limite, "previsão" da conclusão, "planejada para" a data que venceu).
  */
 import { esc, dataBr, plural } from "../formato.js";
+import { prazoDaTarefa } from "../lista.js";
 import { ICONES } from "../icones.js";
 import { esqueletoHtml } from "./esqueleto.js";
 import { abrirSuave, fecharSuave, reduzirMovimento, DURACAO, CURVA } from "./movimento.js";
@@ -56,64 +57,65 @@ export function foraDoPadrao(v, espacos = []) {
   ].filter(Boolean);
 }
 
-/* ---------- datas ---------- */
-const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
-/** "ter, 24/11" na semana que vem; "24/11" no ano de hoje; "21/01/2027" em outro ano. */
-function dataCurtaDe(iso, hoje) {
-  if (iso.slice(0, 4) !== hoje.slice(0, 4)) return dataBr(iso);
-  const dias = (Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${hoje}T00:00:00Z`)) / 864e5;
-  const dm = dataBr(iso).slice(0, 5);
-  return dias > 0 && dias <= 7 ? `${DIAS[new Date(`${iso}T12:00:00Z`).getUTCDay()]}, ${dm}` : dm;
-}
-/** Texto da data, com o tipo escrito. */
-function dataTexto(item, hoje) {
-  if (!item.prazo) return "";
-  const d = dataCurtaDe(item.prazo, hoje);
-  if (item.aviso === "atrasada") return `planejada para ${d}`;
-  if (item.tipoDePrazo === "limite") return `até ${d}`;
-  return item.prazo === hoje ? "previsão hoje" : `previsão ${d}`;
+/* ---------- datas, no formato da Lista de tarefas ("Hoje", "Amanhã", "qui.", "19 nov."), com o tipo escrito ---------- */
+/** "Hoje" → "hoje", para vir depois de "até", "previsão" ou "planejada para"; dias e meses já vêm em minúscula. */
+/* depois de "até" ou "previsão", o dia da semana vai por extenso: "previsão sex." se lê mal */
+const POR_EXTENSO = { "dom.": "domingo", "seg.": "segunda", "ter.": "terça", "qua.": "quarta", "qui.": "quinta", "sex.": "sexta", "sáb.": "sábado" };
+const minuscula = (t) => (/^(Hoje|Amanhã|Ontem)$/.test(t) ? t.toLowerCase() : POR_EXTENSO[t] ?? t);
+/** Texto e tom da data (19/11/2026; formato da Lista de tarefas, 23/11/2026, pedido do responsável). */
+function dataDe(item, hoje) {
+  if (!item.prazo) return null;
+  const p = prazoDaTarefa(item.prazo, hoje);
+  const d = minuscula(p.texto);
+  if (item.aviso === "atrasada") return { texto: `planejada para ${d}`, tom: "atrasada" };
+  if (item.tipoDePrazo === "limite") return { texto: `até ${d}`, tom: p.tom };
+  return { texto: `previsão ${d}`, tom: p.tom === "vencida" ? "atrasada" : p.tom };
 }
 
 /* ---------- avisos ---------- */
 const NOME_DO_AVISO = Object.fromEntries(AVISOS);
 const EXPLICACAO = {
-  prazoVencido: (i, hoje) => `A data-limite (${dataBr(i.prazo)}) passou e a ${i.termo} não foi concluída.`,
+  prazoVencido: (i) => `A data-limite (${dataBr(i.prazo)}) passou e a ${i.termo} não foi concluída.`,
   atrasada: (i) => `A data planejada para a conclusão (${dataBr(i.prazo)}), pela estimativa mais recente, já passou. Uma reestimativa tira o aviso.`,
   emRisco: () => "A previsão de conclusão passa da data-limite. O prazo ainda não venceu: há tempo de agir.",
 };
-function avisoHtml(item, hoje) {
+/** O aviso como texto colorido com ícone, ao lado da data (23/11/2026: sem etiqueta de fundo, como a Lista). */
+function avisoHtml(item) {
   if (!item.aviso) return "";
   const id = `dica-${item.chave.replace(/[^A-Za-z0-9_-]/g, "-")}`;
   return `<span class="mt-aviso-caixa">
-      <button type="button" class="mt-aviso ${item.aviso}" aria-describedby="${id}">${ICONES[item.aviso === "atrasada" ? "atrasada" : item.aviso]}${NOME_DO_AVISO[item.aviso]}</button>
+      <button type="button" class="mt-aviso ${item.aviso}" aria-describedby="${id}">${ICONES[item.aviso]}${NOME_DO_AVISO[item.aviso]}</button>
       <span class="mt-dica" role="tooltip" id="${id}"><b>${NOME_DO_AVISO[item.aviso]}</b>
-        <span>${esc(EXPLICACAO[item.aviso](item, hoje))}</span>
+        <span>${esc(EXPLICACAO[item.aviso](item))}</span>
         <a href="#" data-termo="${item.aviso}">Saiba mais no glossário</a></span>
     </span>`;
 }
 
-/* ---------- linhas ---------- */
+/* ---------- linhas, com a anatomia da Lista de tarefas (23/11/2026) ---------- */
 function linhaHtml(item, hoje, ver, podeOrdenar) {
   const m = ver.mostrar;
-  const detalhe = [
+  const data = m.data ? dataDe(item, hoje) : null;
+  /* linha de baixo, como a da Lista: data e aviso, espaço, checklist e "não liberada", lado a lado */
+  const meta = [
+    data ? `<span class="prazo-tarefa ${data.tom}">${ICONES.barraTempo}<span>${data.texto}</span></span>` : "",
+    avisoHtml(item),
     /* agrupado por espaço, o nome do espaço já está no título do grupo */
     m.espaco && ver.agrupar !== "espaco" ? `<span class="minhas-espaco">${esc(item.espacoNome)}</span>` : "",
     m.checklist && item.checklist ? `<span class="mt-checklist" title="Itens do checklist feitos">${ICONES.checklist}${item.checklist.feitos}/${item.checklist.total}</span>` : "",
-    item.naoLiberada ? `<span class="mt-nao-liberada">${ICONES.naoLiberada}não liberada${item.aPartirDe ? `, a partir de ${dataCurtaDe(item.aPartirDe, hoje)}` : ""}</span>` : "",
-  ].filter(Boolean).join("");
-  const data = m.data ? dataTexto(item, hoje) : "";
+    item.naoLiberada ? `<span class="mt-nao-liberada">${ICONES.naoLiberada}não liberada${item.aPartirDe ? `, a partir de ${minuscula(prazoDaTarefa(item.aPartirDe, hoje).texto)}` : ""}</span>` : "",
+  ].join("");
   const deTarefas = ["quadro", "lista"].includes(item.tipo);
-  const marca = item.aviso === "prazoVencido" ? " crit" : item.aviso ? " warn" : item.prazo === hoje ? " hoje" : "";
   return `<li class="mt-linha${item.naoLiberada ? " nao-liberada" : ""}" data-chave="${esc(item.chave)}">
     ${podeOrdenar ? `<button type="button" class="mt-puxador" data-puxar aria-label="Mudar a posição de ${esc(item.rotulo)}: arraste, ou use as setas para cima e para baixo" title="Arraste para mudar a ordem">${ICONES.puxador}</button>` : ""}
-    <button type="button" class="caixa-concluida mt-concluir${marca}" data-concluir role="${deTarefas ? "checkbox" : "button"}"${deTarefas ? ' aria-checked="false"' : ""}
+    <button type="button" class="caixa-concluida mt-concluir" data-concluir role="${deTarefas ? "checkbox" : "button"}"${deTarefas ? ' aria-checked="false"' : ""}
       aria-label="${deTarefas ? `Concluir ${esc(item.rotulo)}` : `Registrar a conclusão de ${esc(item.rotulo)}`}" title="${deTarefas ? "Marcar como concluída" : "Abrir para registrar a conclusão"}">${ICONES.marcado}</button>
-    <button type="button" class="minhas-item" data-espaco="${esc(item.espacoId)}" data-numero="${item.numero}">
-      <span class="minhas-nome">${esc(item.rotulo)}</span>
-      ${detalhe ? `<span class="minhas-detalhe">${detalhe}</span>` : ""}
-      ${m.descricao && item.descricao ? `<span class="mt-descricao">${esc(item.descricao.replace(/\s+/g, " "))}</span>` : ""}
-    </button>
-    ${item.aviso || data ? `<span class="mt-quando">${avisoHtml(item, hoje)}${data ? `<span class="minhas-prazo${item.prazo === hoje && !item.aviso ? " hoje" : ""}">${data}</span>` : ""}</span>` : ""}
+    <div class="mt-texto">
+      <button type="button" class="minhas-item" data-espaco="${esc(item.espacoId)}" data-numero="${item.numero}">
+        <span class="minhas-nome">${esc(item.rotulo)}</span>
+        ${m.descricao && item.descricao ? `<span class="mt-descricao">${esc(item.descricao.replace(/\s+/g, " "))}</span>` : ""}
+      </button>
+      ${meta ? `<span class="meta-tarefa mt-meta">${meta}</span>` : ""}
+    </div>
   </li>`;
 }
 
@@ -178,20 +180,21 @@ export function mostrarMinhasTarefas(alvo, opcoes) {
   const fora = foraDoPadrao(ver, espacos);
   const colunas = ver.exibir === "colunas";
 
+  /* resumo discreto sob o título (23/11/2026): quantas de cada aviso, e o total */
   const resumo = [
-    ...AVISOS.filter(([c]) => avisos[c]).map(([c, nome]) => `<span class="mt-chip ${c}">${avisos[c]} ${nome.toLowerCase()}</span>`),
-    `<span class="mt-chip">${total} no total</span>`,
-  ].join("");
+    ...AVISOS.filter(([c]) => avisos[c]).map(([c, nome]) => `<span class="${c}">${avisos[c]} ${nome.toLowerCase()}</span>`),
+    `<span>${total} ${plural(total, "tarefa", "tarefas")}</span>`,
+  ].join('<span aria-hidden="true"> · </span>');
   alvo.innerHTML = `<section class="minhas-tarefas${colunas ? " em-colunas" : ""}${ver.densidade === "compacta" ? " compacta" : ""}">
-    <p class="tec minhas-explica">As ações e tarefas em que você é responsável, de todos os espaços de que participa.</p>
-    ${total ? `<div class="mt-resumo">${resumo}</div>` : ""}
+    <h2 class="titulo-conteudo" data-titulo-conteudo>Meu trabalho</h2>
+    ${total ? `<p class="mt-resumo">${resumo}</p>` : ""}
     ${fora.length ? `<div class="mt-fora">${fora.map((f) => `<span class="mt-fora-item">${esc(f)}</span>`).join("")}
       ${resultado.ocultas ? `<span class="mt-fora-item">${resultado.ocultas} ${plural(resultado.ocultas, "oculta", "ocultas")}</span>` : ""}
       <button type="button" class="botao-texto" data-limpar>Limpar</button></div>` : ""}
     ${total ? (grupos.length ? `<div class="mt-grupos">${grupos.map((g) => grupoHtml(g, hoje, ver, podeOrdenar)).join("")}</div>`
-      : '<div class="cartao minhas-vazio"><p><b>Nada à vista com estes filtros.</b></p><p>Use "Limpar" para ver todas as suas tarefas.</p></div>')
-    : `<div class="cartao minhas-vazio"><p><b>Nenhuma tarefa sua em aberto.</b></p>
-        <p>Quando você for responsável por uma ação ou tarefa, ela aparece aqui, junto com as dos outros espaços.</p></div>`}
+      : '<div class="minhas-vazio"><p><b>Nada à vista com estes filtros.</b></p><p>Use "Limpar" para ver todas as suas tarefas.</p></div>')
+    : `<div class="minhas-vazio"><p><b>Nenhuma tarefa sua em aberto.</b></p>
+        <p>Aqui aparecem as ações e tarefas em que você é responsável, de todos os espaços de que participa.</p></div>`}
   </section>`;
   const tela = alvo.querySelector(".minhas-tarefas");
 
@@ -263,8 +266,9 @@ export function mostrarMinhasTarefas(alvo, opcoes) {
       if (item) aoConcluir(item, linha);
       return;
     }
-    if (e.target.closest(".mt-aviso")) return; // o aviso mostra a explicação (no foco), e não abre a ação
-    const b = e.target.closest(".minhas-item");
+    if (e.target.closest(".mt-aviso-caixa, [data-puxar], a")) return; // o aviso mostra a explicação (no foco), e não abre a ação
+    /* a linha toda abre a ação, como na Lista de tarefas */
+    const b = e.target.closest(".mt-linha")?.querySelector(".minhas-item");
     if (b) aoAbrir(b.dataset.espaco, Number(b.dataset.numero));
   });
 
@@ -294,7 +298,8 @@ export function mostrarMinhasTarefas(alvo, opcoes) {
     arr = { li, lista, p, id: e.pointerId, y0: e.clientY, dy: e.clientY - r.top, proximo: li.nextElementSibling, ativo: false };
     p.setPointerCapture?.(e.pointerId);
   });
-  tela.addEventListener("pointermove", (e) => {
+  /* no documento, e não na tela: o puxador fica na margem, fora da coluna, e a captura se perde quando a linha muda de lugar */
+  const aoMoverPonteiro = (e) => {
     if (!arr || e.pointerId !== arr.id) return;
     if (!arr.ativo) {
       if (Math.abs(e.clientY - arr.y0) < 4) return;
@@ -303,13 +308,17 @@ export function mostrarMinhasTarefas(alvo, opcoes) {
       document.body.classList.add("arrastando-mt");
     }
     /* posição de destino: antes do primeiro irmão cujo meio está abaixo do ponteiro */
+    /* pela posição de layout (offsetTop), e não pela da tela: as irmãs ainda podem estar deslizando (FLIP) */
     const irmaos = [...arr.lista.children].filter((x) => x !== arr.li);
-    const alvoAntes = irmaos.find((x) => { const q = x.getBoundingClientRect(); return e.clientY < q.top + q.height / 2; }) ?? null;
+    const yNaLista = e.clientY - arr.lista.getBoundingClientRect().top;
+    const base = arr.lista.firstElementChild?.offsetTop ?? 0;
+    const alvoAntes = irmaos.find((x) => yNaLista < x.offsetTop - base + x.offsetHeight / 2) ?? null;
     if (alvoAntes !== arr.li.nextElementSibling) comFlip(arr.lista, () => arr.lista.insertBefore(arr.li, alvoAntes), arr.li);
     arr.li.style.transform = "none";
     const natural = arr.li.getBoundingClientRect().top;
     arr.li.style.transform = `translateY(${e.clientY - arr.dy - natural}px)`;
-  });
+  };
+  document.addEventListener("pointermove", aoMoverPonteiro);
   const soltar = (cancelar) => {
     if (!arr) return;
     const { li, lista, proximo, ativo } = arr;
@@ -323,8 +332,9 @@ export function mostrarMinhasTarefas(alvo, opcoes) {
     if (desvio && !reduzirMovimento()) li.animate([{ transform: desvio }, { transform: "none" }], { duration: 160, easing: CURVA });
     if (!cancelar && li.nextElementSibling !== proximo) aoMover(li.dataset.chave, vizinhas(li));
   };
-  tela.addEventListener("pointerup", (e) => { if (arr && e.pointerId === arr.id) soltar(false); });
-  tela.addEventListener("pointercancel", (e) => { if (arr && e.pointerId === arr.id) soltar(true); });
+  const aoSoltarPonteiro = (e) => { if (arr && e.pointerId === arr.id) soltar(e.type === "pointercancel"); };
+  document.addEventListener("pointerup", aoSoltarPonteiro);
+  document.addEventListener("pointercancel", aoSoltarPonteiro);
   const aoEscArrastando = (e) => { if (e.key === "Escape" && arr?.ativo) { e.stopPropagation(); soltar(true); } };
   document.addEventListener("keydown", aoEscArrastando, true);
   /* setas no puxador: uma posição para cima ou para baixo, dentro do grupo */
@@ -346,6 +356,9 @@ export function mostrarMinhasTarefas(alvo, opcoes) {
     document.removeEventListener("pointerdown", aoClicarFora, true);
     document.removeEventListener("keydown", aoTeclar);
     document.removeEventListener("keydown", aoEscArrastando, true);
+    document.removeEventListener("pointermove", aoMoverPonteiro);
+    document.removeEventListener("pointerup", aoSoltarPonteiro);
+    document.removeEventListener("pointercancel", aoSoltarPonteiro);
     barra?.removeEventListener("click", aoClicarNaBarra);
     if (barra) barra.innerHTML = "";
   };
