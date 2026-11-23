@@ -288,7 +288,8 @@ async function abrirMinhasTarefas() {
   await historicoPronto();
   const vindoDeEspaco = Boolean(abertoId);
   pararEspaco();
-  pararEspaco = () => { pararMinhas(); pararMinhas = () => {}; };
+  pararEspaco = () => { pararMinhas(); pararMinhas = () => {}; delete document.body.dataset.tela; };
+  document.body.dataset.tela = "meuTrabalho"; // fundo branco e título na coluna, como a Lista de tarefas (css, 23/11/2026)
   abertoId = null;
   naMinhas = true;
   document.body.classList.remove("so-leitura", "sem-criar-acao");

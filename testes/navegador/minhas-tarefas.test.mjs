@@ -77,7 +77,10 @@ describe("Meu trabalho", { skip: pular }, () => {
       assert.ok(titulos.includes("Sem data"));
       assert.equal(await p.locator(".minhas-vencidas .minhas-nome").first().textContent(), "Responder o ofício da Auditoria Interna");
       assert.equal(await p.locator(".minhas-vencidas .mt-aviso").first().textContent(), "Prazo vencido");
-      assert.match(await p.locator(".minhas-vencidas .minhas-prazo").first().textContent(), /^até \d{2}\/\d{2}$/);
+      /* data no formato da Lista de tarefas, com o tipo escrito (23/11/2026) */
+      assert.match(await p.locator(".minhas-vencidas .prazo-tarefa").first().textContent(), /^até (ontem|\d{1,2} [a-zç]{3}\.( \d{4})?)$/);
+      assert.equal(await p.locator(".lateral [data-item=minhasTarefas] .icone").count(), 1);
+      if (largura > 900) assert.equal(await p.locator("#principal .titulo-conteudo").textContent(), "Meu trabalho");
       /* nada da Carla nem do Bruno */
       const nomes = await p.locator(".minhas-nome").allTextContents();
       assert.ok(!nomes.includes("Enviar a frequência do mês"));
