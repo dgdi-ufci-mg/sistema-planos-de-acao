@@ -7,7 +7,8 @@ import { criarFirestoreFalso } from "./firebase-falso.js";
 import { criarStore } from "../js/dados.js";
 import { descreverRegistro } from "../js/historico.js";
 import { planilhaDoEspaco } from "../js/exportar.js";
-import { reconhecerLink, chaveDoIdentificador, mesmoItem, problemaDaLigacao, ligacaoLimpa, textoDaLigacao, linkDoSipac, marcaDoLink, completarLigacao, ENDERECO_DO_SIPAC } from "../js/ligacoes.js";
+import { reconhecerLink, chaveDoIdentificador, mesmoItem, problemaDaLigacao, ligacaoLimpa, textoDaLigacao, linkDoSipac, marcaDoLink, completarLigacao, ENDERECO_DO_SIPAC,
+  enderecoDoPainel, ehEnderecoDoPainel, itemDoEndereco, tarefasLigadas, tarefasParaLigar } from "../js/ligacoes.js";
 
 const GLPI = "https://glpi.ufcimg.edu.br/front/ticket.form.php?id=1234";
 const SIPAC = "https://sipac.ufcimg.edu.br/sipac/protocolo/processo/detalhes.jsf?id=98765";
@@ -72,6 +73,46 @@ describe("Ligações externas: regras", () => {
     assert.equal(textoDaLigacao({ tipo: "chamado", sistema: "glpi", identificador: "1234", titulo: "Impressora" }), "Chamado (GLPI) 1234 – Impressora");
     assert.equal(textoDaLigacao({ tipo: "processo", sistema: "sipac", identificador: "23062.1/2026-1" }), "Processo (SIPAC), NUP 23062.1/2026-1");
     assert.equal(textoDaLigacao({ tipo: "email", sistema: "horde", identificador: "<a@b>", titulo: "Convite" }), "E-mail (Horde) – Convite");
+  });
+});
+
+describe("Ligações externas: painel lateral", () => {
+  it("o endereço do painel leva o item, e o Sextante o lê completo", () => {
+    const e = enderecoDoPainel({ tipo: "processo", identificador: "23062.1/2026-1", titulo: "Relatório & contas" });
+    assert.equal(e, "#/ligacoes?tipo=processo&id=23062.1%2F2026-1&titulo=Relat%C3%B3rio+%26+contas");
+    assert.ok(ehEnderecoDoPainel(e) && ehEnderecoDoPainel("#/ligacoes") && !ehEnderecoDoPainel("#/ligacoesx") && !ehEnderecoDoPainel("#/meu-trabalho"));
+    assert.deepEqual(itemDoEndereco(e), { tipo: "processo", sistema: "sipac", identificador: "23062.1/2026-1", titulo: "Relatório & contas", link: linkDoSipac("processo", "23062.1/2026-1") });
+    assert.equal(itemDoEndereco(enderecoDoPainel({ tipo: "chamado", identificador: "9", link: GLPI })).link, GLPI);
+    assert.equal(itemDoEndereco("#/ligacoes"), null, "sem item");
+    assert.equal(itemDoEndereco("#/ligacoes?tipo=redmine&id=1"), null, "tipo desconhecido");
+    assert.equal(itemDoEndereco(`#/ligacoes?tipo=email&titulo=${"x".repeat(300)}`).titulo.length, 200);
+  });
+
+  const espaco = (id) => ({ id, nome: { b: "Gabinete", c: "Reitoria" }[id] });
+  const fontes = [
+    { espaco: espaco("b"), acoes: [
+      { numero: 2, ordem: 2, rotulo: "Elaborar relatório de gestão", ligacoesExternas: [{ sistema: "sipac", identificador: "23062.000001/2026-10" }] },
+      { numero: 1, ordem: 1, rotulo: "Revisar o PDI", ligacoesExternas: [] },
+      { numero: 3, ordem: 3, rotulo: "Relatório antigo", concluidaEm: "2026-10-01" },
+    ] },
+    { espaco: espaco("c"), acoes: [{ numero: 1, ordem: 1, rotulo: "Consolidar relatório", ligacoesExternas: [{ sistema: "sipac", identificador: "23062000001202610" }] }] },
+  ];
+  const item = { tipo: "memorando", sistema: "sipac", identificador: "23062.000001/2026-10" };
+
+  it("acha as tarefas ligadas ao item, em todos os espaços, pelo número comparado", () => {
+    assert.deepEqual(tarefasLigadas(fontes, item).map((t) => `${t.espaco.id}${t.acao.numero}`), ["b2", "c1"]);
+    assert.deepEqual(tarefasLigadas(fontes, { tipo: "email", sistema: "horde", identificador: "" }), [], "sem número, nada a comparar");
+  });
+
+  it("oferece para ligar as não concluídas que a pessoa pode atualizar, sem as já ligadas, pela busca sem acento", () => {
+    const todas = () => true;
+    assert.deepEqual(tarefasParaLigar(fontes, item, "", todas).map((t) => `${t.espaco.id}${t.acao.numero}`), ["b1"]);
+    const outro = { sistema: "sipac", identificador: "999" };
+    assert.deepEqual(tarefasParaLigar(fontes, outro, "RELATORIO", todas).map((t) => `${t.espaco.id}${t.acao.numero}`), ["b2", "c1"]);
+    assert.deepEqual(tarefasParaLigar(fontes, outro, "relatório CONSOLIDAR", todas).map((t) => `${t.espaco.id}${t.acao.numero}`), ["c1"], "todas as palavras");
+    assert.deepEqual(tarefasParaLigar(fontes, outro, "reitoria", todas), [], "o nome do espaço não entra na busca");
+    assert.deepEqual(tarefasParaLigar(fontes, outro, "", (e) => e.id === "c").map((t) => `${t.espaco.id}${t.acao.numero}`), ["c1"], "só onde pode atualizar");
+    assert.equal(tarefasParaLigar(fontes, outro, "", todas, 2).length, 2, "limite");
   });
 });
 

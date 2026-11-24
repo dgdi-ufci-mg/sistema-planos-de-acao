@@ -19,6 +19,8 @@ import { mostrarEspaco } from "./telas/espaco.js";
 import { mostrarMinhasTarefas, mostrarCarregandoMinhas, lerVer, gravarVer } from "./telas/minhas-tarefas.js";
 import { montarMinhasTarefas, moverNaOrdem } from "./minhas-tarefas.js";
 import { abrirAcaoForaDoEspaco } from "./telas/janela-fora-do-espaco.js";
+import { mostrarPainelDeLigacoes, mostrarCarregandoLigacoes } from "./telas/ligacoes.js";
+import { ehEnderecoDoPainel, itemDoEndereco, tarefasLigadas } from "./ligacoes.js";
 import { mostrarNavegacao } from "./telas/navegacao.js";
 import { mostrarAjuda } from "./telas/ajuda.js";
 import { avisar, fecharPainel } from "./telas/painel.js";
@@ -84,6 +86,8 @@ let naMinhas = false;
 const ENDERECO_MINHAS = "#/meu-trabalho";
 /** Endereço antigo (até 19/11/2026, quando a tela se chamava "Minhas tarefas"): continua abrindo a tela. */
 const ehEnderecoMinhas = (h) => h === ENDERECO_MINHAS || h === "#/minhas-tarefas";
+/** Tela do painel lateral das ligações externas aberta (passo 3.8, parte 2; 24/11/2026). */
+let naLigacoes = false;
 
 const storeDe = (id) => (id && exemplos.has(id) ? exemplo : store);
 const tentar = async (f, padrao) => { try { return await f(); } catch (e) { avisar(e.message); return padrao; } };
@@ -103,7 +107,7 @@ async function espacosDoBanco() {
 async function atualizarTopo() {
   const { meus, consulta } = await espacosDoBanco();
   const espacos = [...meus, ...(exemplo ? await exemplo.listarEspacos() : [])];
-  const titulo = abertoId ? (await tentar(() => storeDe(abertoId).lerEspaco(abertoId), null))?.nome ?? "" : naMinhas ? "Meu trabalho" : "";
+  const titulo = abertoId ? (await tentar(() => storeDe(abertoId).lerEspaco(abertoId), null))?.nome ?? "" : naMinhas ? "Meu trabalho" : naLigacoes ? "Ligações externas" : "";
   /* nome de quem entrou: o do responsável ligado ao e-mail no espaço aberto (os responsáveis são de cada espaço) */
   const ligado = usuario && abertoId ? (await tentar(() => storeDe(abertoId).listarResponsaveis(abertoId), [])).find((r) => r.usuario === usuario) : null;
   mostrarNavegacao({
@@ -303,6 +307,63 @@ async function abrirMinhasTarefas() {
   if (!naMinhas) return; // a pessoa saiu da tela enquanto lia
   if (resultado) desenharMinhas(resultado);
   atualizarTopo();
+}
+
+/* ---------- painel lateral das ligações externas (passo 3.8, parte 2; 24/11/2026) ----------
+ * A extensão de navegador abre o Sextante no painel lateral, no endereço #/ligacoes?tipo=…&id=…&titulo=…&link=…,
+ * com o item aberto no SIPAC, no Horde ou no GLPI. A tela lista as tarefas ligadas a ele e liga ou cria tarefas.
+ * Os espaços lidos são os de "Meu trabalho" (de que a pessoa participa, não encerrados). */
+let janelaDasLigacoes = null;
+async function abrirLigacoes() {
+  janelaDasLigacoes?.fechar();
+  await historicoPronto();
+  pararEspaco();
+  naLigacoes = true;
+  pararEspaco = () => { naLigacoes = false; delete document.body.dataset.tela; };
+  document.body.dataset.tela = "ligacoes";
+  abertoId = null;
+  naMinhas = false;
+  document.body.classList.remove("so-leitura", "sem-criar-acao");
+  const endereco = location.hash;
+  const item = itemDoEndereco(endereco);
+  /* sem banco compartilhado (só na memória), não há login: a tela funciona direto */
+  const comLogin = Boolean(usuario) || !acesso;
+  if (!item || !comLogin) {
+    mostrarPainelDeLigacoes(principal, { item, comLogin, aoEntrar: entrar });
+    atualizarTopo();
+    return;
+  }
+  mostrarCarregandoLigacoes(principal, item);
+  atualizarTopo();
+  const fontes = await tentar(() => store.dadosParaMinhasTarefas(), []);
+  if (!naLigacoes || location.hash !== endereco) return; // a pessoa saiu da tela, ou o item mudou, enquanto lia
+  const perm = new Map(fontes.map((f) => [f.espaco.id, store.permissoesEm(f.espaco)]));
+  mostrarPainelDeLigacoes(principal, {
+    item, comLogin, fontes,
+    ligadas: tarefasLigadas(fontes, item),
+    podeAtualizar: (espaco, acao) => Boolean(perm.get(espaco.id)?.atualizar?.(acao)),
+    espacosParaCriar: fontes.filter((f) => perm.get(f.espaco.id)?.criarAcao).map((f) => f.espaco),
+    aoAbrir: (espacoId, numero) => {
+      janelaDasLigacoes = abrirAcaoForaDoEspaco({
+        store, espacoId, numero, hoje, usuario,
+        aoAbrirEspaco: (id, n) => abrirEspaco(id, { acao: n }),
+        aoFechar: (_id, _n, mudou) => { janelaDasLigacoes = null; if (mudou && naLigacoes) abrirLigacoes(); },
+      });
+    },
+    aoLigar: async (espacoId, numero) => {
+      const ok = await tentar(async () => { await store.ligarItemExterno(espacoId, numero, item); return true; }, false);
+      if (ok) { avisar("Ligação feita."); await abrirLigacoes(); }
+      return ok;
+    },
+    aoCriar: async (espacoId, nome) => {
+      const numero = await tentar(() => store.criarAcao(espacoId, { rotulo: nome }), null);
+      if (numero == null) return false;
+      const ok = await tentar(async () => { await store.ligarItemExterno(espacoId, numero, item); return true; }, false);
+      avisar(ok ? "Tarefa criada e ligada." : "Tarefa criada, mas sem a ligação.");
+      await abrirLigacoes();
+      return true;
+    },
+  });
 }
 
 const entrar = () => abrirEntrar({ acesso });
@@ -538,6 +599,7 @@ document.addEventListener("click", (e) => {
 
 /** Abre o espaço do link, o último aberto ou as boas-vindas. */
 async function abrirInicio() {
+  if (ehEnderecoDoPainel(location.hash)) return abrirLigacoes();
   if (ehEnderecoMinhas(location.hash) && usuario) return abrirMinhasTarefas();
   const { id: doLink, acao } = rota();
   if (doLink && await abrirEspaco(doLink, { acao })) return;
@@ -547,6 +609,7 @@ async function abrirInicio() {
 
 /* link para outro espaço dentro do sistema (passo 2.6: "Continua a entrega X, do Plano de Ação Y") */
 window.addEventListener("hashchange", () => {
+  if (ehEnderecoDoPainel(location.hash) && store) { abrirLigacoes(); return; } // a extensão trocou o item do painel
   if (ehEnderecoMinhas(location.hash) && !naMinhas && store && usuario) { abrirMinhasTarefas(); return; } // Voltar a partir de um espaço
   const { id, acao } = rota();
   if (!id || !store) return;
@@ -590,6 +653,7 @@ async function partida() {
     if (primeira) { primeira = false; await abrirInicio(); recontarMinhas(); return; }
     if (abertoId) await abrirEspaco(abertoId);
     else if (naMinhas && usuario) await abrirMinhasTarefas();
+    else if (naLigacoes) await abrirLigacoes();
     else boasVindas();
   });
 }

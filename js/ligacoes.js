@@ -174,3 +174,83 @@ export function textoDaLigacao(l) {
   const n = !l.identificador || !t?.sigla ? "" : t.sigla === t.nome ? ` ${l.identificador}` : `, ${t.sigla} ${l.identificador}`;
   return `${rotulo}${n}${l.titulo ? ` – ${l.titulo}` : ""}`;
 }
+
+/* ---------- Painel lateral (passo 3.8, parte 2; 24/11/2026) ---------- */
+
+/** Endereço da tela do painel dentro do Sextante. A extensão monta este endereço; o Sextante o lê. */
+export const ENDERECO_DO_PAINEL = "#/ligacoes";
+
+/**
+ * Endereço do painel para um item: `#/ligacoes?tipo=processo&id=23062…&titulo=…&link=…` (só os campos preenchidos).
+ * É o contrato entre a extensão e o Sextante: a extensão lê o item na página aberta e põe este endereço no painel.
+ */
+export function enderecoDoPainel({ tipo, identificador, titulo, link } = {}) {
+  const p = new URLSearchParams();
+  if (tipo) p.set("tipo", tipo);
+  if (identificador) p.set("id", identificador);
+  if (titulo) p.set("titulo", titulo);
+  if (link) p.set("link", link);
+  const q = p.toString();
+  return q ? `${ENDERECO_DO_PAINEL}?${q}` : ENDERECO_DO_PAINEL;
+}
+
+/** Se o endereço (hash) é o do painel. */
+export const ehEnderecoDoPainel = (hash) => hash === ENDERECO_DO_PAINEL || String(hash ?? "").startsWith(`${ENDERECO_DO_PAINEL}?`);
+
+/**
+ * O item do endereço do painel, completo como seria gravado (`completarLigacao`), ou null quando o endereço não traz um
+ * item de tipo conhecido. Título até o limite; campos que faltam ficam vazios.
+ * @returns {{tipo: string, sistema: string, identificador: string, titulo: string, link: string} | null}
+ */
+export function itemDoEndereco(hash) {
+  if (!ehEnderecoDoPainel(hash)) return null;
+  const p = new URLSearchParams(String(hash).slice(ENDERECO_DO_PAINEL.length + 1));
+  const tipo = p.get("tipo");
+  if (!TIPOS[tipo]) return null;
+  const dados = completarLigacao({
+    tipo, identificador: (p.get("id") ?? "").trim(), titulo: (p.get("titulo") ?? "").trim().slice(0, LIMITE_DO_TITULO), link: (p.get("link") ?? "").trim(),
+  });
+  return dados;
+}
+
+/**
+ * Tarefas ligadas ao item, nos espaços lidos (`fontes`, como em "Meu trabalho": `{espaco, acoes}`), na ordem dos espaços
+ * e, em cada um, na ordem das ações. Sem número (e-mail ligado à mão), o item não tem como ser comparado, e a lista
+ * fica vazia.
+ * @returns {{espaco: object, acao: object, ligacao: object}[]}
+ */
+export function tarefasLigadas(fontes, item) {
+  if (!item || !chaveDoIdentificador(item.sistema, item.identificador)) return [];
+  const achadas = [];
+  for (const { espaco, acoes } of fontes) {
+    for (const acao of [...acoes].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))) {
+      const ligacao = (acao.ligacoesExternas ?? []).find((l) => mesmoItem(l, item));
+      if (ligacao) achadas.push({ espaco, acao, ligacao });
+    }
+  }
+  return achadas;
+}
+
+const semAcento = (t) => String(t ?? "").normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+/**
+ * Tarefas a que o item pode ser ligado, para a busca de "Ligar a uma tarefa": as não concluídas, nos espaços em que a
+ * pessoa pode atualizar a tarefa (`podeAtualizar(espaco, acao)`), sem as já ligadas ao item. Com texto, só as que o
+ * contêm no nome ou no código, sem diferença de acentos e maiúsculas; todas as palavras precisam aparecer. O nome do
+ * espaço fica de fora: "dados" acharia todas as tarefas de um espaço chamado "repositório de dados". No máximo `limite`.
+ * @returns {{espaco: object, acao: object}[]}
+ */
+export function tarefasParaLigar(fontes, item, texto, podeAtualizar, limite = 8) {
+  const palavras = semAcento(texto).split(/\s+/).filter(Boolean);
+  const achadas = [];
+  for (const { espaco, acoes } of fontes) {
+    for (const acao of [...acoes].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))) {
+      if (acao.concluidaEm || !podeAtualizar(espaco, acao)) continue;
+      if (item && (acao.ligacoesExternas ?? []).some((l) => mesmoItem(l, item))) continue;
+      const alvo = semAcento(`${acao.rotulo} ${acao.codigo ?? ""}`);
+      if (palavras.every((p) => alvo.includes(p))) achadas.push({ espaco, acao });
+      if (achadas.length >= limite) return achadas;
+    }
+  }
+  return achadas;
+}
