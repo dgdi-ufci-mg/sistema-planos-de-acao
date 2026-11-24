@@ -17,8 +17,8 @@ export const CAMPOS = Object.freeze({
   documento: ["nome", "data", "identificacao", "link"],
   /** Documento ou link de uma ação (passo 2.10a): como o do espaço, com id, porque muda item a item. */
   documentoDaAcao: ["id", "nome", "data", "identificacao", "link"],
-  /** Ligação externa de uma ação (23/11/2026): chamado do GLPI, processo do SIPAC ou e-mail do Horde. */
-  ligacaoExterna: ["id", "sistema", "identificador", "titulo", "link", "ligadaEm", "ligadaPor"],
+  /** Ligação externa de uma ação (23/11/2026): processo, documento avulso ou memorando do SIPAC, e-mail do Horde ou chamado do GLPI. */
+  ligacaoExterna: ["id", "tipo", "sistema", "identificador", "titulo", "link", "ligadaEm", "ligadaPor"],
   /** Documento que aprovou o Plano de Ação (passo 2.4a). */
   aprovacao: ["identificacao", "link"],
   /** Situação personalizada do espaço, uma coluna do quadro (passo 2.7). */

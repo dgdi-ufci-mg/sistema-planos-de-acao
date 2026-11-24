@@ -26,7 +26,7 @@ import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { camposAtivos, campoPorId, textoDoValor, valorDoCampo } from "../campos-personalizados.js";
 import { atalhosDoVencimento, rotuloDaData } from "../lista.js";
-import { SISTEMAS, ORDEM_DOS_SISTEMAS, reconhecerLink, LIMITE_DO_TITULO, numeroNaTela } from "../ligacoes.js";
+import { TIPOS, ORDEM_DOS_TIPOS, reconhecerLink, LIMITE_DO_TITULO, numeroNaTela } from "../ligacoes.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -1219,48 +1219,48 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     </div>`;
   }
   /**
-   * Ligações externas da ação (23/11/2026; seção 4.2.6): chamados do GLPI, processos do SIPAC/Protocolo e
-   * e-mails do Horde. Cada uma mostra o título (ou "Chamado 1234"), que abre o item, e, em letra menor, o
-   * sistema e o número; × desfaz a ligação. "+ Ligação" abre um formulário curto: a pessoa cola o link, o
-   * sistema é reconhecido pelo endereço (e, no GLPI, também o número), e falta só confirmar o número e o título.
+   * Ligações externas da ação (23/11/2026; seção 4.2.6): processos, documentos avulsos e memorandos do SIPAC,
+   * e-mails do Horde e chamados do GLPI. Cada uma mostra o título (ou "NUP …", "Chamado 1234"), que abre o item, e,
+   * em letra menor, o tipo e o número; × desfaz a ligação. "+ Ligação" abre um formulário curto: a pessoa cola o
+   * link ou escolhe o tipo; o tipo é reconhecido pelo endereço (e, no GLPI, também o número). No processo e no
+   * documento avulso do SIPAC, basta o NUP: o link é montado pelo Store.
    * Uma ligação não se edita: desfaz-se e liga-se de novo.
    */
   function ligacoesHtml(acao) {
     const ligacoes = acao.ligacoesExternas ?? [];
     const pode = !somenteLeitura();
-    const opcoes = ORDEM_DOS_SISTEMAS.map((s) => `<option value="${s}">${esc(SISTEMAS[s].nome)}</option>`).join("");
+    const opcoes = ORDEM_DOS_TIPOS.map((t) => `<option value="${t}">${esc(TIPOS[t].rotulo)}</option>`).join("");
     const formulario = `<form class="form-documento" data-form-ligacao>
-      <input type="url" name="link" placeholder="Cole o link do chamado ou do e-mail (no SIPAC, basta o NUP)" aria-label="Link">
-      <div class="campos-lado-a-lado">
-        <select name="sistema" aria-label="Sistema"><option value="">Sistema…</option>${opcoes}</select>
-        <input name="identificador" placeholder="Número" aria-label="Número">
-      </div>
+      <input type="url" name="link" placeholder="Cole o link" aria-label="Link">
+      <select name="tipo" aria-label="Tipo"><option value="">Tipo…</option>${opcoes}</select>
+      <input name="identificador" placeholder="Número" aria-label="Número">
       <input name="titulo" maxlength="${LIMITE_DO_TITULO}" placeholder="Título (opcional), como o assunto" aria-label="Título">
       <div class="botoes"><button class="botao principal" type="submit">Ligar</button><button class="botao" type="button" data-cancelar-ligacao>Cancelar</button></div>
     </form>`;
     return `<div class="campo-acao" data-campo="ligacoesExternas">${rotuloHtml("ligacoesExternas", "Ligações externas")}
       <ul class="documentos-acao">${ligacoes.map((l) => {
-        const sis = SISTEMAS[l.sistema];
+        const tipo = TIPOS[l.tipo];
         const numeroVisto = numeroNaTela(l);
-        const texto = l.titulo || numeroVisto || sis?.item || "Item";
+        const texto = l.titulo || numeroVisto || tipo?.nome || "Item";
         return `<li><span class="documento-nome">${linkSeguro(l.link) ? `<a href="${esc(l.link)}" target="_blank" rel="noopener noreferrer">${esc(texto)}</a>` : esc(texto)}
-          <small class="tec">${esc([sis?.nome ?? l.sistema, l.titulo ? numeroVisto : ""].filter(Boolean).join(" · "))}</small></span>
+          <small class="tec">${esc([tipo?.rotulo ?? l.sistema, l.titulo ? numeroVisto : ""].filter(Boolean).join(" · "))}</small></span>
           ${pode && !ligando ? `<span class="documento-botoes"><button type="button" class="tirar" data-desligar="${esc(l.id)}" aria-label="Desfazer a ligação com ${esc(texto)}">${ICONES.fechar}</button></span>` : ""}
         </li>`;
       }).join("")}</ul>
       ${ligando ? formulario : pode ? `<button type="button" class="chip-campo" data-nova-ligacao>${ICONES.mais}Ligação</button>` : ""}
     </div>`;
   }
-  /** Ao colar ou digitar o link: escolhe o sistema e, se o endereço trouxer, o número (só preenche o que está vazio). */
+  /** Ao colar ou digitar o link: escolhe o tipo e, se o endereço trouxer, o número (só preenche o que está vazio). */
   function reconhecerNoFormulario(form) {
     const achado = reconhecerLink(form.elements.link.value.trim());
     if (!achado) return;
-    form.elements.sistema.value = achado.sistema;
+    if (!achado.tipo) return; // endereço do SIPAC que não diz se é processo ou documento avulso: a pessoa escolhe
+    form.elements.tipo.value = achado.tipo;
     if (achado.identificador && !form.elements.identificador.value.trim()) form.elements.identificador.value = achado.identificador;
-    form.elements.identificador.placeholder = SISTEMAS[achado.sistema].numero;
+    form.elements.identificador.placeholder = TIPOS[achado.tipo].numero;
   }
   async function salvarLigacao(form) {
-    const dados = Object.fromEntries(["sistema", "identificador", "titulo", "link"].map((k) => [k, form.elements[k].value]));
+    const dados = Object.fromEntries(["tipo", "identificador", "titulo", "link"].map((k) => [k, form.elements[k].value]));
     const ok = await executar(() => store.ligarItemExterno(espacoId, numero, dados), "Ligação feita.");
     if (ok) { ligando = false; desenhar(); }
   }
@@ -2004,7 +2004,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     }
     if (e.target.dataset.auto) e.target.classList.remove("com-erro");
     if (e.target.name === "link" && e.target.closest("[data-form-ligacao]")) reconhecerNoFormulario(e.target.form);
-    if (e.target.name === "sistema" && e.target.closest("[data-form-ligacao]")) e.target.form.elements.identificador.placeholder = SISTEMAS[e.target.value]?.numero ?? "Número";
+    if (e.target.name === "tipo" && e.target.closest("[data-form-ligacao]")) e.target.form.elements.identificador.placeholder = TIPOS[e.target.value]?.numero ?? "Número";
     if (e.target.matches("textarea.cresce, textarea.janela-nome")) ajustarAlturas(e.target.parentElement);
   });
   corpo.addEventListener("keydown", (e) => {

@@ -36,7 +36,7 @@ describe("Ligações externas no navegador", { skip: pular }, () => {
       await j.locator('[data-mostrar-campo="ligacoesExternas"]').click();
       await assentar(p);
       await form.locator('[name="link"]').fill(GLPI);
-      assert.equal(await form.locator('[name="sistema"]').inputValue(), "glpi", "o sistema vem do endereço");
+      assert.equal(await form.locator('[name="tipo"]').inputValue(), "chamado", "o tipo vem do endereço");
       assert.equal(await form.locator('[name="identificador"]').inputValue(), "1234", "o número do chamado também");
       await form.locator('[name="titulo"]').fill("Troca da impressora");
       await form.locator('button[type="submit"]').click();
@@ -44,33 +44,48 @@ describe("Ligações externas no navegador", { skip: pular }, () => {
 
       const itens = j.locator('[data-campo="ligacoesExternas"] .documentos-acao > li');
       assert.equal(await itens.count(), 1);
-      assert.match(await itens.first().innerText(), /Troca da impressora[\s\S]*GLPI · Chamado 1234/);
+      assert.match(await itens.first().innerText(), /Troca da impressora[\s\S]*Chamado \(GLPI\) · Chamado 1234/);
       assert.equal(await itens.first().locator("a").getAttribute("href"), GLPI);
 
       /* e-mail do Horde: sem identificador, basta o assunto */
       await j.locator("[data-nova-ligacao]").click();
       await assentar(p);
       await form.locator('[name="link"]').fill("https://webmail.ufcimg.edu.br/horde/imp/dynamic.php?page=message&uid=42");
-      assert.equal(await form.locator('[name="sistema"]').inputValue(), "horde");
+      assert.equal(await form.locator('[name="tipo"]').inputValue(), "email");
       assert.match(await form.locator('[name="identificador"]').getAttribute("placeholder"), /opcional/);
       await form.locator('[name="titulo"]').fill("Convite para a reunião");
       await form.locator('button[type="submit"]').click();
       await p.waitForTimeout(600);
       assert.equal(await itens.count(), 2);
-      assert.match(await itens.nth(1).innerText(), /Convite para a reunião\s*Horde/);
+      assert.match(await itens.nth(1).innerText(), /Convite para a reunião\s*E-mail \(Horde\)/);
       await itens.nth(1).locator("[data-desligar]").click();
       await p.waitForTimeout(600);
 
-      /* processo do SIPAC: basta escolher o sistema e digitar o NUP; o link é montado pelo Sextante */
+      /* processo do SIPAC: basta escolher o tipo e digitar o NUP; o link é montado pelo Sextante */
       await j.locator("[data-nova-ligacao]").click();
       await assentar(p);
-      await form.locator('[name="sistema"]').selectOption("sipac");
+      await form.locator('[name="tipo"]').selectOption("processo");
       await form.locator('[name="identificador"]').fill("23062.054143/2026-50");
       await form.locator('button[type="submit"]').click();
       await p.waitForTimeout(600);
       assert.equal(await itens.count(), 2);
-      assert.match(await itens.nth(1).innerText(), /NUP 23062\.054143\/2026-50[\s\S]*SIPAC\/Protocolo/);
-      assert.match(await itens.nth(1).locator("a").getAttribute("href"), /#sextante-nup=23062\.054143%2F2026-50$/);
+      assert.match(await itens.nth(1).innerText(), /NUP 23062\.054143\/2026-50[\s\S]*Processo \(SIPAC\)/);
+      assert.match(await itens.nth(1).locator("a").getAttribute("href"), /#sextante-processo=23062\.054143%2F2026-50$/);
+      await itens.nth(1).locator("[data-desligar]").click();
+      await p.waitForTimeout(600);
+
+      /* memorando do SIPAC: colar o link reconhece o tipo; o link colado é guardado */
+      const MEMO = "https://sig.cefetmg.br/sipac/protocolo/memorando_eletronico/memorando_eletronico.jsf?idMemorandoEletronico=1956755";
+      await j.locator("[data-nova-ligacao]").click();
+      await assentar(p);
+      await form.locator('[name="link"]').fill(MEMO);
+      assert.equal(await form.locator('[name="tipo"]').inputValue(), "memorando");
+      await form.locator('[name="identificador"]').fill("23062.000111/2026-01");
+      await form.locator('button[type="submit"]').click();
+      await p.waitForTimeout(600);
+      assert.equal(await itens.count(), 2);
+      assert.equal(await itens.nth(1).locator("a").getAttribute("href"), MEMO);
+      assert.match(await itens.nth(1).innerText(), /Memorando \(SIPAC\)/);
       await itens.nth(1).locator("[data-desligar]").click();
       await p.waitForTimeout(600);
 
