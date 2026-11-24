@@ -262,7 +262,7 @@ describe("Janela da tarefa no navegador", { skip: pular }, () => {
     /* sem os rótulos "Descrição" e "Checklist", e sem a faixa "Mais campos": só os "+ Adicionar …" */
     assert.equal(await j.locator('.janela-principal .campo-nome:text-is("Descrição"), .janela-principal .campo-nome:text-is("Checklist")').count(), 0);
     assert.equal(await j.locator(".mais-campos").count(), 0);
-    assert.deepEqual(await j.locator(".adicionar-conteudo").allInnerTexts(), ["Adicionar checklist", "Adicionar anotações"]);
+    assert.deepEqual(await j.locator(".adicionar-conteudo").allInnerTexts(), ["Adicionar checklist", "Adicionar anotações", "Adicionar ligações externas"]);
     await j.locator('[data-mostrar-campo="notas"]').click();
     await assentar(q);
     assert.equal(await j.locator("[data-editor-notas]").count(), 1);

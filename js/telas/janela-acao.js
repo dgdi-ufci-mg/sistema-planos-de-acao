@@ -26,6 +26,7 @@ import { usaEtiquetas, etiquetasDe, etiquetasDaAcao, etiquetaPorNome, TAMANHO_DO
 import { etiquetaHtml } from "./etiqueta-html.js";
 import { camposAtivos, campoPorId, textoDoValor, valorDoCampo } from "../campos-personalizados.js";
 import { atalhosDoVencimento, rotuloDaData } from "../lista.js";
+import { TIPOS, ORDEM_DOS_TIPOS, reconhecerLink, LIMITE_DO_TITULO, numeroNaTela } from "../ligacoes.js";
 
 const SITUACOES = {
   concluida: ["Concluída", "concluida", "icone-concluida"],
@@ -50,7 +51,7 @@ const diasUteis = (n) => `${decimal(n)} ${plural(Math.abs(n), "dia útil", "dias
 /** Prefixo dos campos personalizados na janela (passo 3.6): "cp-" mais o id do campo. */
 const PREFIXO_CP = "cp-";
 /** Campos que, nas tarefas, ficam na coluna principal, como conteúdo; os demais vão para a coluna de atributos (05/11/2026). */
-const DO_CONTEUDO = new Set(["descricao", "checklist", "notas", "justificativa", "documentos"]);
+const DO_CONTEUDO = new Set(["descricao", "checklist", "notas", "justificativa", "documentos", "ligacoesExternas"]);
 /** Ícone de cada atributo na linha do celular (05/11/2026). */
 const ICONE_DO_ATRIBUTO = {
   situacao: "colunas", marcada: "concluida", prazo: "calendario", indices: "indicador", dataLimite: "calendario", naoAntesDe: "inicio", responsaveis: "pessoa",
@@ -257,7 +258,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     }
     numero = destino.numero;
     editando = null; registros = null; historicoAberto = false; checklistAberto = false; focoNoChecklist = false;
-    buscando = null; editandoDoc = null; mostrados.clear(); status = null;
+    buscando = null; editandoDoc = null; ligando = false; mostrados.clear(); status = null;
     alheia = null; anteriorPendente = null; editandoComentario = null; apagandoComentario = null; gravado = null;
     popover = null; focoPopover = null; historicoVisivel = false; trocarEscolha(null); focoPendente = null;
     abrirMenu(false);
@@ -410,6 +411,8 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
   let buscando = null;
   /** documento em edição na janela (passo 2.10a): id, "novo" ou null */
   let editandoDoc = null;
+  /** formulário de nova ligação externa aberto (23/11/2026) */
+  let ligando = false;
   /** campos opcionais abertos em "Mais campos", mesmo vazios */
   const mostrados = new Set();
   /** janelinha aberta na coluna de atributos da tarefa (05/11/2026): o campo ("dataLimite", "responsaveis", "cp-…") ou null */
@@ -591,6 +594,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
         <textarea class="cresce" rows="2" ${atributos("justificativa", acao.justificativa)} aria-label="Justificativa" placeholder="Por que esta tarefa existe">${esc(acao.justificativa ?? "")}</textarea></div>`);
     }
     if (campos.documentos === true && visivel(acao, "documentos")) partes.push(documentosHtml(acao));
+    if (visivel(acao, "ligacoesExternas")) partes.push(ligacoesHtml(acao)); // em todos os espaços (23/11/2026)
     partes.push(checklistHtml(acao));
     if (campos.notas !== false && visivel(acao, "notas")) partes.push(notasHtml(acao));
     return partes.join("");
@@ -995,6 +999,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     if (campo === "local") return Boolean(acao.local);
     if (campo === "entregaDoPlano") return Boolean(acao.entregaDoPlano);
     if (campo === "documentos") return Boolean(acao.documentos?.length) || editandoDoc != null;
+    if (campo === "ligacoesExternas") return Boolean(acao.ligacoesExternas?.length) || ligando;
     /* campos personalizados (passo 3.6): aparecem com valor; vazios, em "Mais campos" */
     if (campo.startsWith(PREFIXO_CP)) return acao.valoresPersonalizados?.[campo.slice(PREFIXO_CP.length)] != null;
     return true;
@@ -1012,6 +1017,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
       campos.local === true && ["local", "Local"],
       usaEtiquetas(d.espaco) && ["etiquetas", "Etiquetas"],
       campos.documentos === true && ["documentos", "Documentos e links"],
+      ["ligacoesExternas", "Ligações externas"],
       d.entregas?.length && ["entregaDoPlano", "Entrega do Plano de Ação"],
       ...camposAtivos(d.espaco).map((c) => [PREFIXO_CP + c.id, c.nome]),
     ].filter(Boolean);
@@ -1212,6 +1218,53 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
       ${editandoDoc === "novo" ? formulario() : pode && editandoDoc == null ? `<button type="button" class="chip-campo" data-novo-documento>${ICONES.mais}Documento</button>` : ""}
     </div>`;
   }
+  /**
+   * Ligações externas da ação (23/11/2026; seção 4.2.6): processos, documentos avulsos e memorandos do SIPAC,
+   * e-mails do Horde e chamados do GLPI. Cada uma mostra o título (ou "NUP …", "Chamado 1234"), que abre o item, e,
+   * em letra menor, o tipo e o número; × desfaz a ligação. "+ Ligação" abre um formulário curto: a pessoa cola o
+   * link ou escolhe o tipo; o tipo é reconhecido pelo endereço (e, no GLPI, também o número). No processo e no
+   * documento avulso do SIPAC, basta o NUP: o link é montado pelo Store.
+   * Uma ligação não se edita: desfaz-se e liga-se de novo.
+   */
+  function ligacoesHtml(acao) {
+    const ligacoes = acao.ligacoesExternas ?? [];
+    const pode = !somenteLeitura();
+    const opcoes = ORDEM_DOS_TIPOS.map((t) => `<option value="${t}">${esc(TIPOS[t].rotulo)}</option>`).join("");
+    const formulario = `<form class="form-documento" data-form-ligacao>
+      <input type="url" name="link" placeholder="Cole o link" aria-label="Link">
+      <select name="tipo" aria-label="Tipo"><option value="">Tipo…</option>${opcoes}</select>
+      <input name="identificador" placeholder="Número" aria-label="Número">
+      <input name="titulo" maxlength="${LIMITE_DO_TITULO}" placeholder="Título (opcional), como o assunto" aria-label="Título">
+      <div class="botoes"><button class="botao principal" type="submit">Ligar</button><button class="botao" type="button" data-cancelar-ligacao>Cancelar</button></div>
+    </form>`;
+    return `<div class="campo-acao" data-campo="ligacoesExternas">${rotuloHtml("ligacoesExternas", "Ligações externas")}
+      <ul class="documentos-acao">${ligacoes.map((l) => {
+        const tipo = TIPOS[l.tipo];
+        const numeroVisto = numeroNaTela(l);
+        const texto = l.titulo || numeroVisto || tipo?.nome || "Item";
+        return `<li><span class="documento-nome">${linkSeguro(l.link) ? `<a href="${esc(l.link)}" target="_blank" rel="noopener noreferrer">${esc(texto)}</a>` : esc(texto)}
+          <small class="tec">${esc([tipo?.rotulo ?? l.sistema, l.titulo ? numeroVisto : ""].filter(Boolean).join(" · "))}</small></span>
+          ${pode && !ligando ? `<span class="documento-botoes"><button type="button" class="tirar" data-desligar="${esc(l.id)}" aria-label="Desfazer a ligação com ${esc(texto)}">${ICONES.fechar}</button></span>` : ""}
+        </li>`;
+      }).join("")}</ul>
+      ${ligando ? formulario : pode ? `<button type="button" class="chip-campo" data-nova-ligacao>${ICONES.mais}Ligação</button>` : ""}
+    </div>`;
+  }
+  /** Ao colar ou digitar o link: escolhe o tipo e, se o endereço trouxer, o número (só preenche o que está vazio). */
+  function reconhecerNoFormulario(form) {
+    const achado = reconhecerLink(form.elements.link.value.trim());
+    if (!achado) return;
+    if (!achado.tipo) return; // endereço do SIPAC que não diz se é processo ou documento avulso: a pessoa escolhe
+    form.elements.tipo.value = achado.tipo;
+    if (achado.identificador && !form.elements.identificador.value.trim()) form.elements.identificador.value = achado.identificador;
+    form.elements.identificador.placeholder = TIPOS[achado.tipo].numero;
+  }
+  async function salvarLigacao(form) {
+    const dados = Object.fromEntries(["tipo", "identificador", "titulo", "link"].map((k) => [k, form.elements[k].value]));
+    const ok = await executar(() => store.ligarItemExterno(espacoId, numero, dados), "Ligação feita.");
+    if (ok) { ligando = false; desenhar(); }
+  }
+
   async function salvarDocumento(form) {
     const dados = Object.fromEntries(["nome", "identificacao", "data", "link"].map((k) => [k, form.elements[k].value]));
     const id = form.dataset.formDocumento;
@@ -1626,6 +1679,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     if (campo === "checklist") { checklistAberto = true; focoNoChecklist = true; }
     if (campo === "etiquetas") buscando = "etiquetas"; // abre já com a busca
     if (campo === "documentos") editandoDoc = "novo"; // abre já com o formulário
+    if (campo === "ligacoesExternas") ligando = true;
     mostrados.add(campo);
     desenhar();
     const bloco = corpo.querySelector(`[data-campo="${campo}"]`);
@@ -1814,6 +1868,11 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     if (textoItem && !textoItem.isContentEditable) return editarItem(textoItem);
     const dep = t.closest("[data-tirar-dependencia]");
     if (dep) return executar(() => store.retirarDependencia(espacoId, numero, Number(dep.dataset.tirarDependencia)));
+    /* ligações externas (23/11/2026) */
+    if (t.closest("[data-nova-ligacao]")) { ligando = true; desenhar(); return corpo.querySelector('[data-form-ligacao] [name="link"]')?.focus(); }
+    if (t.closest("[data-cancelar-ligacao]")) { ligando = false; mostrados.delete("ligacoesExternas"); return desenhar(); }
+    const desligar = t.closest("[data-desligar]");
+    if (desligar) return executar(() => store.desligarItemExterno(espacoId, numero, desligar.dataset.desligar), "Ligação desfeita.");
     /* documentos da ação (passo 2.10a) */
     if (t.closest("[data-novo-documento]")) { editandoDoc = "novo"; desenhar(); return corpo.querySelector('[data-form-documento] [name="nome"]')?.focus(); }
     const editarDoc = t.closest("[data-editar-documento]");
@@ -1852,6 +1911,7 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
     if (e.target.matches("[data-comentar]")) return enviarComentario(e.target);
     if (e.target.matches("[data-editar-comentario]")) return salvarComentario(e.target);
     if (e.target.matches("[data-form-documento]")) return salvarDocumento(e.target);
+    if (e.target.matches("[data-form-ligacao]")) return salvarLigacao(e.target);
     if (!e.target.matches("[data-checklist-form]")) return salvar(e.target);
     const campo = e.target.elements.novoItemChecklist;
     const texto = campo.value.trim();
@@ -1878,6 +1938,12 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
   }
   /* Ctrl+Enter (⌘+Enter) envia o comentário ou salva a edição; Esc desiste da edição */
   corpo.addEventListener("keydown", (e) => {
+    /* Esc no formulário da ligação desiste dele, sem fechar a janela (23/11/2026) */
+    if (e.key === "Escape" && ligando && e.target.closest("[data-form-ligacao]")) {
+      e.preventDefault(); e.stopPropagation();
+      ligando = false; mostrados.delete("ligacoesExternas");
+      return desenhar();
+    }
     /* Esc no formulário do documento desiste dele, sem fechar a janela (passo 2.10a) */
     if (e.key === "Escape" && editandoDoc != null && e.target.closest("[data-form-documento]")) {
       e.preventDefault(); e.stopPropagation();
@@ -1937,6 +2003,8 @@ export function abrirAcao({ store, espacoId: espacoInicial, numero, hoje, dados,
       pert.textContent = [o, m, p].every(Number.isInteger) && o >= 0 && o <= m && m <= p && p > 0 ? `Prazo previsto (PERT): ${diasUteis(duracaoPert({ o, m, p }))}.` : "Preencha os três pontos: otimista ≤ mais provável ≤ pessimista.";
     }
     if (e.target.dataset.auto) e.target.classList.remove("com-erro");
+    if (e.target.name === "link" && e.target.closest("[data-form-ligacao]")) reconhecerNoFormulario(e.target.form);
+    if (e.target.name === "tipo" && e.target.closest("[data-form-ligacao]")) e.target.form.elements.identificador.placeholder = TIPOS[e.target.value]?.numero ?? "Número";
     if (e.target.matches("textarea.cresce, textarea.janela-nome")) ajustarAlturas(e.target.parentElement);
   });
   corpo.addEventListener("keydown", (e) => {

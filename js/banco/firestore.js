@@ -199,6 +199,10 @@ export function criarBancoFirestore(db) {
     async mudarDocumentos(espacoId, numero, mudanca, extra = {}, historico) {
       await mudarAcao(espacoId, numero, (a) => ({ ...extra, documentos: mudanca(a.documentos ?? []) }), historico);
     },
+    /** Muda as ligações externas da ação numa transação (23/11/2026; seção 4.6), como os documentos. */
+    async mudarLigacoes(espacoId, numero, mudanca, extra = {}, historico) {
+      await mudarAcao(espacoId, numero, (a) => ({ ...extra, ligacoesExternas: mudanca(a.ligacoesExternas ?? []) }), historico);
+    },
     /**
      * Muda os valores personalizados da ação (passo 3.6): `mudanca` recebe o mapa atual e devolve o novo.
      * Lê e grava de uma vez, como o checklist: duas pessoas preenchendo campos diferentes ao mesmo tempo não
